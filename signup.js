@@ -1,7 +1,7 @@
 const { createClient } = supabase;
 
-const supabaseUrl = "https://YOUR-PROJECT-URL.supabase.co";
-const supabaseKey = "YOUR-ANON-KEY";
+const supabaseUrl = "https://gqxczzijntbvtlmmzppt.supabase.co";
+const supabaseKey = "sb_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs";
 const supabaseClient = createClient(supabaseUrl, supabaseKey);
 
 document.getElementById("signupForm").addEventListener("submit", async function(event) {

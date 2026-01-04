@@ -1,18 +1,33 @@
-// script.js
-document.getElementById("loginForm").addEventListener("submit", function(event) {
+const { createClient } = supabase;
+
+// Replace with your Supabase project details
+const supabaseUrl = "https://gqxczzijntbvtlmmzppt.supabase.co";
+const supabaseKey = "sb_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs";
+const supabaseClient = createClient(supabaseUrl, supabaseKey);
+
+document.getElementById("loginForm").addEventListener("submit", async function(event) {
   event.preventDefault();
 
-  const username = document.getElementById("username").value.trim();
+  const email = document.getElementById("email").value.trim();
   const password = document.getElementById("password").value.trim();
   const errorMessage = document.getElementById("error-message");
 
-  if (username === "" || password === "") {
+  if (!email || !password) {
     errorMessage.textContent = "Both fields are required!";
-  } else if (username === "admin" && password === "12345") {
-    alert("Login successful!");
-    // Redirect to dashboard page
-    window.location.href = "dashboard.html";
-  } else {
-    errorMessage.textContent = "Invalid username or password!";
+    return;
   }
+
+  // Supabase Auth: Sign in
+  const { data, error } = await supabaseClient.auth.signInWithPassword({
+    email: email,
+    password: password,
+  });
+
+  if (error) {
+    errorMessage.textContent = "Login failed: " + error.message;
+    return;
+  }
+
+  alert("Login successful!");
+  window.location.href = "dashboard.html";
 });

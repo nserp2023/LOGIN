@@ -11,8 +11,8 @@
     <h2>Login to Billing Software</h2>
     <form id="loginForm">
       <div class="input-group">
-        <label for="username">Username</label>
-        <input type="text" id="username" placeholder="Enter username" required>
+        <label for="email">Email</label>
+        <input type="email" id="email" placeholder="Enter email" required>
       </div>
       <div class="input-group">
         <label for="password">Password</label>
@@ -21,7 +21,11 @@
       <button type="submit">Login</button>
       <p id="error-message"></p>
     </form>
+    <p>Don't have an account? <a href="signup.html">Sign up here</a></p>
   </div>
+
+  <!-- Supabase client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="script.js"></script>
 </body>
 </html>

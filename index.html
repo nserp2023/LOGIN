@@ -1,17 +1,27 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Login Page</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Billing Software Login</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="login-container">
-    <h2>Login</h2>
-    <form>
-      <input type="text" placeholder="Username123456" required>
-      <input type="password" placeholder="Password" required>
+    <h2>Login to Billing Software</h2>
+    <form id="loginForm">
+      <div class="input-group">
+        <label for="username">Username</label>
+        <input type="text" id="username" placeholder="Enter username" required>
+      </div>
+      <div class="input-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" placeholder="Enter password" required>
+      </div>
       <button type="submit">Login</button>
+      <p id="error-message"></p>
     </form>
   </div>
+  <script src="script.js"></script>
 </body>
 </html>

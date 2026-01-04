@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - Billing Software</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="login-container">
+    <h2>Welcome to Your Dashboard</h2>
+    <p>You are logged in securely with Supabase Auth.</p>
+    <button id="logout">Logout</button>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const { createClient } = supabase;
+    const supabaseUrl = "https://YOUR-PROJECT-URL.supabase.co";
+    const supabaseKey = "YOUR-ANON-KEY";
+    const supabaseClient = createClient(supabaseUrl, supabaseKey);
+
+    document.getElementById("logout").addEventListener("click", async () => {
+      await supabaseClient.auth.signOut();
+      window.location.href = "index.html";
+    });
+  </script>
+</body>
+</html>

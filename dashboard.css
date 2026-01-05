@@ -1,0 +1,137 @@
+/* Scope dashboard styles so they don't override your login page */
+.dashboard-page {
+  display: flex;
+  background: #f4f4f4; /* avoid overriding your background image on login pages */
+}
+
+/* Sidebar */
+.sidebar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 260px;
+  height: 100vh;
+  background: rgba(45, 55, 72, 0.85); /* half transparent feel */
+  color: #fff;
+  backdrop-filter: saturate(120%) blur(2px);
+  transform: translateX(-260px); /* hidden by default */
+  transition: transform 0.25s ease;
+  overflow-y: auto;
+  z-index: 1000;
+  padding-top: 60px; /* space for toggle button */
+}
+
+.sidebar.active {
+  transform: translateX(0);
+}
+
+.toggle-btn {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  background: #2d3748;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 12px;
+  cursor: pointer;
+  z-index: 1100;
+}
+
+/* Navigation list */
+.nav-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 8px 24px 8px;
+}
+
+.nav-list > li {
+  margin: 4px 0;
+  border-radius: 6px;
+}
+
+.nav-list a {
+  color: #fff;
+  text-decoration: none;
+  display: block;
+  padding: 10px 14px;
+  border-radius: 6px;
+}
+
+.nav-list a:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* Submenu behavior */
+.has-submenu > .menu-link::after {
+  content: "▸";
+  float: right;
+  opacity: 0.8;
+  transition: transform 0.2s ease;
+}
+
+.has-submenu.open > .menu-link::after {
+  transform: rotate(90deg);
+}
+
+.submenu {
+  display: none;
+  list-style: none;
+  padding-left: 8px;
+  margin: 4px 0 8px 8px;
+  border-left: 2px solid rgba(255, 255, 255, 0.15);
+}
+
+.has-submenu.open > .submenu {
+  display: block;
+}
+
+.submenu li a {
+  padding: 8px 12px;
+  font-size: 0.95rem;
+  opacity: 0.95;
+}
+
+/* Main content layout */
+.main-content {
+  flex: 1;
+  margin-left: 20px;
+  padding: 20px;
+  min-height: 100vh;
+}
+
+/* Topbar in dashboard content */
+.topbar {
+  background: #2d3748;
+  color: #fff;
+  padding: 12px 16px;
+  border-radius: 8px;
+}
+
+/* Cards */
+.cards {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+
+.card {
+  background: #fff;
+  padding: 1.2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  flex: 1 1 220px;
+  text-align: center;
+}
+
+/* Hover-to-open edge area (optional UX) */
+.dashboard-page::before {
+  content: "";
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 24px;
+  height: 100vh;
+  z-index: 900;
+}

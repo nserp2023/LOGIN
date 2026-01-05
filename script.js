@@ -1,6 +1,5 @@
 const { createClient } = supabase;
 
-// Replace with your Supabase project details
 const supabaseUrl = "https://gqxczzijntbvtlmmzppt.supabase.co";
 const supabaseKey = "sb_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs";
 const supabaseClient = createClient(supabaseUrl, supabaseKey);
@@ -17,7 +16,6 @@ document.getElementById("loginForm").addEventListener("submit", async function(e
     return;
   }
 
-  // Supabase Auth: Sign in
   const { data, error } = await supabaseClient.auth.signInWithPassword({
     email: email,
     password: password,

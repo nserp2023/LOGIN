@@ -135,3 +135,9 @@
   height: 100vh;
   z-index: 900;
 }
+
+.dashboard-page {
+  display: flex;
+  background: linear-gradient(135deg, #4facfe, #00c6fb);
+  min-height: 100vh;
+}

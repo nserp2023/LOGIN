@@ -32,16 +32,6 @@ const salesBody = document.getElementById("salesBody");
 const grandTotalEl = document.getElementById("grandTotal");
 let grandTotal = 0;
 
-// Prevent Enter from submitting form inputs
-["product", "qty", "price"].forEach(id => {
-  document.getElementById(id).addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      document.getElementById("product").focus(); // jump back to product field
-    }
-  });
-});
-
 function recalcGrandTotal() {
   grandTotal = 0;
   salesBody.querySelectorAll("tr").forEach(row => {
@@ -54,6 +44,28 @@ function recalcGrandTotal() {
   grandTotalEl.textContent = `$${grandTotal.toFixed(2)}`;
 }
 
+// Enter key navigation in form inputs
+document.getElementById("product").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    document.getElementById("qty").focus();
+  }
+});
+document.getElementById("qty").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    document.getElementById("price").focus();
+  }
+});
+document.getElementById("price").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    salesForm.dispatchEvent(new Event("submit")); // add item
+    document.getElementById("product").focus();   // ready for next product
+  }
+});
+
+// Add item
 salesForm.addEventListener("submit", (e) => {
   e.preventDefault();
 
@@ -137,7 +149,6 @@ document.getElementById("saveInvoice").addEventListener("click", async () => {
     alert("Error saving invoice: " + error.message);
   } else {
     alert("Invoice saved successfully!");
-    // Optionally clear table
     salesBody.innerHTML = "";
     recalcGrandTotal();
   }

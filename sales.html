@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Sales</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body class="dashboard-page">
+  <aside id="sidebar" class="sidebar">
+    <button class="toggle-btn" id="toggleBtn">☰</button>
+    <ul class="nav-list">
+      <li><a href="dashboard.html">🏠 Home</a></li>
+      <li class="has-submenu open">
+        <a href="#" class="menu-link">💳 Billing</a>
+        <ul class="submenu">
+          <li><a href="sales.html" class="active">Sales</a></li>
+          <li><a href="#">Sales Return</a></li>
+          <li><a href="#">Quotation</a></li>
+          <li><a href="#">Sales Order</a></li>
+          <li><a href="#">Transfer Out</a></li>
+        </ul>
+      </li>
+      <!-- other menu items -->
+      <li><a href="#" id="logout">🚪 Logout</a></li>
+    </ul>
+  </aside>
+
+  <main class="main-content">
+    <nav class="topbar">
+      <h1>Sales Page</h1>
+    </nav>
+
+    <section class="sales-section">
+      <h2>Sales Products</h2>
+      <p>Here you can manage sales transactions.</p>
+
+      <!-- Example table -->
+      <table class="sales-table">
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>Qty</th>
+            <th>Price</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Sample Product</td>
+            <td>3</td>
+            <td>$15</td>
+            <td>$45</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="sales.js"></script>
+</body>
+</html>

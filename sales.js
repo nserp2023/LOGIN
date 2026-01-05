@@ -126,6 +126,13 @@ salesBody.addEventListener("keydown", (e) => {
     if (e.key === "ArrowDown" && index < allRows.length - 1) targetRow = allRows[index + 1];
     if (targetRow) targetRow.querySelector("td:nth-child(1)").focus();
   }
+
+  // Delete key → remove current row
+  if (e.key === "Delete") {
+    e.preventDefault();
+    row.remove();
+    recalcGrandTotal();
+  }
 });
 
 // Save Invoice

@@ -152,6 +152,9 @@ document.getElementById("saveInvoice").addEventListener("click", async () => {
   const customerAddress = document.getElementById("customerAddress").value.trim();
   const customerMobile = document.getElementById("customerMobile").value.trim();
 
+  // Generate invoice date (current timestamp)
+  const invoiceDate = new Date().toISOString();
+
   // Insert into Supabase
   const { data, error } = await supabaseClient
     .from("invoices")
@@ -160,7 +163,8 @@ document.getElementById("saveInvoice").addEventListener("click", async () => {
       customer_address: customerAddress,
       customer_mobile: customerMobile,
       items: items,
-      grand_total: grandTotal
+      grand_total: grandTotal,
+      invoicedate: invoiceDate   // ✅ supply the date
     }]);
 
   if (error) {

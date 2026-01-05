@@ -86,8 +86,3 @@ button:hover {
   text-align: center;
 }
 
-.dashboard-page {
-  display: flex;
-  background: url("background.jpg") no-repeat center center fixed;
-  background-size: cover;
-}

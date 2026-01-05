@@ -16,7 +16,6 @@ document.getElementById("signupForm").addEventListener("submit", async function(
     return;
   }
 
-  // Supabase Auth: Sign up
   const { data, error } = await supabaseClient.auth.signUp({
     email: email,
     password: password,

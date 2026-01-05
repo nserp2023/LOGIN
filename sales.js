@@ -30,8 +30,19 @@ sidebar.addEventListener("mouseleave", () => sidebar.classList.remove("active"))
 const salesForm = document.getElementById("salesForm");
 const salesBody = document.getElementById("salesBody");
 const grandTotalEl = document.getElementById("grandTotal");
-
 let grandTotal = 0;
+
+function recalcGrandTotal() {
+  grandTotal = 0;
+  salesBody.querySelectorAll("tr").forEach(row => {
+    const qty = parseFloat(row.querySelector("td:nth-child(2)").textContent) || 0;
+    const price = parseFloat(row.querySelector("td:nth-child(3)").textContent) || 0;
+    const total = qty * price;
+    row.querySelector("td:nth-child(4)").textContent = `$${total.toFixed(2)}`;
+    grandTotal += total;
+  });
+  grandTotalEl.textContent = `$${grandTotal.toFixed(2)}`;
+}
 
 salesForm.addEventListener("submit", (e) => {
   e.preventDefault();
@@ -42,67 +53,66 @@ salesForm.addEventListener("submit", (e) => {
 
   if (!product || qty <= 0 || price < 0) return;
 
-  const total = qty * price;
-  grandTotal += total;
-
   const row = document.createElement("tr");
   row.innerHTML = `
     <td contenteditable="true">${product}</td>
     <td contenteditable="true">${qty}</td>
     <td contenteditable="true">${price.toFixed(2)}</td>
-    <td>$${total.toFixed(2)}</td>
-    <td>
-      <button class="edit">Edit</button>
-      <button class="remove">Remove</button>
-    </td>
+    <td>$${(qty * price).toFixed(2)}</td>
+    <td><button class="remove">Remove</button></td>
   `;
   salesBody.appendChild(row);
 
-  grandTotalEl.textContent = `$${grandTotal.toFixed(2)}`;
-
+  recalcGrandTotal();
   salesForm.reset();
   document.getElementById("product").focus();
 });
 
-// Delegate actions
+// Remove row
 salesBody.addEventListener("click", (e) => {
   if (e.target.classList.contains("remove")) {
-    const row = e.target.closest("tr");
-    const totalCell = row.querySelector("td:nth-child(4)");
-    const totalValue = parseFloat(totalCell.textContent.replace("$", ""));
-    grandTotal -= totalValue;
-    grandTotalEl.textContent = `$${grandTotal.toFixed(2)}`;
-    row.remove();
-  }
-
-  if (e.target.classList.contains("edit")) {
-    const row = e.target.closest("tr");
-    const productCell = row.querySelector("td:nth-child(1)");
-    const qtyCell = row.querySelector("td:nth-child(2)");
-    const priceCell = row.querySelector("td:nth-child(3)");
-    const totalCell = row.querySelector("td:nth-child(4)");
-
-    const qty = parseInt(qtyCell.textContent, 10);
-    const price = parseFloat(priceCell.textContent);
-
-    const oldTotal = parseFloat(totalCell.textContent.replace("$", ""));
-    grandTotal -= oldTotal;
-
-    const newTotal = qty * price;
-    totalCell.textContent = `$${newTotal.toFixed(2)}`;
-    grandTotal += newTotal;
-    grandTotalEl.textContent = `$${grandTotal.toFixed(2)}`;
+    e.target.closest("tr").remove();
+    recalcGrandTotal();
   }
 });
 
-// Keyboard shortcut: after typing price and pressing Enter, go back to Product cell
+// Auto recalc on editing cells
+salesBody.addEventListener("input", (e) => {
+  if (e.target.hasAttribute("contenteditable")) {
+    recalcGrandTotal();
+  }
+});
+
+// Keyboard shortcuts
 salesBody.addEventListener("keydown", (e) => {
+  const cell = e.target;
+  const row = cell.closest("tr");
+  if (!row) return;
+
+  // Enter → jump back to Product cell
   if (e.key === "Enter") {
     e.preventDefault();
-    const row = e.target.closest("tr");
-    if (row) {
-      const productCell = row.querySelector("td:nth-child(1)");
-      productCell.focus();
-    }
+    row.querySelector("td:nth-child(1)").focus();
+  }
+
+  // Up/Down arrows → move between rows
+  if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+    e.preventDefault();
+    const allRows = Array.from(salesBody.querySelectorAll("tr"));
+    const index = allRows.indexOf(row);
+    let targetRow;
+    if (e.key === "ArrowUp" && index > 0) targetRow = allRows[index - 1];
+    if (e.key === "ArrowDown" && index < allRows.length - 1) targetRow = allRows[index + 1];
+    if (targetRow) targetRow.querySelector("td:nth-child(1)").focus();
   }
 });
+
+// Save Invoice (example stub)
+document.getElementById("saveInvoice").addEventListener("click", async () => {
+  const items = [];
+  salesBody.querySelectorAll("tr").forEach(row => {
+    items.push({
+      product: row.querySelector("td:nth-child(1)").textContent.trim(),
+      qty: parseFloat(row.querySelector("td:nth-child(2)").textContent) || 0,
+      price: parseFloat(row.querySelector("td:nth-child(3)").textContent) || 0,
+      total: parseFloat(row.querySelector("td:nth-child(4)").textContent.replace("$","")) || 0

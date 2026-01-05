@@ -3,17 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <title>Dashboard</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css">        <!-- Keep your original styles (background, fonts) -->
+  <link rel="stylesheet" href="dashboard.css">    <!-- New: dashboard-specific styles -->
 </head>
-<body>
+<body class="dashboard-page">
   <!-- Sidebar -->
-  <div id="sidebar" class="sidebar">
-    <div class="toggle-btn" id="toggleBtn">☰</div>
+  <aside id="sidebar" class="sidebar">
+    <button class="toggle-btn" id="toggleBtn" aria-label="Toggle sidebar">☰</button>
     <ul class="nav-list">
       <li><a href="#">🏠 Home</a></li>
 
-      <li>
-        <a href="#">💳 Billing</a>
+      <li class="has-submenu">
+        <a href="#" class="menu-link">💳 Billing</a>
         <ul class="submenu">
           <li><a href="#">Sales</a></li>
           <li><a href="#">Sales Return</a></li>
@@ -23,8 +24,8 @@
         </ul>
       </li>
 
-      <li>
-        <a href="#">📦 Purchase</a>
+      <li class="has-submenu">
+        <a href="#" class="menu-link">📦 Purchase</a>
         <ul class="submenu">
           <li><a href="#">Purchase</a></li>
           <li><a href="#">Purchase Return</a></li>
@@ -33,24 +34,24 @@
         </ul>
       </li>
 
-      <li>
-        <a href="#">💸 Cash Out</a>
+      <li class="has-submenu">
+        <a href="#" class="menu-link">💸 Cash Out</a>
         <ul class="submenu">
           <li><a href="#">Payment</a></li>
           <li><a href="#">Credit Note</a></li>
         </ul>
       </li>
 
-      <li>
-        <a href="#">💰 Cash In</a>
+      <li class="has-submenu">
+        <a href="#" class="menu-link">💰 Cash In</a>
         <ul class="submenu">
           <li><a href="#">Receipt</a></li>
           <li><a href="#">Debit Note</a></li>
         </ul>
       </li>
 
-      <li>
-        <a href="#">📊 Reports</a>
+      <li class="has-submenu">
+        <a href="#" class="menu-link">📊 Reports</a>
         <ul class="submenu">
           <li><a href="#">Sales Report</a></li>
           <li><a href="#">Sales Return Report</a></li>
@@ -70,13 +71,24 @@
 
       <li><a href="#" id="logout">🚪 Logout</a></li>
     </ul>
-  </div>
+  </aside>
 
   <!-- Main Content -->
-  <div class="main-content">
-    <h1>Welcome to Dashboard</h1>
-    <p id="welcome"></p>
-  </div>
+  <main class="main-content">
+    <nav class="topbar">
+      <h1>My App Dashboard</h1>
+    </nav>
+
+    <section class="user-info">
+      <p id="welcome"></p>
+    </section>
+
+    <section class="cards">
+      <div class="card">📊 Reports</div>
+      <div class="card">💳 Billing</div>
+      <div class="card">⚙️ Settings</div>
+    </section>
+  </main>
 
   <!-- Supabase client -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

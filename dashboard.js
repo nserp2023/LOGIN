@@ -1,6 +1,6 @@
 const { createClient } = supabase;
-const supabaseUrl = "https://YOUR-PROJECT-URL.supabase.co";
-const supabaseKey = "sb_publishable_xxxxx"; 
+const supabaseUrl = "https://gqxczzijntbvtlmmzppt.supabase.co";
+const supabaseKey = "b_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs"; 
 const supabaseClient = createClient(supabaseUrl, supabaseKey);
 
 // Check session

@@ -141,3 +141,53 @@
   background: url("background.jpg") no-repeat center center fixed;
   background-size: cover;
 }
+
+/* Sales form */
+.sales-form {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.sales-form .form-row {
+  display: flex;
+  flex-direction: column;
+}
+
+.sales-form label {
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+.sales-form input {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+/* Sales table */
+.sales-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.sales-table th, .sales-table td {
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+  text-align: center;
+}
+
+.sales-table th {
+  background: #2d3748;
+  color: #fff;
+}
+
+.sales-table tfoot td {
+  font-weight: bold;
+  background: #f4f4f4;
+}

@@ -147,10 +147,21 @@ document.getElementById("saveInvoice").addEventListener("click", async () => {
     });
   });
 
-  // Example: save to Supabase (replace "invoices" with your table name)
+  // Get customer details
+  const customerName = document.getElementById("customerName").value.trim();
+  const customerAddress = document.getElementById("customerAddress").value.trim();
+  const customerMobile = document.getElementById("customerMobile").value.trim();
+
+  // Insert into Supabase
   const { data, error } = await supabaseClient
     .from("invoices")
-    .insert([{ items: items, grand_total: grandTotal }]);
+    .insert([{
+      customer_name: customerName,
+      customer_address: customerAddress,
+      customer_mobile: customerMobile,
+      items: items,
+      grand_total: grandTotal
+    }]);
 
   if (error) {
     alert("Error saving invoice: " + error.message);
@@ -158,5 +169,6 @@ document.getElementById("saveInvoice").addEventListener("click", async () => {
     alert("Invoice saved successfully!");
     salesBody.innerHTML = "";
     recalcGrandTotal();
+    document.getElementById("customerForm").reset();
   }
 });

@@ -6,24 +6,79 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <nav class="navbar">
-    <h1>My App Dashboard</h1>
-    <button id="logout">Logout</button>
-  </nav>
+  <!-- Sidebar -->
+  <div id="sidebar" class="sidebar">
+    <div class="toggle-btn" id="toggleBtn">☰</div>
+    <ul class="nav-list">
+      <li><a href="#">🏠 Home</a></li>
 
-  <section class="user-info">
+      <li>
+        <a href="#">💳 Billing</a>
+        <ul class="submenu">
+          <li><a href="#">Sales</a></li>
+          <li><a href="#">Sales Return</a></li>
+          <li><a href="#">Quotation</a></li>
+          <li><a href="#">Sales Order</a></li>
+          <li><a href="#">Transfer Out</a></li>
+        </ul>
+      </li>
+
+      <li>
+        <a href="#">📦 Purchase</a>
+        <ul class="submenu">
+          <li><a href="#">Purchase</a></li>
+          <li><a href="#">Purchase Return</a></li>
+          <li><a href="#">Transfer In</a></li>
+          <li><a href="#">Manufacture</a></li>
+        </ul>
+      </li>
+
+      <li>
+        <a href="#">💸 Cash Out</a>
+        <ul class="submenu">
+          <li><a href="#">Payment</a></li>
+          <li><a href="#">Credit Note</a></li>
+        </ul>
+      </li>
+
+      <li>
+        <a href="#">💰 Cash In</a>
+        <ul class="submenu">
+          <li><a href="#">Receipt</a></li>
+          <li><a href="#">Debit Note</a></li>
+        </ul>
+      </li>
+
+      <li>
+        <a href="#">📊 Reports</a>
+        <ul class="submenu">
+          <li><a href="#">Sales Report</a></li>
+          <li><a href="#">Sales Return Report</a></li>
+          <li><a href="#">Quotation Report</a></li>
+          <li><a href="#">Sales Order Report</a></li>
+          <li><a href="#">Transfer Out Report</a></li>
+          <li><a href="#">Purchase Report</a></li>
+          <li><a href="#">Purchase Return Report</a></li>
+          <li><a href="#">Transfer In Report</a></li>
+          <li><a href="#">Manufacture Report</a></li>
+          <li><a href="#">Payment Report</a></li>
+          <li><a href="#">Credit Note Report</a></li>
+          <li><a href="#">Receipt Report</a></li>
+          <li><a href="#">Debit Note Report</a></li>
+        </ul>
+      </li>
+
+      <li><a href="#" id="logout">🚪 Logout</a></li>
+    </ul>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <h1>Welcome to Dashboard</h1>
     <p id="welcome"></p>
-  </section>
+  </div>
 
-  <section class="main-content">
-    <h2>Overview</h2>
-    <div class="cards">
-      <div class="card">📊 Reports</div>
-      <div class="card">💳 Billing</div>
-      <div class="card">⚙️ Settings</div>
-    </div>
-  </section>
-
+  <!-- Supabase client -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="dashboard.js"></script>
 </body>

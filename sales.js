@@ -32,6 +32,16 @@ const salesBody = document.getElementById("salesBody");
 const grandTotalEl = document.getElementById("grandTotal");
 let grandTotal = 0;
 
+// Prevent Enter from submitting form inputs
+["product", "qty", "price"].forEach(id => {
+  document.getElementById(id).addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      document.getElementById("product").focus(); // jump back to product field
+    }
+  });
+});
+
 function recalcGrandTotal() {
   grandTotal = 0;
   salesBody.querySelectorAll("tr").forEach(row => {
@@ -83,10 +93,9 @@ salesBody.addEventListener("input", (e) => {
   }
 });
 
-// Keyboard shortcuts
+// Keyboard shortcuts inside table
 salesBody.addEventListener("keydown", (e) => {
-  const cell = e.target;
-  const row = cell.closest("tr");
+  const row = e.target.closest("tr");
   if (!row) return;
 
   // Enter → jump back to Product cell
@@ -107,7 +116,7 @@ salesBody.addEventListener("keydown", (e) => {
   }
 });
 
-// Save Invoice (example stub)
+// Save Invoice
 document.getElementById("saveInvoice").addEventListener("click", async () => {
   const items = [];
   salesBody.querySelectorAll("tr").forEach(row => {
@@ -116,3 +125,20 @@ document.getElementById("saveInvoice").addEventListener("click", async () => {
       qty: parseFloat(row.querySelector("td:nth-child(2)").textContent) || 0,
       price: parseFloat(row.querySelector("td:nth-child(3)").textContent) || 0,
       total: parseFloat(row.querySelector("td:nth-child(4)").textContent.replace("$","")) || 0
+    });
+  });
+
+  // Example: save to Supabase (replace "invoices" with your table name)
+  const { data, error } = await supabaseClient
+    .from("invoices")
+    .insert([{ items: items, grand_total: grandTotal }]);
+
+  if (error) {
+    alert("Error saving invoice: " + error.message);
+  } else {
+    alert("Invoice saved successfully!");
+    // Optionally clear table
+    salesBody.innerHTML = "";
+    recalcGrandTotal();
+  }
+});

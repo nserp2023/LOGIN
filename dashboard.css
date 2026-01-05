@@ -138,6 +138,6 @@
 
 .dashboard-page {
   display: flex;
-  background: linear-gradient(135deg, #4facfe, #00c6fb);
-  min-height: 100vh;
+  background: url("background.jpg") no-repeat center center fixed;
+  background-size: cover;
 }

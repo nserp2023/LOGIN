@@ -1,6 +1,6 @@
 const { createClient } = supabase;
 
-// Use your actual Supabase project details
+// Use the same project as your login/signup
 const supabaseUrl = "https://gqxczzijntbvtlmmzppt.supabase.co";
 const supabaseKey = "sb_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs";
 const supabaseClient = createClient(supabaseUrl, supabaseKey);
@@ -9,15 +9,15 @@ const supabaseClient = createClient(supabaseUrl, supabaseKey);
 (async () => {
   const { data: { session } } = await supabaseClient.auth.getSession();
   if (!session) {
-    window.location.href = "index.html"; // redirect if not logged in
+    window.location.href = "index.html";
   } else {
-    document.getElementById("welcome").textContent =
-      `Welcome, ${session.user.email}`;
+    document.getElementById("welcome").textContent = `Welcome, ${session.user.email}`;
   }
 })();
 
 // Logout
-document.getElementById("logout").addEventListener("click", async () => {
+document.getElementById("logout").addEventListener("click", async (e) => {
+  e.preventDefault();
   await supabaseClient.auth.signOut();
   window.location.href = "index.html";
 });
@@ -30,9 +30,9 @@ toggleBtn.addEventListener("click", () => {
   sidebar.classList.toggle("active");
 });
 
-// Hover near left edge to auto-show
-document.body.addEventListener("mousemove", (e) => {
-  if (e.clientX < 30) {
+// Hover near the left edge to auto-show
+document.addEventListener("mousemove", (e) => {
+  if (e.clientX < 24) {
     sidebar.classList.add("active");
   }
 });
@@ -40,13 +40,11 @@ sidebar.addEventListener("mouseleave", () => {
   sidebar.classList.remove("active");
 });
 
-// Submenu toggle on click
-document.querySelectorAll(".nav-list > li > a").forEach(link => {
+// Submenu toggle (accordion style)
+document.querySelectorAll(".has-submenu > .menu-link").forEach(link => {
   link.addEventListener("click", (e) => {
-    const parentLi = e.target.parentElement;
-    if (parentLi.querySelector(".submenu")) {
-      e.preventDefault(); // prevent navigation
-      parentLi.classList.toggle("open");
-    }
+    e.preventDefault();
+    const li = e.currentTarget.parentElement;
+    li.classList.toggle("open");
   });
 });

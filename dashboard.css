@@ -209,3 +209,30 @@
   background: #e53e3e;
   color: #fff;
 }
+
+.sales-table td[contenteditable="true"] {
+  background: #fdfdfd;
+  cursor: text;
+}
+
+.sales-table td button.remove {
+  background: #e53e3e;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.save-btn {
+  margin-top: 1rem;
+  padding: 10px 16px;
+  background: #4facfe;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.save-btn:hover {
+  background: #00c6fb;
+}

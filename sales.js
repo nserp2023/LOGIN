@@ -1,7 +1,7 @@
 const { createClient } = supabase;
 
-const supabaseUrl = "https://gqxczzijntbvtlmmzppt.supabase.co";
-const supabaseKey = "sb_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs";
+const supabaseUrl = "https://YOUR_PROJECT.supabase.co";
+const supabaseKey = "YOUR_PUBLIC_KEY";
 const supabaseClient = createClient(supabaseUrl, supabaseKey);
 
 // Session check
@@ -21,9 +21,7 @@ document.getElementById("logout").addEventListener("click", async (e) => {
 const sidebar = document.getElementById("sidebar");
 const toggleBtn = document.getElementById("toggleBtn");
 toggleBtn.addEventListener("click", () => sidebar.classList.toggle("active"));
-document.addEventListener("mousemove", (e) => {
-  if (e.clientX < 24) sidebar.classList.add("active");
-});
+document.addEventListener("mousemove", (e) => { if (e.clientX < 24) sidebar.classList.add("active"); });
 sidebar.addEventListener("mouseleave", () => sidebar.classList.remove("active"));
 
 // Sales logic
@@ -44,35 +42,60 @@ function recalcGrandTotal() {
   grandTotalEl.textContent = `$${grandTotal.toFixed(2)}`;
 }
 
-// Enter key navigation in form inputs
-document.getElementById("product").addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    e.preventDefault();
-    document.getElementById("qty").focus();
-  }
+// Cursor workflow
+function setInitialFocus() {
+  document.getElementById("customerMobile").focus();
+}
+window.addEventListener("load", setInitialFocus);
+
+// Enter key navigation
+document.getElementById("customerMobile").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") { e.preventDefault(); document.getElementById("customerName").focus(); }
 });
-document.getElementById("qty").addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    e.preventDefault();
-    document.getElementById("price").focus();
-  }
+document.getElementById("customerName").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") { e.preventDefault(); document.getElementById("customerAddress").focus(); }
 });
-document.getElementById("price").addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    e.preventDefault();
-    salesForm.dispatchEvent(new Event("submit")); // add item
-    document.getElementById("product").focus();   // ready for next product
-  }
+document.getElementById("customerAddress").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") { e.preventDefault(); document.getElementById("product").focus(); }
 });
+
+// Auto date
+function setTodayDate() {
+  const today = new Date().toISOString().split("T")[0];
+  document.getElementById("billDate").value = today;
+}
+window.addEventListener("load", setTodayDate);
+
+// Load series from Supabase
+async function loadSeries() {
+  const { data, error } = await supabaseClient.from("bill_series").select("series_code");
+  const select = document.getElementById("billSeries");
+  if (!error && data) {
+    select.innerHTML = "";
+    data.forEach(s => {
+      const opt = document.createElement("option");
+      opt.value = s.series_code;
+      opt.textContent = s.series_code;
+      select.appendChild(opt);
+    });
+    select.value = "Q"; // default
+  }
+}
+window.addEventListener("load", loadSeries);
+
+// Get next bill number from Supabase function
+async function getNextBillNumber(series) {
+  const { data, error } = await supabaseClient.rpc("increment_bill_number", { series_code: series });
+  if (error) { console.error(error); return null; }
+  return data;
+}
 
 // Add item
 salesForm.addEventListener("submit", (e) => {
   e.preventDefault();
-
   const product = document.getElementById("product").value.trim();
   const qty = parseInt(document.getElementById("qty").value, 10);
   const price = parseFloat(document.getElementById("price").value);
-
   if (!product || qty <= 0 || price < 0) return;
 
   const row = document.createElement("tr");
@@ -98,43 +121,6 @@ salesBody.addEventListener("click", (e) => {
   }
 });
 
-// Auto recalc on editing cells
-salesBody.addEventListener("input", (e) => {
-  if (e.target.hasAttribute("contenteditable")) {
-    recalcGrandTotal();
-  }
-});
-
-// Keyboard shortcuts inside table
-salesBody.addEventListener("keydown", (e) => {
-  const row = e.target.closest("tr");
-  if (!row) return;
-
-  // Enter → jump back to Product cell
-  if (e.key === "Enter") {
-    e.preventDefault();
-    row.querySelector("td:nth-child(1)").focus();
-  }
-
-  // Up/Down arrows → move between rows
-  if (e.key === "ArrowUp" || e.key === "ArrowDown") {
-    e.preventDefault();
-    const allRows = Array.from(salesBody.querySelectorAll("tr"));
-    const index = allRows.indexOf(row);
-    let targetRow;
-    if (e.key === "ArrowUp" && index > 0) targetRow = allRows[index - 1];
-    if (e.key === "ArrowDown" && index < allRows.length - 1) targetRow = allRows[index + 1];
-    if (targetRow) targetRow.querySelector("td:nth-child(1)").focus();
-  }
-
-  // Delete key → remove current row
-  if (e.key === "Delete") {
-    e.preventDefault();
-    row.remove();
-    recalcGrandTotal();
-  }
-});
-
 // Save Invoice
 document.getElementById("saveInvoice").addEventListener("click", async () => {
   const items = [];
@@ -150,38 +136,4 @@ document.getElementById("saveInvoice").addEventListener("click", async () => {
   // Customer details
   const customerName = document.getElementById("customerName").value.trim();
   const customerAddress = document.getElementById("customerAddress").value.trim();
-  const customerMobile = document.getElementById("customerMobile").value.trim();
-
-  // Bill details
-  const billDate = document.getElementById("billDate").value;
-  const billSeries = document.getElementById("billSeries").value.trim();
-  const billNumber = document.getElementById("billNumber").value.trim();
-  const salesman = document.getElementById("salesman").value.trim();
-  const vehicleNumber = document.getElementById("vehicleNumber").value.trim();
-
-  // Insert into Supabase
-  const { data, error } = await supabaseClient
-    .from("invoices")
-    .insert([{
-      customer_name: customerName,
-      customer_address: customerAddress,
-      customer_mobile: customerMobile,
-      items: items,
-      totalamount: Number(grandTotal.toFixed(2)),
-      invoicedate: billDate || new Date().toISOString(),
-      bill_series: billSeries,
-      bill_number: billNumber,
-      salesman: salesman,
-      vehicle_number: vehicleNumber
-    }]);
-
-  if (error) {
-    alert("Error saving invoice: " + error.message);
-  } else {
-    alert("Invoice saved successfully!");
-    salesBody.innerHTML = "";
-    recalcGrandTotal();
-    document.getElementById("customerForm").reset();
-    document.getElementById("billForm").reset();
-  }
-});
+  const customerMobile = document.getElement

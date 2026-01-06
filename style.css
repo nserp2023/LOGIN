@@ -180,3 +180,20 @@ button:hover {
     color: #000;
   }
 }
+
+/* Wrap sections in a grid */
+main {
+  margin: 2rem;
+  margin-left: 220px; /* space for sidebar */
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+/* Cards stay responsive */
+.card {
+  background: #fff;
+  padding: 1rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}

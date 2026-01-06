@@ -8,8 +8,10 @@
 <body>
   <header>
     <h1>Sales Dashboard</h1>
-    <button id="logout">Logout</button>
-    <button onclick="window.print()" class="print-btn">🖨 Print Invoice</button>
+    <div>
+      <button id="logout">Logout</button>
+      <button onclick="window.print()" class="print-btn">🖨 Print Invoice</button>
+    </div>
   </header>
 
   <aside id="sidebar">
@@ -22,7 +24,7 @@
     </nav>
   </aside>
 
-  <main id="invoice">
+  <main>
     <!-- Customer Details -->
     <section class="card">
       <h2>Customer Details</h2>
@@ -45,8 +47,8 @@
       </form>
     </section>
 
-    <!-- Sales Form -->
-    <section class="card">
+    <!-- Sales Entry -->
+    <section class="card wide">
       <h2>Sales Entry</h2>
       <form id="salesForm">
         <input type="text" id="product" placeholder="Product" required>

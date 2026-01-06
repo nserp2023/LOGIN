@@ -46,25 +46,33 @@ function recalcGrandTotal() {
 
 // Enter key navigation in form inputs
 document.getElementById("product").addEventListener("keydown", (e) => {
-  if (e.key === "Enter") { e.preventDefault(); document.getElementById("qty").focus(); }
+  if (e.key === "Enter") {
+    e.preventDefault();
+    document.getElementById("qty").focus();
+  }
 });
 document.getElementById("qty").addEventListener("keydown", (e) => {
-  if (e.key === "Enter") { e.preventDefault(); document.getElementById("price").focus(); }
+  if (e.key === "Enter") {
+    e.preventDefault();
+    document.getElementById("price").focus();
+  }
 });
 document.getElementById("price").addEventListener("keydown", (e) => {
   if (e.key === "Enter") {
     e.preventDefault();
-    salesForm.dispatchEvent(new Event("submit"));
-    document.getElementById("product").focus();
+    salesForm.dispatchEvent(new Event("submit")); // add item
+    document.getElementById("product").focus();   // ready for next product
   }
 });
 
 // Add item
 salesForm.addEventListener("submit", (e) => {
   e.preventDefault();
+
   const product = document.getElementById("product").value.trim();
   const qty = parseInt(document.getElementById("qty").value, 10);
   const price = parseFloat(document.getElementById("price").value);
+
   if (!product || qty <= 0 || price < 0) return;
 
   const row = document.createElement("tr");
@@ -92,14 +100,23 @@ salesBody.addEventListener("click", (e) => {
 
 // Auto recalc on editing cells
 salesBody.addEventListener("input", (e) => {
-  if (e.target.hasAttribute("contenteditable")) recalcGrandTotal();
+  if (e.target.hasAttribute("contenteditable")) {
+    recalcGrandTotal();
+  }
 });
 
 // Keyboard shortcuts inside table
 salesBody.addEventListener("keydown", (e) => {
   const row = e.target.closest("tr");
   if (!row) return;
-  if (e.key === "Enter") { e.preventDefault(); row.querySelector("td:nth-child(1)").focus(); }
+
+  // Enter → jump back to Product cell
+  if (e.key === "Enter") {
+    e.preventDefault();
+    row.querySelector("td:nth-child(1)").focus();
+  }
+
+  // Up/Down arrows → move between rows
   if (e.key === "ArrowUp" || e.key === "ArrowDown") {
     e.preventDefault();
     const allRows = Array.from(salesBody.querySelectorAll("tr"));
@@ -109,7 +126,13 @@ salesBody.addEventListener("keydown", (e) => {
     if (e.key === "ArrowDown" && index < allRows.length - 1) targetRow = allRows[index + 1];
     if (targetRow) targetRow.querySelector("td:nth-child(1)").focus();
   }
-  if (e.key === "Delete") { e.preventDefault(); row.remove(); recalcGrandTotal(); }
+
+  // Delete key → remove current row
+  if (e.key === "Delete") {
+    e.preventDefault();
+    row.remove();
+    recalcGrandTotal();
+  }
 });
 
 // Save Invoice
@@ -126,4 +149,39 @@ document.getElementById("saveInvoice").addEventListener("click", async () => {
 
   // Customer details
   const customerName = document.getElementById("customerName").value.trim();
-  const customerAddress = document.getElementById("customer
+  const customerAddress = document.getElementById("customerAddress").value.trim();
+  const customerMobile = document.getElementById("customerMobile").value.trim();
+
+  // Bill details
+  const billDate = document.getElementById("billDate").value;
+  const billSeries = document.getElementById("billSeries").value.trim();
+  const billNumber = document.getElementById("billNumber").value.trim();
+  const salesman = document.getElementById("salesman").value.trim();
+  const vehicleNumber = document.getElementById("vehicleNumber").value.trim();
+
+  // Insert into Supabase
+  const { data, error } = await supabaseClient
+    .from("invoices")
+    .insert([{
+      customer_name: customerName,
+      customer_address: customerAddress,
+      customer_mobile: customerMobile,
+      items: items,
+      totalamount: Number(grandTotal.toFixed(2)),
+      invoicedate: billDate || new Date().toISOString(),
+      bill_series: billSeries,
+      bill_number: billNumber,
+      salesman: salesman,
+      vehicle_number: vehicleNumber
+    }]);
+
+  if (error) {
+    alert("Error saving invoice: " + error.message);
+  } else {
+    alert("Invoice saved successfully!");
+    salesBody.innerHTML = "";
+    recalcGrandTotal();
+    document.getElementById("customerForm").reset();
+    document.getElementById("billForm").reset();
+  }
+});

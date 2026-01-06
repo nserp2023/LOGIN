@@ -146,3 +146,11 @@ document.getElementById("saveInvoice").addEventListener("click", async () => {
       qty: parseFloat(row.querySelector("td:nth-child(2)").textContent) || 0,
       price: parseFloat(row.querySelector("td:nth-child(3)").textContent) || 0,
       total: parseFloat(row
+
+        function setTodayDate() {
+  const billDateEl = document.getElementById("billDate");
+  if (billDateEl) {
+    const today = new Date().toISOString().split("T")[0];
+    billDateEl.value = today;
+  }
+}

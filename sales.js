@@ -159,7 +159,3 @@ window.addEventListener("DOMContentLoaded", () => {
   setTodayDate();
   document.getElementById("customerMobile").focus();
 });
-
-document.addEventListener("DOMContentLoaded", () => {
-  setTodayDate();
-});

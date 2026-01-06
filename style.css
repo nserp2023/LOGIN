@@ -1,88 +1,153 @@
-/* style.css */
-body {
-  font-family: Arial, sans-serif;
-  background: url("background.jpg") no-repeat center center fixed; 
-  background-size: cover;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
+/* General reset */
+* {
   margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
-.login-container {
-  background: rgba(255, 255, 255, 0.9);
-  padding: 30px;
-  border-radius: 10px;
-  box-shadow: 0px 4px 15px rgba(0,0,0,0.2);
-  width: 350px;
+body {
+  font-family: "Segoe UI", Arial, sans-serif;
+  background: linear-gradient(135deg, #f0f4f8, #d9e4ec);
+  color: #333;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header */
+header {
+  background: #2c3e50;
+  color: #fff;
+  padding: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+header h1 {
+  font-size: 1.5rem;
+}
+
+header button {
+  background: #e74c3c;
+  border: none;
+  padding: 0.5rem 1rem;
+  color: #fff;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+/* Sidebar */
+#sidebar {
+  position: fixed;
+  top: 0;
+  left: -200px;
+  width: 200px;
+  height: 100%;
+  background: #34495e;
+  transition: left 0.3s ease;
+  padding-top: 60px;
+}
+
+#sidebar.active {
+  left: 0;
+}
+
+#sidebar nav ul {
+  list-style: none;
+}
+
+#sidebar nav ul li {
+  margin: 1rem 0;
+}
+
+#sidebar nav ul li a {
+  color: #fff;
+  text-decoration: none;
+  padding: 0.5rem 1rem;
+  display: block;
+}
+
+#toggleBtn {
+  position: absolute;
+  top: 10px;
+  right: -40px;
+  background: #34495e;
+  color: #fff;
+  border: none;
+  padding: 0.5rem;
+  cursor: pointer;
+}
+
+/* Main content */
+main {
+  margin: 2rem;
+  margin-left: 220px; /* space for sidebar */
+}
+
+.card {
+  background: #fff;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.card h2 {
+  margin-bottom: 1rem;
+  color: #2c3e50;
+}
+
+form label {
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+form input {
+  width: 100%;
+  padding: 0.4rem;
+  margin-top: 0.2rem;
+  margin-bottom: 0.8rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+/* Table */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+
+table th, table td {
+  border: 1px solid #ddd;
+  padding: 0.6rem;
   text-align: center;
 }
 
-.login-container h2 {
-  margin-bottom: 20px;
-  color: #333;
+table th {
+  background: #f4f6f8;
 }
 
-.input-group {
-  margin-bottom: 15px;
-  text-align: left;
-}
-
-.input-group label {
-  display: block;
-  margin-bottom: 5px;
-  color: #555;
-}
-
-.input-group input {
-  width: 100%;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 5px;
-}
-
-button {
-  width: 100%;
-  padding: 12px;
-  background: #4facfe;
+.remove {
+  background: #e74c3c;
   border: none;
-  border-radius: 5px;
-  color: white;
-  font-size: 16px;
+  color: #fff;
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* Buttons */
+button {
+  background: #3498db;
+  border: none;
+  color: #fff;
+  padding: 0.6rem 1rem;
+  border-radius: 4px;
   cursor: pointer;
 }
 
 button:hover {
-  background: #00c6fb;
+  background: #2980b9;
 }
-
-#error-message {
-  color: red;
-  margin-top: 10px;
-}
-
-/* Old dashboard bits (left here if you want them in non-dashboard pages) */
-.navbar {
-  background: #2d3748;
-  color: white;
-  padding: 1rem;
-  display: flex;
-  justify-content: space-between;
-}
-
-.cards {
-  display: flex;
-  gap: 1rem;
-  margin-top: 1rem;
-}
-
-.card {
-  background: white;
-  padding: 2rem;
-  border-radius: 8px;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-  flex: 1;
-  text-align: center;
-}
-

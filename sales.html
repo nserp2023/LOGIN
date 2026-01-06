@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Sales Dashboard</title>
+  <title>Sales Billing</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <header>
-    <h1>Sales Dashboard</h1>
+    <h1>SALES BILLING</h1>
     <button id="logout">Logout</button>
   </header>
 
@@ -22,32 +22,37 @@
   </aside>
 
   <main>
-    <!-- Customer Details -->
+    <!-- Bill Info -->
     <section class="card">
-      <h2>Customer Details</h2>
-      <form id="customerForm">
-        <label>Name <input type="text" id="customerName" required></label>
-        <label>Address <input type="text" id="customerAddress" required></label>
-        <label>Mobile <input type="tel" id="customerMobile" required></label>
+      <form id="billForm" class="inline-form">
+        <label>Bill Date <input type="date" id="billDate" required></label>
+        <label>Series <input type="text" id="billSeries" required></label>
+        <label>Bill Number <input type="text" id="billNumber" required></label>
+        <label>Salesman <input type="text" id="salesman" required></label>
       </form>
     </section>
 
-    <!-- Bill Details -->
+    <!-- Vehicle Info -->
     <section class="card">
-      <h2>Bill Details</h2>
-      <form id="billForm">
-        <label>Bill Date <input type="date" id="billDate" required></label>
-        <label>Bill Series <input type="text" id="billSeries" required></label>
-        <label>Bill Number <input type="text" id="billNumber" required></label>
-        <label>Salesman <input type="text" id="salesman" required></label>
+      <form class="inline-form">
         <label>Vehicle Number <input type="text" id="vehicleNumber" required></label>
+      </form>
+    </section>
+
+    <!-- Customer Info -->
+    <section class="card">
+      <h2>Customer Details</h2>
+      <form id="customerForm" class="inline-form">
+        <label>Mobile <input type="tel" id="customerMobile" required></label>
+        <label>Name <input type="text" id="customerName" required></label>
+        <label>Address <input type="text" id="customerAddress" required></label>
       </form>
     </section>
 
     <!-- Sales Entry -->
     <section class="card">
       <h2>Sales Entry</h2>
-      <form id="salesForm">
+      <form id="salesForm" class="inline-form">
         <input type="text" id="product" placeholder="Product" required>
         <input type="number" id="qty" placeholder="Qty" required>
         <input type="number" id="price" placeholder="Price" required step="0.01">

@@ -154,3 +154,8 @@ document.getElementById("saveInvoice").addEventListener("click", async () => {
     billDateEl.value = today;
   }
 }
+
+window.addEventListener("DOMContentLoaded", () => {
+  setTodayDate();
+  document.getElementById("customerMobile").focus();
+});

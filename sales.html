@@ -2,97 +2,72 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Sales Billing</title>
-  <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="dashboard.css">
+  <title>Sales Dashboard</title>
+  <link rel="stylesheet" href="styles.css">
 </head>
-<body class="dashboard-page">
-  <!-- Sidebar -->
-  <aside id="sidebar" class="sidebar">
-    <button class="toggle-btn" id="toggleBtn">☰</button>
-    <ul class="nav-list">
-      <li><a href="dashboard.html">🏠 Home</a></li>
-      <li class="has-submenu open">
-        <a href="#" class="menu-link">💳 Billing</a>
-        <ul class="submenu">
-          <li><a href="sales.html" class="active">Sales</a></li>
-          <li><a href="#">Sales Return</a></li>
-          <li><a href="#">Quotation</a></li>
-          <li><a href="#">Sales Order</a></li>
-          <li><a href="#">Transfer Out</a></li>
-        </ul>
-      </li>
-      <li><a href="#" id="logout">🚪 Logout</a></li>
-    </ul>
+<body>
+  <header>
+    <button id="logout">Logout</button>
+  </header>
+
+  <aside id="sidebar">
+    <button id="toggleBtn">☰</button>
+    <nav>
+      <ul>
+        <li><a href="sales.html">Sales</a></li>
+        <li><a href="history.html">Sales History</a></li>
+      </ul>
+    </nav>
   </aside>
 
-  <!-- Main Content -->
-  <main class="main-content">
-    <nav class="topbar">
-      <h1>Sales Billing</h1>
-    </nav>
+  <main>
+    <!-- Customer Details -->
+    <section class="customer-section">
+      <h2>Customer Details</h2>
+      <form id="customerForm">
+        <label>Name <input type="text" id="customerName" required></label>
+        <label>Address <input type="text" id="customerAddress" required></label>
+        <label>Mobile <input type="tel" id="customerMobile" required></label>
+      </form>
+    </section>
 
+    <!-- Bill Details -->
+    <section class="bill-section">
+      <h2>Bill Details</h2>
+      <form id="billForm">
+        <label>Bill Date <input type="date" id="billDate" required></label>
+        <label>Bill Series <input type="text" id="billSeries" required></label>
+        <label>Bill Number <input type="text" id="billNumber" required></label>
+        <label>Salesman <input type="text" id="salesman" required></label>
+        <label>Vehicle Number <input type="text" id="vehicleNumber" required></label>
+      </form>
+    </section>
+
+    <!-- Sales Form -->
     <section class="sales-section">
-      <h2>Create Sales Invoice</h2>
-
-      <section class="customer-section">
-  <h2>Customer Details</h2>
-  <form id="customerForm" class="customer-form">
-    <div class="form-row">
-      <label for="customerName">Name</label>
-      <input type="text" id="customerName" required>
-    </div>
-    <div class="form-row">
-      <label for="customerAddress">Address</label>
-      <input type="text" id="customerAddress" required>
-    </div>
-    <div class="form-row">
-      <label for="customerMobile">Mobile</label>
-      <input type="tel" id="customerMobile" required>
-    </div>
-  </form>
-</section>
-
-      <!-- Sales Form -->
-      <form id="salesForm" class="sales-form">
-        <div class="form-row">
-          <label for="product">Product</label>
-          <input type="text" id="product" required>
-        </div>
-        <div class="form-row">
-          <label for="qty">Quantity</label>
-          <input type="number" id="qty" min="1" required>
-        </div>
-        <div class="form-row">
-          <label for="price">Price</label>
-          <input type="number" id="price" min="0" step="0.01" required>
-        </div>
+      <h2>Sales Entry</h2>
+      <form id="salesForm">
+        <input type="text" id="product" placeholder="Product" required>
+        <input type="number" id="qty" placeholder="Qty" required>
+        <input type="number" id="price" placeholder="Price" required step="0.01">
         <button type="submit">Add Item</button>
       </form>
 
-      <!-- Sales Table -->
-      <table class="sales-table">
+      <table>
         <thead>
           <tr>
             <th>Product</th>
             <th>Qty</th>
             <th>Price</th>
             <th>Total</th>
-            <th>Actions</th>
+            <th>Action</th>
           </tr>
         </thead>
-        <tbody id="salesBody">
-          <!-- Items will be added here -->
-        </tbody>
-        <tfoot>
-          <tr>
-            <td colspan="4"><strong>Grand Total</strong></td>
-            <td id="grandTotal">$0.00</td>
-          </tr>
-        </tfoot>
+        <tbody id="salesBody"></tbody>
       </table>
 
-      <button id="saveInvoice" class="save-btn">💾 Save Invoice</button>
+      <h3>Grand Total: <span id="grandTotal">$0.00</span></h3>
+      <button id="saveInvoice">Save Invoice</button>
     </section>
   </main>
 

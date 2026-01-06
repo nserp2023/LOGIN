@@ -151,3 +151,32 @@ button {
 button:hover {
   background: #2980b9;
 }
+
+/* Print Styles */
+@media print {
+  body {
+    background: #fff !important;
+    color: #000;
+  }
+
+  header, #sidebar, #toggleBtn, .remove, #saveInvoice, .print-btn {
+    display: none !important;
+  }
+
+  main {
+    margin: 0;
+  }
+
+  .card {
+    box-shadow: none;
+    border: 1px solid #ccc;
+  }
+
+  table th {
+    background: #eee;
+  }
+
+  h1, h2, h3 {
+    color: #000;
+  }
+}

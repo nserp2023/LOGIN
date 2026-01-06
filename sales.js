@@ -51,6 +51,30 @@ function setTodayDate() {
   }
 }
 
+// ✅ Fetch next bill number from Supabase
+async function setBillNumberFromDB(series) {
+  const billNumberEl = document.getElementById("billNumber");
+  const { data, error } = await supabaseClient
+    .from("invoices")
+    .select("bill_number")
+    .eq("bill_series", series)
+    .order("bill_number", { ascending: false })
+    .limit(1);
+
+  if (error) {
+    console.error("Error fetching bill number:", error);
+    billNumberEl.value = "1"; // fallback
+    return;
+  }
+
+  if (data.length > 0) {
+    const lastNumber = parseInt(data[0].bill_number, 10);
+    billNumberEl.value = String(lastNumber + 1);
+  } else {
+    billNumberEl.value = "1"; // first bill in this series
+  }
+}
+
 // ✅ Initial setup
 document.addEventListener("DOMContentLoaded", async () => {
   // Focus Mobile
@@ -81,17 +105,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
   seriesSelect.value = "Q";
 
-  // Bill number auto increment (local fallback)
-  const billNumberEl = document.getElementById("billNumber");
-  const setLocalBillNumber = () => {
-    const series = seriesSelect.value || "Q";
-    const key = `counter_${series}`;
-    const next = (parseInt(localStorage.getItem(key) || "0", 10) + 1);
-    localStorage.setItem(key, String(next));
-    billNumberEl.value = String(next);
-  };
-  setLocalBillNumber();
-  seriesSelect.addEventListener("change", setLocalBillNumber);
+  // ✅ Set bill number from DB for default series
+  await setBillNumberFromDB(seriesSelect.value);
+
+  // ✅ When series changes, fetch next number for that series
+  seriesSelect.addEventListener("change", async () => {
+    await setBillNumberFromDB(seriesSelect.value);
+  });
 });
 
 // ✅ Enter navigation
@@ -189,5 +209,7 @@ document.getElementById("saveInvoice").addEventListener("click", async () => {
     document.getElementById("billForm").reset();
     setTodayDate();
     document.getElementById("customerMobile").focus();
+    // ✅ Refresh bill number from DB after saving
+    await setBillNumberFromDB(billSeries);
   }
 });

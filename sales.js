@@ -1,7 +1,7 @@
 const { createClient } = supabase;
 
-const supabaseUrl = "https://YOUR_PROJECT.supabase.co";
-const supabaseKey = "YOUR_PUBLIC_KEY";
+const supabaseUrl = "https://gqxczzijntbvtlmmzppt.supabase.co";
+const supabaseKey = "sb_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs";
 const supabaseClient = createClient(supabaseUrl, supabaseKey);
 
 // Session check
@@ -42,53 +42,69 @@ function recalcGrandTotal() {
   grandTotalEl.textContent = `$${grandTotal.toFixed(2)}`;
 }
 
-// Cursor workflow
-function setInitialFocus() {
+// Initial setup
+window.addEventListener("DOMContentLoaded", async () => {
+  // Focus Mobile
   document.getElementById("customerMobile").focus();
-}
-window.addEventListener("load", setInitialFocus);
 
-// Enter key navigation
-document.getElementById("customerMobile").addEventListener("keydown", (e) => {
-  if (e.key === "Enter") { e.preventDefault(); document.getElementById("customerName").focus(); }
-});
-document.getElementById("customerName").addEventListener("keydown", (e) => {
-  if (e.key === "Enter") { e.preventDefault(); document.getElementById("customerAddress").focus(); }
-});
-document.getElementById("customerAddress").addEventListener("keydown", (e) => {
-  if (e.key === "Enter") { e.preventDefault(); document.getElementById("product").focus(); }
-});
+  // Auto date
+  const billDateEl = document.getElementById("billDate");
+  billDateEl.value = new Date().toISOString().split("T")[0];
 
-// Auto date
-function setTodayDate() {
-  const today = new Date().toISOString().split("T")[0];
-  document.getElementById("billDate").value = today;
-}
-window.addEventListener("load", setTodayDate);
-
-// Load series from Supabase
-async function loadSeries() {
-  const { data, error } = await supabaseClient.from("bill_series").select("series_code");
-  const select = document.getElementById("billSeries");
-  if (!error && data) {
-    select.innerHTML = "";
-    data.forEach(s => {
+  // Load series from Supabase (fallback to Q)
+  const seriesSelect = document.getElementById("billSeries");
+  try {
+    const { data, error } = await supabaseClient.from("bill_series").select("series_code");
+    if (!error && data.length) {
+      seriesSelect.innerHTML = "";
+      data.forEach(s => {
+        const opt = document.createElement("option");
+        opt.value = s.series_code;
+        opt.textContent = s.series_code;
+        seriesSelect.appendChild(opt);
+      });
+    }
+  } catch (err) {
+    ["Q","A","B","C"].forEach(s => {
       const opt = document.createElement("option");
-      opt.value = s.series_code;
-      opt.textContent = s.series_code;
-      select.appendChild(opt);
+      opt.value = s; opt.textContent = s;
+      seriesSelect.appendChild(opt);
     });
-    select.value = "Q"; // default
   }
-}
-window.addEventListener("load", loadSeries);
+  seriesSelect.value = "Q";
 
-// Get next bill number from Supabase function
-async function getNextBillNumber(series) {
-  const { data, error } = await supabaseClient.rpc("increment_bill_number", { series_code: series });
-  if (error) { console.error(error); return null; }
-  return data;
-}
+  // Bill number auto increment (local fallback)
+  const billNumberEl = document.getElementById("billNumber");
+  const setLocalBillNumber = () => {
+    const series = seriesSelect.value || "Q";
+    const key = `counter_${series}`;
+    const next = (parseInt(localStorage.getItem(key) || "0", 10) + 1);
+    localStorage.setItem(key, String(next));
+    billNumberEl.value = String(next);
+  };
+  setLocalBillNumber();
+  seriesSelect.addEventListener("change", setLocalBillNumber);
+});
+
+// Enter navigation
+const jump = (from, to) => {
+  const a = document.getElementById(from), b = document.getElementById(to);
+  if (a && b) a.addEventListener("keydown", e => {
+    if (e.key === "Enter") { e.preventDefault(); b.focus(); }
+  });
+};
+jump("customerMobile","customerName");
+jump("customerName","customerAddress");
+jump("customerAddress","product");
+
+// Enter on Price adds item
+document.getElementById("price").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    salesForm.dispatchEvent(new Event("submit"));
+    document.getElementById("product").focus();
+  }
+});
 
 // Add item
 salesForm.addEventListener("submit", (e) => {
@@ -129,11 +145,4 @@ document.getElementById("saveInvoice").addEventListener("click", async () => {
       product: row.querySelector("td:nth-child(1)").textContent.trim(),
       qty: parseFloat(row.querySelector("td:nth-child(2)").textContent) || 0,
       price: parseFloat(row.querySelector("td:nth-child(3)").textContent) || 0,
-      total: parseFloat(row.querySelector("td:nth-child(4)").textContent.replace("$","")) || 0
-    });
-  });
-
-  // Customer details
-  const customerName = document.getElementById("customerName").value.trim();
-  const customerAddress = document.getElementById("customerAddress").value.trim();
-  const customerMobile = document.getElement
+      total: parseFloat(row

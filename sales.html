@@ -26,8 +26,10 @@
     <section class="card">
       <form id="billForm" class="inline-form">
         <label>Bill Date <input type="date" id="billDate" required></label>
-        <label>Series <input type="text" id="billSeries" required></label>
-        <label>Bill Number <input type="text" id="billNumber" required></label>
+        <label>Series 
+          <select id="billSeries" required></select>
+        </label>
+        <label>Bill Number <input type="text" id="billNumber" readonly></label>
         <label>Salesman <input type="text" id="salesman" required></label>
         <label>Vehicle Number <input type="text" id="vehicleNumber" required></label>
       </form>

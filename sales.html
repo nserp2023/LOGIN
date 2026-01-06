@@ -3,10 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <title>Sales Dashboard</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <header>
+    <h1>Sales Dashboard</h1>
     <button id="logout">Logout</button>
   </header>
 
@@ -22,7 +23,7 @@
 
   <main>
     <!-- Customer Details -->
-    <section class="customer-section">
+    <section class="card">
       <h2>Customer Details</h2>
       <form id="customerForm">
         <label>Name <input type="text" id="customerName" required></label>
@@ -32,7 +33,7 @@
     </section>
 
     <!-- Bill Details -->
-    <section class="bill-section">
+    <section class="card">
       <h2>Bill Details</h2>
       <form id="billForm">
         <label>Bill Date <input type="date" id="billDate" required></label>
@@ -44,7 +45,7 @@
     </section>
 
     <!-- Sales Form -->
-    <section class="sales-section">
+    <section class="card">
       <h2>Sales Entry</h2>
       <form id="salesForm">
         <input type="text" id="product" placeholder="Product" required>

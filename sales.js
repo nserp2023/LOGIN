@@ -77,13 +77,9 @@ async function setBillNumberFromDB(series) {
 
 // ✅ Initial setup
 document.addEventListener("DOMContentLoaded", async () => {
-  // Focus Mobile
   document.getElementById("customerMobile").focus();
-
-  // Auto date
   setTodayDate();
 
-  // Load series from Supabase (fallback to Q)
   const seriesSelect = document.getElementById("billSeries");
   try {
     const { data, error } = await supabaseClient.from("bill_series").select("series_code");
@@ -105,10 +101,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
   seriesSelect.value = "Q";
 
-  // ✅ Set bill number from DB for default series
   await setBillNumberFromDB(seriesSelect.value);
 
-  // ✅ When series changes, fetch next number for that series
   seriesSelect.addEventListener("change", async () => {
     await setBillNumberFromDB(seriesSelect.value);
   });
@@ -165,51 +159,61 @@ salesBody.addEventListener("click", (e) => {
   }
 });
 
-// ✅ Save Invoice
-document.getElementById("saveInvoice").addEventListener("click", async () => {
-  const items = [];
-  salesBody.querySelectorAll("tr").forEach(row => {
-    items.push({
-      product: row.querySelector("td:nth-child(1)").textContent.trim(),
-      qty: parseFloat(row.querySelector("td:nth-child(2)").textContent) || 0,
-      price: parseFloat(row.querySelector("td:nth-child(3)").textContent) || 0,
-      total: parseFloat(row.querySelector("td:nth-child(4)").textContent.replace("$","")) || 0
+// ✅ Save Invoice with duplicate protection
+document.getElementById("saveInvoice").addEventListener("click", async (e) => {
+  const saveBtn = e.target;
+  saveBtn.disabled = true;   // prevent double click
+
+  try {
+    const items = [];
+    salesBody.querySelectorAll("tr").forEach(row => {
+      items.push({
+        product: row.querySelector("td:nth-child(1)").textContent.trim(),
+        qty: parseFloat(row.querySelector("td:nth-child(2)").textContent) || 0,
+        price: parseFloat(row.querySelector("td:nth-child(3)").textContent) || 0,
+        total: parseFloat(row.querySelector("td:nth-child(4)").textContent.replace("$","")) || 0
+      });
     });
-  });
 
-  const customerName = document.getElementById("customerName").value.trim();
-  const customerAddress = document.getElementById("customerAddress").value.trim();
-  const customerMobile = document.getElementById("customerMobile").value.trim();
-  const billDate = document.getElementById("billDate").value;
-  const billSeries = document.getElementById("billSeries").value;
-  const billNumber = document.getElementById("billNumber").value;
-  const salesman = document.getElementById("salesman").value.trim();
-  const vehicleNumber = document.getElementById("vehicleNumber").value.trim();
+    const customerName = document.getElementById("customerName").value.trim();
+    const customerAddress = document.getElementById("customerAddress").value.trim();
+    const customerMobile = document.getElementById("customerMobile").value.trim();
+    const billDate = document.getElementById("billDate").value;
+    const billSeries = document.getElementById("billSeries").value;
+    const billNumber = document.getElementById("billNumber").value;
+    const salesman = document.getElementById("salesman").value.trim();
+    const vehicleNumber = document.getElementById("vehicleNumber").value.trim();
 
-  const { error } = await supabaseClient.from("invoices").insert([{
-    customer_name: customerName,
-    customer_address: customerAddress,
-    customer_mobile: customerMobile,
-    items,
-    totalamount: Number(grandTotal.toFixed(2)),
-    invoicedate: billDate,
-    bill_series: billSeries,
-    bill_number: billNumber,
-    salesman,
-    vehicle_number: vehicleNumber
-  }]);
+    const { error } = await supabaseClient.from("invoices").insert([{
+      customer_name: customerName,
+      customer_address: customerAddress,
+      customer_mobile: customerMobile,
+      items,
+      totalamount: Number(grandTotal.toFixed(2)),
+      invoicedate: billDate,
+      bill_series: billSeries,
+      bill_number: billNumber,
+      salesman,
+      vehicle_number: vehicleNumber
+    }]);
 
-  if (error) {
-    alert("Error saving invoice: " + error.message);
-  } else {
-    alert("Invoice saved successfully!");
-    salesBody.innerHTML = "";
-    recalcGrandTotal();
-    document.getElementById("customerForm").reset();
-    document.getElementById("billForm").reset();
-    setTodayDate();
-    document.getElementById("customerMobile").focus();
-    // ✅ Refresh bill number from DB after saving
-    await setBillNumberFromDB(billSeries);
+    if (error) {
+      if (error.message.includes("duplicate key")) {
+        alert("This bill number already exists. Please refresh to get the next number.");
+      } else {
+        alert("Error saving invoice: " + error.message);
+      }
+    } else {
+      alert("Invoice saved successfully!");
+      salesBody.innerHTML = "";
+      recalcGrandTotal();
+      document.getElementById("customerForm").reset();
+      document.getElementById("billForm").reset();
+      setTodayDate();
+      document.getElementById("customerMobile").focus();
+      await setBillNumberFromDB(billSeries); // refresh next number
+    }
+  } finally {
+    saveBtn.disabled = false; // re‑enable button
   }
 });

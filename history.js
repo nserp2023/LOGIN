@@ -47,13 +47,41 @@ async function loadInvoices() {
       <td>${inv.invoicedate || ""}</td>
       <td>${inv.customer_name || ""}</td>
       <td>${inv.customer_mobile || ""}</td>
-      <td>${inv.customer_gst || inv.gst_number || ""}</td>
-      <td>${inv.customer_state_code || inv.state_code || ""}</td>
+      <td>${inv.gst_number || ""}</td>
+      <td>${inv.state_code || ""}</td>
       <td>${inv.totalamount ? "₹" + inv.totalamount.toFixed(2) : ""}</td>
+      <td><button class="viewItems" data-items='${JSON.stringify(inv.items)}'>View Items</button></td>
     `;
     tbody.appendChild(row);
   });
 }
+
+// ✅ Show items in modal
+const modal = document.getElementById("itemsModal");
+const closeModal = document.getElementById("closeModal");
+const itemsBody = document.getElementById("itemsBody");
+
+document.getElementById("historyBody").addEventListener("click", (e) => {
+  if (e.target.classList.contains("viewItems")) {
+    const items = JSON.parse(e.target.dataset.items || "[]");
+    itemsBody.innerHTML = "";
+    items.forEach(it => {
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${it.product || ""}</td>
+        <td>${it.qty || 0}</td>
+        <td>${it.price ? "₹" + it.price.toFixed(2) : ""}</td>
+        <td>${it.total ? "₹" + it.total.toFixed(2) : ""}</td>
+      `;
+      itemsBody.appendChild(row);
+    });
+    modal.style.display = "block";
+  }
+});
+
+closeModal.addEventListener("click", () => {
+  modal.style.display = "none";
+});
 
 // ✅ Load on page start
 document.addEventListener("DOMContentLoaded", loadInvoices);

@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <title>Dashboard</title>
-  <link rel="stylesheet" href="style.css">        <!-- Keep your original styles (background, fonts) -->
-  <link rel="stylesheet" href="dashboard.css">    <!-- New: dashboard-specific styles -->
+  <link rel="stylesheet" href="style.css">        <!-- Keep your original styles -->
+  <link rel="stylesheet" href="dashboard.css">    <!-- Dashboard-specific styles -->
 </head>
 <body class="dashboard-page">
   <!-- Sidebar -->
@@ -13,16 +13,16 @@
     <ul class="nav-list">
       <li><a href="#">🏠 Home</a></li>
 
-<li class="has-submenu">
-  <a href="#" class="menu-link">💳 Billing</a>
-  <ul class="submenu">
-    <li><a href="sales.html">Sales</a></li>
-    <li><a href="#">Sales Return</a></li>
-    <li><a href="#">Quotation</a></li>
-    <li><a href="#">Sales Order</a></li>
-    <li><a href="#">Transfer Out</a></li>
-  </ul>
-</li>
+      <li class="has-submenu">
+        <a href="#" class="menu-link">💳 Billing</a>
+        <ul class="submenu">
+          <li><a href="sales.html">Sales</a></li>
+          <li><a href="#">Sales Return</a></li>
+          <li><a href="#">Quotation</a></li>
+          <li><a href="#">Sales Order</a></li>
+          <li><a href="#">Transfer Out</a></li>
+        </ul>
+      </li>
 
       <li class="has-submenu">
         <a href="#" class="menu-link">📦 Purchase</a>
@@ -69,6 +69,17 @@
         </ul>
       </li>
 
+      <!-- ✅ New Create Menu -->
+      <li class="has-submenu">
+        <a href="#" class="menu-link">📝 Create</a>
+        <ul class="submenu" id="createMenu">
+          <li><a href="#">Customer</a></li>
+          <li><a href="#">Supplier</a></li>
+          <li><a href="#">Products</a></li>
+          <li><a href="#">HSN</a></li>
+        </ul>
+      </li>
+
       <li><a href="#" id="logout">🚪 Logout</a></li>
     </ul>
   </aside>
@@ -86,6 +97,7 @@
     <section class="cards">
       <div class="card">📊 Reports</div>
       <div class="card">💳 Billing</div>
+      <div class="card" id="createCard">📝 Create</div> <!-- ✅ New card -->
       <div class="card">⚙️ Settings</div>
     </section>
   </main>

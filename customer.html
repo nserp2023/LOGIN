@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Create / Edit Customer</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+  <header>
+    <h1 id="formTitle">Create Customer</h1>
+    <button id="backBtn">⬅ Back</button>
+  </header>
+
+  <main>
+    <section class="card">
+      <form id="customerForm" class="inline-form">
+        <label>Name
+          <input type="text" id="customerName" required>
+        </label>
+        <label>Mobile
+          <input type="tel" id="customerMobile" required>
+        </label>
+        <label>Address
+          <input type="text" id="customerAddress" required>
+        </label>
+        <label>GST Number
+          <input type="text" id="customerGST" required>
+        </label>
+        <label>State Code
+          <input type="text" id="customerStateCode" required>
+        </label>
+        <button type="submit" id="saveBtn">Save Customer</button>
+      </form>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="customer.js"></script>
+</body>
+</html>

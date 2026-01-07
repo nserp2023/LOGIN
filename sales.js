@@ -217,7 +217,6 @@ document.getElementById("saveInvoice").addEventListener("click", async (e) => {
       document.getElementById("billForm").reset();
       setTodayDate();
       document.getElementById("customerMobile").focus();
-      await readBillNumber(billSeries); // show next available
     }
   } finally {
     saveBtn.disabled = false;

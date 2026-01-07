@@ -60,12 +60,13 @@ async function readBillNumber(series) {
     .eq("series_code", series)
     .single();
 
-  if (error) {
+  if (error || !data) {
     console.error("Error reading bill counter:", error);
     billNumberEl.value = "1";
     return;
   }
 
+  // Show next available number
   billNumberEl.value = String(data.current_number + 1);
 }
 

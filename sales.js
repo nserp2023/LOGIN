@@ -51,44 +51,34 @@ function setTodayDate() {
   }
 }
 
-// ✅ Fetch next bill number via RPC (preferred)
-async function getNextBillNumber(series) {
-  const billNumberEl = document.getElementById("billNumber");
-  const { data, error } = await supabaseClient.rpc("increment_bill_number", {
-    series_code_input: series
-  });
-
-  if (error) {
-    console.error("RPC error:", error);
-    // fallback: query invoices table
-    await setBillNumberFromDB(series);
-  } else {
-    billNumberEl.value = String(data);
-  }
-}
-
-// ✅ Fallback: fetch next bill number from invoices table
-async function setBillNumberFromDB(series) {
+// ✅ Read current bill number (no increment)
+async function readBillNumber(series) {
   const billNumberEl = document.getElementById("billNumber");
   const { data, error } = await supabaseClient
-    .from("invoices")
-    .select("bill_number")
-    .eq("bill_series", series)
-    .order("bill_number", { ascending: false })
-    .limit(1);
+    .from("bill_count")
+    .select("current_number")
+    .eq("series_code", series)
+    .single();
 
   if (error) {
-    console.error("Error fetching bill number:", error);
+    console.error("Error reading bill counter:", error);
     billNumberEl.value = "1";
     return;
   }
 
-  if (data.length > 0) {
-    const lastNumber = parseInt(data[0].bill_number, 10);
-    billNumberEl.value = String(lastNumber + 1);
-  } else {
-    billNumberEl.value = "1";
+  billNumberEl.value = String(data.current_number + 1);
+}
+
+// ✅ Increment bill number via RPC (only on save)
+async function incrementBillNumber(series) {
+  const { data, error } = await supabaseClient.rpc("increment_bill_number", {
+    series_code_input: series
+  });
+  if (error) {
+    console.error("RPC error:", error);
+    throw error;
   }
+  return data; // new number
 }
 
 // ✅ Initial setup
@@ -117,10 +107,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
   seriesSelect.value = "Q";
 
-  await getNextBillNumber(seriesSelect.value);
+  await readBillNumber(seriesSelect.value);
 
   seriesSelect.addEventListener("change", async () => {
-    await getNextBillNumber(seriesSelect.value);
+    await readBillNumber(seriesSelect.value);
   });
 });
 
@@ -175,7 +165,7 @@ salesBody.addEventListener("click", (e) => {
   }
 });
 
-// ✅ Save Invoice with duplicate protection
+// ✅ Save Invoice (increments counter only here)
 document.getElementById("saveInvoice").addEventListener("click", async (e) => {
   const saveBtn = e.target;
   saveBtn.disabled = true;
@@ -196,7 +186,10 @@ document.getElementById("saveInvoice").addEventListener("click", async (e) => {
     const customerMobile = document.getElementById("customerMobile").value.trim();
     const billDate = document.getElementById("billDate").value;
     const billSeries = document.getElementById("billSeries").value;
-    const billNumber = document.getElementById("billNumber").value;
+
+    // ✅ increment only now
+    const newBillNumber = await incrementBillNumber(billSeries);
+
     const salesman = document.getElementById("salesman").value.trim();
     const vehicleNumber = document.getElementById("vehicleNumber").value.trim();
 
@@ -208,17 +201,13 @@ document.getElementById("saveInvoice").addEventListener("click", async (e) => {
       totalamount: Number(grandTotal.toFixed(2)),
       invoicedate: billDate,
       bill_series: billSeries,
-      bill_number: billNumber,
+      bill_number: newBillNumber,
       salesman,
       vehicle_number: vehicleNumber
     }]);
 
     if (error) {
-      if (error.message.includes("duplicate key")) {
-        alert("This bill number already exists. Please refresh to get the next number.");
-      } else {
-        alert("Error saving invoice: " + error.message);
-      }
+      alert("Error saving invoice: " + error.message);
     } else {
       alert("Invoice saved successfully!");
       salesBody.innerHTML = "";
@@ -227,7 +216,7 @@ document.getElementById("saveInvoice").addEventListener("click", async (e) => {
       document.getElementById("billForm").reset();
       setTodayDate();
       document.getElementById("customerMobile").focus();
-      await getNextBillNumber(billSeries); // refresh next number
+      await readBillNumber(billSeries); // show next available
     }
   } finally {
     saveBtn.disabled = false;

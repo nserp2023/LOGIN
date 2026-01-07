@@ -3,26 +3,26 @@
 <head>
   <meta charset="UTF-8">
   <title>Sales Billing</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <aside id="sidebar">
+  <header>
+    <h1>SALES BILLING</h1>
     <button id="logout">Logout</button>
+  </header>
+
+  <aside id="sidebar">
+    <button id="toggleBtn">☰</button>
+    <nav>
+      <ul>
+        <li><a href="sales.html">Sales</a></li>
+        <li><a href="history.html">Sales History</a></li>
+      </ul>
+    </nav>
   </aside>
 
   <main>
-    <button id="toggleBtn">☰</button>
-
-    <!-- Customer Info -->
-    <section class="card">
-      <form id="customerForm" class="inline-form">
-        <label>Mobile <input type="text" id="customerMobile" required></label>
-        <label>Name <input type="text" id="customerName" required></label>
-        <label>Address <input type="text" id="customerAddress"></label>
-      </form>
-    </section>
-
-    <!-- Bill Info (Bill Number removed) -->
+    <!-- Bill Info -->
     <section class="card">
       <form id="billForm" class="inline-form">
         <label>Bill Date <input type="date" id="billDate" required></label>
@@ -34,30 +34,45 @@
       </form>
     </section>
 
-    <!-- Sales Items -->
+    <!-- Customer Info -->
     <section class="card">
+      <h2>Customer Details</h2>
+      <form id="customerForm" class="inline-form">
+        <label>Mobile <input type="tel" id="customerMobile" required></label>
+        <label>Name <input type="text" id="customerName" required></label>
+        <label>Address <input type="text" id="customerAddress" required></label>
+      </form>
+    </section>
+
+    <!-- Sales Entry -->
+    <section class="card">
+      <h2>Sales Entry</h2>
       <form id="salesForm" class="inline-form">
-        <label>Product <input type="text" id="product" required></label>
-        <label>Qty <input type="number" id="qty" required></label>
-        <label>Price <input type="number" id="price" required></label>
+        <input type="text" id="product" placeholder="Product" required>
+        <input type="number" id="qty" placeholder="Qty" required>
+        <input type="number" id="price" placeholder="Price" required step="0.01">
         <button type="submit">Add Item</button>
       </form>
 
       <table>
         <thead>
           <tr>
-            <th>Product</th><th>Qty</th><th>Price</th><th>Total</th><th>Action</th>
+            <th>Product</th>
+            <th>Qty</th>
+            <th>Price</th>
+            <th>Total</th>
+            <th>Action</th>
           </tr>
         </thead>
         <tbody id="salesBody"></tbody>
       </table>
 
-      <p>Grand Total: <span id="grandTotal">$0.00</span></p>
+      <h3>Grand Total: <span id="grandTotal">$0.00</span></h3>
       <button id="saveInvoice">Save Invoice</button>
     </section>
   </main>
 
-  <script src="https://unpkg.com/@supabase/supabase-js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="sales.js"></script>
 </body>
 </html>

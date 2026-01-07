@@ -4,27 +4,27 @@ const supabaseUrl = "https://gqxczzijntbvtlmmzppt.supabase.co";
 const supabaseKey = "sb_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs";
 const supabaseClient = createClient(supabaseUrl, supabaseKey);
 
-// ✅ Session check
+// Session check
 (async () => {
   const { data: { session } } = await supabaseClient.auth.getSession();
   if (!session) window.location.href = "index.html";
 })();
 
-// ✅ Logout
+// Logout
 document.getElementById("logout").addEventListener("click", async (e) => {
   e.preventDefault();
   await supabaseClient.auth.signOut();
   window.location.href = "index.html";
 });
 
-// ✅ Sidebar toggle
+// Sidebar toggle
 const sidebar = document.getElementById("sidebar");
 const toggleBtn = document.getElementById("toggleBtn");
 toggleBtn.addEventListener("click", () => sidebar.classList.toggle("active"));
 document.addEventListener("mousemove", (e) => { if (e.clientX < 24) sidebar.classList.add("active"); });
 sidebar.addEventListener("mouseleave", () => sidebar.classList.remove("active"));
 
-// ✅ Sales logic
+// Grand total logic
 const salesForm = document.getElementById("salesForm");
 const salesBody = document.getElementById("salesBody");
 const grandTotalEl = document.getElementById("grandTotal");
@@ -42,7 +42,7 @@ function recalcGrandTotal() {
   grandTotalEl.textContent = `$${grandTotal.toFixed(2)}`;
 }
 
-// ✅ Auto date
+// Auto-fill today's date
 function setTodayDate() {
   const billDateEl = document.getElementById("billDate");
   if (billDateEl) {
@@ -51,31 +51,22 @@ function setTodayDate() {
   }
 }
 
-// ✅ Fetch next bill number from Supabase
-async function setBillNumberFromDB(series) {
+// Get next bill number from Supabase RPC
+async function getNextBillNumber(series) {
   const billNumberEl = document.getElementById("billNumber");
-  const { data, error } = await supabaseClient
-    .from("invoices")
-    .select("bill_number")
-    .eq("bill_series", series)
-    .order("bill_number", { ascending: false })
-    .limit(1);
+  const { data, error } = await supabaseClient.rpc("increment_bill_number", {
+    series_code_input: series
+  });
 
   if (error) {
-    console.error("Error fetching bill number:", error);
+    console.error("RPC error:", error);
     billNumberEl.value = "1"; // fallback
-    return;
-  }
-
-  if (data.length > 0) {
-    const lastNumber = parseInt(data[0].bill_number, 10);
-    billNumberEl.value = String(lastNumber + 1);
   } else {
-    billNumberEl.value = "1"; // first bill in this series
+    billNumberEl.value = String(data);
   }
 }
 
-// ✅ Initial setup
+// Initial setup
 document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("customerMobile").focus();
   setTodayDate();
@@ -101,14 +92,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
   seriesSelect.value = "Q";
 
-  await setBillNumberFromDB(seriesSelect.value);
+  await getNextBillNumber(seriesSelect.value);
 
   seriesSelect.addEventListener("change", async () => {
-    await setBillNumberFromDB(seriesSelect.value);
+    await getNextBillNumber(seriesSelect.value);
   });
 });
 
-// ✅ Enter navigation
+// Enter navigation
 const jump = (from, to) => {
   const a = document.getElementById(from), b = document.getElementById(to);
   if (a && b) a.addEventListener("keydown", e => {
@@ -119,7 +110,7 @@ jump("customerMobile","customerName");
 jump("customerName","customerAddress");
 jump("customerAddress","product");
 
-// ✅ Enter on Price adds item
+// Enter on Price adds item
 document.getElementById("price").addEventListener("keydown", (e) => {
   if (e.key === "Enter") {
     e.preventDefault();
@@ -128,7 +119,7 @@ document.getElementById("price").addEventListener("keydown", (e) => {
   }
 });
 
-// ✅ Add item
+// Add item to table
 salesForm.addEventListener("submit", (e) => {
   e.preventDefault();
   const product = document.getElementById("product").value.trim();
@@ -151,7 +142,7 @@ salesForm.addEventListener("submit", (e) => {
   document.getElementById("product").focus();
 });
 
-// ✅ Remove row
+// Remove item
 salesBody.addEventListener("click", (e) => {
   if (e.target.classList.contains("remove")) {
     e.target.closest("tr").remove();
@@ -159,10 +150,10 @@ salesBody.addEventListener("click", (e) => {
   }
 });
 
-// ✅ Save Invoice with duplicate protection
+// Save invoice
 document.getElementById("saveInvoice").addEventListener("click", async (e) => {
   const saveBtn = e.target;
-  saveBtn.disabled = true;   // prevent double click
+  saveBtn.disabled = true;
 
   try {
     const items = [];
@@ -211,9 +202,9 @@ document.getElementById("saveInvoice").addEventListener("click", async (e) => {
       document.getElementById("billForm").reset();
       setTodayDate();
       document.getElementById("customerMobile").focus();
-      await setBillNumberFromDB(billSeries); // refresh next number
+      await getNextBillNumber(billSeries);
     }
   } finally {
-    saveBtn.disabled = false; // re‑enable button
+    saveBtn.disabled = false;
   }
 });

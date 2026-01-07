@@ -54,6 +54,7 @@ function setTodayDate() {
 // ✅ Read current bill number (no increment)
 async function readBillNumber(series) {
   const billNumberEl = document.getElementById("billNumber");
+  if (!billNumberEl) return;
   const { data, error } = await supabaseClient
     .from("bill_count")
     .select("current_number")
@@ -155,4 +156,84 @@ jump("customerAddress","customerGST");
 jump("customerGST","customerStateCode");
 jump("customerStateCode","product");
 
-// ✅ Enter
+// ✅ Enter on Price adds item
+document.getElementById("price").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    salesForm.dispatchEvent(new Event("submit"));
+    document.getElementById("product").focus();
+  }
+});
+
+// ✅ Add item
+salesForm.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const product = document.getElementById("product").value.trim();
+  const qty = parseInt(document.getElementById("qty").value, 10);
+  const price = parseFloat(document.getElementById("price").value);
+  if (!product || qty <= 0 || price < 0) return;
+
+  const row = document.createElement("tr");
+  row.innerHTML = `
+    <td contenteditable="true">${product}</td>
+    <td contenteditable="true">${qty}</td>
+    <td contenteditable="true">${price.toFixed(2)}</td>
+    <td>$${(qty * price).toFixed(2)}</td>
+    <td><button class="remove">Remove</button></td>
+  `;
+  salesBody.appendChild(row);
+
+  recalcGrandTotal();
+
+  // ✅ only reset sales form, not customer form
+  salesForm.reset();
+  document.getElementById("product").focus();
+});
+
+// ✅ Remove row
+salesBody.addEventListener("click", (e) => {
+  if (e.target.classList.contains("remove")) {
+    e.target.closest("tr").remove();
+    recalcGrandTotal();
+  }
+});
+
+// ✅ Save Invoice
+document.getElementById("saveInvoice").addEventListener("click", async (e) => {
+  const saveBtn = e.target;
+  saveBtn.disabled = true;
+
+  try {
+    const items = [];
+    salesBody.querySelectorAll("tr").forEach(row => {
+      items.push({
+        product: row.querySelector("td:nth-child(1)").textContent.trim(),
+        qty: parseFloat(row.querySelector("td:nth-child(2)").textContent) || 0,
+        price: parseFloat(row.querySelector("td:nth-child(3)").textContent) || 0,
+        total: parseFloat(row.querySelector("td:nth-child(4)").textContent.replace("$","")) || 0
+      });
+    });
+
+    const customerName = document.getElementById("customerName").value.trim();
+    const customerAddress = document.getElementById("customerAddress").value.trim();
+    const customerMobile = document.getElementById("customerMobile").value.trim();
+    const customerGST = document.getElementById("customerGST").value.trim();
+    const customerStateCode = document.getElementById("customerStateCode").value.trim();
+    const billDate = document.getElementById("billDate").value;
+    const billSeries = document.getElementById("billSeries").value;
+    const salesman = document.getElementById("salesman").value.trim();
+    const vehicleNumber = document.getElementById("vehicleNumber").value.trim();
+
+    // ✅ increment bill number only now
+    const newBillNumber = await incrementBillNumber(billSeries);
+
+    // ✅ ensure customer exists
+    const { data: existingCustomer } = await supabaseClient
+      .from("customers")
+      .select("customer_id")
+      .eq("mobile", customerMobile)
+      .single();
+
+    if (!existingCustomer) {
+      await supabaseClient.from("customers").insert([{
+       

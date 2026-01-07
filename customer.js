@@ -9,23 +9,29 @@ document.getElementById("backBtn").addEventListener("click", () => {
   window.location.href = "customer-list.html";
 });
 
-// ✅ Get customer ID from query string
+// ✅ Get customer_id from query string
 const params = new URLSearchParams(window.location.search);
-const customerId = params.get("id");
+const customerId = params.get("id"); // this is actually customer_id now
 
 // ✅ If editing, load customer details
-async function loadCustomer(id) {
-  const { data, error } = await supabaseClient.from("customers").select("*").eq("id", id).single();
+async function loadCustomer(customerId) {
+  const { data, error } = await supabaseClient
+    .from("customers")
+    .select("*")
+    .eq("customer_id", customerId)   // ✅ use customer_id
+    .single();
+
   if (error) {
     alert("Error loading customer: " + error.message);
     return;
   }
+
   document.getElementById("formTitle").textContent = "Edit Customer";
-  document.getElementById("customerName").value = data.name;
-  document.getElementById("customerMobile").value = data.mobile;
-  document.getElementById("customerAddress").value = data.address;
-  document.getElementById("customerGST").value = data.gst_number;
-  document.getElementById("customerStateCode").value = data.state_code;
+  document.getElementById("customerName").value = data.name || "";
+  document.getElementById("customerMobile").value = data.mobile || "";
+  document.getElementById("customerAddress").value = data.address || "";
+  document.getElementById("customerGST").value = data.gst_number || "";
+  document.getElementById("customerStateCode").value = data.state_code || "";
   document.getElementById("saveBtn").textContent = "Update Customer";
 }
 
@@ -51,7 +57,7 @@ document.getElementById("customerForm").addEventListener("submit", async (e) => 
       address,
       gst_number: gst,
       state_code: stateCode
-    }).eq("id", customerId);
+    }).eq("customer_id", customerId);   // ✅ use customer_id
 
     if (error) {
       alert("Error updating customer: " + error.message);
@@ -62,6 +68,7 @@ document.getElementById("customerForm").addEventListener("submit", async (e) => 
   } else {
     // Insert new
     const { error } = await supabaseClient.from("customers").insert([{
+      customer_id: crypto.randomUUID(),   // ✅ generate unique customer_id
       name,
       mobile,
       address,

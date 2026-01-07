@@ -66,7 +66,6 @@ async function readBillNumber(series) {
     return;
   }
 
-  // Show next available number
   billNumberEl.value = String(data.current_number + 1);
 }
 
@@ -81,6 +80,34 @@ async function incrementBillNumber(series) {
   }
   return data; // new number
 }
+
+// ✅ Customer lookup
+async function fetchCustomerByMobile(mobile) {
+  if (!mobile) return;
+
+  const { data, error } = await supabaseClient
+    .from("customers")
+    .select("name, address, mobile, gst_number, state_code")
+    .eq("mobile", mobile)
+    .single();
+
+  if (error) {
+    console.warn("Customer lookup error:", error.message);
+    return;
+  }
+
+  if (data) {
+    document.getElementById("customerName").value = data.name || "";
+    document.getElementById("customerAddress").value = data.address || "";
+    document.getElementById("customerGST").value = data.gst_number || "";
+    document.getElementById("customerStateCode").value = data.state_code || "";
+  }
+}
+
+document.getElementById("customerMobile").addEventListener("blur", async (e) => {
+  const mobile = e.target.value.trim();
+  await fetchCustomerByMobile(mobile);
+});
 
 // ✅ Initial setup
 document.addEventListener("DOMContentLoaded", async () => {
@@ -124,101 +151,8 @@ const jump = (from, to) => {
 };
 jump("customerMobile","customerName");
 jump("customerName","customerAddress");
-jump("customerAddress","product");
+jump("customerAddress","customerGST");
+jump("customerGST","customerStateCode");
+jump("customerStateCode","product");
 
-// ✅ Enter on Price adds item
-document.getElementById("price").addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    e.preventDefault();
-    salesForm.dispatchEvent(new Event("submit"));
-    document.getElementById("product").focus();
-  }
-});
-
-// ✅ Add item
-salesForm.addEventListener("submit", (e) => {
-  e.preventDefault();
-  const product = document.getElementById("product").value.trim();
-  const qty = parseInt(document.getElementById("qty").value, 10);
-  const price = parseFloat(document.getElementById("price").value);
-  if (!product || qty <= 0 || price < 0) return;
-
-  const row = document.createElement("tr");
-  row.innerHTML = `
-    <td contenteditable="true">${product}</td>
-    <td contenteditable="true">${qty}</td>
-    <td contenteditable="true">${price.toFixed(2)}</td>
-    <td>$${(qty * price).toFixed(2)}</td>
-    <td><button class="remove">Remove</button></td>
-  `;
-  salesBody.appendChild(row);
-
-  recalcGrandTotal();
-  salesForm.reset();
-  document.getElementById("product").focus();
-});
-
-// ✅ Remove row
-salesBody.addEventListener("click", (e) => {
-  if (e.target.classList.contains("remove")) {
-    e.target.closest("tr").remove();
-    recalcGrandTotal();
-  }
-});
-
-// ✅ Save Invoice (increments counter only here)
-document.getElementById("saveInvoice").addEventListener("click", async (e) => {
-  const saveBtn = e.target;
-  saveBtn.disabled = true;
-
-  try {
-    const items = [];
-    salesBody.querySelectorAll("tr").forEach(row => {
-      items.push({
-        product: row.querySelector("td:nth-child(1)").textContent.trim(),
-        qty: parseFloat(row.querySelector("td:nth-child(2)").textContent) || 0,
-        price: parseFloat(row.querySelector("td:nth-child(3)").textContent) || 0,
-        total: parseFloat(row.querySelector("td:nth-child(4)").textContent.replace("$","")) || 0
-      });
-    });
-
-    const customerName = document.getElementById("customerName").value.trim();
-    const customerAddress = document.getElementById("customerAddress").value.trim();
-    const customerMobile = document.getElementById("customerMobile").value.trim();
-    const billDate = document.getElementById("billDate").value;
-    const billSeries = document.getElementById("billSeries").value;
-
-    // ✅ increment only now
-    const newBillNumber = await incrementBillNumber(billSeries);
-
-    const salesman = document.getElementById("salesman").value.trim();
-    const vehicleNumber = document.getElementById("vehicleNumber").value.trim();
-
-    const { error } = await supabaseClient.from("invoices").insert([{
-      customer_name: customerName,
-      customer_address: customerAddress,
-      customer_mobile: customerMobile,
-      items,
-      totalamount: Number(grandTotal.toFixed(2)),
-      invoicedate: billDate,
-      bill_series: billSeries,
-      bill_number: newBillNumber,
-      salesman,
-      vehicle_number: vehicleNumber
-    }]);
-
-    if (error) {
-      alert("Error saving invoice: " + error.message);
-    } else {
-      alert("Invoice saved successfully!");
-      salesBody.innerHTML = "";
-      recalcGrandTotal();
-      document.getElementById("customerForm").reset();
-      document.getElementById("billForm").reset();
-      setTodayDate();
-      document.getElementById("customerMobile").focus();
-    }
-  } finally {
-    saveBtn.disabled = false;
-  }
-});
+// ✅ Enter

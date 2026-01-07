@@ -5,7 +5,7 @@ const supabaseUrl = "https://gqxczzijntbvtlmmzppt.supabase.co";
 const supabaseKey = "sb_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs";
 const supabaseClient = createClient(supabaseUrl, supabaseKey);
 
-// Check session
+// ✅ Check session
 (async () => {
   const { data: { session } } = await supabaseClient.auth.getSession();
   if (!session) {
@@ -15,14 +15,14 @@ const supabaseClient = createClient(supabaseUrl, supabaseKey);
   }
 })();
 
-// Logout
+// ✅ Logout
 document.getElementById("logout").addEventListener("click", async (e) => {
   e.preventDefault();
   await supabaseClient.auth.signOut();
   window.location.href = "index.html";
 });
 
-// Sidebar toggle
+// ✅ Sidebar toggle
 const sidebar = document.getElementById("sidebar");
 const toggleBtn = document.getElementById("toggleBtn");
 
@@ -30,7 +30,7 @@ toggleBtn.addEventListener("click", () => {
   sidebar.classList.toggle("active");
 });
 
-// Hover near the left edge to auto-show
+// ✅ Hover near the left edge to auto-show
 document.addEventListener("mousemove", (e) => {
   if (e.clientX < 24) {
     sidebar.classList.add("active");
@@ -40,7 +40,7 @@ sidebar.addEventListener("mouseleave", () => {
   sidebar.classList.remove("active");
 });
 
-// Submenu toggle (accordion style)
+// ✅ Submenu toggle (accordion style)
 document.querySelectorAll(".has-submenu > .menu-link").forEach(link => {
   link.addEventListener("click", (e) => {
     e.preventDefault();
@@ -48,3 +48,16 @@ document.querySelectorAll(".has-submenu > .menu-link").forEach(link => {
     li.classList.toggle("open");
   });
 });
+
+// ✅ NEW: Sync Create card with sidebar submenu
+const createCard = document.getElementById("createCard");
+const createMenu = document.getElementById("createMenu");
+
+if (createCard && createMenu) {
+  createCard.addEventListener("click", () => {
+    // Ensure sidebar is visible when clicking the card
+    sidebar.classList.add("active");
+    // Toggle the Create submenu
+    createMenu.parentElement.classList.toggle("open");
+  });
+}

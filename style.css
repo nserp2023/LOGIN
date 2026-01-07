@@ -106,6 +106,7 @@ main {
   padding: 0.8rem;
   border-radius: 8px;
   box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  width: 100%; /* ensure full width for tables */
 }
 
 .card h2 {
@@ -148,23 +149,25 @@ form input:focus, form select:focus {
 
 /* Table */
 table {
-  width: 100%;
+  width: 100%;              /* full width */
   border-collapse: collapse;
   margin-top: 1rem;
-  display: block;
-  overflow-x: auto;
-  white-space: nowrap;
+  table-layout: auto;       /* natural column sizing */
 }
 
 table th, table td {
   border: 1px solid #ddd;
-  padding: 0.4rem;
+  padding: 0.6rem;          /* bigger padding */
   text-align: center;
-  font-size: 0.9rem;
+  font-size: 1rem;          /* larger text */
 }
 
 table th {
   background: #f4f6f8;
+}
+
+table tr:nth-child(even) {
+  background: #f9f9f9;      /* striped rows */
 }
 
 .remove {

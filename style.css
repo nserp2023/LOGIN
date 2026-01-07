@@ -67,26 +67,37 @@ header button {
   text-decoration: none;
   padding: 0.5rem 1rem;
   display: block;
+  transition: background 0.2s ease;
+}
+
+#sidebar nav ul li a:hover {
+  background: #2c3e50;
 }
 
 #toggleBtn {
   position: absolute;
   top: 10px;
-  right: -40px;
+  right: -45px;
   background: #34495e;
   color: #fff;
   border: none;
   padding: 0.5rem;
   cursor: pointer;
+  border-radius: 0 4px 4px 0;
 }
 
 /* Main layout */
 main {
   margin: 1rem;
+  transition: margin-left 0.3s ease;
+}
+
+#sidebar.active ~ main {
   margin-left: 220px;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
+}
+
+#sidebar:not(.active) ~ main {
+  margin-left: 20px;
 }
 
 /* Section cards */
@@ -117,11 +128,17 @@ form label {
   font-size: 0.95rem;
 }
 
-form input {
+form input, form select {
   padding: 0.3rem;
   border: 1px solid #ccc;
   border-radius: 4px;
   margin-top: 0.2rem;
+}
+
+form input:focus, form select:focus {
+  border-color: #3498db;
+  outline: none;
+  box-shadow: 0 0 4px rgba(52,152,219,0.4);
 }
 
 /* Sales form inputs */
@@ -134,6 +151,9 @@ table {
   width: 100%;
   border-collapse: collapse;
   margin-top: 1rem;
+  display: block;
+  overflow-x: auto;
+  white-space: nowrap;
 }
 
 table th, table td {
@@ -157,7 +177,7 @@ table th {
 }
 
 /* Buttons */
-button {
+button, .btn {
   background: #3498db;
   border: none;
   color: #fff;
@@ -165,16 +185,30 @@ button {
   border-radius: 4px;
   cursor: pointer;
   margin-top: 1rem;
+  transition: background 0.2s ease;
 }
 
-button:hover {
+button:hover, .btn:hover {
   background: #2980b9;
+}
+
+.btn-danger {
+  background: #e74c3c;
+}
+
+.btn-danger:hover {
+  background: #c0392b;
 }
 
 /* Totals */
 h3 {
   font-size: 1rem;
   margin-top: 0.8rem;
+}
+
+h3 span {
+  font-weight: bold;
+  color: #27ae60;
 }
 
 /* Print Styles */
@@ -195,6 +229,7 @@ h3 {
   .card {
     box-shadow: none;
     border: 1px solid #ccc;
+    page-break-inside: avoid;
   }
 
   table th {

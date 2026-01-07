@@ -1,48 +1,38 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Sales History</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-  <header>
-    <h1>SALES HISTORY</h1>
-    <button id="logout">Logout</button>
-  </header>
+<section class="card">
+  <h2>Invoices</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Bill Series</th>
+        <th>Bill Number</th>
+        <th>Date</th>
+        <th>Customer</th>
+        <th>Mobile</th>
+        <th>GST</th>
+        <th>State Code</th>
+        <th>Total Amount</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody id="historyBody"></tbody>
+  </table>
+</section>
 
-  <aside id="sidebar">
-    <button id="toggleBtn">☰</button>
-    <nav>
-      <ul>
-        <li><a href="sales.html">Sales</a></li>
-        <li><a href="history.html">Sales History</a></li>
-      </ul>
-    </nav>
-  </aside>
-
-  <main>
-    <section class="card">
-      <h2>Invoices</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Bill Series</th>
-            <th>Bill Number</th>
-            <th>Date</th>
-            <th>Customer</th>
-            <th>Mobile</th>
-            <th>GST</th>
-            <th>State Code</th>
-            <th>Total Amount</th>
-          </tr>
-        </thead>
-        <tbody id="historyBody"></tbody>
-      </table>
-    </section>
-  </main>
-
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="history.js"></script>
-</body>
-</html>
+<!-- Modal for viewing items -->
+<div id="itemsModal" class="modal" style="display:none;">
+  <div class="modal-content">
+    <span id="closeModal" class="close">&times;</span>
+    <h3>Invoice Items</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Product</th>
+          <th>Qty</th>
+          <th>Price</th>
+          <th>Total</th>
+        </tr>
+      </thead>
+      <tbody id="itemsBody"></tbody>
+    </table>
+  </div>
+</div>

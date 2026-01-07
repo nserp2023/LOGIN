@@ -11,14 +11,14 @@ document.getElementById("backBtn").addEventListener("click", () => {
 
 // ✅ Get customer_id from query string
 const params = new URLSearchParams(window.location.search);
-const customerId = params.get("id"); // this is actually customer_id now
+const customerId = params.get("id");
 
 // ✅ If editing, load customer details
 async function loadCustomer(customerId) {
   const { data, error } = await supabaseClient
     .from("customers")
     .select("*")
-    .eq("customer_id", customerId)   // ✅ use customer_id
+    .eq("customer_id", customerId)   // use customer_id
     .single();
 
   if (error) {
@@ -57,7 +57,7 @@ document.getElementById("customerForm").addEventListener("submit", async (e) => 
       address,
       gst_number: gst,
       state_code: stateCode
-    }).eq("customer_id", customerId);   // ✅ use customer_id
+    }).eq("customer_id", customerId);
 
     if (error) {
       alert("Error updating customer: " + error.message);
@@ -66,9 +66,8 @@ document.getElementById("customerForm").addEventListener("submit", async (e) => 
       window.location.href = "customer-list.html";
     }
   } else {
-    // Insert new
+    // Insert new (customer_id auto-increment handled by Supabase)
     const { error } = await supabaseClient.from("customers").insert([{
-      customer_id: crypto.randomUUID(),   // ✅ generate unique customer_id
       name,
       mobile,
       address,

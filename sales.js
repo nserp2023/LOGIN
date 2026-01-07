@@ -4,56 +4,60 @@ const supabaseUrl = "https://gqxczzijntbvtlmmzppt.supabase.co";
 const supabaseKey = "sb_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs";
 const supabaseClient = createClient(supabaseUrl, supabaseKey);
 
-// ============================
-// Auth and UI
-// ============================
+// ===== Auth =====
 (async () => {
   const { data: { session } } = await supabaseClient.auth.getSession();
   if (!session) window.location.href = "index.html";
 })();
 
-document.getElementById("logout").addEventListener("click", async (e) => {
+document.getElementById("logout")?.addEventListener("click", async (e) => {
   e.preventDefault();
   await supabaseClient.auth.signOut();
   window.location.href = "index.html";
 });
 
+// ===== Sidebar =====
 const sidebar = document.getElementById("sidebar");
 const toggleBtn = document.getElementById("toggleBtn");
-toggleBtn.addEventListener("click", () => sidebar.classList.toggle("active"));
-document.addEventListener("mousemove", (e) => { if (e.clientX < 24) sidebar.classList.add("active"); });
-sidebar.addEventListener("mouseleave", () => sidebar.classList.remove("active"));
+if (sidebar && toggleBtn) {
+  toggleBtn.addEventListener("click", () => sidebar.classList.toggle("active"));
+  document.addEventListener("mousemove", (e) => { if (e.clientX < 24) sidebar.classList.add("active"); });
+  sidebar.addEventListener("mouseleave", () => sidebar.classList.remove("active"));
+}
 
-// ============================
-// Elements
-// ============================
+// ===== Elements =====
 const salesForm = document.getElementById("salesForm");
 const salesBody = document.getElementById("salesBody");
 const grandTotalEl = document.getElementById("grandTotal");
+
 const billForm = document.getElementById("billForm");
-const customerForm = document.getElementById("customerForm");
-
-const inputProduct = document.getElementById("product");
-const inputQty = document.getElementById("qty");
-const inputPrice = document.getElementById("price");
-
-const inputMobile = document.getElementById("customerMobile");
-const inputName = document.getElementById("customerName");
-const inputAddress = document.getElementById("customerAddress");
-const inputGST = document.getElementById("customerGST");
-const inputStateCode = document.getElementById("customerStateCode");
-
 const billDateEl = document.getElementById("billDate");
 const billSeriesEl = document.getElementById("billSeries");
 const billNumberEl = document.getElementById("billNumber");
 const salesmanEl = document.getElementById("salesman");
 const vehicleNumberEl = document.getElementById("vehicleNumber");
 
+const customerForm = document.getElementById("customerForm");
+const inputMobile = document.getElementById("customerMobile");
+const inputName = document.getElementById("customerName");
+const inputAddress = document.getElementById("customerAddress");
+const inputGST = document.getElementById("customerGST");
+const inputStateCode = document.getElementById("customerStateCode");
+
+const inputProduct = document.getElementById("product");
+const inputQty = document.getElementById("qty");
+const inputPrice = document.getElementById("price");
+
 let grandTotal = 0;
 
-// ============================
-// Helpers
-// ============================
+// ===== Helpers =====
+function setTodayDate() {
+  if (billDateEl) {
+    const today = new Date().toISOString().split("T")[0];
+    billDateEl.value = today;
+  }
+}
+
 function recalcGrandTotal() {
   grandTotal = 0;
   salesBody.querySelectorAll("tr").forEach(row => {
@@ -63,21 +67,13 @@ function recalcGrandTotal() {
     row.querySelector("td:nth-child(4)").textContent = `$${total.toFixed(2)}`;
     grandTotal += total;
   });
-  grandTotalEl.textContent = `$${grandTotal.toFixed(2)}`;
+  if (grandTotalEl) grandTotalEl.textContent = `$${grandTotal.toFixed(2)}`;
 }
 
-function setTodayDate() {
-  if (billDateEl) {
-    const today = new Date().toISOString().split("T")[0];
-    billDateEl.value = today;
-  }
-}
-
-// ============================
-// Bill counter
-// ============================
+// ===== Bill counter (reads next, increments on save) =====
+// Use your actual table name. If your table is `bill_count`, change below to `bill_count`.
 async function readBillNumber(series) {
-  if (!billNumberEl) return;
+  if (!billNumberEl || !series) return;
   const { data, error } = await supabaseClient
     .from("bill_counters")
     .select("current_number")
@@ -100,22 +96,21 @@ async function incrementBillNumber(series) {
     console.error("RPC error:", error);
     throw error;
   }
-  return data;
+  return data; // new bill number
 }
 
-// ============================
-// Customer lookup
-// ============================
+// ===== Customer lookup by mobile =====
 async function fetchCustomerByMobile(mobile) {
   if (!mobile) return;
+
   const { data, error } = await supabaseClient
     .from("customers")
     .select("name, address, mobile, gst_number, state_code")
     .eq("mobile", mobile)
-    .single();
+    .maybeSingle();
 
   if (error) {
-    if (error.code !== "PGRST116") console.warn("Customer lookup error:", error.message);
+    console.warn("Customer lookup error:", error.message);
     return;
   }
 
@@ -127,84 +122,83 @@ async function fetchCustomerByMobile(mobile) {
   }
 }
 
-inputMobile.addEventListener("blur", async (e) => {
+inputMobile?.addEventListener("blur", async (e) => {
   const mobile = e.target.value.trim();
   await fetchCustomerByMobile(mobile);
 });
 
-// ============================
-// Initial setup
-// ============================
+// ===== Initial load =====
 document.addEventListener("DOMContentLoaded", async () => {
-  inputMobile.focus();
+  inputMobile?.focus();
   setTodayDate();
 
-  try {
-    const { data, error } = await supabaseClient.from("bill_series").select("series_code");
-    if (!error && data && data.length) {
+  // Load series options (fallback if query fails or returns empty)
+  if (billSeriesEl) {
+    try {
+      const { data, error } = await supabaseClient.from("bill_series").select("series_code");
       billSeriesEl.innerHTML = "";
-      data.forEach(s => {
-        const opt = document.createElement("option");
-        opt.value = s.series_code;
-        opt.textContent = s.series_code;
-        billSeriesEl.appendChild(opt);
-      });
-    } else {
+      if (!error && Array.isArray(data) && data.length) {
+        data.forEach(s => {
+          const opt = document.createElement("option");
+          opt.value = s.series_code;
+          opt.textContent = s.series_code;
+          billSeriesEl.appendChild(opt);
+        });
+      } else {
+        ["Q","A","B","C"].forEach(s => {
+          const opt = document.createElement("option");
+          opt.value = s; opt.textContent = s;
+          billSeriesEl.appendChild(opt);
+        });
+      }
+    } catch {
       ["Q","A","B","C"].forEach(s => {
         const opt = document.createElement("option");
         opt.value = s; opt.textContent = s;
         billSeriesEl.appendChild(opt);
       });
     }
-  } catch {
-    ["Q","A","B","C"].forEach(s => {
-      const opt = document.createElement("option");
-      opt.value = s; opt.textContent = s;
-      billSeriesEl.appendChild(opt);
+
+    billSeriesEl.value = billSeriesEl.options[0]?.value || "Q";
+    await readBillNumber(billSeriesEl.value);
+
+    billSeriesEl.addEventListener("change", async () => {
+      await readBillNumber(billSeriesEl.value);
     });
   }
-  billSeriesEl.value = "Q";
-  await readBillNumber(billSeriesEl.value);
-
-  billSeriesEl.addEventListener("change", async () => {
-    await readBillNumber(billSeriesEl.value);
-  });
 });
 
-// ============================
-// Keyboard navigation
-// ============================
-const jump = (from, to) => {
+// ===== Enter navigation between inputs =====
+function jump(from, to) {
   const a = document.getElementById(from), b = document.getElementById(to);
-  if (a && b) a.addEventListener("keydown", e => {
-    if (e.key === "Enter") { e.preventDefault(); b.focus(); }
-  });
-};
+  if (a && b) {
+    a.addEventListener("keydown", e => {
+      if (e.key === "Enter") { e.preventDefault(); b.focus(); }
+    });
+  }
+}
 jump("customerMobile","customerName");
 jump("customerName","customerAddress");
 jump("customerAddress","customerGST");
 jump("customerGST","customerStateCode");
 jump("customerStateCode","product");
 
-// ============================
-// Enter on Price adds item
-// ============================
-inputPrice.addEventListener("keydown", (e) => {
+// ===== Enter on Price adds item (without clearing customer/bill forms) =====
+inputPrice?.addEventListener("keydown", (e) => {
   if (e.key === "Enter") {
     e.preventDefault();
-    salesForm.dispatchEvent(new Event("submit"));
-    inputProduct.focus();
+    salesForm?.dispatchEvent(new Event("submit"));
+    inputProduct?.focus();
   }
 });
 
-// ============================
-// Add item
-// ============================
-salesForm.addEventListener("submit", (e) => {
+// ===== Add item =====
+salesForm?.addEventListener("submit", (e) => {
   e.preventDefault();
-  const product = inputProduct.value.trim();
-  const qty = parseFloat(inputQty.value || "0");
-  const price = parseFloat(inputPrice.value || "0");
+  const product = (inputProduct?.value || "").trim();
+  const qty = parseFloat(inputQty?.value || "0");
+  const price = parseFloat(inputPrice?.value || "0");
+
   if (!product || qty <= 0 || price < 0) return;
 
   const row = document.createElement("tr");
@@ -219,28 +213,26 @@ salesForm.addEventListener("submit", (e) => {
 
   recalcGrandTotal();
 
+  // Only reset the sales item inputs
   salesForm.reset();
-  inputProduct.focus();
+  inputProduct?.focus();
 });
 
-// ============================
-// Remove row
-// ============================
-salesBody.addEventListener("click", (e) => {
+// ===== Remove row =====
+salesBody?.addEventListener("click", (e) => {
   if (e.target.classList.contains("remove")) {
     e.target.closest("tr").remove();
     recalcGrandTotal();
   }
 });
 
-// ============================
-// Save invoice
-// ============================
-document.getElementById("saveInvoice").addEventListener("click", async (e) => {
+// ===== Save invoice =====
+document.getElementById("saveInvoice")?.addEventListener("click", async (e) => {
   const saveBtn = e.target;
   saveBtn.disabled = true;
 
   try {
+    // Collect items
     const items = [];
     salesBody.querySelectorAll("tr").forEach(row => {
       items.push({
@@ -251,5 +243,91 @@ document.getElementById("saveInvoice").addEventListener("click", async (e) => {
       });
     });
 
-    if (items.length === 0) {
-      alert("Please add at
+    if (!items.length) {
+      alert("Please add at least one item before saving.");
+      return;
+    }
+
+    // Required fields check
+    if (!inputMobile?.value || !inputName?.value || !billDateEl?.value || !billSeriesEl?.value) {
+      alert("Please complete required customer and bill fields.");
+      return;
+    }
+
+    const customerName = inputName.value.trim();
+    const customerAddress = inputAddress.value.trim();
+    const customerMobile = inputMobile.value.trim();
+    const customerGST = inputGST.value.trim();
+    const customerStateCode = inputStateCode.value.trim();
+
+    const billDate = billDateEl.value;
+    const billSeries = billSeriesEl.value;
+    const salesman = salesmanEl?.value.trim() || "";
+    const vehicleNumber = vehicleNumberEl?.value.trim() || "";
+
+    // Increment bill number (only at save)
+    const newBillNumber = await incrementBillNumber(billSeries);
+    if (billNumberEl) billNumberEl.value = String(newBillNumber);
+
+    // Ensure customer exists (customers.customer_id is auto-increment integer)
+    const { data: existingCustomer, error: lookupErr } = await supabaseClient
+      .from("customers")
+      .select("customer_id")
+      .eq("mobile", customerMobile)
+      .maybeSingle();
+
+    if (lookupErr) {
+      console.warn("Customer check error:", lookupErr.message);
+    }
+
+    if (!existingCustomer) {
+      const { error: insertCustErr } = await supabaseClient.from("customers").insert([{
+        name: customerName,
+        mobile: customerMobile,
+        address: customerAddress,
+        gst_number: customerGST,
+        state_code: customerStateCode
+      }]);
+      if (insertCustErr) {
+        alert("Error creating customer: " + insertCustErr.message);
+        return;
+      }
+    }
+
+    // Insert invoice (ensure invoices.items is jsonb)
+    const { error: invErr } = await supabaseClient.from("invoices").insert([{
+      customer_name: customerName,
+      customer_address: customerAddress,
+      customer_mobile: customerMobile,
+      items,
+      totalamount: Number(grandTotal.toFixed(2)),
+      invoicedate: billDate,
+      bill_series: billSeries,
+      bill_number: newBillNumber,
+      salesman,
+      vehicle_number: vehicleNumber
+    }]);
+
+    if (invErr) {
+      alert("Error saving invoice: " + invErr.message);
+      return;
+    }
+
+    alert("Invoice saved successfully!");
+
+    // Reset for next invoice: clear sales + bill + customer
+    salesBody.innerHTML = "";
+    recalcGrandTotal();
+    billForm?.reset();
+    salesForm?.reset();
+    customerForm?.reset();
+    setTodayDate();
+    inputMobile?.focus();
+    await readBillNumber(billSeriesEl?.value); // show next number
+
+  } catch (err) {
+    alert("Unexpected error: " + (err?.message || String(err)));
+  } finally {
+    saveBtn.disabled = false;
+  }
+});

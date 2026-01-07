@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Sales History</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>SALES HISTORY</h1>
+    <button id="logout">Logout</button>
+  </header>
+
+  <aside id="sidebar">
+    <button id="toggleBtn">☰</button>
+    <nav>
+      <ul>
+        <li><a href="sales.html">Sales</a></li>
+        <li><a href="history.html">Sales History</a></li>
+      </ul>
+    </nav>
+  </aside>
+
+  <main>
+    <section class="card">
+      <h2>Invoices</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Bill Series</th>
+            <th>Bill Number</th>
+            <th>Date</th>
+            <th>Customer</th>
+            <th>Mobile</th>
+            <th>GST</th>
+            <th>State Code</th>
+            <th>Total Amount</th>
+          </tr>
+        </thead>
+        <tbody id="historyBody"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="history.js"></script>
+</body>
+</html>

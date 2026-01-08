@@ -2,14 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Sales Entry</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sales Billing</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <!-- Header -->
   <header>
-    <h1>SALES ENTRY</h1>
+    <h1>SALES BILLING</h1>
     <button id="logout">Logout</button>
   </header>
 
@@ -26,49 +25,74 @@
 
   <!-- Main content -->
   <main>
-    <!-- Customer Details -->
+    <!-- Bill Info -->
     <section class="card">
-      <h2>Customer details</h2>
-      <div class="form-row">
-        <label>Name:
-          <input type="text" id="customerName" placeholder="Customer name">
+      <form id="billForm" class="inline-form">
+        <label>Bill Date <input type="date" id="billDate" required></label>
+        <label>Series 
+          <select id="billSeries" required></select>
         </label>
-        <label>Mobile:
-          <input type="text" id="customerMobile" placeholder="Mobile number">
-        </label>
-        <label>Date:
-          <input type="date" id="invoiceDate">
-        </label>
-      </div>
+        <label>Bill Number <input type="text" id="billNumber" readonly></label>
+        <label>Salesman <input type="text" id="salesman" required></label>
+        <label>Vehicle Number <input type="text" id="vehicleNumber" required></label>
+      </form>
     </section>
 
-    <!-- Items Table -->
+    <!-- Customer Info -->
     <section class="card">
-      <h2>Invoice items</h2>
+      <h2>Customer Details</h2>
+      <form id="customerForm" class="inline-form">
+        <label>Mobile <input type="tel" id="customerMobile" required></label>
+        <label>Name <input type="text" id="customerName" required></label>
+        <label>Address <input type="text" id="customerAddress" required></label>
+        <label>GST Number <input type="text" id="customerGST"></label>
+        <label>State Code <input type="text" id="customerStateCode"></label>
+      </form>
+    </section>
+
+    <!-- Sales Entry -->
+    <section class="card">
+      <h2>Sales Entry</h2>
+      <form id="salesForm" class="inline-form">
+        <input type="text" id="product" placeholder="Product" required>
+        <input type="number" id="qty" placeholder="Qty" required>
+        <input type="number" id="price" placeholder="Price" required step="0.01">
+        <select id="priceType">
+          <option value="exclusive">Exclusive</option>
+          <option value="inclusive">Inclusive</option>
+        </select>
+        <input type="number" id="gstPercent" placeholder="GST %" step="0.01">
+        <input type="number" id="cgstPercent" placeholder="CGST %" value="50" step="0.01">
+        <input type="number" id="sgstPercent" placeholder="SGST %" value="50" step="0.01">
+        <button type="submit">Add Item</button>
+      </form>
+
       <table>
         <thead>
           <tr>
             <th>Product</th>
             <th>Qty</th>
             <th>Price</th>
-            <th>Price type</th>
+            <th>Price Type</th>
             <th>GST %</th>
+            <th>GST Amount</th>
             <th>CGST %</th>
+            <th>CGST Amount</th>
             <th>SGST %</th>
+            <th>SGST Amount</th>
+            <th>Price + GST</th>
+            <th>Action</th>
           </tr>
         </thead>
-        <tbody id="itemsBody">
-          <!-- Item rows added dynamically by sales.js -->
-        </tbody>
+        <tbody id="salesBody"></tbody>
       </table>
-      <div style="margin-top:10px;">
-        <button id="addItemBtn">+ Add item</button>
-      </div>
-    </section>
 
-    <!-- Actions -->
-    <section class="card">
-      <button id="saveInvoiceBtn">Save invoice</button>
+      <h3>
+        Grand Total: <span id="grandTotal">₹0.00</span> |
+        GST Total: <span id="gstTotal">₹0.00</span> |
+        Price+GST Total: <span id="priceWithGstTotal">₹0.00</span>
+      </h3>
+      <button id="saveInvoice">Save Invoice</button>
     </section>
   </main>
 

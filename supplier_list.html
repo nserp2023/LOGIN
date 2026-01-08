@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Supplier List</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+  <header>
+    <h1>Supplier List</h1>
+    <button id="backBtn">⬅ Back</button>
+  </header>
+
+  <main>
+    <section class="card">
+      <!-- ✅ Search bar -->
+      <input type="text" id="searchInput" placeholder="Search by name or mobile..." style="margin-bottom:1rem; padding:0.5rem; width:100%;">
+
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Mobile</th>
+            <th>Address</th>
+            <th>GST Number</th>
+            <th>State Code</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="supplierTableBody"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supplier-list.js"></script>
+</body>
+</html>

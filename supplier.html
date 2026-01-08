@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Create / Edit Supplier</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+  <header>
+    <h1 id="formTitle">Create Supplier</h1>
+    <button id="backBtn">⬅ Back</button>
+  </header>
+
+  <main>
+    <section class="card">
+      <form id="supplierForm" class="inline-form">
+        <label>Name
+          <input type="text" id="supplierName" required>
+        </label>
+        <label>Mobile
+          <input type="tel" id="supplierMobile" required>
+        </label>
+        <label>Address
+          <input type="text" id="supplierAddress" required>
+        </label>
+        <label>GST Number
+          <input type="text" id="supplierGST" required>
+        </label>
+        <label>State Code
+          <input type="text" id="supplierStateCode" required>
+        </label>
+        <button type="submit" id="saveBtn">Save Supplier</button>
+      </form>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supplier.js"></script>
+</body>
+</html>

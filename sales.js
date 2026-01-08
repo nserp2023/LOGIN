@@ -29,6 +29,8 @@ if (sidebar && toggleBtn) {
 const salesForm = document.getElementById("salesForm");
 const salesBody = document.getElementById("salesBody");
 const grandTotalEl = document.getElementById("grandTotal");
+const gstTotalEl = document.getElementById("gstTotal");
+const priceWithGstTotalEl = document.getElementById("priceWithGstTotal");
 
 const billForm = document.getElementById("billForm");
 const billDateEl = document.getElementById("billDate");
@@ -47,6 +49,10 @@ const inputStateCode = document.getElementById("customerStateCode");
 const inputProduct = document.getElementById("product");
 const inputQty = document.getElementById("qty");
 const inputPrice = document.getElementById("price");
+const inputPriceType = document.getElementById("priceType");
+const inputGstPercent = document.getElementById("gstPercent");
+const inputCgstPercent = document.getElementById("cgstPercent");
+const inputSgstPercent = document.getElementById("sgstPercent");
 
 let grandTotal = 0;
 
@@ -58,20 +64,27 @@ function setTodayDate() {
   }
 }
 
-function recalcGrandTotal() {
-  grandTotal = 0;
+function recalcTotals() {
+  let baseTotal = 0, gstTotal = 0, priceWithGstTotal = 0;
+
   salesBody.querySelectorAll("tr").forEach(row => {
     const qty = parseFloat(row.querySelector("td:nth-child(2)").textContent) || 0;
     const price = parseFloat(row.querySelector("td:nth-child(3)").textContent) || 0;
-    const total = qty * price;
-    row.querySelector("td:nth-child(4)").textContent = `$${total.toFixed(2)}`;
-    grandTotal += total;
+    const gstAmount = parseFloat(row.querySelector("td:nth-child(6)").textContent.replace("₹","")) || 0;
+    const priceWithGst = parseFloat(row.querySelector("td:nth-child(11)").textContent.replace("₹","")) || 0;
+
+    baseTotal += qty * price;
+    gstTotal += gstAmount;
+    priceWithGstTotal += priceWithGst;
   });
-  if (grandTotalEl) grandTotalEl.textContent = `$${grandTotal.toFixed(2)}`;
+
+  grandTotal = baseTotal;
+  if (grandTotalEl) grandTotalEl.textContent = "₹" + baseTotal.toFixed(2);
+  if (gstTotalEl) gstTotalEl.textContent = "₹" + gstTotal.toFixed(2);
+  if (priceWithGstTotalEl) priceWithGstTotalEl.textContent = "₹" + priceWithGstTotal.toFixed(2);
 }
 
-// ===== Bill counter (reads next, increments on save) =====
-// Use your actual table name. If your table is `bill_count`, change below to `bill_count`.
+// ===== Bill counter =====
 async function readBillNumber(series) {
   if (!billNumberEl || !series) return;
   const { data, error } = await supabaseClient
@@ -92,28 +105,20 @@ async function incrementBillNumber(series) {
   const { data, error } = await supabaseClient.rpc("increment_bill_number", {
     series_code_input: series
   });
-  if (error) {
-    console.error("RPC error:", error);
-    throw error;
-  }
-  return data; // new bill number
+  if (error) throw error;
+  return data;
 }
 
-// ===== Customer lookup by mobile =====
+// ===== Customer lookup =====
 async function fetchCustomerByMobile(mobile) {
   if (!mobile) return;
-
   const { data, error } = await supabaseClient
     .from("customers")
     .select("name, address, mobile, gst_number, state_code")
     .eq("mobile", mobile)
     .maybeSingle();
 
-  if (error) {
-    console.warn("Customer lookup error:", error.message);
-    return;
-  }
-
+  if (error) return;
   if (data) {
     inputName.value = data.name || "";
     inputAddress.value = data.address || "";
@@ -121,10 +126,8 @@ async function fetchCustomerByMobile(mobile) {
     inputStateCode.value = data.state_code || "";
   }
 }
-
 inputMobile?.addEventListener("blur", async (e) => {
-  const mobile = e.target.value.trim();
-  await fetchCustomerByMobile(mobile);
+  await fetchCustomerByMobile(e.target.value.trim());
 });
 
 // ===== Initial load =====
@@ -132,43 +135,32 @@ document.addEventListener("DOMContentLoaded", async () => {
   inputMobile?.focus();
   setTodayDate();
 
-  // Load series options (fallback if query fails or returns empty)
   if (billSeriesEl) {
-    try {
-      const { data, error } = await supabaseClient.from("bill_series").select("series_code");
-      billSeriesEl.innerHTML = "";
-      if (!error && Array.isArray(data) && data.length) {
-        data.forEach(s => {
-          const opt = document.createElement("option");
-          opt.value = s.series_code;
-          opt.textContent = s.series_code;
-          billSeriesEl.appendChild(opt);
-        });
-      } else {
-        ["Q","A","B","C"].forEach(s => {
-          const opt = document.createElement("option");
-          opt.value = s; opt.textContent = s;
-          billSeriesEl.appendChild(opt);
-        });
-      }
-    } catch {
+    const { data, error } = await supabaseClient.from("bill_series").select("series_code");
+    billSeriesEl.innerHTML = "";
+    if (!error && Array.isArray(data) && data.length) {
+      data.forEach(s => {
+        const opt = document.createElement("option");
+        opt.value = s.series_code;
+        opt.textContent = s.series_code;
+        billSeriesEl.appendChild(opt);
+      });
+    } else {
       ["Q","A","B","C"].forEach(s => {
         const opt = document.createElement("option");
         opt.value = s; opt.textContent = s;
         billSeriesEl.appendChild(opt);
       });
     }
-
     billSeriesEl.value = billSeriesEl.options[0]?.value || "Q";
     await readBillNumber(billSeriesEl.value);
-
     billSeriesEl.addEventListener("change", async () => {
       await readBillNumber(billSeriesEl.value);
     });
   }
 });
 
-// ===== Enter navigation between inputs =====
+// ===== Enter navigation =====
 function jump(from, to) {
   const a = document.getElementById(from), b = document.getElementById(to);
   if (a && b) {
@@ -183,7 +175,7 @@ jump("customerAddress","customerGST");
 jump("customerGST","customerStateCode");
 jump("customerStateCode","product");
 
-// ===== Enter on Price adds item (without clearing customer/bill forms) =====
+// ===== Enter on Price adds item =====
 inputPrice?.addEventListener("keydown", (e) => {
   if (e.key === "Enter") {
     e.preventDefault();
@@ -198,22 +190,39 @@ salesForm?.addEventListener("submit", (e) => {
   const product = (inputProduct?.value || "").trim();
   const qty = parseFloat(inputQty?.value || "0");
   const price = parseFloat(inputPrice?.value || "0");
+  const priceType = inputPriceType?.value || "exclusive";
+  const gstPercent = parseFloat(inputGstPercent?.value || "0");
+  const cgstPercent = parseFloat(inputCgstPercent?.value || "0");
+  const sgstPercent = parseFloat(inputSgstPercent?.value || "0");
 
   if (!product || qty <= 0 || price < 0) return;
+
+  const baseAmount = qty * price;
+  const gstAmount = (baseAmount * gstPercent) / 100;
+  const cgstAmount = (gstAmount * cgstPercent) / 100;
+  const sgstAmount = (gstAmount * sgstPercent) / 100;
+  const priceWithGst = baseAmount + gstAmount;
 
   const row = document.createElement("tr");
   row.innerHTML = `
     <td contenteditable="true">${product}</td>
     <td contenteditable="true">${qty}</td>
     <td contenteditable="true">${price.toFixed(2)}</td>
-    <td>$${(qty * price).toFixed(2)}</td>
+    <td>${priceType}</td>
+    <td>${gstPercent}%</td>
+    <td>₹${gstAmount.toFixed(2)}</td>
+    <td>${cgstPercent}%</td>
+    <td>₹${cgstAmount.toFixed(2)}</td>
+    <td>${sgstPercent}%</td>
+    <td>₹${sgstAmount.toFixed(2)}</td>
+    <td>₹${priceWithGst.toFixed(2)}</td>
     <td><button class="remove">Remove</button></td>
   `;
   salesBody.appendChild(row);
 
-  recalcGrandTotal();
+  recalcTotals();
 
-  // Only reset the sales item inputs
+  // Reset only the sales item inputs
   salesForm.reset();
   inputProduct?.focus();
 });
@@ -222,7 +231,7 @@ salesForm?.addEventListener("submit", (e) => {
 salesBody?.addEventListener("click", (e) => {
   if (e.target.classList.contains("remove")) {
     e.target.closest("tr").remove();
-    recalcGrandTotal();
+    recalcTotals();
   }
 });
 
@@ -239,7 +248,15 @@ document.getElementById("saveInvoice")?.addEventListener("click", async (e) => {
         product: row.querySelector("td:nth-child(1)").textContent.trim(),
         qty: parseFloat(row.querySelector("td:nth-child(2)").textContent) || 0,
         price: parseFloat(row.querySelector("td:nth-child(3)").textContent) || 0,
-        total: parseFloat(row.querySelector("td:nth-child(4)").textContent.replace("$","")) || 0
+        price_type: row.querySelector("td:nth-child(4)").textContent.trim(),
+        gst_percent: parseFloat(row.querySelector("td:nth-child(5)").textContent.replace("%","")) || 0,
+        gst_amount: parseFloat(row.querySelector("td:nth-child(6)").textContent.replace("₹","")) || 0,
+        cgst_percent: parseFloat(row.querySelector("td:nth-child(7)").textContent.replace("%","")) || 0,
+        cgst_amount: parseFloat(row.querySelector("td:nth-child(8)").textContent.replace("₹","")) || 0,
+        sgst_percent: parseFloat(row.querySelector("td:nth-child(9)").textContent.replace("%","")) || 0,
+        sgst_amount: parseFloat(row.querySelector("td:nth-child(10)").textContent.replace("₹","")) || 0,
+        price_with_gst: parseFloat(row.querySelector("td:nth-child(11)").textContent.replace("₹","")) || 0,
+        total: parseFloat(row.querySelector("td:nth-child(11)").textContent.replace("₹","")) || 0
       });
     });
 
@@ -265,20 +282,16 @@ document.getElementById("saveInvoice")?.addEventListener("click", async (e) => {
     const salesman = salesmanEl?.value.trim() || "";
     const vehicleNumber = vehicleNumberEl?.value.trim() || "";
 
-    // Increment bill number (only at save)
+    // Increment bill number
     const newBillNumber = await incrementBillNumber(billSeries);
     if (billNumberEl) billNumberEl.value = String(newBillNumber);
 
-    // Ensure customer exists (customers.customer_id is auto-increment integer)
-    const { data: existingCustomer, error: lookupErr } = await supabaseClient
+    // Ensure customer exists
+    const { data: existingCustomer } = await supabaseClient
       .from("customers")
       .select("customer_id")
       .eq("mobile", customerMobile)
       .maybeSingle();
-
-    if (lookupErr) {
-      console.warn("Customer check error:", lookupErr.message);
-    }
 
     if (!existingCustomer) {
       const { error: insertCustErr } = await supabaseClient.from("customers").insert([{
@@ -294,13 +307,14 @@ document.getElementById("saveInvoice")?.addEventListener("click", async (e) => {
       }
     }
 
-    // Insert invoice (ensure invoices.items is jsonb)
+    // Insert invoice
+    const totalamount = items.reduce((sum, it) => sum + (it.total || 0), 0);
     const { error: invErr } = await supabaseClient.from("invoices").insert([{
       customer_name: customerName,
       customer_address: customerAddress,
       customer_mobile: customerMobile,
       items,
-      totalamount: Number(grandTotal.toFixed(2)),
+      totalamount: Number(totalamount.toFixed(2)),
       invoicedate: billDate,
       bill_series: billSeries,
       bill_number: newBillNumber,
@@ -315,15 +329,15 @@ document.getElementById("saveInvoice")?.addEventListener("click", async (e) => {
 
     alert("Invoice saved successfully!");
 
-    // Reset for next invoice: clear sales + bill + customer
+    // Reset for next invoice
     salesBody.innerHTML = "";
-    recalcGrandTotal();
+    recalcTotals();
     billForm?.reset();
     salesForm?.reset();
     customerForm?.reset();
     setTodayDate();
     inputMobile?.focus();
-    await readBillNumber(billSeriesEl?.value); // show next number
+    await readBillNumber(billSeriesEl?.value);
 
   } catch (err) {
     alert("Unexpected error: " + (err?.message || String(err)));

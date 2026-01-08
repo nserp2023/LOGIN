@@ -3,14 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <title>Sales Entry</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <!-- Header -->
   <header>
     <h1>SALES ENTRY</h1>
     <button id="logout">Logout</button>
   </header>
 
+  <!-- Sidebar -->
   <aside id="sidebar">
     <button id="toggleBtn">☰</button>
     <nav>
@@ -21,43 +24,55 @@
     </nav>
   </aside>
 
+  <!-- Main content -->
   <main>
-    <!-- Customer Info -->
+    <!-- Customer Details -->
     <section class="card">
-      <h2>Customer Details</h2>
-      <label>Name: <input type="text" id="customerName"></label>
-      <label>Mobile: <input type="text" id="customerMobile"></label>
-      <label>Date: <input type="date" id="invoiceDate"></label>
+      <h2>Customer details</h2>
+      <div class="form-row">
+        <label>Name:
+          <input type="text" id="customerName" placeholder="Customer name">
+        </label>
+        <label>Mobile:
+          <input type="text" id="customerMobile" placeholder="Mobile number">
+        </label>
+        <label>Date:
+          <input type="date" id="invoiceDate">
+        </label>
+      </div>
     </section>
 
     <!-- Items Table -->
     <section class="card">
-      <h2>Invoice Items</h2>
+      <h2>Invoice items</h2>
       <table>
         <thead>
           <tr>
             <th>Product</th>
             <th>Qty</th>
             <th>Price</th>
-            <th>Price Type</th>
+            <th>Price type</th>
             <th>GST %</th>
             <th>CGST %</th>
             <th>SGST %</th>
           </tr>
         </thead>
         <tbody id="itemsBody">
-          <!-- Item rows will be added dynamically -->
+          <!-- Item rows added dynamically by sales.js -->
         </tbody>
       </table>
-      <button id="addItemBtn">+ Add Item</button>
+      <div style="margin-top:10px;">
+        <button id="addItemBtn">+ Add item</button>
+      </div>
     </section>
 
-    <!-- Save Invoice -->
+    <!-- Actions -->
     <section class="card">
-      <button id="saveInvoiceBtn">Save Invoice</button>
+      <button id="saveInvoiceBtn">Save invoice</button>
     </section>
   </main>
 
+  <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="sales.js"></script>
 </body>

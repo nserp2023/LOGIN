@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Sales Billing</title>
+  <title>Sales Entry</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <header>
-    <h1>SALES BILLING</h1>
+    <h1>SALES ENTRY</h1>
     <button id="logout">Logout</button>
   </header>
 
@@ -22,55 +22,39 @@
   </aside>
 
   <main>
-<!-- Bill Info -->
-<section class="card">
-  <form id="billForm" class="inline-form">
-    <label>Bill Date <input type="date" id="billDate" required></label>
-    <label>Series 
-      <select id="billSeries" required></select>
-    </label>
-    <label>Bill Number <input type="text" id="billNumber" readonly></label>
-    <label>Salesman <input type="text" id="salesman" required></label>
-    <label>Vehicle Number <input type="text" id="vehicleNumber" required></label>
-  </form>
-</section>
     <!-- Customer Info -->
     <section class="card">
       <h2>Customer Details</h2>
-      <form id="customerForm" class="inline-form">
-        <label>Mobile <input type="tel" id="customerMobile" required></label>
-        <label>Name <input type="text" id="customerName" required></label>
-        <label>Address <input type="text" id="customerAddress" required></label>
-        <label>GST Number <input type="text" id="customerGST"></label>
-        <label>State Code <input type="text" id="customerStateCode"></label>
-      </form>
+      <label>Name: <input type="text" id="customerName"></label>
+      <label>Mobile: <input type="text" id="customerMobile"></label>
+      <label>Date: <input type="date" id="invoiceDate"></label>
     </section>
 
-    <!-- Sales Entry -->
+    <!-- Items Table -->
     <section class="card">
-      <h2>Sales Entry</h2>
-      <form id="salesForm" class="inline-form">
-        <input type="text" id="product" placeholder="Product" required>
-        <input type="number" id="qty" placeholder="Qty" required>
-        <input type="number" id="price" placeholder="Price" required step="0.01">
-        <button type="submit">Add Item</button>
-      </form>
-
+      <h2>Invoice Items</h2>
       <table>
         <thead>
           <tr>
             <th>Product</th>
             <th>Qty</th>
             <th>Price</th>
-            <th>Total</th>
-            <th>Action</th>
+            <th>Price Type</th>
+            <th>GST %</th>
+            <th>CGST %</th>
+            <th>SGST %</th>
           </tr>
         </thead>
-        <tbody id="salesBody"></tbody>
+        <tbody id="itemsBody">
+          <!-- Item rows will be added dynamically -->
+        </tbody>
       </table>
+      <button id="addItemBtn">+ Add Item</button>
+    </section>
 
-      <h3>Grand Total: <span id="grandTotal">$0.00</span></h3>
-      <button id="saveInvoice">Save Invoice</button>
+    <!-- Save Invoice -->
+    <section class="card">
+      <button id="saveInvoiceBtn">Save Invoice</button>
     </section>
   </main>
 

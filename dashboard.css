@@ -20,11 +20,9 @@
   z-index: 1000;
   padding-top: 60px; /* space for toggle button */
 }
-
 .sidebar.active {
   transform: translateX(0);
 }
-
 .toggle-btn {
   position: fixed;
   top: 12px;
@@ -44,12 +42,10 @@
   margin: 0;
   padding: 0 8px 24px 8px;
 }
-
 .nav-list > li {
   margin: 4px 0;
   border-radius: 6px;
 }
-
 .nav-list a {
   color: #fff;
   text-decoration: none;
@@ -57,7 +53,6 @@
   padding: 10px 14px;
   border-radius: 6px;
 }
-
 .nav-list a:hover {
   background: rgba(255, 255, 255, 0.12);
 }
@@ -69,11 +64,9 @@
   opacity: 0.8;
   transition: transform 0.2s ease;
 }
-
 .has-submenu.open > .menu-link::after {
   transform: rotate(90deg);
 }
-
 .submenu {
   display: none;
   list-style: none;
@@ -81,11 +74,9 @@
   margin: 4px 0 8px 8px;
   border-left: 2px solid rgba(255, 255, 255, 0.15);
 }
-
 .has-submenu.open > .submenu {
   display: block;
 }
-
 .submenu li a {
   padding: 8px 12px;
   font-size: 0.95rem;
@@ -115,7 +106,6 @@
   margin-top: 1rem;
   flex-wrap: wrap;
 }
-
 .card {
   background: #fff;
   padding: 1.2rem;
@@ -135,7 +125,6 @@
   height: 100vh;
   z-index: 900;
 }
-
 .dashboard-page {
   display: flex;
   background: url("background.jpg") no-repeat center center fixed;
@@ -149,25 +138,22 @@
   margin-bottom: 1rem;
   flex-wrap: wrap;
 }
-
 .sales-form .form-row {
   display: flex;
   flex-direction: column;
 }
-
 .sales-form label {
   font-weight: bold;
   margin-bottom: 4px;
 }
-
 .sales-form input {
   padding: 8px;
   border: 1px solid #ddd;
   border-radius: 4px;
 }
 
-/* Sales table */
-.sales-table {
+/* === Unified Table Styles for Sales & Products === */
+.dashboard-table {
   width: 100%;
   border-collapse: collapse;
   background: #fff;
@@ -175,55 +161,104 @@
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0,0,0,0.08);
 }
-
-.sales-table th, .sales-table td {
+.dashboard-table th,
+.dashboard-table td {
   padding: 10px;
   border-bottom: 1px solid #eee;
   text-align: center;
 }
-
-.sales-table th {
+.dashboard-table th {
   background: #2d3748;
   color: #fff;
 }
-
-.sales-table tfoot td {
+.dashboard-table tfoot td {
   font-weight: bold;
   background: #f4f4f4;
 }
-
-.sales-table td button {
+.dashboard-table td button {
   margin: 0 4px;
   padding: 4px 8px;
   border: none;
   border-radius: 4px;
   cursor: pointer;
 }
-
-.sales-table td button.edit {
+.dashboard-table td button.edit {
   background: #4facfe;
   color: #fff;
 }
-
-.sales-table td button.remove {
+.dashboard-table td button.remove {
   background: #e53e3e;
   color: #fff;
 }
-
-.sales-table td[contenteditable="true"] {
+.dashboard-table td[contenteditable="true"] {
   background: #fdfdfd;
   cursor: text;
 }
-
-.sales-table td button.remove {
-  background: #e53e3e;
-  color: #fff;
-  border: none;
+/* Image cells */
+.dashboard-table td img {
+  max-width: 50px;
   border-radius: 4px;
-  padding: 4px 8px;
-  cursor: pointer;
+}
+/* Row hover effect */
+.dashboard-table tbody tr:hover {
+  background-color: #f1f5f9;
+  transition: background-color 0.2s ease;
+}
+/* Selected row style (when checkbox is ticked) */
+.dashboard-table tbody tr.selected {
+  background-color: #e0f2fe; /* light blue */
 }
 
+/* Banner messages */
+.banner {
+  padding: 10px;
+  margin: 10px 0;
+  border-radius: 4px;
+  font-weight: bold;
+  text-align: center;
+  display: none;
+}
+.banner-success {
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+.banner-error {
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+.banner-warning {
+  background-color: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeeba;
+}
+
+/* Editable cells highlight */
+.edited-cell {
+  background-color: #fff3cd;
+  border: 1px solid #ffeeba;
+}
+
+/* Product form */
+.inline-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+.inline-form label {
+  display: flex;
+  flex-direction: column;
+  font-weight: bold;
+}
+.inline-form input,
+.inline-form select {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+/* Save button */
 .save-btn {
   margin-top: 1rem;
   padding: 10px 16px;

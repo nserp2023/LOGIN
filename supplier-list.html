@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Supplier List</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Your stylesheets -->
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+  <!-- Header -->
+  <header>
+    <h1>Suppliers</h1>
+    <button id="addSupplierBtn" type="button">+ Add Supplier</button>
+  </header>
+
+  <!-- Main content -->
+  <main>
+    <section class="card">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Mobile</th>
+            <th>Address</th>
+            <th>GST Number</th>
+            <th>State Code</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="supplierTableBody">
+          <!-- Rows populated dynamically -->
+        </tbody>
+      </table>
+    </section>
+  </main>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const { createClient } = supabase;
+    const supabaseUrl = "https://gqxczzijntbvtlmmzppt.supabase.co";
+    const supabaseKey = "sb_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs";
+    const supabaseClient = createClient(supabaseUrl, supabaseKey);
+
+    const tableBody = document.getElementById("supplierTableBody");
+    const addBtn = document.getElementById("addSupplierBtn");
+
+    // ✅ Load all suppliers
+    async function loadSuppliers() {
+      const { data, error } = await supabaseClient
+        .from("suppliers")
+        .select("*")
+        .order("supplier_id", { ascending: true });
+
+      if (error) {
+        alert("Error loading suppliers: " + error.message);
+        return;
+      }
+
+      tableBody.innerHTML = "";
+      data.forEach(s => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${s.supplier_id}</td>
+          <td>${s.name}</td>
+          <td>${s.mobile}</td>
+          <td>${s.address}</td>
+          <td>${s.gst_number}</td>
+          <td>${s.state_code}</td>
+          <td>
+            <button onclick="editSupplier(${s.supplier_id})">Edit</button>
+            <button onclick="deleteSupplier(${s.supplier_id})">Delete</button>
+          </td>
+        `;
+        tableBody.appendChild(row);
+      });
+    }
+
+    // ✅ Edit supplier
+    function editSupplier(id) {
+      window.location.href = `supplier.html?id=${id}`;
+    }
+
+    // ✅ Delete supplier
+    async function deleteSupplier(id) {
+      if (!confirm("Are you sure you want to delete this supplier?")) return;
+      const { error } = await supabaseClient
+        .from("suppliers")
+        .delete()
+        .eq("supplier_id", id);
+
+      if (error) {
+        alert("Error deleting supplier: " + error.message);
+      } else {
+        alert("Supplier deleted successfully!");
+        loadSuppliers();
+      }
+    }
+
+    // ✅ Add supplier
+    addBtn.addEventListener("click", () => {
+      window.location.href = "supplier.html";
+    });
+
+    // Initial load
+    document.addEventListener("DOMContentLoaded", loadSuppliers);
+  </script>
+</body>
+</html>

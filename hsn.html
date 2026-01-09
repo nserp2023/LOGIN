@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>HSN Code Management</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+  <header>
+    <h1>HSN Codes</h1>
+    <button id="addHSNBtn" type="button">+ Add HSN Code</button>
+  </header>
+
+  <main>
+    <!-- Form for add/edit -->
+    <section class="card">
+      <form id="hsnForm" class="inline-form">
+        <input type="hidden" id="hsnId">
+        <label>HSN Code
+          <input type="text" id="hsnCode" required>
+        </label>
+        <label>Description
+          <input type="text" id="description" required>
+        </label>
+        <label>GST %
+          <input type="number" id="gstPercent" step="0.01" required>
+        </label>
+        <label>CGST %
+          <input type="number" id="cgstPercent" step="0.01" readonly>
+        </label>
+        <label>SGST %
+          <input type="number" id="sgstPercent" step="0.01" readonly>
+        </label>
+        <label>IGST %
+          <input type="number" id="igstPercent" step="0.01" readonly>
+        </label>
+        <button type="submit" id="saveBtn">Save HSN</button>
+      </form>
+    </section>
+
+    <!-- Search bar -->
+    <section class="card">
+      <label for="searchHSN">Search HSN</label>
+      <input type="text" id="searchHSN" placeholder="Type HSN code or description...">
+    </section>
+
+    <!-- Table -->
+    <section class="card">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>HSN Code</th>
+            <th>Description</th>
+            <th>GST%</th>
+            <th>CGST%</th>
+            <th>SGST%</th>
+            <th>IGST%</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="hsnTableBody"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <!-- Supabase + JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="hsn.js"></script>
+</body>
+</html>

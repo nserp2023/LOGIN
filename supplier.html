@@ -3,15 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <title>Create / Edit Supplier</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Your stylesheets -->
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="dashboard.css">
 </head>
 <body>
+  <!-- Header -->
   <header>
     <h1 id="formTitle">Create Supplier</h1>
+    <!-- Important: type="button" so it doesn’t submit the form -->
     <button id="backBtn" type="button">⬅ Back</button>
   </header>
 
+  <!-- Main content -->
   <main>
     <section class="card">
       <form id="supplierForm" class="inline-form">
@@ -35,6 +40,7 @@
     </section>
   </main>
 
+  <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supplier.js"></script>
 </body>

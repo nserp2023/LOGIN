@@ -3,11 +3,14 @@ const supabaseUrl = "https://gqxczzijntbvtlmmzppt.supabase.co";
 const supabaseKey = "sb_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs";
 const supabaseClient = createClient(supabaseUrl, supabaseKey);
 
+// Elements
 const form = document.getElementById("productForm");
 const tableBody = document.getElementById("productTableBody");
 const itemCodeInput = document.getElementById("itemCode");
 const hsnSearch = document.getElementById("hsnSearch");
 const hsnDropdown = document.getElementById("hsnDropdown");
+const gstPercentInput = document.getElementById("gstPercent");
+
 const purchasePrice = document.getElementById("purchasePrice");
 const purchasePriceGST = document.getElementById("purchasePriceGST");
 const landingPriceGST = document.getElementById("landingPriceGST");
@@ -23,117 +26,120 @@ let currentHSN = null;
 let bulkEditEnabled = false;
 let pendingChanges = {};
 
-// ✅ Banner helper
+// Helpers
 function showBanner(message, type = "success") {
   const banner = document.getElementById("banner");
   banner.textContent = message;
   banner.className = "banner banner-" + type;
   banner.style.display = "block";
-  setTimeout(() => {
-    banner.style.display = "none";
-  }, 3000);
+  setTimeout(() => { banner.style.display = "none"; }, 3000);
 }
+function toNum(v) { return parseFloat(v) || 0; }
+function addGST(base, gst) { return +(base + (base * gst / 100)).toFixed(2); }
+function removeGST(gross, gst) { return +(gross / (1 + gst / 100)).toFixed(2); }
 
-// ✅ Auto-generate item code
+// Auto-generate item code
 async function generateItemCode() {
   const { data, error } = await supabaseClient
     .from("products")
     .select("item_code")
     .order("product_id", { ascending: false })
     .limit(1);
-
   if (error || data.length === 0) return "ITEM-001";
-
   const lastCode = data[0].item_code;
   const num = parseInt(lastCode.split("-")[1]) + 1;
   return `ITEM-${String(num).padStart(3, "0")}`;
 }
-
 document.addEventListener("DOMContentLoaded", async () => {
   itemCodeInput.value = await generateItemCode();
   loadProducts();
 });
 
-// ✅ Auto GST calculations
-function updateGST(baseInput, gstOutput) {
-  const val = parseFloat(baseInput.value) || 0;
-  if (currentHSN) {
-    const gst = parseFloat(currentHSN.gst_percent) || 0;
-    gstOutput.value = (val + (val * gst / 100)).toFixed(2);
-  }
-}
-
-purchasePrice.addEventListener("input", () => {
-  updateGST(purchasePrice, purchasePriceGST);
-  landingPriceGST.value = purchasePriceGST.value; // auto-fill landing
-});
-retailPrice.addEventListener("input", () => updateGST(retailPrice, retailPriceGST));
-wholesalePrice.addEventListener("input", () => updateGST(wholesalePrice, wholesalePriceGST));
-specialPrice.addEventListener("input", () => updateGST(specialPrice, specialPriceGST));
-
-// ✅ HSN search dropdown
+// HSN search
 hsnSearch.addEventListener("input", async () => {
   const term = hsnSearch.value.trim();
-  if (!term) return;
-
+  if (!term) { hsnDropdown.innerHTML = ""; return; }
   const { data, error } = await supabaseClient
     .from("hsn_codes")
     .select("*")
-    .ilike("hsn_code", `%${term}%`);
-
-  if (error) {
-    console.error(error);
-    return;
-  }
-
+    .or(`hsn_code.ilike.%${term}%,description.ilike.%${term}%`)
+    .limit(20);
+  if (error) return console.error(error);
   hsnDropdown.innerHTML = "";
   data.forEach(h => {
-    const option = document.createElement("option");
-    option.value = h.hsn_id;
-    option.textContent = `${h.hsn_code} - ${h.description}`;
-    hsnDropdown.appendChild(option);
+    const opt = document.createElement("option");
+    opt.value = h.hsn_id;
+    opt.textContent = `${h.hsn_code} — ${h.description} (GST ${h.gst_percent}%)`;
+    hsnDropdown.appendChild(opt);
   });
 });
 
+// HSN change → load GST%
 hsnDropdown.addEventListener("change", async () => {
   const selectedId = hsnDropdown.value;
   if (!selectedId) return;
-
   const { data, error } = await supabaseClient
     .from("hsn_codes")
     .select("*")
     .eq("hsn_id", selectedId)
     .single();
-
-  if (error) {
-    console.error(error);
-    return;
-  }
-
+  if (error) return console.error(error);
   currentHSN = data;
-  updateGST(purchasePrice, purchasePriceGST);
-  landingPriceGST.value = purchasePriceGST.value;
-  updateGST(retailPrice, retailPriceGST);
-  updateGST(wholesalePrice, wholesalePriceGST);
-  updateGST(specialPrice, specialPriceGST);
+  gstPercentInput.value = parseFloat(currentHSN.gst_percent) || 0;
 });
 
-// ✅ Load products
+// Pricing rules
+purchasePrice.addEventListener("input", () => {
+  const gst = toNum(gstPercentInput.value);
+  const base = toNum(purchasePrice.value);
+  purchasePriceGST.value = addGST(base, gst);
+  landingPriceGST.value = purchasePriceGST.value;
+});
+purchasePriceGST.addEventListener("input", () => {
+  const gst = toNum(gstPercentInput.value);
+  const gross = toNum(purchasePriceGST.value);
+  const base = removeGST(gross, gst);
+  purchasePrice.value = base;
+  landingPriceGST.value = purchasePriceGST.value;
+});
+landingPriceGST.addEventListener("input", () => { /* no propagation */ });
+
+retailPrice.addEventListener("input", () => {
+  const gst = toNum(gstPercentInput.value);
+  retailPriceGST.value = addGST(toNum(retailPrice.value), gst);
+});
+retailPriceGST.addEventListener("input", () => {
+  const gst = toNum(gstPercentInput.value);
+  retailPrice.value = removeGST(toNum(retailPriceGST.value), gst);
+});
+
+wholesalePrice.addEventListener("input", () => {
+  const gst = toNum(gstPercentInput.value);
+  wholesalePriceGST.value = addGST(toNum(wholesalePrice.value), gst);
+});
+wholesalePriceGST.addEventListener("input", () => {
+  const gst = toNum(gstPercentInput.value);
+  wholesalePrice.value = removeGST(toNum(wholesalePriceGST.value), gst);
+});
+
+specialPrice.addEventListener("input", () => {
+  const gst = toNum(gstPercentInput.value);
+  specialPriceGST.value = addGST(toNum(specialPrice.value), gst);
+});
+specialPriceGST.addEventListener("input", () => {
+  const gst = toNum(gstPercentInput.value);
+  specialPrice.value = removeGST(toNum(specialPriceGST.value), gst);
+});
+
+// Load products
 async function loadProducts() {
   const { data, error } = await supabaseClient
     .from("products")
     .select("*, hsn_codes(hsn_code)")
     .order("product_id", { ascending: true });
-
-  if (error) {
-    showBanner("Error loading products: " + error.message, "error");
-    return;
-  }
-
+  if (error) return showBanner("Error loading products: " + error.message, "error");
   renderProducts(data);
 }
-
-// ✅ Render products
 function renderProducts(list) {
   tableBody.innerHTML = "";
   list.forEach(p => {
@@ -160,23 +166,22 @@ function renderProducts(list) {
   });
 }
 
-// ✅ Save product
+// Save product
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
-
   const product = {
     item_code: itemCodeInput.value.trim(),
     item_name: document.getElementById("itemName").value.trim(),
     hsn_id: hsnDropdown.value || null,
-    purchase_price: parseFloat(purchasePrice.value) || 0,
-    purchase_price_gst: parseFloat(purchasePriceGST.value) || 0,
-    landing_price_gst: parseFloat(landingPriceGST.value) || 0,
-    retail_price: parseFloat(retailPrice.value) || 0,
-    retail_price_gst: parseFloat(retailPriceGST.value) || 0,
-    wholesale_price: parseFloat(wholesalePrice.value) || 0,
-    wholesale_price_gst: parseFloat(wholesalePriceGST.value) || 0,
-    special_price: parseFloat(specialPrice.value) || 0,
-    special_price_gst: parseFloat(specialPriceGST.value) || 0,
+    purchase_price: toNum(purchasePrice.value),
+    purchase_price_gst: toNum(purchasePriceGST.value),
+    landing_price_gst: toNum(landingPriceGST.value),
+    retail_price: toNum(retailPrice.value),
+    retail_price_gst: toNum(retailPriceGST.value),
+    wholesale_price: toNum(wholesalePrice.value),
+    wholesale_price_gst: toNum(wholesalePriceGST.value),
+    special_price: toNum(specialPrice.value),
+    special_price_gst: toNum(specialPriceGST.value),
     department: document.getElementById("department").value.trim(),
     online_offline: document.getElementById("onlineOffline").value,
     image_url: "" // handle image upload separately
@@ -240,7 +245,7 @@ window.deleteProduct = async function(id) {
   }
 };
 
-// ✅ Apply selected row style when checkbox is toggled
+// ✅ Row selection highlight
 tableBody.addEventListener("change", (e) => {
   if (e.target.classList.contains("rowSelect")) {
     const row = e.target.closest("tr");
@@ -252,7 +257,7 @@ tableBody.addEventListener("change", (e) => {
   }
 });
 
-// ✅ Select all toggle also applies row highlight
+// ✅ Select all toggle
 document.getElementById("selectAll").addEventListener("change", (e) => {
   const checked = e.target.checked;
   document.querySelectorAll(".rowSelect").forEach(cb => {
@@ -288,11 +293,9 @@ document.getElementById("deleteBulkBtn").addEventListener("click", async () => {
 document.getElementById("addBulkBtn").addEventListener("click", () => {
   document.getElementById("bulkUpload").click();
 });
-
 document.getElementById("bulkUpload").addEventListener("change", async (e) => {
   const file = e.target.files[0];
   if (!file) return;
-
   const reader = new FileReader();
   reader.onload = async (evt) => {
     const text = evt.target.result;
@@ -305,21 +308,20 @@ document.getElementById("bulkUpload").addEventListener("change", async (e) => {
         item_code: await generateItemCode(),
         item_name: r[0],
         hsn_id: null,
-        purchase_price: parseFloat(r[2]) || 0,
-        purchase_price_gst: parseFloat(r[3]) || 0,
-        landing_price_gst: parseFloat(r[4]) || 0,
-        retail_price: parseFloat(r[5]) || 0,
-        retail_price_gst: parseFloat(r[6]) || 0,
-        wholesale_price: parseFloat(r[7]) || 0,
-        wholesale_price_gst: parseFloat(r[8]) || 0,
-        special_price: parseFloat(r[9]) || 0,
-        special_price_gst: parseFloat(r[10]) || 0,
+        purchase_price: toNum(r[2]),
+        purchase_price_gst: toNum(r[3]),
+        landing_price_gst: toNum(r[4]),
+        retail_price: toNum(r[5]),
+        retail_price_gst: toNum(r[6]),
+        wholesale_price: toNum(r[7]),
+        wholesale_price_gst: toNum(r[8]),
+        special_price: toNum(r[9]),
+        special_price_gst: toNum(r[10]),
         department: r[11],
         online_offline: r[12],
         image_url: ""
       });
     }
-
     const { error } = await supabaseClient.from("products").insert(products);
     if (error) {
       showBanner("Error bulk inserting: " + error.message, "error");
@@ -340,7 +342,6 @@ document.getElementById("enableBulkEditBtn").addEventListener("click", () => {
   document.getElementById("discardBtn").style.display = "inline-block";
   loadProducts();
 });
-
 document.getElementById("disableBulkEditBtn").addEventListener("click", () => {
   bulkEditEnabled = false;
   pendingChanges = {};
@@ -357,10 +358,8 @@ tableBody.addEventListener("input", (e) => {
     const id = e.target.dataset.id;
     const field = e.target.dataset.field;
     const value = e.target.textContent.trim();
-
     if (!pendingChanges[id]) pendingChanges[id] = {};
     pendingChanges[id][field] = value;
-
     e.target.classList.add("edited-cell");
   }
 });
@@ -372,7 +371,6 @@ document.getElementById("saveAllBtn").addEventListener("click", async () => {
     showBanner("No changes to save.", "warning");
     return;
   }
-
   try {
     for (const [id, fields] of updates) {
       const { error } = await supabaseClient.from("products").update(fields).eq("product_id", id);

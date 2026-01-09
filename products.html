@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Products Management</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="dashboard.css">
+  <style>
+    .banner {
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 4px;
+      font-weight: bold;
+      text-align: center;
+    }
+    .banner-success {
+      background-color: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    .banner-error {
+      background-color: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    .banner-warning {
+      background-color: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeeba;
+    }
+    .edited-cell {
+      background-color: #fff3cd;
+      border: 1px solid #ffeeba;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Products</h1>
+    <button id="addSingleBtn">+ Add Single Item</button>
+    <button id="addBulkBtn">+ Add Bulk Items</button>
+    <button id="editSingleBtn">✎ Edit Single Item</button>
+    <button id="editBulkBtn">✎ Edit Bulk Items</button>
+    <button id="deleteSingleBtn">🗑 Delete Single Item</button>
+    <button id="deleteBulkBtn">🗑 Delete Multiple Items</button>
+    <button id="enableBulkEditBtn">Enable Bulk Edit</button>
+    <button id="disableBulkEditBtn" style="display:none">Disable Bulk Edit</button>
+    <button id="saveAllBtn" style="display:none">💾 Save All Changes</button>
+    <button id="discardBtn" style="display:none">✖ Discard Changes</button>
+    <input type="file" id="bulkUpload" accept=".csv,.xlsx" style="display:none">
+  </header>
+
+  <!-- Banner container -->
+  <div id="banner" class="banner" style="display:none"></div>
+
+  <main>
+    <!-- Form for add/edit single product -->
+    <section class="card">
+      <form id="productForm" class="inline-form">
+        <label>Item Code
+          <input type="text" id="itemCode" required>
+        </label>
+        <label>Item Name
+          <input type="text" id="itemName" required>
+        </label>
+        <label>HSN Code
+          <input type="text" id="hsnSearch" placeholder="Type to search HSN..." required>
+          <select id="hsnDropdown"></select>
+        </label>
+        <label>Purchase Price
+          <input type="number" id="purchasePrice" step="0.01" required>
+        </label>
+        <label>Purchase Price + GST
+          <input type="number" id="purchasePriceGST" step="0.01" readonly>
+        </label>
+        <label>Landing Price + GST
+          <input type="number" id="landingPriceGST" step="0.01">
+        </label>
+        <label>Retail Price
+          <input type="number" id="retailPrice" step="0.01">
+        </label>
+        <label>Retail Price + GST
+          <input type="number" id="retailPriceGST" step="0.01" readonly>
+        </label>
+        <label>Wholesale Price
+          <input type="number" id="wholesalePrice" step="0.01">
+        </label>
+        <label>Wholesale Price + GST
+          <input type="number" id="wholesalePriceGST" step="0.01" readonly>
+        </label>
+        <label>Special Price
+          <input type="number" id="specialPrice" step="0.01">
+        </label>
+        <label>Special Price + GST
+          <input type="number" id="specialPriceGST" step="0.01" readonly>
+        </label>
+        <label>Department
+          <input type="text" id="department" required>
+        </label>
+        <label>Online / Offline
+          <select id="onlineOffline" required>
+            <option value="Online">Online</option>
+            <option value="Offline">Offline</option>
+          </select>
+        </label>
+        <label>Image
+          <input type="file" id="imageUpload" accept="image/*">
+        </label>
+        <button type="submit" id="saveBtn">Save Product</button>
+      </form>
+    </section>
+
+    <!-- Products table -->
+    <section class="card">
+      <table>
+        <thead>
+          <tr>
+            <th><input type="checkbox" id="selectAll"></th>
+            <th>Item Code</th>
+            <th>Name</th>
+            <th>HSN</th>
+            <th>Purchase+GST</th>
+            <th>Landing+GST</th>
+            <th>Retail+GST</th>
+            <th>Wholesale+GST</th>
+            <th>Special+GST</th>
+            <th>Department</th>
+            <th>Online/Offline</th>
+            <th>Image</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="productTableBody"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <!-- Supabase + JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="products.js"></script>
+</body>
+</html>

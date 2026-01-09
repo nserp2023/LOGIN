@@ -45,9 +45,9 @@ async function generateItemCode() {
     .select("item_code")
     .order("product_id", { ascending: false })
     .limit(1);
-  if (error || data.length === 0) return "ITEM-001";
-  const lastCode = data[0].item_code;
-  const num = parseInt(lastCode.split("-")[1]) + 1;
+  if (error || !data || data.length === 0 || !data[0].item_code) return "ITEM-001";
+  const match = data[0].item_code.match(/ITEM-(\d+)/);
+  const num = match ? parseInt(match[1]) + 1 : 1;
   return `ITEM-${String(num).padStart(3, "0")}`;
 }
 document.addEventListener("DOMContentLoaded", async () => {
@@ -78,14 +78,19 @@ hsnSearch.addEventListener("input", async () => {
 hsnDropdown.addEventListener("change", async () => {
   const selectedId = hsnDropdown.value;
   if (!selectedId) return;
+  gstPercentInput.value = "…";
   const { data, error } = await supabaseClient
     .from("hsn_codes")
     .select("*")
     .eq("hsn_id", selectedId)
     .single();
-  if (error) return console.error(error);
+  if (error || !data) {
+    gstPercentInput.value = "";
+    console.error(error);
+    return;
+  }
   currentHSN = data;
-  gstPercentInput.value = parseFloat(currentHSN.gst_percent) || 0;
+  gstPercentInput.value = parseFloat(data.gst_percent).toFixed(2);
 });
 
 // Pricing rules
@@ -102,7 +107,7 @@ purchasePriceGST.addEventListener("input", () => {
   purchasePrice.value = base;
   landingPriceGST.value = purchasePriceGST.value;
 });
-landingPriceGST.addEventListener("input", () => { /* no propagation */ });
+landingPriceGST.addEventListener("input", () => {});
 
 retailPrice.addEventListener("input", () => {
   const gst = toNum(gstPercentInput.value);
@@ -304,8 +309,9 @@ document.getElementById("bulkUpload").addEventListener("change", async (e) => {
     for (let i = 1; i < rows.length; i++) {
       const r = rows[i];
       if (!r || r.length < 5) continue;
+      const itemCode = await generateItemCode();
       products.push({
-        item_code: await generateItemCode(),
+        item_code: itemCode,
         item_name: r[0],
         hsn_id: null,
         purchase_price: toNum(r[2]),

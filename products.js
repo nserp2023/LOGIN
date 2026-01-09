@@ -67,7 +67,6 @@ purchasePrice.addEventListener("input", () => {
   updateGST(purchasePrice, purchasePriceGST);
   landingPriceGST.value = purchasePriceGST.value; // auto-fill landing
 });
-landingPriceGST.addEventListener("input", () => {}); // allow manual override
 retailPrice.addEventListener("input", () => updateGST(retailPrice, retailPriceGST));
 wholesalePrice.addEventListener("input", () => updateGST(wholesalePrice, wholesalePriceGST));
 specialPrice.addEventListener("input", () => updateGST(specialPrice, specialPriceGST));
@@ -241,9 +240,30 @@ window.deleteProduct = async function(id) {
   }
 };
 
-// ✅ Select all toggle
+// ✅ Apply selected row style when checkbox is toggled
+tableBody.addEventListener("change", (e) => {
+  if (e.target.classList.contains("rowSelect")) {
+    const row = e.target.closest("tr");
+    if (e.target.checked) {
+      row.classList.add("selected");
+    } else {
+      row.classList.remove("selected");
+    }
+  }
+});
+
+// ✅ Select all toggle also applies row highlight
 document.getElementById("selectAll").addEventListener("change", (e) => {
-  document.querySelectorAll(".rowSelect").forEach(cb => cb.checked = e.target.checked);
+  const checked = e.target.checked;
+  document.querySelectorAll(".rowSelect").forEach(cb => {
+    cb.checked = checked;
+    const row = cb.closest("tr");
+    if (checked) {
+      row.classList.add("selected");
+    } else {
+      row.classList.remove("selected");
+    }
+  });
 });
 
 // ✅ Delete multiple items
@@ -277,7 +297,6 @@ document.getElementById("bulkUpload").addEventListener("change", async (e) => {
   reader.onload = async (evt) => {
     const text = evt.target.result;
     const rows = text.split("\n").map(r => r.split(","));
-    // Assuming CSV headers: item_name,hsn_code,purchase_price,retail_price,...
     const products = [];
     for (let i = 1; i < rows.length; i++) {
       const r = rows[i];
@@ -285,7 +304,7 @@ document.getElementById("bulkUpload").addEventListener("change", async (e) => {
       products.push({
         item_code: await generateItemCode(),
         item_name: r[0],
-        hsn_id: null, // resolve HSN manually if needed
+        hsn_id: null,
         purchase_price: parseFloat(r[2]) || 0,
         purchase_price_gst: parseFloat(r[3]) || 0,
         landing_price_gst: parseFloat(r[4]) || 0,

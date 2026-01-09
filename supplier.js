@@ -67,7 +67,7 @@ document.getElementById("supplierForm").addEventListener("submit", async (e) => 
     }
   } else {
     // Insert new (supplier_id auto-increment handled by Supabase)
-    const { error } = await supabaseClient.from("suppliers").insert([{
+    const { error } = await supabaseClient.from("supplier").insert([{
       name,
       mobile,
       address,

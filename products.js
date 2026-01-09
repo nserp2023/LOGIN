@@ -38,18 +38,29 @@ function toNum(v) { return parseFloat(v) || 0; }
 function addGST(base, gst) { return +(base + (base * gst / 100)).toFixed(2); }
 function removeGST(gross, gst) { return +(gross / (1 + gst / 100)).toFixed(2); }
 
-// Auto-generate item code
+// Auto-generate item code (robust)
 async function generateItemCode() {
   const { data, error } = await supabaseClient
     .from("products")
     .select("item_code")
     .order("product_id", { ascending: false })
-    .limit(1);
-  if (error || !data || data.length === 0 || !data[0].item_code) return "ITEM-001";
-  const match = data[0].item_code.match(/ITEM-(\d+)/);
-  const num = match ? parseInt(match[1]) + 1 : 1;
-  return `ITEM-${String(num).padStart(3, "0")}`;
+    .limit(50);
+
+  if (error || !data || data.length === 0) return "ITEM-001";
+
+  let lastValid = null;
+  for (const row of data) {
+    const match = row.item_code && row.item_code.match(/^ITEM-(\d+)$/);
+    if (match) {
+      lastValid = parseInt(match[1]);
+      break;
+    }
+  }
+  if (!lastValid) return "ITEM-001";
+  const nextNum = lastValid + 1;
+  return `ITEM-${String(nextNum).padStart(3, "0")}`;
 }
+
 document.addEventListener("DOMContentLoaded", async () => {
   itemCodeInput.value = await generateItemCode();
   loadProducts();
@@ -171,7 +182,7 @@ function renderProducts(list) {
   });
 }
 
-// Save product
+// ✅ Save product
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
   const product = {

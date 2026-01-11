@@ -6,76 +6,90 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="dashboard.css">
+  <style>
+    .banner { display:none; padding:8px 12px; margin:10px 0; border-radius:6px; }
+    .banner-success { background:#e6ffed; color:#046b1a; }
+    .banner-error { background:#ffecec; color:#8b0000; }
+    .banner-warning { background:#fff7e6; color:#8a6d3b; }
+    .inline-form label { display:flex; flex-direction:column; margin:8px 12px; min-width:220px; }
+    .inline-form input, .inline-form select { padding:8px; }
+    .dashboard-table { width:100%; border-collapse:collapse; margin-top:12px; }
+    .dashboard-table th, .dashboard-table td { border:1px solid #ddd; padding:8px; }
+    .actions { display:flex; gap:8px; }
+  </style>
 </head>
 <body class="dashboard-page">
   <header>
     <h1>Purchase Entry</h1>
   </header>
 
-  <!-- Banner for success/error -->
-  <div id="banner" class="banner" style="display:none"></div>
+  <div id="banner" class="banner"></div>
 
   <main>
     <section class="card">
       <form id="purchaseForm" class="inline-form">
-        <!-- Bill Info -->
-        <label>Bill Number
-          <input type="text" id="billNumber" readonly>
-        </label>
-        <label>Current Date
-          <input type="date" id="currentDate" readonly>
-        </label>
+        <div class="actions">
+          <label>Bill number
+            <input type="text" id="billNumber" readonly>
+          </label>
+          <label>Current date
+            <input type="date" id="currentDate" readonly>
+          </label>
+          <label>Invoice date
+            <input type="date" id="invoiceDate" required>
+          </label>
+          <label>Invoice number
+            <input type="text" id="invoiceNumber" required>
+          </label>
+        </div>
 
-        <!-- Invoice Info -->
-        <label>Invoice Date
-          <input type="date" id="invoiceDate" required>
-        </label>
-        <label>Invoice Number
-          <input type="text" id="invoiceNumber" required>
-        </label>
+        <h3>Supplier</h3>
+        <div class="actions">
+          <label>GST number
+            <input type="text" id="supplierGST" placeholder="Type GST number…">
+            <select id="gstDropdown"></select>
+          </label>
+          <label>Supplier name
+            <input type="text" id="supplierName" placeholder="Type supplier name…">
+            <select id="supplierDropdown"></select>
+          </label>
+        </div>
 
-        <!-- Supplier Info -->
-        <label>GST Number
-          <input type="text" id="supplierGST" placeholder="Type GST number...">
-          <select id="gstDropdown"></select>
-        </label>
-        <label>Supplier Name
-          <input type="text" id="supplierName" placeholder="Type supplier name...">
-          <select id="supplierDropdown"></select>
-        </label>
+        <div class="actions">
+          <label>Invoice amount
+            <input type="number" id="invoiceAmount" step="0.01" required>
+          </label>
+          <label>Round off
+            <input type="number" id="roundOff" step="0.01" value="0">
+          </label>
+          <label>Net payable
+            <input type="number" id="netPayable" step="0.01" readonly>
+          </label>
+        </div>
 
-        <!-- Invoice Amount -->
-        <label>Invoice Amount
-          <input type="number" id="invoiceAmount" step="0.01" required>
-        </label>
-        <label>Round Off
-          <input type="number" id="roundOff" step="0.01">
-        </label>
-
-        <!-- Products -->
         <h3>Products</h3>
         <table class="dashboard-table">
           <thead>
             <tr>
-              <th>Item Code</th>
-              <th>Product Name</th>
+              <th>Item code</th>
+              <th>Product name</th>
               <th>Qty</th>
               <th>Rate</th>
               <th>Amount</th>
-              <th>Actions</th>
+              <th></th>
             </tr>
           </thead>
           <tbody id="purchaseProductsBody"></tbody>
         </table>
-        <button type="button" id="addProductBtn">+ Add Product</button>
+        <button type="button" id="addProductBtn">+ Add product</button>
 
-        <!-- Save -->
-        <button type="submit" id="savePurchaseBtn" class="save-btn">Save Purchase</button>
+        <div class="actions" style="margin-top:12px;">
+          <button type="submit" id="savePurchaseBtn" class="save-btn">Save purchase</button>
+        </div>
       </form>
     </section>
   </main>
 
-  <!-- Supabase + JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="purchase.js"></script>
 </body>

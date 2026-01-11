@@ -44,7 +44,7 @@ function toNum(v) { return parseFloat(v) || 0; }
 function addGST(base, gst) { return +(base + (base * gst / 100)).toFixed(2); }
 function removeGST(gross, gst) { return +(gross / (1 + gst / 100)).toFixed(2); }
 
-// Auto-generate item code (robust)
+// Auto-generate item code
 async function generateItemCode() {
   const { data, error } = await supabaseClient
     .from("products")
@@ -93,6 +93,14 @@ hsnSearch.addEventListener("input", async () => {
   });
 });
 
+// HSN change → load GST%
+hsnDropdown.addEventListener("change", async () => {
+  const selectedId = hsnDropdown.value;
+  if (!selectedId) return;
+  gstPercentInput.value = "…";
+  const { data, error } = await supabaseClient
+    .from("hsn_codes")
+    .select("*")
     .eq("hsn_id", selectedId)
     .single();
   if (error || !data) {
@@ -206,7 +214,7 @@ function renderProducts(list) {
   });
 }
 
-// Save product
+// ✅ Save product
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
   const product = {
@@ -224,7 +232,7 @@ form.addEventListener("submit", async (e) => {
     special_price_gst: toNum(specialPriceGST.value),
     department: document.getElementById("department").value.trim(),
     online_offline: document.getElementById("onlineOffline").value,
-    image_url: ""
+    image_url: "" // handle image upload separately
   };
 
   try {
@@ -237,6 +245,7 @@ form.addEventListener("submit", async (e) => {
       if (error) throw error;
       showBanner("Product added successfully!", "success");
     }
+
     form.reset();
     editingId = null;
     if (!itemCodeInput.value) {
@@ -249,13 +258,14 @@ form.addEventListener("submit", async (e) => {
   }
 });
 
-// Edit product
+// ✅ Edit product
 window.editProduct = async function(id) {
   const { data, error } = await supabaseClient.from("products").select("*").eq("product_id", id).single();
   if (error) {
     showBanner("Error loading product: " + error.message, "error");
     return;
   }
+
   editingId = id;
   itemCodeInput.value = data.item_code;
   document.getElementById("itemName").value = data.item_name;
@@ -273,7 +283,7 @@ window.editProduct = async function(id) {
   document.getElementById("saveBtn").textContent = "Update Product";
 };
 
-// Delete product
+// ✅ Delete product
 window.deleteProduct = async function(id) {
   if (!confirm("Are you sure you want to delete this product?")) return;
   const { error } = await supabaseClient.from("products").delete().eq("product_id", id);

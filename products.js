@@ -93,14 +93,6 @@ hsnSearch.addEventListener("input", async () => {
   });
 });
 
-// HSN change → load GST%
-hsnDropdown.addEventListener("change", async () => {
-  const selectedId = hsnDropdown.value;
-  if (!selectedId) return;
-  gstPercentInput.value = "…";
-  const { data, error } = await supabaseClient
-    .from("hsn_codes")
-    .select("*")
     .eq("hsn_id", selectedId)
     .single();
   if (error || !data) {
@@ -126,17 +118,16 @@ purchasePriceGST.addEventListener("input", () => {
   purchasePrice.value = base;
   landingPriceGST.value = purchasePriceGST.value;
 });
-landingPriceGST.addEventListener("input", () => {});
 
-// Retail logic (percent based on Landing+GST)
-retailPrice.addEventListener("input", () => {
-  const gst = toNum(gstPercentInput.value);
-  retailPriceGST.value = addGST(toNum(retailPrice.value), gst);
-});
+// Retail logic (percent → Retail+GST)
 retailPricePercent.addEventListener("input", () => {
-  const base = toNum(landingPriceGST.value);
+  const baseWithGST = toNum(landingPriceGST.value);
   const percent = toNum(retailPricePercent.value);
-  retailPrice.value = +(base + (base * percent / 100)).toFixed(2);
+  retailPriceGST.value = +(baseWithGST + (baseWithGST * percent / 100)).toFixed(2);
+  const gst = toNum(gstPercentInput.value);
+  retailPrice.value = removeGST(toNum(retailPriceGST.value), gst);
+});
+retailPrice.addEventListener("input", () => {
   const gst = toNum(gstPercentInput.value);
   retailPriceGST.value = addGST(toNum(retailPrice.value), gst);
 });
@@ -145,15 +136,15 @@ retailPriceGST.addEventListener("input", () => {
   retailPrice.value = removeGST(toNum(retailPriceGST.value), gst);
 });
 
-// Wholesale logic (percent based on Landing+GST)
-wholesalePrice.addEventListener("input", () => {
-  const gst = toNum(gstPercentInput.value);
-  wholesalePriceGST.value = addGST(toNum(wholesalePrice.value), gst);
-});
+// Wholesale logic (percent → Wholesale+GST)
 wholesalePricePercent.addEventListener("input", () => {
-  const base = toNum(landingPriceGST.value);
+  const baseWithGST = toNum(landingPriceGST.value);
   const percent = toNum(wholesalePricePercent.value);
-  wholesalePrice.value = +(base + (base * percent / 100)).toFixed(2);
+  wholesalePriceGST.value = +(baseWithGST + (baseWithGST * percent / 100)).toFixed(2);
+  const gst = toNum(gstPercentInput.value);
+  wholesalePrice.value = removeGST(toNum(wholesalePriceGST.value), gst);
+});
+wholesalePrice.addEventListener("input", () => {
   const gst = toNum(gstPercentInput.value);
   wholesalePriceGST.value = addGST(toNum(wholesalePrice.value), gst);
 });
@@ -162,15 +153,15 @@ wholesalePriceGST.addEventListener("input", () => {
   wholesalePrice.value = removeGST(toNum(wholesalePriceGST.value), gst);
 });
 
-// Special logic (percent based on Landing+GST)
-specialPrice.addEventListener("input", () => {
-  const gst = toNum(gstPercentInput.value);
-  specialPriceGST.value = addGST(toNum(specialPrice.value), gst);
-});
+// Special logic (percent → Special+GST)
 specialPricePercent.addEventListener("input", () => {
-  const base = toNum(landingPriceGST.value);
+  const baseWithGST = toNum(landingPriceGST.value);
   const percent = toNum(specialPricePercent.value);
-  specialPrice.value = +(base + (base * percent / 100)).toFixed(2);
+  specialPriceGST.value = +(baseWithGST + (baseWithGST * percent / 100)).toFixed(2);
+  const gst = toNum(gstPercentInput.value);
+  specialPrice.value = removeGST(toNum(specialPriceGST.value), gst);
+});
+specialPrice.addEventListener("input", () => {
   const gst = toNum(gstPercentInput.value);
   specialPriceGST.value = addGST(toNum(specialPrice.value), gst);
 });
@@ -188,6 +179,7 @@ async function loadProducts() {
   if (error) return showBanner("Error loading products: " + error.message, "error");
   renderProducts(data);
 }
+
 function renderProducts(list) {
   tableBody.innerHTML = "";
   list.forEach(p => {
@@ -195,21 +187,14 @@ function renderProducts(list) {
     row.innerHTML = `
       <td><input type="checkbox" class="rowSelect" value="${p.product_id}"></td>
       <td>${p.item_code}</td>
-      <td ${bulkEditEnabled ? 'contenteditable="true"' : ''} 
-          data-field="item_name" data-id="${p.product_id}">${p.item_name}</td>
+      <td ${bulkEditEnabled ? 'contenteditable="true"' : ''} data-field="item_name" data-id="${p.product_id}">${p.item_name}</td>
       <td>${p.hsn_codes ? p.hsn_codes.hsn_code : ""}</td>
-      <td ${bulkEditEnabled ? 'contenteditable="true"' : ''} 
-          data-field="purchase_price_gst" data-id="${p.product_id}">${p.purchase_price_gst}</td>
-      <td ${bulkEditEnabled ? 'contenteditable="true"' : ''} 
-          data-field="landing_price_gst" data-id="${p.product_id}">${p.landing_price_gst}</td>
-      <td ${bulkEditEnabled ? 'contenteditable="true"' : ''} 
-          data-field="retail_price_gst" data-id="${p.product_id}">${p.retail_price_gst}</td>
-      <td ${bulkEditEnabled ? 'contenteditable="true"' : ''} 
-          data-field="wholesale_price_gst" data-id="${p.product_id}">${p.wholesale_price_gst}</td>
-      <td ${bulkEditEnabled ? 'contenteditable="true"' : ''} 
-          data-field="special_price_gst" data-id="${p.product_id}">${p.special_price_gst}</td>
-      <td ${bulkEditEnabled ? 'contenteditable="true"' : ''} 
-          data-field="department" data-id="${p.product_id}">${p.department}</td>
+      <td ${bulkEditEnabled ? 'contenteditable="true"' : ''} data-field="purchase_price_gst" data-id="${p.product_id}">${p.purchase_price_gst}</td>
+      <td ${bulkEditEnabled ? 'contenteditable="true"' : ''} data-field="landing_price_gst" data-id="${p.product_id}">${p.landing_price_gst}</td>
+      <td ${bulkEditEnabled ? 'contenteditable="true"' : ''} data-field="retail_price_gst" data-id="${p.product_id}">${p.retail_price_gst}</td>
+      <td ${bulkEditEnabled ? 'contenteditable="true"' : ''} data-field="wholesale_price_gst" data-id="${p.product_id}">${p.wholesale_price_gst}</td>
+      <td ${bulkEditEnabled ? 'contenteditable="true"' : ''} data-field="special_price_gst" data-id="${p.product_id}">${p.special_price_gst}</td>
+      <td ${bulkEditEnabled ? 'contenteditable="true"' : ''} data-field="department" data-id="${p.product_id}">${p.department}</td>
       <td>${p.online_offline}</td>
       <td>${p.image_url ? `<img src="${p.image_url}" width="50">` : ""}</td>
       <td>
@@ -221,7 +206,7 @@ function renderProducts(list) {
   });
 }
 
-// ✅ Save product
+// Save product
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
   const product = {
@@ -239,7 +224,7 @@ form.addEventListener("submit", async (e) => {
     special_price_gst: toNum(specialPriceGST.value),
     department: document.getElementById("department").value.trim(),
     online_offline: document.getElementById("onlineOffline").value,
-    image_url: "" // handle image upload separately
+    image_url: ""
   };
 
   try {
@@ -252,7 +237,6 @@ form.addEventListener("submit", async (e) => {
       if (error) throw error;
       showBanner("Product added successfully!", "success");
     }
-
     form.reset();
     editingId = null;
     if (!itemCodeInput.value) {
@@ -265,14 +249,13 @@ form.addEventListener("submit", async (e) => {
   }
 });
 
-// ✅ Edit product
+// Edit product
 window.editProduct = async function(id) {
   const { data, error } = await supabaseClient.from("products").select("*").eq("product_id", id).single();
   if (error) {
     showBanner("Error loading product: " + error.message, "error");
     return;
   }
-
   editingId = id;
   itemCodeInput.value = data.item_code;
   document.getElementById("itemName").value = data.item_name;
@@ -290,7 +273,7 @@ window.editProduct = async function(id) {
   document.getElementById("saveBtn").textContent = "Update Product";
 };
 
-// ✅ Delete product
+// Delete product
 window.deleteProduct = async function(id) {
   if (!confirm("Are you sure you want to delete this product?")) return;
   const { error } = await supabaseClient.from("products").delete().eq("product_id", id);

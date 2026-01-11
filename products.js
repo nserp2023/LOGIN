@@ -14,11 +14,17 @@ const gstPercentInput = document.getElementById("gstPercent");
 const purchasePrice = document.getElementById("purchasePrice");
 const purchasePriceGST = document.getElementById("purchasePriceGST");
 const landingPriceGST = document.getElementById("landingPriceGST");
+
 const retailPrice = document.getElementById("retailPrice");
+const retailPricePercent = document.getElementById("retailPricePercent");
 const retailPriceGST = document.getElementById("retailPriceGST");
+
 const wholesalePrice = document.getElementById("wholesalePrice");
+const wholesalePricePercent = document.getElementById("wholesalePricePercent");
 const wholesalePriceGST = document.getElementById("wholesalePriceGST");
+
 const specialPrice = document.getElementById("specialPrice");
+const specialPricePercent = document.getElementById("specialPricePercent");
 const specialPriceGST = document.getElementById("specialPriceGST");
 
 let editingId = null;
@@ -120,7 +126,15 @@ purchasePriceGST.addEventListener("input", () => {
 });
 landingPriceGST.addEventListener("input", () => {});
 
+// Retail logic
 retailPrice.addEventListener("input", () => {
+  const gst = toNum(gstPercentInput.value);
+  retailPriceGST.value = addGST(toNum(retailPrice.value), gst);
+});
+retailPricePercent.addEventListener("input", () => {
+  const base = toNum(purchasePrice.value);
+  const percent = toNum(retailPricePercent.value);
+  retailPrice.value = +(base + (base * percent / 100)).toFixed(2);
   const gst = toNum(gstPercentInput.value);
   retailPriceGST.value = addGST(toNum(retailPrice.value), gst);
 });
@@ -129,7 +143,15 @@ retailPriceGST.addEventListener("input", () => {
   retailPrice.value = removeGST(toNum(retailPriceGST.value), gst);
 });
 
+// Wholesale logic
 wholesalePrice.addEventListener("input", () => {
+  const gst = toNum(gstPercentInput.value);
+  wholesalePriceGST.value = addGST(toNum(wholesalePrice.value), gst);
+});
+wholesalePricePercent.addEventListener("input", () => {
+  const base = toNum(purchasePrice.value);
+  const percent = toNum(wholesalePricePercent.value);
+  wholesalePrice.value = +(base + (base * percent / 100)).toFixed(2);
   const gst = toNum(gstPercentInput.value);
   wholesalePriceGST.value = addGST(toNum(wholesalePrice.value), gst);
 });
@@ -138,7 +160,15 @@ wholesalePriceGST.addEventListener("input", () => {
   wholesalePrice.value = removeGST(toNum(wholesalePriceGST.value), gst);
 });
 
+// Special logic
 specialPrice.addEventListener("input", () => {
+  const gst = toNum(gstPercentInput.value);
+  specialPriceGST.value = addGST(toNum(specialPrice.value), gst);
+});
+specialPricePercent.addEventListener("input", () => {
+  const base = toNum(purchasePrice.value);
+  const percent = toNum(specialPricePercent.value);
+  specialPrice.value = +(base + (base * percent / 100)).toFixed(2);
   const gst = toNum(gstPercentInput.value);
   specialPriceGST.value = addGST(toNum(specialPrice.value), gst);
 });

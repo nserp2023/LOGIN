@@ -1,256 +1,172 @@
-// Supabase v2 via CDN
-const supabase = window.supabase;
-const supabaseUrl = "https://gqxczzijntbvtlmmzppt.supabase.co";
-const supabaseKey = "sb_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs";
-const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+// Initialize Supabase
+const supabaseClient = supabase.createClient("https://YOUR-PROJECT.supabase.co", "YOUR-ANON-KEY");
 
-// Elements
 const form = document.getElementById("purchaseForm");
 const banner = document.getElementById("banner");
-
 const billNumberInput = document.getElementById("billNumber");
-const entryDateInput = document.getElementById("currentDate");
-const invoiceDateInput = document.getElementById("invoiceDate");
-const invoiceNumberInput = document.getElementById("invoiceNumber");
-
-const supplierGSTInput = document.getElementById("supplierGST");
-const gstDropdown = document.getElementById("gstDropdown");
+const entryDateInput = document.getElementById("entryDate");
 const supplierNameInput = document.getElementById("supplierName");
-const supplierDropdown = document.getElementById("supplierDropdown");
-
+const supplierGSTInput = document.getElementById("supplierGST");
+const supplierNameDropdown = document.getElementById("supplierNameDropdown");
+const supplierGSTDropdown = document.getElementById("supplierGSTDropdown");
+const invoiceNumberInput = document.getElementById("invoiceNumber");
+const invoiceDateInput = document.getElementById("invoiceDate");
 const invoiceAmountInput = document.getElementById("invoiceAmount");
 const roundOffInput = document.getElementById("roundOff");
 const netPayableInput = document.getElementById("netPayable");
-
-const purchaseProductsBody = document.getElementById("purchaseProductsBody");
+const purchaseTbody = document.getElementById("purchaseTbody");
 const addProductBtn = document.getElementById("addProductBtn");
 
-// Helpers
-function showBanner(message, type = "success") {
-  banner.textContent = message;
-  banner.className = `banner banner-${type}`;
+// Utility
+function showBanner(msg, type) {
+  banner.textContent = msg;
+  banner.className = "banner banner-" + type;
   banner.style.display = "block";
-  setTimeout(() => { banner.style.display = "none"; }, 3000);
 }
-function toNum(v) { return parseFloat(v) || 0; }
+function toNum(val) { return parseFloat(val) || 0; }
 
-// Init
-document.addEventListener("DOMContentLoaded", async () => {
-  entryDateInput.value = new Date().toISOString().split("T")[0];
-  billNumberInput.value = await generateBillNumber();
-  addProductRow();
-});
-
-// Bill number generator
+// Generate Bill Number
 async function generateBillNumber() {
-  try {
-    const { data, error } = await supabaseClient
-      .from("purchases")
-      .select("bill_number")
-      .order("purchase_id", { ascending: false })
-      .limit(1);
-    if (error || !data || data.length === 0) return "BILL-001";
-    const last = parseInt((data[0].bill_number || "BILL-000").split("-")[1]) || 0;
-    return `BILL-${String(last + 1).padStart(3, "0")}`;
-  } catch (e) {
-    console.error("generateBillNumber error:", e);
-    return "BILL-001";
-  }
+  const { data, error } = await supabaseClient
+    .from("purchases")
+    .select("id", { count: "exact" });
+  if (error) { console.error(error); return "BILL-1"; }
+  return "BILL-" + (data.length + 1);
 }
 
-// Supplier search by GST
-supplierGSTInput.addEventListener("input", async () => {
-  const term = supplierGSTInput.value.trim();
-  if (!term) { gstDropdown.innerHTML = ""; return; }
-  const { data, error } = await supabaseClient
-    .from("suppliers")
-    .select("*")
-    .ilike("gst_number", `%${term}%`)
-    .limit(20);
-  if (error) { console.error(error); return; }
-  gstDropdown.innerHTML = "";
-  (data || []).forEach(s => {
-    const opt = document.createElement("option");
-    opt.value = s.supplier_id;
-    opt.textContent = `${s.gst_number} — ${s.supplier_name}`;
-    gstDropdown.appendChild(opt);
-  });
-});
-gstDropdown.addEventListener("change", async () => {
-  const id = gstDropdown.value;
-  if (!id) return;
-  const { data, error } = await supabaseClient
-    .from("suppliers")
-    .select("*")
-    .eq("supplier_id", id)
-    .single();
-  if (error || !data) return;
-  supplierGSTInput.value = data.gst_number || "";
-  supplierNameInput.value = data.supplier_name || "";
-});
-
-// Supplier search by name
-supplierNameInput.addEventListener("input", async () => {
-  const term = supplierNameInput.value.trim();
-  if (!term) { supplierDropdown.innerHTML = ""; return; }
-  const { data, error } = await supabaseClient
-    .from("suppliers")
-    .select("*")
-    .ilike("supplier_name", `%${term}%`)
-    .limit(20);
-  if (error) { console.error(error); return; }
-  supplierDropdown.innerHTML = "";
-  (data || []).forEach(s => {
-    const opt = document.createElement("option");
-    opt.value = s.supplier_id;
-    opt.textContent = `${s.supplier_name} — GST ${s.gst_number}`;
-    supplierDropdown.appendChild(opt);
-  });
-});
-supplierDropdown.addEventListener("change", async () => {
-  const id = supplierDropdown.value;
-  if (!id) return;
-  const { data, error } = await supabaseClient
-    .from("suppliers")
-    .select("*")
-    .eq("supplier_id", id)
-    .single();
-  if (error || !data) return;
-  supplierGSTInput.value = data.gst_number || "";
-  supplierNameInput.value = data.supplier_name || "";
-});
-
-// Net payable calculation
-function updateNetPayable() {
-  const inv = toNum(invoiceAmountInput.value);
-  const roff = toNum(roundOffInput.value);
-  netPayableInput.value = (inv + roff).toFixed(2);
-}
-invoiceAmountInput.addEventListener("input", updateNetPayable);
-roundOffInput.addEventListener("input", updateNetPayable);
-
-// Product row management
-addProductBtn.addEventListener("click", addProductRow);
-
+// Add Product Row
 function addProductRow() {
   const row = document.createElement("tr");
   row.innerHTML = `
-    <td><input type="text" class="itemCode" placeholder="ITEM-001"></td>
-    <td><input type="text" class="productName" placeholder="Type name…"></td>
-    <td><input type="number" class="qty" step="1" min="0" value="1"></td>
-    <td><input type="number" class="rate" step="0.01" min="0" value="0.00"></td>
-    <td><input type="number" class="amount" step="0.01" readonly></td>
-    <td><button type="button" class="removeBtn">Remove</button></td>
+    <td><input class="itemCode"></td>
+    <td><input class="productName"></td>
+    <td><input type="number" class="qty" step="0.01" value="1"></td>
+    <td><input type="number" class="rate" step="0.01"></td>
+    <td><input type="number" class="gstPercent" step="0.01"></td>
+    <td><input class="landingPrice" readonly></td>
+    <td><input type="number" class="retailPercent" step="0.01"></td>
+    <td><input class="retailPrice" readonly></td>
+    <td><input class="retailPriceGST" readonly></td>
+    <td><input type="number" class="wholesalePercent" step="0.01"></td>
+    <td><input class="wholesalePrice" readonly></td>
+    <td><input class="wholesalePriceGST" readonly></td>
+    <td><input type="number" class="specialPercent" step="0.01"></td>
+    <td><input class="specialPrice" readonly></td>
+    <td><input class="specialPriceGST" readonly></td>
+    <td><button type="button" class="removeBtn">X</button></td>
   `;
-  purchaseProductsBody.appendChild(row);
+  purchaseTbody.appendChild(row);
 
-  const qtyEl = row.querySelector(".qty");
-  const rateEl = row.querySelector(".rate");
-  const amountEl = row.querySelector(".amount");
-  const removeBtn = row.querySelector(".removeBtn");
-
-  function updateAmount() {
-    const qty = toNum(qtyEl.value);
-    const rate = toNum(rateEl.value);
-    amountEl.value = (qty * rate).toFixed(2);
-    recomputeInvoiceAmount();
-  }
-
-  qtyEl.addEventListener("input", updateAmount);
-  rateEl.addEventListener("input", updateAmount);
-  removeBtn.addEventListener("click", () => { row.remove(); recomputeInvoiceAmount(); });
-
-  updateAmount();
+  // Events
+  row.querySelectorAll("input").forEach(inp => {
+    inp.addEventListener("input", () => recalcRow(row));
+  });
+  row.querySelector(".removeBtn").addEventListener("click", () => row.remove());
 }
 
-function recomputeInvoiceAmount() {
-  let total = 0;
-  document.querySelectorAll("#purchaseProductsBody .amount").forEach(a => {
-    total += toNum(a.value);
-  });
-  invoiceAmountInput.value = total.toFixed(2);
+// Row Calculation
+function recalcRow(row) {
+  const qty = toNum(row.querySelector(".qty").value);
+  const rate = toNum(row.querySelector(".rate").value);
+  const gst = toNum(row.querySelector(".gstPercent").value);
+
+  const landing = qty * rate * (1 + gst / 100);
+  row.querySelector(".landingPrice").value = landing.toFixed(2);
+
+  // Retail
+  const rPct = toNum(row.querySelector(".retailPercent").value);
+  const rPrice = landing * (1 + rPct / 100);
+  row.querySelector(".retailPrice").value = rPrice.toFixed(2);
+  row.querySelector(".retailPriceGST").value = (rPrice * (1 + gst / 100)).toFixed(2);
+
+  // Wholesale
+  const wPct = toNum(row.querySelector(".wholesalePercent").value);
+  const wPrice = landing * (1 + wPct / 100);
+  row.querySelector(".wholesalePrice").value = wPrice.toFixed(2);
+  row.querySelector(".wholesalePriceGST").value = (wPrice * (1 + gst / 100)).toFixed(2);
+
+  // Special
+  const sPct = toNum(row.querySelector(".specialPercent").value);
+  const sPrice = landing * (1 + sPct / 100);
+  row.querySelector(".specialPrice").value = sPrice.toFixed(2);
+  row.querySelector(".specialPriceGST").value = (sPrice * (1 + gst / 100)).toFixed(2);
+
   updateNetPayable();
 }
 
-// Save purchase
+// Net Payable
+function updateNetPayable() {
+  const total = Array.from(purchaseTbody.querySelectorAll(".landingPrice"))
+    .reduce((sum, inp) => sum + toNum(inp.value), 0);
+  const roundOff = toNum(roundOffInput.value);
+  netPayableInput.value = (total + roundOff).toFixed(2);
+}
+
+// Collect Items
+function collectItems() {
+  return Array.from(purchaseTbody.querySelectorAll("tr")).map(row => ({
+    item_code: row.querySelector(".itemCode").value,
+    item_name: row.querySelector(".productName").value,
+    qty: toNum(row.querySelector(".qty").value),
+    rate: toNum(row.querySelector(".rate").value),
+    gst_percent: toNum(row.querySelector(".gstPercent").value),
+    landing_price: toNum(row.querySelector(".landingPrice").value),
+    retail_percent: toNum(row.querySelector(".retailPercent").value),
+    retail_price: toNum(row.querySelector(".retailPrice").value),
+    retail_price_gst: toNum(row.querySelector(".retailPriceGST").value),
+    wholesale_percent: toNum(row.querySelector(".wholesalePercent").value),
+    wholesale_price: toNum(row.querySelector(".wholesalePrice").value),
+    wholesale_price_gst: toNum(row.querySelector(".wholesalePriceGST").value),
+    special_percent: toNum(row.querySelector(".specialPercent").value),
+    special_price: toNum(row.querySelector(".specialPrice").value),
+    special_price_gst: toNum(row.querySelector(".specialPriceGST").value),
+  }));
+}
+
+// Save Purchase
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
-
-  const supplierName = supplierNameInput.value.trim();
-  const supplierGST = supplierGSTInput.value.trim();
-  if (!supplierName || !supplierGST) {
-    showBanner("Please select a supplier (GST & name).", "warning");
-    return;
-  }
-  const items = collectItems();
-  if (items.length === 0) {
-    showBanner("Add at least one product row.", "warning");
-    return;
-  }
-
-  const payloadPurchase = {
-    bill_number: billNumberInput.value.trim(),
-    entry_date: entryDateInput.value,
-    invoice_date: invoiceDateInput.value,
-    invoice_number: invoiceNumberInput.value.trim(),
-    supplier_name: supplierName,
-    supplier_gst: supplierGST,
-    invoice_amount: toNum(invoiceAmountInput.value),
-    round_off: toNum(roundOffInput.value),
-    net_payable: toNum(netPayableInput.value)
-  };
-
   try {
-    const { data: purchaseData, error: purchaseError } = await supabaseClient
+    const purchase = {
+      bill_number: billNumberInput.value,
+      bill_date: entryDateInput.value,
+      supplier_name: supplierNameInput.value,
+      gst_number: supplierGSTInput.value,
+      invoice_number: invoiceNumberInput.value,
+      invoice_date: invoiceDateInput.value,
+      invoice_amount: toNum(invoiceAmountInput.value),
+      round_off: toNum(roundOffInput.value),
+      net_payable: toNum(netPayableInput.value),
+    };
+
+    const { data: purchaseData, error } = await supabaseClient
       .from("purchases")
-      .insert([payloadPurchase])
-      .select("purchase_id")
+      .insert([purchase])
+      .select()
       .single();
-    if (purchaseError) throw purchaseError;
+    if (error) throw error;
 
-    const purchaseId = purchaseData.purchase_id;
-
-    const itemsPayload = items.map(it => ({
-      purchase_id: purchaseId,
-      item_code: it.item_code,
-      item_name: it.item_name,
-      qty: it.qty,
-      rate: it.rate,
-      amount: it.amount
-    }));
-
-    const { error: itemsError } = await supabaseClient
-      .from("purchase_items")
-      .insert(itemsPayload);
-
-    if (itemsError) throw itemsError;
+    const items = collectItems().map(it => ({ ...it, purchase_id: purchaseData.id }));
+    const { error: itemError } = await supabaseClient.from("purchase_items").insert(items);
+    if (itemError) throw itemError;
 
     showBanner("Purchase saved successfully!", "success");
 
-    // Reset form
     form.reset();
     entryDateInput.value = new Date().toISOString().split("T")[0];
     billNumberInput.value = await generateBillNumber();
-    purchaseProductsBody.innerHTML = "";
+    purchaseTbody.innerHTML = "";
     addProductRow();
     updateNetPayable();
-
   } catch (err) {
-    console.error("Save error:", err);
-    const msg = err?.message || "Unknown error";
-    showBanner("Error saving purchase: " + msg, "error");
+    console.error(err);
+    showBanner("Error saving purchase: " + err.message, "error");
   }
-}
+});
 
-// Helper to collect product rows
-function collectItems() {
-  const rows = Array.from(document.querySelectorAll("#purchaseProductsBody tr"));
-  return rows.map(row => {
-    const item_code = row.querySelector(".itemCode").value.trim();
-    const item_name = row.querySelector(".productName").value.trim();
-    const qty = toNum(row.querySelector(".qty").value);
-    const rate = toNum(row.querySelector(".rate").value);
-    const amount = toNum(row.querySelector(".amount").value);
-    return { item_code, item_name, qty, rate, amount };
-  }).filter(it => it.item_name || it.item_code);
-}
+// Init
+(async () => {
+  entryDateInput.value = new Date().toISOString().split("T")[0];
+  billNumberInput.value = await generateBillNumber();
+  addProductRow();
+})();

@@ -31,8 +31,7 @@
     <section class="card">
       <form id="productForm" class="inline-form">
         <label>Item Code
-         <input type="text" id="itemCode" required readonly>
-          <button type="button" onclick="document.getElementById('itemCode').removeAttribute('readonly')">Unlock</button>
+          <input type="text" id="itemCode" required readonly>
         </label>
         <label>Item Name
           <input type="text" id="itemName" required>
@@ -55,22 +54,34 @@
           <input type="number" id="landingPriceGST" step="0.01">
         </label>
 
+        <!-- Retail -->
         <label>Retail Price
           <input type="number" id="retailPrice" step="0.01">
+        </label>
+        <label>Retail Price %
+          <input type="number" id="retailPricePercent" step="0.01">
         </label>
         <label>Retail Price + GST
           <input type="number" id="retailPriceGST" step="0.01">
         </label>
 
+        <!-- Wholesale -->
         <label>Wholesale Price
           <input type="number" id="wholesalePrice" step="0.01">
+        </label>
+        <label>Wholesale Price %
+          <input type="number" id="wholesalePricePercent" step="0.01">
         </label>
         <label>Wholesale Price + GST
           <input type="number" id="wholesalePriceGST" step="0.01">
         </label>
 
+        <!-- Special -->
         <label>Special Price
           <input type="number" id="specialPrice" step="0.01">
+        </label>
+        <label>Special Price %
+          <input type="number" id="specialPricePercent" step="0.01">
         </label>
         <label>Special Price + GST
           <input type="number" id="specialPriceGST" step="0.01">

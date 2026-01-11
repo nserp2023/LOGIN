@@ -4,346 +4,158 @@
   <meta charset="UTF-8">
   <title>Purchase Entry</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <!-- Attach your old CSS files -->
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="dashboard.css">
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+    }
+    .form-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+    .field-group {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    .field-group label {
+      font-size: 12px;
+      margin-bottom: 2px;
+    }
+    .field-group input,
+    .field-group select {
+      font-size: 13px;
+      padding: 4px;
+      margin-bottom: 2px;
+    }
+    .dashboard-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+    }
+    .dashboard-table th,
+    .dashboard-table td {
+      border: 1px solid #ccc;
+      text-align: center;
+      padding: 6px;
+      font-size: 13px;
+    }
+    #banner {
+      display: none;
+      padding: 8px;
+      margin-bottom: 12px;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+    .banner-success { background: #d4edda; color: #155724; }
+    .banner-error { background: #f8d7da; color: #721c24; }
+    .banner-warning { background: #fff3cd; color: #856404; }
+    button {
+      padding: 6px 12px;
+      font-size: 14px;
+      margin-top: 10px;
+    }
+
+    #roundOff {
+  max-width: 40px;   /* or 80px if you want tighter */
+}
+
+#billNumber {
+  max-width: 80px;   /* or 80px if you want tighter */
+}
+
+#invoiceAmount {
+  max-width: 100px;   /* or 80px if you want tighter */
+}
+  </style>
 </head>
-<body class="dashboard-page">
+<body>
   <h1>Purchase Entry</h1>
   <div id="banner" class="banner"></div>
 
-  <section class="card">
-    <form id="purchaseForm" class="inline-form">
-      <!-- Bill & Dates -->
-      <div class="actions">
-        <label>Bill Number
-          <input type="text" id="billNumber" readonly>
-        </label>
-        <label>Entry Date
-          <input type="date" id="entryDate" readonly>
-        </label>
-        <label>Invoice Date
-          <input type="date" id="invoiceDate" required>
-        </label>
-        <label>Invoice Number
-          <input type="text" id="invoiceNumber" required>
-        </label>
+  <form id="purchaseForm">
+
+    <!-- Row 1 -->
+    <div class="form-row">
+      <div class="field-group">
+        <label>Bill Number</label>
+        <input type="text" id="billNumber" readonly>
+      </div>
+      <div class="field-group">
+        <label>Bill Date</label>
+        <input type="date" id="entryDate" readonly>
+      </div>
+      <div class="field-group">
+        <label>GST Number</label>
+        <input type="text" id="supplierGST" required>
+        <select id="supplierGSTDropdown"></select>
+      </div>
+      <div class="field-group">
+        <label>Supplier Name</label>
+        <input type="text" id="supplierName" required>
+        <select id="supplierNameDropdown"></select>
+      </div>
+            <div class="field-group">
+        <label>Invoice Number</label>
+        <input type="text" id="invoiceNumber" required>
+      </div>
+      <div class="field-group">
+        <label>Invoice Date</label>
+        <input type="date" id="invoiceDate" required>
+      </div>
+            <div class="field-group">
+        <label>Invoice Amount</label>
+        <input type="number" id="invoiceAmount" step="0.01" required>
+      </div>
+      <div class="field-group">
+        <label>Round Off</label>
+        <input type="number" id="roundOff" step="0.01" value="0">
+      </div>
+      <div class="field-group">
+        <label>Net Payable</label>
+        <input type="number" id="netPayable" step="0.01" readonly>
       </div>
 
-      <!-- Supplier -->
-      <h3>Supplier</h3>
-      <div class="actions">
-<label>Supplier Name
-  <input type="text" id="supplierName" placeholder="Enter supplier name">
-  <select id="supplierNameDropdown"></select>
-</label>
-<label>GST Number
-  <input type="text" id="supplierGST" placeholder="Enter GST number">
-  <select id="supplierGSTDropdown"></select>
-</label>      </div>
 
-      <!-- Amounts -->
-      <h3>Invoice</h3>
-      <div class="actions">
-        <label>Invoice Amount
-          <input type="number" id="invoiceAmount" step="0.01" required>
-        </label>
-        <label>Round Off
-          <input type="number" id="roundOff" step="0.01" value="0">
-        </label>
-        <label>Net Payable
-          <input type="number" id="netPayable" step="0.01" readonly>
-        </label>
-      </div>
+    </div>
 
-      <!-- Products -->
-      <h3>Products</h3>
-      <table class="dashboard-table">
-        <thead>
-          <tr>
-            <th>Item Code</th>
-            <th>Product Name</th>
-            <th>Qty</th>
-            <th>Rate</th>
-            <th>Amount</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody id="purchaseTbody"></tbody>
-      </table>
-      <button type="button" id="addProductBtn">+ Add Product</button>
+    <!-- Product Table -->
+    <table class="dashboard-table">
+      <thead>
+        <tr>
+          <th>Item Code</th>
+          <th>Item Name</th>
+          <th>Qty</th>
+          <th>Purchase Price</th>
+          <th>GST %</th>
+          <th>Landing Price + GST</th>
+          <th>Retail %</th>
+          <th>Retail Price</th>
+          <th>Retail + GST</th>
+          <th>Wholesale %</th>
+          <th>Wholesale Price</th>
+          <th>Wholesale + GST</th>
+          <th>Special %</th>
+          <th>Special Price</th>
+          <th>Special + GST</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="purchaseTbody"></tbody>
+    </table>
+    <button type="button" id="addProductBtn">+ Add Product</button>
 
-      <!-- Save -->
-      <div class="actions" style="margin-top:12px;">
-        <button type="submit" id="savePurchaseBtn" class="save-btn">Save Purchase</button>
-      </div>
-    </form>
-  </section>
+    <!-- Save -->
+    <div class="form-row">
+      <button type="submit" id="savePurchaseBtn">Save Purchase</button>
+    </div>
+  </form>
 
   <!-- Supabase + JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script>
-// Supabase config
-const supabaseUrl = "https://gqxczzijntbvtlmmzppt.supabase.co";
-const supabaseKey = "sb_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs";
-const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
-
-// Elements
-const banner = document.getElementById("banner");
-const form = document.getElementById("purchaseForm");
-
-const billNumberInput = document.getElementById("billNumber");
-const entryDateInput = document.getElementById("entryDate");
-const invoiceDateInput = document.getElementById("invoiceDate");
-const invoiceNumberInput = document.getElementById("invoiceNumber");
-
-const supplierNameInput = document.getElementById("supplierName");
-const supplierGSTInput = document.getElementById("supplierGST");
-const supplierNameDropdown = document.getElementById("supplierNameDropdown");
-const supplierGSTDropdown = document.getElementById("supplierGSTDropdown");
-
-const invoiceAmountInput = document.getElementById("invoiceAmount");
-const roundOffInput = document.getElementById("roundOff");
-const netPayableInput = document.getElementById("netPayable");
-
-const purchaseTbody = document.getElementById("purchaseTbody");
-const addProductBtn = document.getElementById("addProductBtn");
-
-// Helpers
-function showBanner(message, type = "success") {
-  banner.textContent = message;
-  banner.className = `banner banner-${type}`;
-  banner.style.display = "block";
-  setTimeout(() => { banner.style.display = "none"; }, 3500);
-}
-function toNum(v) { return parseFloat(v) || 0; }
-
-// Init
-document.addEventListener("DOMContentLoaded", async () => {
-  entryDateInput.value = new Date().toISOString().split("T")[0];
-  billNumberInput.value = await generateBillNumber();
-  addProductRow();
-  updateNetPayable();
-});
-
-// Bill number generator
-async function generateBillNumber() {
-  try {
-    const { data, error } = await supabaseClient
-      .from("purchases")
-      .select("bill_number")
-      .order("purchase_id", { ascending: false })
-      .limit(1);
-    if (error || !data || data.length === 0) return "BILL-001";
-    const last = parseInt((data[0].bill_number || "BILL-000").split("-")[1]) || 0;
-    return `BILL-${String(last + 1).padStart(3, "0")}`;
-  } catch (e) {
-    console.warn("generateBillNumber fallback:", e);
-    return "BILL-001";
-  }
-}
-
-// --- Supplier search by Name ---
-supplierNameInput.addEventListener("input", async () => {
-  const term = supplierNameInput.value.trim();
-  if (!term) { supplierNameDropdown.innerHTML = ""; return; }
-
-  const { data, error } = await supabaseClient
-    .from("suppliers")
-    .select("*")
-    .ilike("name", `%${term}%`)
-    .limit(10);
-
-  if (error) { console.error(error); return; }
-
-  supplierNameDropdown.innerHTML = "";
-  (data || []).forEach(s => {
-    const opt = document.createElement("option");
-    opt.value = s.id || s.supplier_id;
-    opt.textContent = `${s.name} — GST ${s.gst_number || ""}`;
-    supplierNameDropdown.appendChild(opt);
-  });
-});
-
-supplierNameDropdown.addEventListener("change", async () => {
-  const id = supplierNameDropdown.value;
-  if (!id) return;
-  const { data } = await supabaseClient
-    .from("suppliers")
-    .select("*")
-    .eq("id", id)
-    .single();
-  if (!data) return;
-  supplierNameInput.value = data.name || "";
-  supplierGSTInput.value = data.gst_number || "";
-});
-
-// --- Supplier search by GST ---
-supplierGSTInput.addEventListener("input", async () => {
-  const term = supplierGSTInput.value.trim();
-  if (!term) { supplierGSTDropdown.innerHTML = ""; return; }
-
-  const { data, error } = await supabaseClient
-    .from("suppliers")
-    .select("*")
-    .ilike("gst_number", `%${term}%`)
-    .limit(10);
-
-  if (error) { console.error(error); return; }
-
-  supplierGSTDropdown.innerHTML = "";
-  (data || []).forEach(s => {
-    const opt = document.createElement("option");
-    opt.value = s.id || s.supplier_id;
-    opt.textContent = `${s.gst_number || ""} — ${s.name}`;
-    supplierGSTDropdown.appendChild(opt);
-  });
-});
-
-supplierGSTDropdown.addEventListener("change", async () => {
-  const id = supplierGSTDropdown.value;
-  if (!id) return;
-  const { data } = await supabaseClient
-    .from("suppliers")
-    .select("*")
-    .eq("id", id)
-    .single();
-  if (!data) return;
-  supplierNameInput.value = data.name || "";
-  supplierGSTInput.value = data.gst_number || "";
-});
-
-// Totals
-function updateNetPayable() {
-  const inv = toNum(invoiceAmountInput.value);
-  const roff = toNum(roundOffInput.value);
-  netPayableInput.value = (inv + roff).toFixed(2);
-}
-invoiceAmountInput.addEventListener("input", updateNetPayable);
-roundOffInput.addEventListener("input", updateNetPayable);
-
-// Product rows
-addProductBtn.addEventListener("click", addProductRow);
-
-function addProductRow() {
-  const row = document.createElement("tr");
-  row.innerHTML = `
-    <td><input type="text" class="itemCode" placeholder="ITEM-001"></td>
-    <td><input type="text" class="productName" placeholder="Type name…" required></td>
-    <td><input type="number" class="qty" step="1" min="0" value="1" required></td>
-    <td><input type="number" class="rate" step="0.01" min="0" value="0.00" required></td>
-    <td><input type="number" class="amount" step="0.01" readonly></td>
-    <td><button type="button" class="removeBtn">Remove</button></td>
-  `;
-  purchaseTbody.appendChild(row);
-
-  const qtyEl = row.querySelector(".qty");
-  const rateEl = row.querySelector(".rate");
-  const amountEl = row.querySelector(".amount");
-  const removeBtn = row.querySelector(".removeBtn");
-
-  function updateAmount() {
-    const qty = toNum(qtyEl.value);
-    const rate = toNum(rateEl.value);
-    amountEl.value = (qty * rate).toFixed(2);
-    recomputeInvoiceAmount();
-  }
-
-  qtyEl.addEventListener("input", updateAmount);
-  rateEl.addEventListener("input", updateAmount);
-  removeBtn.addEventListener("click", () => { row.remove(); recomputeInvoiceAmount(); });
-
-  updateAmount();
-}
-
-function recomputeInvoiceAmount() {
-  let total = 0;
-  document.querySelectorAll("#purchaseTbody .amount").forEach(a => {
-    total += toNum(a.value);
-  });
-  invoiceAmountInput.value = total.toFixed(2);
-  updateNetPayable();
-}
-
-// Save purchase
-form.addEventListener("submit", async (e) => {
-  e.preventDefault();
-
-  const supplierName = supplierNameInput.value.trim();
-  const supplierGST = supplierGSTInput.value.trim();
-  if (!supplierName || !supplierGST) {
-    showBanner("Please select a supplier (GST & name).", "warning");
-    return;
-  }
-  const items = collectItems();
-  if (items.length === 0) {
-    showBanner("Add at least one product row.", "warning");
-    return;
-  }
-
-  const payloadPurchase = {
-    bill_number: billNumberInput.value.trim(),
-    entry_date: entryDateInput.value,
-    invoice_date: invoiceDateInput.value,
-    invoice_number: invoiceNumberInput.value.trim(),
-    supplier_name: supplierName,
-    supplier_gst: supplierGST,
-    invoice_amount: toNum(invoiceAmountInput.value),
-    round_off: toNum(roundOffInput.value),
-    net_payable: toNum(netPayableInput.value)
-  };
-
-  try {
-    const { data: purchaseData, error: purchaseError } = await supabaseClient
-      .from("purchases")
-      .insert([payloadPurchase])
-      .select("purchase_id")
-      .single();
-    if (purchaseError) throw purchaseError;
-
-    const purchaseId = purchaseData.purchase_id;
-
-    const itemsPayload = items.map(it => ({
-      purchase_id: purchaseId,
-      item_code: it.item_code,
-      item_name: it.item_name,
-      qty: it.qty,
-      rate: it.rate,
-      amount: it.amount
-    }));
-
-    const { error: itemsError } = await supabaseClient
-      .from("purchase_items")
-      .insert(itemsPayload);
-    if (itemsError) throw itemsError;
-
-    showBanner("Purchase saved successfully!", "success");
-
-    // Reset form for next entry
-    form.reset();
-    entryDateInput.value = new Date().toISOString().split("T")[0];
-    billNumberInput.value = await generateBillNumber();
-    purchaseTbody.innerHTML = "";
-    addProductRow();
-    updateNetPayable();
-
-  } catch (err) {
-    console.error("Save error:", err);
-    showBanner("Error saving purchase: " + (err?.message || "Unknown error"), "error");
-  }
-});
-
-// Helper to collect product rows
-function collectItems() {
-  const rows = Array.from(document.querySelectorAll("#purchaseTbody tr"));
-  return rows.map(row => {
-    const item_code = row.querySelector(".itemCode").value.trim();
-    const item_name = row.querySelector(".productName").value.trim();
-    const qty = toNum(row.querySelector(".qty").value);
-    const rate = toNum(row.querySelector(".rate").value);
-    const amount = toNum(row.querySelector(".amount").value);
-    return { item_code, item_name, qty, rate, amount };
-  }).filter(it => it.item_name || it.item_code);
-}</script>
+  <script src="purchase.js"></script>
 </body>
 </html>

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Purchase Entry</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body class="dashboard-page">
+  <header>
+    <h1>Purchase Entry</h1>
+  </header>
+
+  <!-- Banner for success/error -->
+  <div id="banner" class="banner" style="display:none"></div>
+
+  <main>
+    <section class="card">
+      <form id="purchaseForm" class="inline-form">
+        <!-- Bill Info -->
+        <label>Bill Number
+          <input type="text" id="billNumber" readonly>
+        </label>
+        <label>Current Date
+          <input type="date" id="currentDate" readonly>
+        </label>
+
+        <!-- Invoice Info -->
+        <label>Invoice Date
+          <input type="date" id="invoiceDate" required>
+        </label>
+        <label>Invoice Number
+          <input type="text" id="invoiceNumber" required>
+        </label>
+
+        <!-- Supplier Info -->
+        <label>GST Number
+          <input type="text" id="supplierGST" placeholder="Type GST number...">
+          <select id="gstDropdown"></select>
+        </label>
+        <label>Supplier Name
+          <input type="text" id="supplierName" placeholder="Type supplier name...">
+          <select id="supplierDropdown"></select>
+        </label>
+
+        <!-- Invoice Amount -->
+        <label>Invoice Amount
+          <input type="number" id="invoiceAmount" step="0.01" required>
+        </label>
+        <label>Round Off
+          <input type="number" id="roundOff" step="0.01">
+        </label>
+
+        <!-- Products -->
+        <h3>Products</h3>
+        <table class="dashboard-table">
+          <thead>
+            <tr>
+              <th>Item Code</th>
+              <th>Product Name</th>
+              <th>Qty</th>
+              <th>Rate</th>
+              <th>Amount</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="purchaseProductsBody"></tbody>
+        </table>
+        <button type="button" id="addProductBtn">+ Add Product</button>
+
+        <!-- Save -->
+        <button type="submit" id="savePurchaseBtn" class="save-btn">Save Purchase</button>
+      </form>
+    </section>
+  </main>
+
+  <!-- Supabase + JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="purchase.js"></script>
+</body>
+</html>

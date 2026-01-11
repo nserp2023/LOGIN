@@ -229,15 +229,10 @@ form.addEventListener("submit", async (e) => {
 
     // Reset form
     form.reset();
-    // Re‑populate entry date and bill number after reset
     entryDateInput.value = new Date().toISOString().split("T")[0];
     billNumberInput.value = await generateBillNumber();
-
-    // Clear product rows and add a fresh one
     purchaseProductsBody.innerHTML = "";
     addProductRow();
-
-    // Reset totals
     updateNetPayable();
 
   } catch (err) {
@@ -245,9 +240,9 @@ form.addEventListener("submit", async (e) => {
     const msg = err?.message || "Unknown error";
     showBanner("Error saving purchase: " + msg, "error");
   }
-});
+}
 
-// Collect items helper
+// Helper to collect product rows
 function collectItems() {
   const rows = Array.from(document.querySelectorAll("#purchaseProductsBody tr"));
   return rows.map(row => {

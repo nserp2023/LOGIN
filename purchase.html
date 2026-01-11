@@ -15,7 +15,7 @@
     .inline-form input, .inline-form select { padding:8px; }
     .dashboard-table { width:100%; border-collapse:collapse; margin-top:12px; }
     .dashboard-table th, .dashboard-table td { border:1px solid #ddd; padding:8px; }
-    .actions { display:flex; gap:8px; }
+    .actions { display:flex; flex-wrap:wrap; gap:12px; }
   </style>
 </head>
 <body class="dashboard-page">
@@ -28,68 +28,76 @@
   <main>
     <section class="card">
       <form id="purchaseForm" class="inline-form">
+
+        <!-- Bill & Dates -->
         <div class="actions">
-          <label>Bill number
+          <label>Bill Number
             <input type="text" id="billNumber" readonly>
           </label>
-          <label>Current date
+          <label>Entry Date
             <input type="date" id="currentDate" readonly>
           </label>
-          <label>Invoice date
+          <label>Invoice Date
             <input type="date" id="invoiceDate" required>
           </label>
-          <label>Invoice number
+          <label>Invoice Number
             <input type="text" id="invoiceNumber" required>
           </label>
         </div>
 
+        <!-- Supplier -->
         <h3>Supplier</h3>
         <div class="actions">
-          <label>GST number
+          <label>GST Number
             <input type="text" id="supplierGST" placeholder="Type GST number…">
             <select id="gstDropdown"></select>
           </label>
-          <label>Supplier name
+          <label>Supplier Name
             <input type="text" id="supplierName" placeholder="Type supplier name…">
             <select id="supplierDropdown"></select>
           </label>
         </div>
 
+        <!-- Amounts -->
+        <h3>Invoice</h3>
         <div class="actions">
-          <label>Invoice amount
+          <label>Invoice Amount
             <input type="number" id="invoiceAmount" step="0.01" required>
           </label>
-          <label>Round off
+          <label>Round Off
             <input type="number" id="roundOff" step="0.01" value="0">
           </label>
-          <label>Net payable
+          <label>Net Payable
             <input type="number" id="netPayable" step="0.01" readonly>
           </label>
         </div>
 
+        <!-- Products -->
         <h3>Products</h3>
         <table class="dashboard-table">
           <thead>
             <tr>
-              <th>Item code</th>
-              <th>Product name</th>
+              <th>Item Code</th>
+              <th>Product Name</th>
               <th>Qty</th>
               <th>Rate</th>
               <th>Amount</th>
-              <th></th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody id="purchaseProductsBody"></tbody>
         </table>
-        <button type="button" id="addProductBtn">+ Add product</button>
+        <button type="button" id="addProductBtn">+ Add Product</button>
 
+        <!-- Save -->
         <div class="actions" style="margin-top:12px;">
-          <button type="submit" id="savePurchaseBtn" class="save-btn">Save purchase</button>
+          <button type="submit" id="savePurchaseBtn" class="save-btn">Save Purchase</button>
         </div>
       </form>
     </section>
   </main>
 
+  <!-- Supabase + JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="purchase.js"></script>
 </body>

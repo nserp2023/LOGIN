@@ -9,7 +9,7 @@ const form = document.getElementById("purchaseForm");
 const banner = document.getElementById("banner");
 
 const billNumberInput = document.getElementById("billNumber");
-const currentDateInput = document.getElementById("currentDate");
+const entryDateInput = document.getElementById("currentDate"); // now maps to entry_date
 const invoiceDateInput = document.getElementById("invoiceDate");
 const invoiceNumberInput = document.getElementById("invoiceNumber");
 
@@ -36,12 +36,12 @@ function toNum(v) { return parseFloat(v) || 0; }
 
 // Init
 document.addEventListener("DOMContentLoaded", async () => {
-  currentDateInput.value = new Date().toISOString().split("T")[0];
+  entryDateInput.value = new Date().toISOString().split("T")[0];
   billNumberInput.value = await generateBillNumber();
   addProductRow(); // start with one row
 });
 
-// Bill number generator (robust)
+// Bill number generator
 async function generateBillNumber() {
   const { data, error } = await supabaseClient
     .from("purchases")
@@ -137,14 +137,8 @@ addProductBtn.addEventListener("click", addProductRow);
 function addProductRow() {
   const row = document.createElement("tr");
   row.innerHTML = `
-    <td>
-      <input type="text" class="itemCode" placeholder="ITEM-001">
-      <button type="button" class="lookupItemCode">Find</button>
-    </td>
-    <td>
-      <input type="text" class="productName" placeholder="Type name…">
-      <button type="button" class="lookupProductName">Find</button>
-    </td>
+    <td><input type="text" class="itemCode" placeholder="ITEM-001"></td>
+    <td><input type="text" class="productName" placeholder="Type name…"></td>
     <td><input type="number" class="qty" step="1" min="0" value="1"></td>
     <td><input type="number" class="rate" step="0.01" min="0" value="0.00"></td>
     <td><input type="number" class="amount" step="0.01" readonly></td>
@@ -156,16 +150,11 @@ function addProductRow() {
   const rateEl = row.querySelector(".rate");
   const amountEl = row.querySelector(".amount");
   const removeBtn = row.querySelector(".removeBtn");
-  const lookupItemBtn = row.querySelector(".lookupItemCode");
-  const lookupNameBtn = row.querySelector(".lookupProductName");
-  const itemCodeEl = row.querySelector(".itemCode");
-  const productNameEl = row.querySelector(".productName");
 
   function updateAmount() {
     const qty = toNum(qtyEl.value);
     const rate = toNum(rateEl.value);
     amountEl.value = (qty * rate).toFixed(2);
-    // also update invoice amount total
     recomputeInvoiceAmount();
   }
 
@@ -173,38 +162,6 @@ function addProductRow() {
   rateEl.addEventListener("input", updateAmount);
   removeBtn.addEventListener("click", () => { row.remove(); recomputeInvoiceAmount(); });
 
-  // Lookup by item code → fill product name & rate (use retail_price_gst as default)
-  lookupItemBtn.addEventListener("click", async () => {
-    const code = itemCodeEl.value.trim();
-    if (!code) return;
-    const { data, error } = await supabaseClient
-      .from("products")
-      .select("*")
-      .eq("item_code", code)
-      .single();
-    if (error || !data) { showBanner("Product not found by item code.", "warning"); return; }
-    productNameEl.value = data.item_name || "";
-    rateEl.value = (data.purchase_price_gst || data.retail_price_gst || 0).toFixed(2);
-    updateAmount();
-  });
-
-  // Lookup by product name (first match)
-  lookupNameBtn.addEventListener("click", async () => {
-    const name = productNameEl.value.trim();
-    if (!name) return;
-    const { data, error } = await supabaseClient
-      .from("products")
-      .select("*")
-      .ilike("item_name", `%${name}%`)
-      .limit(1);
-    if (error || !data || data.length === 0) { showBanner("Product not found by name.", "warning"); return; }
-    const p = data[0];
-    itemCodeEl.value = p.item_code || "";
-    rateEl.value = (p.purchase_price_gst || p.retail_price_gst || 0).toFixed(2);
-    updateAmount();
-  });
-
-  // initial compute
   updateAmount();
 }
 
@@ -221,7 +178,6 @@ function recomputeInvoiceAmount() {
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
 
-  // Basic validation
   const supplierName = supplierNameInput.value.trim();
   const supplierGST = supplierGSTInput.value.trim();
   if (!supplierName || !supplierGST) {
@@ -236,7 +192,7 @@ form.addEventListener("submit", async (e) => {
 
   const payloadPurchase = {
     bill_number: billNumberInput.value.trim(),
-    current_date: currentDateInput.value,
+    entry_date: entryDateInput.value,
     invoice_date: invoiceDateInput.value,
     invoice_number: invoiceNumberInput.value.trim(),
     supplier_name: supplierName,
@@ -247,7 +203,6 @@ form.addEventListener("submit", async (e) => {
   };
 
   try {
-    // Insert purchase
     const { data: purchaseData, error: purchaseError } = await supabaseClient
       .from("purchases")
       .insert([payloadPurchase])
@@ -257,7 +212,6 @@ form.addEventListener("submit", async (e) => {
 
     const purchaseId = purchaseData.purchase_id;
 
-    // Insert items
     const itemsPayload = items.map(it => ({
       purchase_id: purchaseId,
       item_code: it.item_code,
@@ -270,22 +224,27 @@ form.addEventListener("submit", async (e) => {
     const { error: itemsError } = await supabaseClient
       .from("purchase_items")
       .insert(itemsPayload);
+
     if (itemsError) throw itemsError;
 
+    // ✅ Success
     showBanner("Purchase saved successfully!", "success");
+
     // Reset form for next entry
     form.reset();
-    currentDateInput.value = new Date().toISOString().split("T")[0];
+    entryDateInput.value = new Date().toISOString().split("T")[0];
     billNumberInput.value = await generateBillNumber();
     purchaseProductsBody.innerHTML = "";
     addProductRow();
     updateNetPayable();
+
   } catch (err) {
     console.error(err);
     showBanner("Error saving purchase: " + err.message, "error");
   }
 });
 
+// Collect items helper
 function collectItems() {
   const rows = Array.from(document.querySelectorAll("#purchaseProductsBody tr"));
   return rows.map(row => {

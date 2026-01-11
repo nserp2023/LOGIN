@@ -68,7 +68,9 @@ async function generateItemCode() {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
-  itemCodeInput.value = await generateItemCode();
+  if (!itemCodeInput.value) {
+    itemCodeInput.value = await generateItemCode();
+  }
   loadProducts();
 });
 
@@ -126,13 +128,13 @@ purchasePriceGST.addEventListener("input", () => {
 });
 landingPriceGST.addEventListener("input", () => {});
 
-// Retail logic
+// Retail logic (percent based on Landing+GST)
 retailPrice.addEventListener("input", () => {
   const gst = toNum(gstPercentInput.value);
   retailPriceGST.value = addGST(toNum(retailPrice.value), gst);
 });
 retailPricePercent.addEventListener("input", () => {
-  const base = toNum(purchasePrice.value);
+  const base = toNum(landingPriceGST.value);
   const percent = toNum(retailPricePercent.value);
   retailPrice.value = +(base + (base * percent / 100)).toFixed(2);
   const gst = toNum(gstPercentInput.value);
@@ -143,13 +145,13 @@ retailPriceGST.addEventListener("input", () => {
   retailPrice.value = removeGST(toNum(retailPriceGST.value), gst);
 });
 
-// Wholesale logic
+// Wholesale logic (percent based on Landing+GST)
 wholesalePrice.addEventListener("input", () => {
   const gst = toNum(gstPercentInput.value);
   wholesalePriceGST.value = addGST(toNum(wholesalePrice.value), gst);
 });
 wholesalePricePercent.addEventListener("input", () => {
-  const base = toNum(purchasePrice.value);
+  const base = toNum(landingPriceGST.value);
   const percent = toNum(wholesalePricePercent.value);
   wholesalePrice.value = +(base + (base * percent / 100)).toFixed(2);
   const gst = toNum(gstPercentInput.value);
@@ -160,13 +162,13 @@ wholesalePriceGST.addEventListener("input", () => {
   wholesalePrice.value = removeGST(toNum(wholesalePriceGST.value), gst);
 });
 
-// Special logic
+// Special logic (percent based on Landing+GST)
 specialPrice.addEventListener("input", () => {
   const gst = toNum(gstPercentInput.value);
   specialPriceGST.value = addGST(toNum(specialPrice.value), gst);
 });
 specialPricePercent.addEventListener("input", () => {
-  const base = toNum(purchasePrice.value);
+  const base = toNum(landingPriceGST.value);
   const percent = toNum(specialPricePercent.value);
   specialPrice.value = +(base + (base * percent / 100)).toFixed(2);
   const gst = toNum(gstPercentInput.value);
@@ -193,14 +195,21 @@ function renderProducts(list) {
     row.innerHTML = `
       <td><input type="checkbox" class="rowSelect" value="${p.product_id}"></td>
       <td>${p.item_code}</td>
-      <td ${bulkEditEnabled ? 'contenteditable="true"' : ''} data-field="item_name" data-id="${p.product_id}">${p.item_name}</td>
+      <td ${bulkEditEnabled ? 'contenteditable="true"' : ''} 
+          data-field="item_name" data-id="${p.product_id}">${p.item_name}</td>
       <td>${p.hsn_codes ? p.hsn_codes.hsn_code : ""}</td>
-      <td ${bulkEditEnabled ? 'contenteditable="true"' : ''} data-field="purchase_price_gst" data-id="${p.product_id}">${p.purchase_price_gst}</td>
-      <td ${bulkEditEnabled ? 'contenteditable="true"' : ''} data-field="landing_price_gst" data-id="${p.product_id}">${p.landing_price_gst}</td>
-      <td ${bulkEditEnabled ? 'contenteditable="true"' : ''} data-field="retail_price_gst" data-id="${p.product_id}">${p.retail_price_gst}</td>
-      <td ${bulkEditEnabled ? 'contenteditable="true"' : ''} data-field="wholesale_price_gst" data-id="${p.product_id}">${p.wholesale_price_gst}</td>
-      <td ${bulkEditEnabled ? 'contenteditable="true"' : ''} data-field="special_price_gst" data-id="${p.product_id}">${p.special_price_gst}</td>
-      <td ${bulkEditEnabled ? 'contenteditable="true"' : ''} data-field="department" data-id="${p.product_id}">${p.department}</td>
+      <td ${bulkEditEnabled ? 'contenteditable="true"' : ''} 
+          data-field="purchase_price_gst" data-id="${p.product_id}">${p.purchase_price_gst}</td>
+      <td ${bulkEditEnabled ? 'contenteditable="true"' : ''} 
+          data-field="landing_price_gst" data-id="${p.product_id}">${p.landing_price_gst}</td>
+      <td ${bulkEditEnabled ? 'contenteditable="true"' : ''} 
+          data-field="retail_price_gst" data-id="${p.product_id}">${p.retail_price_gst}</td>
+      <td ${bulkEditEnabled ? 'contenteditable="true"' : ''} 
+          data-field="wholesale_price_gst" data-id="${p.product_id}">${p.wholesale_price_gst}</td>
+      <td ${bulkEditEnabled ? 'contenteditable="true"' : ''} 
+          data-field="special_price_gst" data-id="${p.product_id}">${p.special_price_gst}</td>
+      <td ${bulkEditEnabled ? 'contenteditable="true"' : ''} 
+          data-field="department" data-id="${p.product_id}">${p.department}</td>
       <td>${p.online_offline}</td>
       <td>${p.image_url ? `<img src="${p.image_url}" width="50">` : ""}</td>
       <td>
@@ -246,7 +255,9 @@ form.addEventListener("submit", async (e) => {
 
     form.reset();
     editingId = null;
-    itemCodeInput.value = await generateItemCode();
+    if (!itemCodeInput.value) {
+      itemCodeInput.value = await generateItemCode();
+    }
     document.getElementById("saveBtn").textContent = "Save Product";
     loadProducts();
   } catch (err) {

@@ -1,15 +1,13 @@
-// Supabase v2 via CDN
 const supabase = window.supabase;
 const supabaseUrl = "https://gqxczzijntbvtlmmzppt.supabase.co";
 const supabaseKey = "sb_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs";
 const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
-// Elements
 const form = document.getElementById("purchaseForm");
 const banner = document.getElementById("banner");
 
 const billNumberInput = document.getElementById("billNumber");
-const entryDateInput = document.getElementById("currentDate"); // now maps to entry_date
+const entryDateInput = document.getElementById("currentDate");
 const invoiceDateInput = document.getElementById("invoiceDate");
 const invoiceNumberInput = document.getElementById("invoiceNumber");
 
@@ -25,7 +23,6 @@ const netPayableInput = document.getElementById("netPayable");
 const purchaseProductsBody = document.getElementById("purchaseProductsBody");
 const addProductBtn = document.getElementById("addProductBtn");
 
-// Helpers
 function showBanner(message, type = "success") {
   banner.textContent = message;
   banner.className = `banner banner-${type}`;
@@ -34,42 +31,31 @@ function showBanner(message, type = "success") {
 }
 function toNum(v) { return parseFloat(v) || 0; }
 
-// Init
 document.addEventListener("DOMContentLoaded", async () => {
   entryDateInput.value = new Date().toISOString().split("T")[0];
   billNumberInput.value = await generateBillNumber();
-  addProductRow(); // start with one row
+  addProductRow();
 });
 
-// Bill number generator
 async function generateBillNumber() {
   const { data, error } = await supabaseClient
     .from("purchases")
     .select("bill_number")
     .order("purchase_id", { ascending: false })
-    .limit(50);
+    .limit(1);
   if (error || !data || data.length === 0) return "BILL-001";
-
-  let lastValid = null;
-  for (const row of data) {
-    const match = row.bill_number && row.bill_number.match(/^BILL-(\d+)$/);
-    if (match) { lastValid = parseInt(match[1]); break; }
-  }
-  if (!lastValid) return "BILL-001";
-  const nextNum = lastValid + 1;
-  return `BILL-${String(nextNum).padStart(3, "0")}`;
+  const last = parseInt(data[0].bill_number.split("-")[1]);
+  return `BILL-${String(last + 1).padStart(3, "0")}`;
 }
 
 // Supplier search by GST
 supplierGSTInput.addEventListener("input", async () => {
   const term = supplierGSTInput.value.trim();
   if (!term) { gstDropdown.innerHTML = ""; return; }
-  const { data, error } = await supabaseClient
+  const { data } = await supabaseClient
     .from("suppliers")
     .select("*")
-    .ilike("gst_number", `%${term}%`)
-    .limit(20);
-  if (error) return console.error(error);
+    .ilike("gst_number", `%${term}%`);
   gstDropdown.innerHTML = "";
   data.forEach(s => {
     const opt = document.createElement("option");
@@ -81,12 +67,12 @@ supplierGSTInput.addEventListener("input", async () => {
 gstDropdown.addEventListener("change", async () => {
   const id = gstDropdown.value;
   if (!id) return;
-  const { data, error } = await supabaseClient
+  const { data } = await supabaseClient
     .from("suppliers")
     .select("*")
     .eq("supplier_id", id)
     .single();
-  if (error || !data) return;
+  if (!data) return;
   supplierGSTInput.value = data.gst_number || "";
   supplierNameInput.value = data.supplier_name || "";
 });
@@ -95,12 +81,10 @@ gstDropdown.addEventListener("change", async () => {
 supplierNameInput.addEventListener("input", async () => {
   const term = supplierNameInput.value.trim();
   if (!term) { supplierDropdown.innerHTML = ""; return; }
-  const { data, error } = await supabaseClient
+  const { data } = await supabaseClient
     .from("suppliers")
     .select("*")
-    .ilike("supplier_name", `%${term}%`)
-    .limit(20);
-  if (error) return console.error(error);
+    .ilike("supplier_name", `%${term}%`);
   supplierDropdown.innerHTML = "";
   data.forEach(s => {
     const opt = document.createElement("option");
@@ -112,17 +96,16 @@ supplierNameInput.addEventListener("input", async () => {
 supplierDropdown.addEventListener("change", async () => {
   const id = supplierDropdown.value;
   if (!id) return;
-  const { data, error } = await supabaseClient
+  const { data } = await supabaseClient
     .from("suppliers")
     .select("*")
     .eq("supplier_id", id)
     .single();
-  if (error || !data) return;
+  if (!data) return;
   supplierGSTInput.value = data.gst_number || "";
   supplierNameInput.value = data.supplier_name || "";
 });
 
-// Amount & round off → net payable
 function updateNetPayable() {
   const inv = toNum(invoiceAmountInput.value);
   const roff = toNum(roundOffInput.value);
@@ -227,7 +210,6 @@ form.addEventListener("submit", async (e) => {
 
     if (itemsError) throw itemsError;
 
-    // ✅ Success
     showBanner("Purchase saved successfully!", "success");
 
     // Reset form for next entry

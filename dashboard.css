@@ -271,3 +271,28 @@
 .save-btn:hover {
   background: #00c6fb;
 }
+
+.form-row label {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.form-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.form-field {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.form-field label {
+  font-size: 12px;
+  margin-bottom: 2px;
+}
+.form-field input, .form-field select {
+  padding: 4px;
+  font-size: 14px;
+}

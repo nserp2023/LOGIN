@@ -25,8 +25,7 @@
       font-size: 12px;
       margin-bottom: 2px;
     }
-    .field-group input,
-    .field-group select {
+    .field-group input {
       font-size: 13px;
       padding: 4px;
       margin-bottom: 2px;
@@ -59,17 +58,9 @@
       margin-top: 10px;
     }
 
-    #roundOff {
-  max-width: 40px;   /* or 80px if you want tighter */
-}
-
-#billNumber {
-  max-width: 80px;   /* or 80px if you want tighter */
-}
-
-#invoiceAmount {
-  max-width: 100px;   /* or 80px if you want tighter */
-}
+    #roundOff { max-width: 40px; }
+    #billNumber { max-width: 80px; }
+    #invoiceAmount { max-width: 100px; }
   </style>
 </head>
 <body>
@@ -90,15 +81,15 @@
       </div>
       <div class="field-group">
         <label>GST Number</label>
-        <input type="text" id="supplierGST" required>
-        <select id="supplierGSTDropdown"></select>
+        <input type="text" id="supplierGSTInput" list="supplierGSTList" required placeholder="Type or select GST">
+        <datalist id="supplierGSTList"></datalist>
       </div>
       <div class="field-group">
         <label>Supplier Name</label>
-        <input type="text" id="supplierName" required>
-        <select id="supplierNameDropdown"></select>
+        <input type="text" id="supplierNameInput" list="supplierNameList" required placeholder="Type or select supplier">
+        <datalist id="supplierNameList"></datalist>
       </div>
-            <div class="field-group">
+      <div class="field-group">
         <label>Invoice Number</label>
         <input type="text" id="invoiceNumber" required>
       </div>
@@ -106,7 +97,7 @@
         <label>Invoice Date</label>
         <input type="date" id="invoiceDate" required>
       </div>
-            <div class="field-group">
+      <div class="field-group">
         <label>Invoice Amount</label>
         <input type="number" id="invoiceAmount" step="0.01" required>
       </div>
@@ -118,34 +109,38 @@
         <label>Net Payable</label>
         <input type="number" id="netPayable" step="0.01" readonly>
       </div>
-
-
     </div>
 
     <!-- Product Table -->
-    <table class="dashboard-table">
-      <thead>
-        <tr>
-          <th>Item Code</th>
-          <th>Item Name</th>
-          <th>Qty</th>
-          <th>Purchase Price</th>
-          <th>GST %</th>
-          <th>Landing Price + GST</th>
-          <th>Retail %</th>
-          <th>Retail Price</th>
-          <th>Retail + GST</th>
-          <th>Wholesale %</th>
-          <th>Wholesale Price</th>
-          <th>Wholesale + GST</th>
-          <th>Special %</th>
-          <th>Special Price</th>
-          <th>Special + GST</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody id="purchaseTbody"></tbody>
-    </table>
+<table class="dashboard-table">
+  <thead>
+    <tr>
+      <th>Item Code</th>
+      <th>Item Name</th>
+      <th>Qty</th>
+      <th>Price</th>
+      <th>Discount %</th>
+      <th>Total</th>
+      <th>GST %</th>
+      <th>Total + GST</th>
+      <th>Purchase Price</th>
+      <th>Purchase + GST</th>
+      <th>Landing Price + GST</th>
+      <th>Retail %</th>
+      <th>Retail Price</th>
+      <th>Retail + GST</th>
+      <th>Wholesale %</th>
+      <th>Wholesale Price</th>
+      <th>Wholesale + GST</th>
+      <th>Special %</th>
+      <th>Special Price</th>
+      <th>Special + GST</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody id="purchaseTbody"></tbody>
+</table>
+
     <button type="button" id="addProductBtn">+ Add Product</button>
 
     <!-- Save -->

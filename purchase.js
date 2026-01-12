@@ -8,10 +8,10 @@ const form = document.getElementById("purchaseForm");
 const banner = document.getElementById("banner");
 const billNumberInput = document.getElementById("billNumber");
 const entryDateInput = document.getElementById("entryDate");
-const supplierNameInput = document.getElementById("supplierName");
-const supplierGSTInput = document.getElementById("supplierGST");
-const supplierNameDropdown = document.getElementById("supplierNameDropdown");
-const supplierGSTDropdown = document.getElementById("supplierGSTDropdown");
+const supplierNameInput = document.getElementById("supplierNameInput");
+const supplierGSTInput = document.getElementById("supplierGSTInput");
+const supplierNameList = document.getElementById("supplierNameList");
+const supplierGSTList = document.getElementById("supplierGSTList");
 const invoiceNumberInput = document.getElementById("invoiceNumber");
 const invoiceDateInput = document.getElementById("invoiceDate");
 const invoiceAmountInput = document.getElementById("invoiceAmount");
@@ -38,7 +38,7 @@ async function generateBillNumber() {
   return "BILL-" + next.toString().padStart(3, "0");
 }
 
-// Load Suppliers with sync + filtering
+// Load Suppliers with merged fields
 async function loadSuppliers() {
   const { data, error } = await supabaseClient
     .from("suppliers")
@@ -46,7 +46,7 @@ async function loadSuppliers() {
 
   if (error) {
     console.error("Error loading suppliers:", error);
-    showBanner("Could not load suppliers. Check table name/columns.", "error");
+    showBanner("Could not load suppliers.", "error");
     return;
   }
   if (!Array.isArray(data)) return;
@@ -62,49 +62,30 @@ async function loadSuppliers() {
 
   const suppliersList = data;
 
-  // Populate dropdowns
-  function populateDropdowns(list) {
-    supplierNameDropdown.innerHTML = "";
-    supplierGSTDropdown.innerHTML = "";
-    list.forEach(supplier => {
-      const nameOption = document.createElement("option");
-      nameOption.value = supplier[nameKey] ?? "";
-      nameOption.textContent = supplier[nameKey] ?? "";
-      supplierNameDropdown.appendChild(nameOption);
+  // Populate datalists
+  supplierNameList.innerHTML = "";
+  supplierGSTList.innerHTML = "";
 
-      const gstOption = document.createElement("option");
-      gstOption.value = supplier[gstKey] ?? "";
-      gstOption.textContent = supplier[gstKey] ?? "";
-      supplierGSTDropdown.appendChild(gstOption);
-    });
-  }
-  populateDropdowns(suppliersList);
+  suppliersList.forEach(supplier => {
+    const nameOption = document.createElement("option");
+    nameOption.value = supplier[nameKey] ?? "";
+    supplierNameList.appendChild(nameOption);
 
-  // Sync selections
-  supplierNameDropdown.addEventListener("change", () => {
-    supplierNameInput.value = supplierNameDropdown.value;
-    const match = suppliersList.find(s => s[nameKey] === supplierNameDropdown.value);
+    const gstOption = document.createElement("option");
+    gstOption.value = supplier[gstKey] ?? "";
+    supplierGSTList.appendChild(gstOption);
+  });
+
+  // Auto-sync: selecting name fills GST
+  supplierNameInput.addEventListener("change", () => {
+    const match = suppliersList.find(s => s[nameKey] === supplierNameInput.value);
     if (match) supplierGSTInput.value = match[gstKey];
   });
 
-  supplierGSTDropdown.addEventListener("change", () => {
-    supplierGSTInput.value = supplierGSTDropdown.value;
-    const match = suppliersList.find(s => s[gstKey] === supplierGSTDropdown.value);
+  // Auto-sync: selecting GST fills name
+  supplierGSTInput.addEventListener("change", () => {
+    const match = suppliersList.find(s => s[gstKey] === supplierGSTInput.value);
     if (match) supplierNameInput.value = match[nameKey];
-  });
-
-  // 🔎 Live filtering by typing in supplier name
-  supplierNameInput.addEventListener("input", () => {
-    const query = supplierNameInput.value.toLowerCase();
-    const filtered = suppliersList.filter(s => (s[nameKey] ?? "").toLowerCase().includes(query));
-    populateDropdowns(filtered);
-  });
-
-  // 🔎 Live filtering by typing in GST number
-  supplierGSTInput.addEventListener("input", () => {
-    const query = supplierGSTInput.value.toLowerCase();
-    const filtered = suppliersList.filter(s => (s[gstKey] ?? "").toLowerCase().includes(query));
-    populateDropdowns(filtered);
   });
 }
 
@@ -115,19 +96,93 @@ function addProductRow() {
     <td><input class="itemCode"></td>
     <td><input class="productName"></td>
     <td><input type="number" class="qty" step="0.01" value="1"></td>
-    <td><input type="number" class="rate" step="0.01"></td>
+    <td><input type="number" class="price" step="0.01"></td>
+    <td><input type="number" class="discountPercent" step="0.01"></td>
+    <td><input type="number" class="total" step="0.01" readonly></td>
+    <td><input type="number" class="gstPercent" step="0.01"></td>
+    <td><input type="number" class="totalWithGST" step="0.01" readonly></td>
+    <td><input type="number" class="purchasePrice" step="0.01"></td>
+    <td><input type="number" class="purchaseWithGST" step="0.01" readonly></td>
+    <td><input type="number" class="landingPriceWithGST" step="0.01"></td>
+    <td><input type="number" class="retailPercent" step="0.01"></td>
+    <td><input type="number" class="retailPrice" step="0.01" readonly></td>
+    <td><input type="number" class="retailWithGST" step="0.01" readonly></td>
+    <td><input type="number" class="wholesalePercent" step="0.01"></td>
+    <td><input type="number" class="wholesalePrice" step="0.01" readonly></td>
+    <td><input type="number" class="wholesaleWithGST" step="0.01" readonly></td>
+    <td><input type="number" class="specialPercent" step="0.01"></td>
+    <td><input type="number" class="specialPrice" step="0.01" readonly></td>
+    <td><input type="number" class="specialWithGST" step="0.01" readonly></td>
     <td><button type="button" class="removeBtn">X</button></td>
   `;
   purchaseTbody.appendChild(row);
 
+  // Calculation function for this row
+  function recalc() {
+    const qty = parseFloat(row.querySelector(".qty").value) || 0;
+    const price = parseFloat(row.querySelector(".price").value) || 0;
+    const discountPercent = parseFloat(row.querySelector(".discountPercent").value) || 0;
+    const gstPercent = parseFloat(row.querySelector(".gstPercent").value) || 0;
+
+    const retailPercent = parseFloat(row.querySelector(".retailPercent").value) || 0;
+    const wholesalePercent = parseFloat(row.querySelector(".wholesalePercent").value) || 0;
+    const specialPercent = parseFloat(row.querySelector(".specialPercent").value) || 0;
+
+    // Total before GST
+    let total = qty * price;
+    total = total - (total * discountPercent / 100);
+    row.querySelector(".total").value = total.toFixed(2);
+
+    // Total + GST
+    const totalWithGST = total * (1 + gstPercent / 100);
+    row.querySelector(".totalWithGST").value = totalWithGST.toFixed(2);
+
+    // Purchase Price (editable, user can override)
+    const purchasePrice = parseFloat(row.querySelector(".purchasePrice").value) || total;
+    row.querySelector(".purchasePrice").value = purchasePrice.toFixed(2);
+
+    // Purchase + GST
+    const purchaseWithGST = purchasePrice * (1 + gstPercent / 100);
+    row.querySelector(".purchaseWithGST").value = purchaseWithGST.toFixed(2);
+
+    // Landing Price + GST (editable field, user can override)
+    const landingPriceWithGST = parseFloat(row.querySelector(".landingPriceWithGST").value) || purchaseWithGST;
+    row.querySelector(".landingPriceWithGST").value = landingPriceWithGST.toFixed(2);
+
+    // Retail
+    const retailPrice = purchasePrice * (1 + retailPercent / 100);
+    row.querySelector(".retailPrice").value = retailPrice.toFixed(2);
+    row.querySelector(".retailWithGST").value = (retailPrice * (1 + gstPercent / 100)).toFixed(2);
+
+    // Wholesale
+    const wholesalePrice = purchasePrice * (1 + wholesalePercent / 100);
+    row.querySelector(".wholesalePrice").value = wholesalePrice.toFixed(2);
+    row.querySelector(".wholesaleWithGST").value = (wholesalePrice * (1 + gstPercent / 100)).toFixed(2);
+
+    // Special
+    const specialPrice = purchasePrice * (1 + specialPercent / 100);
+    row.querySelector(".specialPrice").value = specialPrice.toFixed(2);
+    row.querySelector(".specialWithGST").value = (specialPrice * (1 + gstPercent / 100)).toFixed(2);
+
+    updateNetPayable();
+  }
+
+  // Attach listeners
   row.querySelectorAll("input").forEach(inp => {
-    inp.addEventListener("input", () => updateNetPayable());
+    inp.addEventListener("input", recalc);
   });
+
   row.querySelector(".removeBtn").addEventListener("click", () => {
     row.remove();
     updateNetPayable();
   });
+
+  // Auto-focus first field
+  row.querySelector(".itemCode").focus();
 }
+
+
+
 
 // Net Payable
 function updateNetPayable() {

@@ -1,3 +1,4 @@
+<script>
 // Initialize Supabase
 const supabaseClient = supabase.createClient(
   "https://gqxczzijntbvtlmmzppt.supabase.co",
@@ -34,7 +35,7 @@ async function generateBillNumber() {
     .from("purchases")
     .select("*", { count: "exact", head: true });
   if (error) { console.error(error); return "BILL-001"; }
-  const next = count + 1;
+  const next = (count || 0) + 1;
   return "BILL-" + next.toString().padStart(3, "0");
 }
 
@@ -62,7 +63,6 @@ async function loadSuppliers() {
 
   const suppliersList = data;
 
-  // Populate datalists
   supplierNameList.innerHTML = "";
   supplierGSTList.innerHTML = "";
 
@@ -76,13 +76,11 @@ async function loadSuppliers() {
     supplierGSTList.appendChild(gstOption);
   });
 
-  // Auto-sync: selecting name fills GST
   supplierNameInput.addEventListener("change", () => {
     const match = suppliersList.find(s => s[nameKey] === supplierNameInput.value);
     if (match) supplierGSTInput.value = match[gstKey];
   });
 
-  // Auto-sync: selecting GST fills name
   supplierGSTInput.addEventListener("change", () => {
     const match = suppliersList.find(s => s[gstKey] === supplierGSTInput.value);
     if (match) supplierNameInput.value = match[nameKey];
@@ -101,9 +99,10 @@ function addProductRow() {
     <td><input type="number" class="total" step="0.01" readonly></td>
     <td><input type="number" class="gstPercent" step="0.01"></td>
     <td><input type="number" class="totalWithGST" step="0.01" readonly></td>
-    <td><input type="number" class="purchasePrice" step="0.01"></td>
+    <td><input type="number" class="purchasePrice" step="0.01" readonly></td>
     <td><input type="number" class="purchaseWithGST" step="0.01" readonly></td>
-    <td><input type="number" class="landingPriceWithGST" step="0.01"></td>
+    <td><input type="number" class="landingPrice" step="0.01"></td>
+    <td><input type="number" class="landingPriceWithGST" step="0.01" readonly></td>
     <td><input type="number" class="retailPercent" step="0.01"></td>
     <td><input type="number" class="retailPrice" step="0.01" readonly></td>
     <td><input type="number" class="retailWithGST" step="0.01" readonly></td>
@@ -117,59 +116,80 @@ function addProductRow() {
   `;
   purchaseTbody.appendChild(row);
 
-  // Calculation function for this row
+  const getNum = (sel) => {
+    const el = row.querySelector(sel);
+    const v = el.valueAsNumber;
+    return Number.isFinite(v) ? v : 0;
+  };
+
+  // Manual override flag
+  let landingPriceManual = false;
+
   function recalc() {
-    const qty = parseFloat(row.querySelector(".qty").value) || 0;
-    const price = parseFloat(row.querySelector(".price").value) || 0;
-    const discountPercent = parseFloat(row.querySelector(".discountPercent").value) || 0;
-    const gstPercent = parseFloat(row.querySelector(".gstPercent").value) || 0;
+    const qty = getNum(".qty");
+    const price = getNum(".price");
+    const discountPercent = getNum(".discountPercent");
+    const gstPercent = getNum(".gstPercent");
 
-    const retailPercent = parseFloat(row.querySelector(".retailPercent").value) || 0;
-    const wholesalePercent = parseFloat(row.querySelector(".wholesalePercent").value) || 0;
-    const specialPercent = parseFloat(row.querySelector(".specialPercent").value) || 0;
+    const retailPercent = getNum(".retailPercent");
+    const wholesalePercent = getNum(".wholesalePercent");
+    const specialPercent = getNum(".specialPercent");
 
-    // Total before GST
-    let total = qty * price;
-    total = total - (total * discountPercent / 100);
-    row.querySelector(".total").value = total.toFixed(2);
+    let grossTotal = qty * price;
+    let netTotal = grossTotal - (grossTotal * discountPercent / 100);
+    row.querySelector(".total").value = netTotal.toFixed(2);
 
-    // Total + GST
-    const totalWithGST = total * (1 + gstPercent / 100);
+    const gstMultiplier = 1 + gstPercent / 100;
+    const totalWithGST = netTotal * gstMultiplier;
     row.querySelector(".totalWithGST").value = totalWithGST.toFixed(2);
 
-    // Purchase Price (editable, user can override)
-    const purchasePrice = parseFloat(row.querySelector(".purchasePrice").value) || total;
+    let purchasePrice = qty > 0 ? netTotal / qty : 0;
     row.querySelector(".purchasePrice").value = purchasePrice.toFixed(2);
 
-    // Purchase + GST
-    const purchaseWithGST = purchasePrice * (1 + gstPercent / 100);
-    row.querySelector(".purchaseWithGST").value = purchaseWithGST.toFixed(2);
+    const purchaseWithGST = Number.isFinite(purchasePrice) ? purchasePrice * gstMultiplier : null;
+    row.querySelector(".purchaseWithGST").value = purchaseWithGST ? purchaseWithGST.toFixed(2) : "";
 
-    // Landing Price + GST (editable field, user can override)
-    const landingPriceWithGST = parseFloat(row.querySelector(".landingPriceWithGST").value) || purchaseWithGST;
-    row.querySelector(".landingPriceWithGST").value = landingPriceWithGST.toFixed(2);
+    // Landing Price logic with manual override
+    let landingPrice = landingPriceManual 
+      ? getNum(".landingPrice") 
+      : (qty > 0 ? netTotal / qty : 0);
 
-    // Retail
+    row.querySelector(".landingPrice").value = landingPrice.toFixed(2);
+
+    const landingWithGST = Number.isFinite(landingPrice) ? landingPrice * gstMultiplier : null;
+    row.querySelector(".landingPriceWithGST").value = landingWithGST ? landingWithGST.toFixed(2) : "";
+
     const retailPrice = purchasePrice * (1 + retailPercent / 100);
     row.querySelector(".retailPrice").value = retailPrice.toFixed(2);
-    row.querySelector(".retailWithGST").value = (retailPrice * (1 + gstPercent / 100)).toFixed(2);
+    row.querySelector(".retailWithGST").value = (retailPrice * gstMultiplier).toFixed(2);
 
-    // Wholesale
     const wholesalePrice = purchasePrice * (1 + wholesalePercent / 100);
     row.querySelector(".wholesalePrice").value = wholesalePrice.toFixed(2);
-    row.querySelector(".wholesaleWithGST").value = (wholesalePrice * (1 + gstPercent / 100)).toFixed(2);
+    row.querySelector(".wholesaleWithGST").value = (wholesalePrice * gstMultiplier).toFixed(2);
 
-    // Special
     const specialPrice = purchasePrice * (1 + specialPercent / 100);
     row.querySelector(".specialPrice").value = specialPrice.toFixed(2);
-    row.querySelector(".specialWithGST").value = (specialPrice * (1 + gstPercent / 100)).toFixed(2);
+    row.querySelector(".specialWithGST").value = (specialPrice * gstMultiplier).toFixed(2);
 
     updateNetPayable();
   }
 
-  // Attach listeners
-  row.querySelectorAll("input").forEach(inp => {
-    inp.addEventListener("input", recalc);
+  // Event listeners
+  [
+    ".qty", ".price", ".discountPercent", ".gstPercent",
+    ".retailPercent", ".wholesalePercent", ".specialPercent"
+  ].forEach(sel => {
+    row.querySelector(sel).addEventListener("input", recalc);
+  });
+
+  // Manual override for Landing Price
+  row.querySelector(".landingPrice").addEventListener("input", () => {
+    landingPriceManual = true;
+    const landingPrice = getNum(".landingPrice");
+    const gstPercent = getNum(".gstPercent");
+    const gstMultiplier = 1 + gstPercent / 100;
+    row.querySelector(".landingPriceWithGST").value = (landingPrice * gstMultiplier).toFixed(2);
+    updateNetPayable();
   });
 
   row.querySelector(".removeBtn").addEventListener("click", () => {
@@ -177,36 +197,48 @@ function addProductRow() {
     updateNetPayable();
   });
 
-  // Auto-focus first field
+  recalc();
   row.querySelector(".itemCode").focus();
 }
 
-
-
-
 // Net Payable
 function updateNetPayable() {
-  const total = Array.from(purchaseTbody.querySelectorAll("tr")).reduce((sum, row) => {
-    const qty = toNum(row.querySelector(".qty").value);
-    const rate = toNum(row.querySelector(".rate").value);
-    return sum + (qty * rate);
+  const rows = Array.from(purchaseTbody.querySelectorAll("tr"));
+  const totalWithGSTSum = rows.reduce((sum, row) => {
+    const rowTotal = toNum(row.querySelector(".totalWithGST").value);
+    return sum + rowTotal;
   }, 0);
+
   const roundOff = toNum(roundOffInput.value);
-  netPayableInput.value = (total + roundOff).toFixed(2);
+  netPayableInput.value = (totalWithGSTSum + roundOff).toFixed(2);
 }
 
 // Collect Items
 function collectItems(purchase_id) {
   return Array.from(purchaseTbody.querySelectorAll("tr")).map(row => {
-    const qty = toNum(row.querySelector(".qty").value);
-    const rate = toNum(row.querySelector(".rate").value);
     return {
-      purchase_id,
+      purchase_id: purchase_id,
       item_code: row.querySelector(".itemCode").value,
-      item_name: row.querySelector(".productName").value,
-      qty,
-      rate,
-      amount: qty * rate,
+      product_name: row.querySelector(".productName").value,
+      quantity: toNum(row.querySelector(".qty").value),
+      price: toNum(row.querySelector(".price").value),
+      discount_percent: toNum(row.querySelector(".discountPercent").value),
+      total_before_gst: toNum(row.querySelector(".total").value),
+      gst_percent: toNum(row.querySelector(".gstPercent").value),
+      total_with_gst: toNum(row.querySelector(".totalWithGST").value),
+      purchase_price: toNum(row.querySelector(".purchasePrice").value),
+      purchase_with_gst: toNum(row.querySelector(".purchaseWithGST").value),
+      landing_price: toNum(row.querySelector(".landingPrice").value),
+      landing_price_with_gst: toNum(row.querySelector(".landingPriceWithGST").value),
+      retail_percent: toNum(row.querySelector(".retailPercent").value),
+      retail_price: toNum(row.querySelector(".retailPrice").value),
+      retail_with_gst: toNum(row.querySelector(".retailWithGST").value),
+      wholesale_percent: toNum(row.querySelector(".wholesalePercent").value),
+      wholesale_price: toNum(row.querySelector(".wholesalePrice").value),
+      wholesale_with_gst: toNum(row.querySelector(".wholesaleWithGST").value),
+      special_percent: toNum(row.querySelector(".specialPercent").value),
+      special_price: toNum(row.querySelector(".specialPrice").value),
+      special_with_gst: toNum(row.querySelector(".specialWithGST").value)
     };
   });
 }
@@ -262,3 +294,4 @@ form.addEventListener("submit", async (e) => {
   loadSuppliers();
   addProductBtn.addEventListener("click", addProductRow);
 })();
+</script>

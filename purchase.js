@@ -83,6 +83,23 @@ async function loadSuppliers() {
     const match = data.find(s => s[gstKey] === supplierGSTInput.value);
     if (match) supplierNameInput.value = match[nameKey];
   });
+
+  supplierNameInput?.addEventListener("change", () => {
+  const supplierName = supplierNameInput.value;
+  const supplierGST = supplierGSTInput.value;
+  if (supplierName && supplierGST) {
+    loadInvoicesForSupplier(supplierName, supplierGST);
+  }
+});
+
+supplierGSTInput?.addEventListener("change", () => {
+  const supplierName = supplierNameInput.value;
+  const supplierGST = supplierGSTInput.value;
+  if (supplierName && supplierGST) {
+    loadInvoicesForSupplier(supplierName, supplierGST);
+  }
+});
+
 }
 
 // Add Product Row
@@ -394,6 +411,22 @@ if (form) {
         net_payable: parseFloat(netPayableInput?.value || "0"),
       };
 
+      // 🔎 Duplicate check before saving
+      const { data: existing, error: checkError } = await supabaseClient
+        .from("purchases")
+        .select("id")
+        .eq("supplier_name", purchase.supplier_name)
+        .eq("supplier_gst", purchase.supplier_gst)
+        .eq("invoice_number", purchase.invoice_number)
+        .eq("invoice_date", purchase.invoice_date);
+
+      if (checkError) throw checkError;
+      if (existing && existing.length > 0) {
+        showBanner("Duplicate invoice detected! This supplier already has that invoice number/date.", "error");
+        return; // stop saving
+      }
+
+      // ✅ Insert purchase if no duplicate
       const { data: purchaseData, error } = await supabaseClient
         .from("purchases")
         .insert([purchase])
@@ -430,3 +463,26 @@ if (form) {
   loadSuppliers();
   addProductBtn?.addEventListener("click", addProductRow);
 })();
+
+async function loadInvoicesForSupplier(supplierName, supplierGST) {
+  const { data, error } = await supabaseClient
+    .from("purchases")
+    .select("invoice_number")
+    .eq("supplier_name", supplierName)
+    .eq("supplier_gst", supplierGST);
+
+  if (error) {
+    console.error("Error loading invoices:", error);
+    return;
+  }
+
+  const invoiceList = document.getElementById("invoiceList");
+  if (!invoiceList) return;
+  invoiceList.innerHTML = "";
+
+  data.forEach(inv => {
+    const opt = document.createElement("option");
+    opt.value = inv.invoice_number;
+    invoiceList.appendChild(opt);
+  });
+}

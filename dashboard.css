@@ -296,3 +296,41 @@
   padding: 4px;
   font-size: 14px;
 }
+input.error {
+  border: 2px solid #dc3545;   /* red border */
+  background-color: #f8d7da;   /* light red background */
+  animation: shake 0.3s;       /* trigger shake */
+}
+
+@keyframes shake {
+  0% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  50% { transform: translateX(4px); }
+  75% { transform: translateX(-4px); }
+  100% { transform: translateX(0); }
+}
+button[disabled] {
+  background-color: #ccc;
+  color: #666;
+  cursor: not-allowed;
+  position: relative;
+}
+
+button[disabled]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: -28px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #333;
+  color: #fff;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  display: none;
+}
+
+button[disabled]:hover::after {
+  display: block;
+}

@@ -57,10 +57,9 @@
       font-size: 14px;
       margin-top: 10px;
     }
-
-    #roundOff { max-width: 40px; }
-    #billNumber { max-width: 80px; }
-    #invoiceAmount { max-width: 100px; }
+    #roundOff { max-width: 60px; }
+    #billNumber { max-width: 100px; }
+    #invoiceAmount { max-width: 120px; }
   </style>
 </head>
 <body>
@@ -112,35 +111,42 @@
     </div>
 
     <!-- Product Table -->
-<table class="dashboard-table">
-  <thead>
-    <tr>
-      <th>Item Code</th>
-      <th>Item Name</th>
-      <th>Qty</th>
-      <th>Price</th>
-      <th>Discount %</th>
-      <th>Total</th>
-      <th>GST %</th>
-      <th>Total + GST</th>
-      <th>Purchase Price</th>
-      <th>Purchase + GST</th>
-      <th>Landing Price</th>
-      <th>Landing Price + GST</th>
-      <th>Retail %</th>
-      <th>Retail Price</th>
-      <th>Retail + GST</th>
-      <th>Wholesale %</th>
-      <th>Wholesale Price</th>
-      <th>Wholesale + GST</th>
-      <th>Special %</th>
-      <th>Special Price</th>
-      <th>Special + GST</th>
-      <th>Actions</th>
-    </tr>
-  </thead>
-  <tbody id="purchaseTbody"></tbody>
-</table>
+    <table class="dashboard-table">
+      <thead>
+        <tr>
+          <th>Item Code</th>
+          <th>Item Name</th>
+          <th>Qty</th>
+          <th>Price</th>
+          <th>Discount %</th>
+          <th>Total</th>
+          <th>GST %</th>
+          <th>Total + GST</th>
+          <th>Purchase Price</th>
+          <th>Purchase + GST</th>
+          <th>Landing Price</th>
+          <th>Landing Price + GST</th>
+          <th>Retail %</th>
+          <th>Retail Price</th>
+          <th>Retail + GST</th>
+          <th>Wholesale %</th>
+          <th>Wholesale Price</th>
+          <th>Wholesale + GST</th>
+          <th>Special %</th>
+          <th>Special Price</th>
+          <th>Special + GST</th>
+          <th>HSN Code</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="purchaseTbody">
+        <!-- Rows will be dynamically added by purchase.js -->
+      </tbody>
+    </table>
+
+    <!-- Autocomplete lists for product search -->
+    <datalist id="productNameSuggestions"></datalist>
+    <datalist id="itemCodeSuggestions"></datalist>
 
     <button type="button" id="addProductBtn">+ Add Product</button>
 

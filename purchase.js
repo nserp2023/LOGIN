@@ -22,6 +22,7 @@ const roundOffInput = /** @type {HTMLInputElement|null} */ (document.getElementB
 const netPayableInput = /** @type {HTMLInputElement|null} */ (document.getElementById("netPayable"));
 const purchaseTbody = /** @type {HTMLTableSectionElement|null} */ (document.getElementById("purchaseTbody"));
 const addProductBtn = /** @type {HTMLButtonElement|null} */ (document.getElementById("addProductBtn"));
+const savePurchaseBtn = /** @type {HTMLButtonElement|null} */ (document.getElementById("savePurchaseBtn"));
 
 // Utility
 function showBanner(msg, type) {
@@ -42,7 +43,7 @@ async function generateBillNumber() {
   return "BILL-" + next.toString().padStart(3, "0");
 }
 
-// Load Suppliers with merged fields
+// Load Suppliers
 async function loadSuppliers() {
   const { data, error } = await supabaseClient.from("suppliers").select("*");
   if (error) {
@@ -54,12 +55,6 @@ async function loadSuppliers() {
 
   const nameKey = data.length && ("supplier_name" in data[0] ? "supplier_name" : "name");
   const gstKey  = data.length && ("supplier_gst" in data[0] ? "supplier_gst" : "gst_number");
-
-  if (!nameKey || !gstKey) {
-    console.error("Suppliers table missing expected columns. Found keys:", data[0] ? Object.keys(data[0]) : []);
-    showBanner("Suppliers table missing name/gst columns.", "error");
-    return;
-  }
 
   supplierNameList.innerHTML = "";
   supplierGSTList.innerHTML = "";
@@ -83,6 +78,62 @@ async function loadSuppliers() {
     const match = data.find(s => s[gstKey] === supplierGSTInput.value);
     if (match) supplierNameInput.value = match[nameKey];
   });
+}
+
+// --- Override Helper ---
+function setupOverride(row, baseSelector, percentSelector, priceSelector, priceWithGSTSelector) {
+  const baseInput = row.querySelector(baseSelector);
+  const percentInput = row.querySelector(percentSelector);
+  const priceInput = row.querySelector(priceSelector);
+  const priceWithGSTInput = row.querySelector(priceWithGSTSelector);
+
+  if (!baseInput || !percentInput || !priceInput || !priceWithGSTInput) return;
+
+  function getNum(el) {
+    return el instanceof HTMLInputElement ? parseFloat(el.value) || 0 : 0;
+  }
+
+  function recalcFromPercent() {
+    const base = getNum(baseInput);
+    const percent = getNum(percentInput);
+    const gstPercent = getNum(row.querySelector(".gstPercent"));
+    const gstMultiplier = 1 + gstPercent / 100;
+
+    const price = base * (1 + percent / 100);
+    priceInput.value = price.toFixed(2);
+    priceWithGSTInput.value = (price * gstMultiplier).toFixed(2);
+    updateNetPayable();
+  }
+
+  function recalcFromPrice() {
+    const base = getNum(baseInput);
+    const price = getNum(priceInput);
+    const gstPercent = getNum(row.querySelector(".gstPercent"));
+    const gstMultiplier = 1 + gstPercent / 100;
+
+    const percent = base > 0 ? ((price / base) - 1) * 100 : 0;
+    percentInput.value = percent.toFixed(2);
+    priceWithGSTInput.value = (price * gstMultiplier).toFixed(2);
+    updateNetPayable();
+  }
+
+  function recalcFromPriceWithGST() {
+    const base = getNum(baseInput);
+    const priceWithGST = getNum(priceWithGSTInput);
+    const gstPercent = getNum(row.querySelector(".gstPercent"));
+    const gstMultiplier = 1 + gstPercent / 100;
+
+    const price = gstMultiplier > 0 ? priceWithGST / gstMultiplier : 0;
+    priceInput.value = price.toFixed(2);
+
+    const percent = base > 0 ? ((price / base) - 1) * 100 : 0;
+    percentInput.value = percent.toFixed(2);
+    updateNetPayable();
+  }
+
+  percentInput.addEventListener("input", recalcFromPercent);
+  priceInput.addEventListener("input", recalcFromPrice);
+  priceWithGSTInput.addEventListener("input", recalcFromPriceWithGST);
 }
 
 // Add Product Row
@@ -111,6 +162,7 @@ function addProductRow() {
     <td><input type="number" class="specialPercent" step="0.01"></td>
     <td><input type="number" class="specialPrice" step="0.01"></td>
     <td><input type="number" class="specialWithGST" step="0.01"></td>
+    <td><input class="hsnCode"></td>   <!-- ✅ New HSN Code field -->
     <td><button type="button" class="removeBtn">X</button></td>
   `;
   purchaseTbody.appendChild(row);
@@ -127,10 +179,6 @@ function addProductRow() {
     const price = getNum(".price");
     const discountPercent = getNum(".discountPercent");
     const gstPercent = getNum(".gstPercent");
-
-    const retailPercent = getNum(".retailPercent");
-    const wholesalePercent = getNum(".wholesalePercent");
-    const specialPercent = getNum(".specialPercent");
 
     let grossTotal = qty * price;
     let netTotal = grossTotal - (grossTotal * discountPercent / 100);
@@ -156,149 +204,14 @@ function addProductRow() {
       row.querySelector(".landingPriceWithGST").value = landingWithGST ? landingWithGST.toFixed(2) : "";
     }
 
-    const retailPrice = purchasePrice * (1 + retailPercent / 100);
-    if (row.querySelector(".retailPrice") instanceof HTMLInputElement) {
-      row.querySelector(".retailPrice").value = retailPrice.toFixed(2);
-    }
-    if (row.querySelector(".retailWithGST") instanceof HTMLInputElement) {
-      row.querySelector(".retailWithGST").value = (retailPrice * gstMultiplier).toFixed(2);
-    }
-
-    const wholesalePrice = purchasePrice * (1 + wholesalePercent / 100);
-    if (row.querySelector(".wholesalePrice") instanceof HTMLInputElement) {
-      row.querySelector(".wholesalePrice").value = wholesalePrice.toFixed(2);
-    }
-    if (row.querySelector(".wholesaleWithGST") instanceof HTMLInputElement) {
-      row.querySelector(".wholesaleWithGST").value = (wholesalePrice * gstMultiplier).toFixed(2);
-    }
-
-    const specialPrice = purchasePrice * (1 + specialPercent / 100);
-    if (row.querySelector(".specialPrice") instanceof HTMLInputElement) {
-      row.querySelector(".specialPrice").value = specialPrice.toFixed(2);
-    }
-    if (row.querySelector(".specialWithGST") instanceof HTMLInputElement) {
-      row.querySelector(".specialWithGST").value = (specialPrice * gstMultiplier).toFixed(2);
-    }
-
     updateNetPayable();
   }
 
-  // Event listeners
-  [".qty", ".price", ".discountPercent", ".gstPercent",
-   ".retailPercent", ".wholesalePercent", ".specialPercent"
-  ].forEach(sel => {
+  // Event listeners for base fields
+  [".qty", ".price", ".discountPercent", ".gstPercent"].forEach(sel => {
     const el = row.querySelector(sel);
     if (el) el.addEventListener("input", recalc);
   });
-
-  // --- Manual override for Retail ---
-const retailInput = row.querySelector(".retailPrice");
-const retailWithGSTInput = row.querySelector(".retailWithGST");
-const retailPercentInput = row.querySelector(".retailPercent");
-
-if (retailInput && retailWithGSTInput && retailPercentInput) {
-  // When Retail Price changes
-  retailInput.addEventListener("input", () => {
-    const purchasePrice = getNum(".purchasePrice");
-    const gstPercent = getNum(".gstPercent");
-    const gstMultiplier = 1 + gstPercent / 100;
-
-    // Update % markup
-    const retailPrice = getNum(".retailPrice");
-    const percent = purchasePrice > 0 ? ((retailPrice / purchasePrice) - 1) * 100 : 0;
-    retailPercentInput.value = percent.toFixed(2);
-
-    // Update Retail+GST
-    retailWithGSTInput.value = (retailPrice * gstMultiplier).toFixed(2);
-    updateNetPayable();
-  });
-
-  // When Retail+GST changes
-  retailWithGSTInput.addEventListener("input", () => {
-    const purchasePrice = getNum(".purchasePrice");
-    const gstPercent = getNum(".gstPercent");
-    const gstMultiplier = 1 + gstPercent / 100;
-
-    // Back-calc Retail Price
-    const retailWithGST = getNum(".retailWithGST");
-    const retailPrice = gstMultiplier > 0 ? retailWithGST / gstMultiplier : 0;
-    retailInput.value = retailPrice.toFixed(2);
-
-    // Update % markup
-    const percent = purchasePrice > 0 ? ((retailPrice / purchasePrice) - 1) * 100 : 0;
-    retailPercentInput.value = percent.toFixed(2);
-    updateNetPayable();
-  });
-}
-
-// --- Manual override for Wholesale ---
-const wholesaleInput = row.querySelector(".wholesalePrice");
-const wholesaleWithGSTInput = row.querySelector(".wholesaleWithGST");
-const wholesalePercentInput = row.querySelector(".wholesalePercent");
-
-if (wholesaleInput && wholesaleWithGSTInput && wholesalePercentInput) {
-  wholesaleInput.addEventListener("input", () => {
-    const purchasePrice = getNum(".purchasePrice");
-    const gstPercent = getNum(".gstPercent");
-    const gstMultiplier = 1 + gstPercent / 100;
-
-    const wholesalePrice = getNum(".wholesalePrice");
-    const percent = purchasePrice > 0 ? ((wholesalePrice / purchasePrice) - 1) * 100 : 0;
-    wholesalePercentInput.value = percent.toFixed(2);
-
-    wholesaleWithGSTInput.value = (wholesalePrice * gstMultiplier).toFixed(2);
-    updateNetPayable();
-  });
-
-  wholesaleWithGSTInput.addEventListener("input", () => {
-    const purchasePrice = getNum(".purchasePrice");
-    const gstPercent = getNum(".gstPercent");
-    const gstMultiplier = 1 + gstPercent / 100;
-
-    const wholesaleWithGST = getNum(".wholesaleWithGST");
-    const wholesalePrice = gstMultiplier > 0 ? wholesaleWithGST / gstMultiplier : 0;
-    wholesaleInput.value = wholesalePrice.toFixed(2);
-
-    const percent = purchasePrice > 0 ? ((wholesalePrice / purchasePrice) - 1) * 100 : 0;
-    wholesalePercentInput.value = percent.toFixed(2);
-    updateNetPayable();
-  });
-}
-
-// --- Manual override for Special ---
-const specialInput = row.querySelector(".specialPrice");
-const specialWithGSTInput = row.querySelector(".specialWithGST");
-const specialPercentInput = row.querySelector(".specialPercent");
-
-if (specialInput && specialWithGSTInput && specialPercentInput) {
-  specialInput.addEventListener("input", () => {
-    const purchasePrice = getNum(".purchasePrice");
-    const gstPercent = getNum(".gstPercent");
-    const gstMultiplier = 1 + gstPercent / 100;
-
-    const specialPrice = getNum(".specialPrice");
-    const percent = purchasePrice > 0 ? ((specialPrice / purchasePrice) - 1) * 100 : 0;
-    specialPercentInput.value = percent.toFixed(2);
-
-    specialWithGSTInput.value = (specialPrice * gstMultiplier).toFixed(2);
-    updateNetPayable();
-  });
-
-  specialWithGSTInput.addEventListener("input", () => {
-    const purchasePrice = getNum(".purchasePrice");
-    const gstPercent = getNum(".gstPercent");
-    const gstMultiplier = 1 + gstPercent / 100;
-
-    const specialWithGST = getNum(".specialWithGST");
-    const specialPrice = gstMultiplier > 0 ? specialWithGST / gstMultiplier : 0;
-    specialInput.value = specialPrice.toFixed(2);
-
-    const percent = purchasePrice > 0 ? ((specialPrice / purchasePrice) - 1) * 100 : 0;
-    specialPercentInput.value = percent.toFixed(2);
-    updateNetPayable();
-  });
-}
-
 
   // Manual override for Landing Price
   const landingInput = row.querySelector(".landingPrice");
@@ -323,6 +236,31 @@ if (specialInput && specialWithGSTInput && specialPercentInput) {
     });
   }
 
+  // Setup overrides for Retail, Wholesale, Special
+  setupOverride(row, ".purchasePrice", ".retailPercent", ".retailPrice", ".retailWithGST");
+  setupOverride(row, ".purchasePrice", ".wholesalePercent", ".wholesalePrice", ".wholesaleWithGST");
+  setupOverride(row, ".purchasePrice", ".specialPercent", ".specialPrice", ".specialWithGST");
+
+
+
+
+
+
+
+const itemNameInput = row.querySelector(".productName");
+const itemCodeInput = row.querySelector(".itemCode");
+
+if (itemNameInput) setupProductAutocomplete(itemNameInput, row);
+if (itemCodeInput) setupProductAutocomplete(itemCodeInput, row);
+
+
+
+
+
+
+
+
+
   recalc();
   const itemCode = row.querySelector(".itemCode");
   if (itemCode) itemCode.focus();
@@ -343,37 +281,115 @@ function updateNetPayable() {
 }
 
 // Collect Items
+// Collect Items
 function collectItems(purchase_id) {
   if (!purchaseTbody) return [];
-  return Array.from(purchaseTbody.querySelectorAll("tr")).map(row => {
-    const getVal = (sel) => {
-      const el = row.querySelector(sel);
-      return el instanceof HTMLInputElement ? parseFloat(el.value) || 0 : 0;
-    };
-    return {
-      purchase_id,
-      item_code: (row.querySelector(".itemCode") instanceof HTMLInputElement) ? row.querySelector(".itemCode").value : "",
-      product_name: (row.querySelector(".productName") instanceof HTMLInputElement) ? row.querySelector(".productName").value : "",
-      quantity: getVal(".qty"),
-      price: getVal(".price"),
-      discount_percent: getVal(".discountPercent"),
-      total_before_gst: getVal(".total"),
-      gst_percent: getVal(".gstPercent"),
-      total_with_gst: getVal(".totalWithGST"),
-      purchase_price: getVal(".purchasePrice"),
-      purchase_with_gst: getVal(".purchaseWithGST"),
-      landing_price: getVal(".landingPrice"),
-      landing_price_with_gst: getVal(".landingPriceWithGST"),
-      retail_percent: getVal(".retailPercent"),
-      retail_price: getVal(".retailPrice"),
-      retail_with_gst: getVal(".retailWithGST"),
-      wholesale_percent: getVal(".wholesalePercent"),
-      wholesale_price: getVal(".wholesalePrice"),
-      wholesale_with_gst: getVal(".wholesaleWithGST"),
-      special_percent: getVal(".specialPercent"),
-      special_price: getVal(".specialPrice"),
-      special_with_gst: getVal(".specialWithGST")
-    };
+  return Array.from(purchaseTbody.querySelectorAll("tr"))
+    .map(row => {
+      const getVal = (sel) => {
+        const el = row.querySelector(sel);
+        return el instanceof HTMLInputElement ? parseFloat(el.value) || 0 : 0;
+      };
+      const itemCode = (row.querySelector(".itemCode") instanceof HTMLInputElement) ? row.querySelector(".itemCode").value.trim() : "";
+      const productName = (row.querySelector(".productName") instanceof HTMLInputElement) ? row.querySelector(".productName").value.trim() : "";
+
+      // ✅ Skip row if either Item Code or Product Name is missing
+      if (!itemCode || !productName) return null;
+
+return {
+  purchase_id,
+  item_code: itemCode,
+  product_name: productName,
+  quantity: getVal(".qty"),
+  price: getVal(".price"),
+  discount_percent: getVal(".discountPercent"),
+  total_before_gst: getVal(".total"),
+  gst_percent: getVal(".gstPercent"),
+  total_with_gst: getVal(".totalWithGST"),
+  purchase_price: getVal(".purchasePrice"),
+  purchase_with_gst: getVal(".purchaseWithGST"),
+  landing_price: getVal(".landingPrice"),
+  landing_price_with_gst: getVal(".landingPriceWithGST"),
+  retail_percent: getVal(".retailPercent"),
+  retail_price: getVal(".retailPrice"),
+  retail_with_gst: getVal(".retailWithGST"),
+  wholesale_percent: getVal(".wholesalePercent"),
+  wholesale_price: getVal(".wholesalePrice"),
+  wholesale_with_gst: getVal(".wholesaleWithGST"),
+  special_percent: getVal(".specialPercent"),
+  special_price: getVal(".specialPrice"),
+  special_with_gst: getVal(".specialWithGST"),
+  hsn_code: (row.querySelector(".hsnCode") instanceof HTMLInputElement) ? row.querySelector(".hsnCode").value.trim() : ""  // ✅ New field
+};    })
+    .filter(item => item !== null); // remove skipped rows
+}
+// Duplicate Invoice Validation
+async function validateInvoiceUnique() {
+  const supplierGST = supplierGSTInput?.value || "";
+  const supplierName = supplierNameInput?.value || "";
+  const invoiceNumber = invoiceNumberInput?.value || "";
+
+  if (!invoiceNumber) {
+    invoiceNumberInput?.classList.remove("error");
+    if (savePurchaseBtn) savePurchaseBtn.disabled = false;
+    return true;
+  }
+
+  let query = supabaseClient.from("purchases").select("purchase_id");
+  if (supplierGST) {
+    query = query.eq("supplier_gst", supplierGST);
+  } else if (supplierName) {
+    query = query.eq("supplier_name", supplierName);
+  }
+  query = query.eq("invoice_number", invoiceNumber).maybeSingle();
+
+  const { data, error } = await query;
+  if (error) {
+    console.error("Validation error:", error);
+    showBanner("Error checking invoice uniqueness.", "error");
+    invoiceNumberInput?.classList.add("error");
+    if (savePurchaseBtn) {
+      savePurchaseBtn.disabled = true;
+      savePurchaseBtn.setAttribute("data-tooltip", "Fix invoice number before saving");
+    }
+    return false;
+  }
+
+  if (data) {
+    showBanner("This invoice number is already entered for this supplier!", "error");
+
+    // Shake + highlight
+    invoiceNumberInput?.classList.remove("error");
+    void invoiceNumberInput?.offsetWidth; // reflow hack
+    invoiceNumberInput?.classList.add("error");
+
+    invoiceNumberInput?.focus();
+    if (savePurchaseBtn) {
+      savePurchaseBtn.disabled = true;
+      savePurchaseBtn.setAttribute("data-tooltip", "Fix invoice number before saving");
+    }
+    return false;
+  }
+
+  // ✅ Unique
+  invoiceNumberInput?.classList.remove("error");
+  if (savePurchaseBtn) {
+    savePurchaseBtn.disabled = false;
+    savePurchaseBtn.removeAttribute("data-tooltip");
+  }
+  return true;
+}
+
+// Attach validation events
+if (invoiceNumberInput) {
+  invoiceNumberInput.addEventListener("blur", async () => {
+    await validateInvoiceUnique();
+  });
+  invoiceNumberInput.addEventListener("keydown", async (e) => {
+    if (e.key === "Enter" || e.key === "Tab") {
+      const ok = await validateInvoiceUnique();
+      if (!ok) e.preventDefault();
+    }
   });
 }
 
@@ -381,6 +397,24 @@ function collectItems(purchase_id) {
 if (form) {
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
+
+    const unique = await validateInvoiceUnique();
+    if (!unique) return;
+
+    // --- Final Validation: Net Payable + Round Off must equal Invoice Amount ---
+    const invoiceAmount = parseFloat(invoiceAmountInput?.value || "0");
+    const roundOff = parseFloat(roundOffInput?.value || "0");
+    const netPayable = parseFloat(netPayableInput?.value || "0");
+
+    if ((netPayable + roundOff).toFixed(2) !== invoiceAmount.toFixed(2)) {
+      showBanner("Error: Net Payable + Round Off must equal Invoice Amount.", "error");
+      if (savePurchaseBtn) {
+        savePurchaseBtn.disabled = true;
+        savePurchaseBtn.setAttribute("data-tooltip", "Fix invoice totals before saving");
+      }
+      return; // stop save
+    }
+
     try {
       const purchase = {
         bill_number: billNumberInput?.value || "",
@@ -389,9 +423,9 @@ if (form) {
         invoice_number: invoiceNumberInput?.value || "",
         supplier_name: supplierNameInput?.value || "",
         supplier_gst: supplierGSTInput?.value || "",
-        invoice_amount: parseFloat(invoiceAmountInput?.value || "0"),
-        round_off: parseFloat(roundOffInput?.value || "0"),
-        net_payable: parseFloat(netPayableInput?.value || "0"),
+        invoice_amount: invoiceAmount,
+        round_off: roundOff,
+        net_payable: netPayable,
       };
 
       const { data: purchaseData, error } = await supabaseClient
@@ -418,6 +452,10 @@ if (form) {
     } catch (err) {
       console.error(err);
       showBanner("Error saving purchase: " + err.message, "error");
+      if (savePurchaseBtn) {
+        savePurchaseBtn.disabled = true;
+        savePurchaseBtn.setAttribute("data-tooltip", "Fix errors before saving");
+      }
     }
   });
 }
@@ -430,3 +468,82 @@ if (form) {
   loadSuppliers();
   addProductBtn?.addEventListener("click", addProductRow);
 })();
+
+async function searchProductsByKeywords(input) {
+  if (!input) return [];
+
+  const keywords = input.trim().split(/\s+/);
+
+  // Build a flat OR clause with all keyword filters
+  const filters = keywords.flatMap(kw => {
+    const escaped = kw.replace(/[%_]/g, "\\$&"); // escape wildcards
+    return [
+      `item_name.ilike.%${escaped}%`,
+      `item_code.ilike.%${escaped}%`
+    ];
+  });
+
+  const orClause = filters.join(",");
+
+  const { data, error } = await supabaseClient
+    .from("products")
+    .select("*")
+    .or(orClause);
+
+  if (error) {
+    console.error("Error searching products:", error);
+    showBanner("Could not fetch products.", "error");
+    return [];
+  }
+
+  return data || [];
+}
+function setupProductAutocomplete(inputEl, row) {
+  inputEl.addEventListener("input", async () => {
+    // ✅ Show loading banner
+    if (banner) {
+      banner.textContent = "Searching products…";
+      banner.className = "banner banner-info";
+      banner.style.display = "block";
+    }
+
+    const results = await searchProductsByKeywords(inputEl.value);
+
+    // ✅ Hide banner after search
+    if (banner) banner.style.display = "none";
+
+    if (results.length === 1) {
+      fillRowWithProduct(row, results[0]);
+    } else if (results.length > 1) {
+      showBanner(`${results.length} matches found. Refine keywords.`, "info");
+    }
+  });
+}
+function fillRowWithProduct(row, product) {
+  const setVal = (sel, val) => {
+    const el = row.querySelector(sel);
+    if (el instanceof HTMLInputElement) el.value = val ?? "";
+  };
+
+  setVal(".itemCode", product.item_code);
+  setVal(".productName", product.item_name);
+  setVal(".price", product.price);
+  setVal(".gstPercent", product.gst_percent);
+  setVal(".purchasePrice", product.purchase_price);
+  setVal(".purchaseWithGST", product.purchase_with_gst);
+  setVal(".landingPrice", product.landing_price);
+  setVal(".landingPriceWithGST", product.landing_price_with_gst);
+  setVal(".retailPercent", product.retail_percent);
+  setVal(".retailPrice", product.retail_price);
+  setVal(".retailWithGST", product.retail_with_gst);
+  setVal(".wholesalePercent", product.wholesale_percent);
+  setVal(".wholesalePrice", product.wholesale_price);
+  setVal(".wholesaleWithGST", product.wholesale_with_gst);
+  setVal(".specialPercent", product.special_percent);
+  setVal(".specialPrice", product.special_price);
+  setVal(".specialWithGST", product.special_with_gst);
+  setVal(".hsnCode", product.hsn_code);
+
+  updateNetPayable();
+}
+

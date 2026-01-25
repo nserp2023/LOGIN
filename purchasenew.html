@@ -618,6 +618,30 @@
       byId("addRowBtn").addEventListener("click", ()=> newItemRow());
       byId("saveBtn").addEventListener("click", saveAll);
     })();
+
+    async function savePurchase() {
+  const saveBtn = document.getElementById('save-purchase');
+  saveBtn.disabled = true;
+  try {
+    // ... prepare payload
+    const resp = await fetch('/api/purchase', { method: 'POST', body: JSON.stringify(payload), headers: {'Content-Type':'application/json'} });
+    if (resp.status === 409) {
+      const body = await resp.json();
+      // duplicate purchase
+      showStatus('Purchase already saved. Duplicate prevented.', 'error');
+      return;
+    }
+    if (!resp.ok) {
+      const body = await resp.json();
+      throw new Error(body?.error || 'Save failed');
+    }
+    showStatus('Saved successfully', 'success');
+  } catch (err) {
+    showStatus('Save failed: ' + err.message, 'error');
+  } finally {
+    saveBtn.disabled = false;
+  }
+}
   </script>
 </body>
 </html>

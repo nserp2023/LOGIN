@@ -642,6 +642,120 @@
     saveBtn.disabled = false;
   }
 }
-  </script>
+
+let activeIndex = -1; // reuse your existing dropdown variable
+
+function showDropdown(anchorInput, items, onPick){
+  hideDropdown();
+  const rect = anchorInput.getBoundingClientRect();
+  dropdown = document.createElement("div");
+  dropdown.className = "dropdown";
+  dropdown.style.top = (window.scrollY + rect.bottom + 4) + "px";
+  dropdown.style.left = (window.scrollX + rect.left) + "px";
+  dropdown.style.minWidth = rect.width + "px";
+
+  items.forEach((it) => {
+    const opt = document.createElement("div");
+    opt.className = "opt";
+    opt.innerHTML = `
+      <div class="muted">${it.item_code ?? it.gst_number ?? ""}</div>
+      <div>${it.item_name ?? it.name ?? ""}</div>
+      <div class="muted">${fmt2(it.quantity ?? 0)}</div>
+      <div class="muted">${fmt2(it.purchase_price ?? it.price ?? 0)} / ${fmt2(it.purchase_price_gst ?? it.price_gst ?? 0)}</div>
+    `;
+    opt.onclick = () => { onPick(it); hideDropdown(); };
+    dropdown.appendChild(opt);
+  });
+
+  activeIndex = -1;
+  document.body.appendChild(dropdown);
+
+  anchorInput.onkeydown = (e) => {
+    const opts = dropdown.querySelectorAll(".opt");
+    if(!opts.length) return;
+
+    if(e.key === "ArrowDown"){
+      e.preventDefault();
+      activeIndex = (activeIndex + 1) % opts.length;
+      highlightOption(opts);
+    } else if(e.key === "ArrowUp"){
+      e.preventDefault();
+      activeIndex = (activeIndex - 1 + opts.length) % opts.length;
+      highlightOption(opts);
+    } else if(e.key === "Enter" && activeIndex >= 0){
+      e.preventDefault();
+      opts[activeIndex].click();
+    } else if(e.key === "Escape"){
+      hideDropdown();
+    }
+  };
+}
+
+function highlightOption(opts){
+  opts.forEach((opt, i) => {
+    opt.style.background = (i === activeIndex) ? "#1b2130" : "";
+    if(i === activeIndex){
+      // Scroll highlighted option into view
+      opt.scrollIntoView({ block: "nearest" });
+    }
+  });
+}
+
+// Enable Enter to move forward, Shift+Enter to move backward
+document.addEventListener("keydown", function(e){
+  // Collect all inputs in both header row and item rows
+  const headerInputs = Array.from(document.querySelectorAll("#invoiceRow input"));
+  const itemInputs   = Array.from(document.querySelectorAll("#items input"));
+  const allInputs    = headerInputs.concat(itemInputs);
+
+  const idx = allInputs.indexOf(document.activeElement);
+  if(idx >= 0){
+    const colsPerRow = headerInputs.length; // number of fields in header row
+    const colsPerItemRow = 21; // number of fields per item row
+
+    if(e.key === "Enter"){
+      e.preventDefault();
+      if(e.shiftKey){
+        const prev = allInputs[idx - 1];
+        if(prev) prev.focus();
+      } else {
+        const next = allInputs[idx + 1];
+        if(next) next.focus();
+      }
+    }
+
+    if(e.key === "ArrowDown"){
+      e.preventDefault();
+ {
+        // Inside item rows: move down to same column in next row
+        const colIndex = (idx - headerInputs.length) % colsPerItemRow;
+        const rowIndex = Math.floor((idx - headerInputs.length) / colsPerItemRow);
+        const nextRowIndex = rowIndex + 1;
+        const target = itemInputs[nextRowIndex * colsPerItemRow + colIndex];
+        if(target) target.focus();
+      }
+    }
+
+    if(e.key === "ArrowUp"){
+      e.preventDefault();
+      // If currently in first item row, jump back to header row
+      if(idx >= headerInputs.length && idx < headerInputs.length + colsPerItemRow){
+        const colIndex = (idx - headerInputs.length) % colsPerItemRow;
+        const target = headerInputs[colIndex];
+        if(target) target.focus();
+      } else {
+        // Inside item rows: move up to same column in previous row
+        const colIndex = (idx - headerInputs.length) % colsPerItemRow;
+        const rowIndex = Math.floor((idx - headerInputs.length) / colsPerItemRow);
+        const prevRowIndex = rowIndex - 1;
+        if(prevRowIndex >= 0){
+          const target = itemInputs[prevRowIndex * colsPerItemRow + colIndex];
+          if(target) target.focus();
+        }
+      }
+    }
+  }
+});
+</script>
 </body>
 </html>

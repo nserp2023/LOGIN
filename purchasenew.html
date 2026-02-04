@@ -342,50 +342,80 @@
       byId("items").appendChild(wrap);
 
       // Autocomplete: item code
-      code.addEventListener("input", async (e)=>{
-        const q = e.target.value.trim();
-        if(q.length < 2) return hideDropdown();
-        const { data } = await sb
-          .from("stock_items")
-          .select("item_code,item_name,quantity,purchase_price,purchase_price_gst,hsn_code")
-          .ilike("item_code", `%${q}%`)
-          .limit(10);
-        if(!data || !data.length) return hideDropdown();
-        showDropdown(e.target, data, (pick)=>{
-          code.value = pick.item_code;
-          name.value = pick.item_name;
-          hsn.value  = pick.hsn_code ?? "";
-          qty.value  = ""; // user enters
-          price.value= pick.purchase_price ?? "";
-          purch.value= pick.purchase_price ?? "";
-          purchG.value= pick.purchase_price_gst ?? "";
-          landing.value= purchG.value ?? "";
-          recalc();
-        });
-      });
-
+code.addEventListener("input", async (e) => {
+  const q = e.target.value.trim();
+  if (q.length < 2) return hideDropdown();
+  const { data } = await sb
+    .from("stock_items")
+    .select("item_code,item_name,quantity,purchase_price,purchase_price_gst,hsn_code,gst_percent,price1_percent,price1,price1_gst,price2_percent,price2,price2_gst,price3_percent,price3,price3_gst")
+    .ilike("item_code", `%${q}%`)
+    .limit(10);
+  if (!data || !data.length) return hideDropdown();
+  showDropdown(e.target, data, (pick) => {
+    code.value   = pick.item_code;
+    name.value   = pick.item_name;
+    hsn.value    = pick.hsn_code ?? "";
+    qty.value    = ""; // user enters
+    price.value  = pick.purchase_price ?? "";
+    purch.value  = pick.purchase_price ?? "";
+    purchG.value = pick.purchase_price_gst ?? "";
+    landing.value= purchG.value ?? "";
+    gstp.value   = pick.gst_percent ?? "";   // <-- auto-fill GST%
+    p1p.value    = pick.price1_percent ?? "";
+    p1.value     = pick.price1 ?? "";
+    p1g.value    = pick.price1_gst ?? "";
+    p2p.value    = pick.price2_percent ?? "";
+    p2.value     = pick.price2 ?? "";
+    p2g.value    = pick.price2_gst ?? "";
+    p3p.value    = pick.price3_percent ?? "";
+    p3.value     = pick.price3 ?? "";
+    p3g.value    = pick.price3_gst ?? "";
+    recalc();
+  });
+});
       // Autocomplete: item name
-      name.addEventListener("input", async (e)=>{
-        const q = e.target.value.trim();
-        if(q.length < 2) return hideDropdown();
-        const { data } = await sb
-          .from("stock_items")
-          .select("item_code,item_name,quantity,purchase_price,purchase_price_gst,hsn_code")
-          .ilike("item_name", `%${q}%`)
-          .limit(10);
-        if(!data || !data.length) return hideDropdown();
-        showDropdown(e.target, data, (pick)=>{
-          code.value = pick.item_code;
-          name.value = pick.item_name;
-          hsn.value  = pick.hsn_code ?? "";
-          price.value= pick.purchase_price ?? "";
-          purch.value= pick.purchase_price ?? "";
-          purchG.value= pick.purchase_price_gst ?? "";
-          landing.value= purchG.value ?? "";
-          recalc();
-        });
-      });
+name.addEventListener("input", async (e) => {
+  const q = e.target.value.trim();
+  if (q.length < 2) return hideDropdown();
 
+  // Split into keywords
+  const keywords = q.split(/\s+/).filter(Boolean);
+
+  let query = sb
+    .from("stock_items")
+    .select("item_code,item_name,quantity,purchase_price,purchase_price_gst,hsn_code,gst_percent,price1_percent,price1,price1_gst,price2_percent,price2,price2_gst,price3_percent,price3,price3_gst")
+    .limit(10);
+
+  // Apply ilike for each keyword
+  keywords.forEach(kw => {
+    query = query.ilike("item_name", `%${kw}%`);
+  });
+
+  const { data } = await query;
+
+  if (!data || !data.length) return hideDropdown();
+
+  showDropdown(e.target, data, (pick) => {
+    code.value   = pick.item_code;
+    name.value   = pick.item_name;
+    hsn.value    = pick.hsn_code ?? "";
+    price.value  = pick.purchase_price ?? "";
+    purch.value  = pick.purchase_price ?? "";
+    purchG.value = pick.purchase_price_gst ?? "";
+    landing.value= purchG.value ?? "";
+    gstp.value   = pick.gst_percent ?? "";
+    p1p.value    = pick.price1_percent ?? "";
+    p1.value     = pick.price1 ?? "";
+    p1g.value    = pick.price1_gst ?? "";
+    p2p.value    = pick.price2_percent ?? "";
+    p2.value     = pick.price2 ?? "";
+    p2g.value    = pick.price2_gst ?? "";
+    p3p.value    = pick.price3_percent ?? "";
+    p3.value     = pick.price3 ?? "";
+    p3g.value    = pick.price3_gst ?? "";
+    recalc();
+  });
+});
       // HSN→GST% lookup
       hsn.addEventListener("blur", async ()=>{
         const h = hsn.value.trim();

@@ -8,12 +8,16 @@
   background-size: cover;
 }
 
-/* Overlay layer */
+/* Gradient overlay */
 .dashboard-page::before {
   content: "";
   position: absolute;
-  inset: 0; /* shorthand for top/right/bottom/left:0 */
-  background: rgba(0, 0, 0, 0.45); /* semi-transparent black */
+  inset: 0;
+  background: linear-gradient(
+    rgba(0, 0, 0, 0.6) 0%,   /* darker at top */
+    rgba(0, 0, 0, 0.3) 40%, /* mid fade */
+    rgba(0, 0, 0, 0.15) 100% /* lighter at bottom */
+  );
   z-index: 0;
 }
 
@@ -25,8 +29,7 @@
 .banner {
   position: relative;
   z-index: 1;
-}
-/* Sidebar */
+}/* Sidebar */
 .sidebar {
   position: fixed;
   left: 0;
@@ -256,3 +259,165 @@
   }
 }
 
+/* Glassmorphism effect for cards */
+.card {
+  background: rgba(255, 255, 255, 0.25); /* semi-transparent */
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  backdrop-filter: blur(12px) saturate(120%);
+  -webkit-backdrop-filter: blur(12px) saturate(120%);
+  padding: 1.5rem;
+  flex: 1 1 220px;
+  text-align: center;
+  color: #fff; /* ensure text is readable */
+}
+
+/* Glassmorphism for topbar */
+.topbar {
+  background: rgba(45, 55, 72, 0.6);
+  backdrop-filter: blur(10px) saturate(120%);
+  -webkit-backdrop-filter: blur(10px) saturate(120%);
+  color: #fff;
+  padding: 14px 18px;
+  border-radius: 12px;
+}
+
+/* Glassmorphism for sidebar */
+.sidebar {
+  background: rgba(45, 55, 72, 0.65);
+  backdrop-filter: blur(10px) saturate(120%);
+  -webkit-backdrop-filter: blur(10px) saturate(120%);
+  color: #fff;
+}
+
+.card {
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+}
+
+.save-btn,
+.dashboard-table td button {
+  transition: transform 0.15s ease, background-color 0.25s ease;
+}
+.save-btn:active,
+.dashboard-table td button:active {
+  transform: scale(0.96);
+}
+.sidebar {
+  transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+.nav-list a {
+  transition: background 0.25s ease, color 0.25s ease;
+}
+.nav-list a:hover {
+  background: rgba(255,255,255,0.2);
+  color: #e0f2fe;
+}
+.dashboard-table tbody tr {
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+.dashboard-table tbody tr:hover {
+  transform: scale(1.01);
+}
+/* Shimmer animation */
+@keyframes shimmer {
+  0% { background-position: -200px 0; }
+  100% { background-position: 200px 0; }
+}
+
+.card.loading {
+  position: relative;
+  overflow: hidden;
+  background: #f6f7f8;
+  background-image: linear-gradient(
+    to right,
+    #f6f7f8 0%,
+    #edeef1 20%,
+    #f6f7f8 40%,
+    #f6f7f8 100%
+  );
+  background-repeat: no-repeat;
+  background-size: 800px 100%;
+  animation: shimmer 1.5s infinite linear;
+}
+/* Spinner */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid rgba(0,0,0,0.1);
+  border-top-color: #4facfe;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: auto;
+}
+.fade-in {
+  animation: fadeIn 0.4s ease forwards;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (max-width: 768px) {
+  .sidebar {
+    width: 80%; /* wider for thumb reach */
+    max-width: 280px;
+    transform: translateX(-100%);
+  }
+  .sidebar.active {
+    transform: translateX(0);
+  }
+  .main-content {
+    margin-left: 0;
+    padding: 16px;
+  }
+}
+@media (max-width: 768px) {
+  .cards {
+    flex-direction: column;
+  }
+  .card {
+    flex: 1 1 100%;
+    margin-bottom: 1rem;
+  }
+}
+@media (max-width: 600px) {
+  .dashboard-table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+  .dashboard-table th,
+  .dashboard-table td {
+    padding: 8px;
+    font-size: 0.85rem;
+  }
+}
+@media (max-width: 480px) {
+  .sales-form,
+  .inline-form {
+    flex-direction: column;
+  }
+  .sales-form input,
+  .inline-form input,
+  .inline-form select {
+    width: 100%;
+  }
+  .save-btn {
+    width: 100%;
+    padding: 14px;
+  }
+}
+.toggle-btn,
+.save-btn,
+.dashboard-table td button {
+  min-height: 44px;
+  padding: 12px 16px;
+  font-size: 1rem;
+}

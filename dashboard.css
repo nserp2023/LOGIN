@@ -421,3 +421,55 @@
   padding: 12px 16px;
   font-size: 1rem;
 }
+/* Sticky action bar */
+.action-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: rgba(45, 55, 72, 0.95); /* frosted dark */
+  backdrop-filter: blur(8px) saturate(120%);
+  -webkit-backdrop-filter: blur(8px) saturate(120%);
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 12px;
+  z-index: 1200;
+}
+
+/* Buttons inside bar */
+.action-bar button {
+  flex: 1;
+  margin: 0 6px;
+  padding: 14px;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+  color: #fff;
+  transition: background 0.25s ease, transform 0.15s ease;
+}
+
+.action-bar button.save {
+  background: #4facfe;
+}
+.action-bar button.save:hover {
+  background: #00c6fb;
+}
+.action-bar button.add {
+  background: #38a169;
+}
+.action-bar button.add:hover {
+  background: #2f855a;
+}
+
+/* Mobile adjustments */
+@media (max-width: 480px) {
+  .action-bar {
+    padding: 10px;
+  }
+  .action-bar button {
+    font-size: 0.95rem;
+    padding: 12px;
+  }
+}

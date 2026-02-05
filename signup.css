@@ -509,3 +509,68 @@ button:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(0, 120, 215, 0.5);
 }
+/* Base container already set at 380px width */
+
+/* Tablet screens */
+@media (max-width: 768px) {
+  .login-container {
+    width: 90%;
+    padding: 30px 25px;
+  }
+
+  .login-container h2 {
+    font-size: 22px;
+  }
+
+  .input-group input {
+    font-size: 14px;
+    padding: 12px;
+  }
+
+  button {
+    font-size: 15px;
+    padding: 12px;
+  }
+}
+
+/* Mobile screens */
+@media (max-width: 480px) {
+  body {
+    align-items: flex-start;
+    padding-top: 40px;
+  }
+
+  .login-container {
+    width: 95%;
+    padding: 25px 20px;
+    border-radius: 16px;
+  }
+
+  .login-container h2 {
+    font-size: 20px;
+  }
+
+  .input-group label {
+    font-size: 13px;
+  }
+
+  .input-group input {
+    font-size: 13px;
+    padding: 10px;
+  }
+
+  button {
+    font-size: 14px;
+    padding: 10px;
+  }
+
+  /* Hide floating shapes on very small screens for clarity */
+  .shape {
+    display: none;
+  }
+
+  /* Reduce particle density */
+  .particles span:nth-child(n+4) {
+    display: none;
+  }
+}

@@ -1,9 +1,31 @@
-/* Scope dashboard styles so they don't override your login page */
+/* Scope dashboard styles */
 .dashboard-page {
+  position: relative;
   display: flex;
-  background: #f4f4f4; /* avoid overriding your background image on login pages */
+  flex-direction: column;
+  min-height: 100vh;
+  background: url("background.jpg") no-repeat center center fixed;
+  background-size: cover;
 }
 
+/* Overlay layer */
+.dashboard-page::before {
+  content: "";
+  position: absolute;
+  inset: 0; /* shorthand for top/right/bottom/left:0 */
+  background: rgba(0, 0, 0, 0.45); /* semi-transparent black */
+  z-index: 0;
+}
+
+/* Ensure content sits above overlay */
+.main-content,
+.sidebar,
+.topbar,
+.cards,
+.banner {
+  position: relative;
+  z-index: 1;
+}
 /* Sidebar */
 .sidebar {
   position: fixed;
@@ -11,14 +33,14 @@
   top: 0;
   width: 260px;
   height: 100vh;
-  background: rgba(45, 55, 72, 0.85); /* half transparent feel */
+  background: rgba(45, 55, 72, 0.95);
   color: #fff;
-  backdrop-filter: saturate(120%) blur(2px);
-  transform: translateX(-260px); /* hidden by default */
+  backdrop-filter: saturate(120%) blur(4px);
+  transform: translateX(-260px);
   transition: transform 0.25s ease;
   overflow-y: auto;
   z-index: 1000;
-  padding-top: 60px; /* space for toggle button */
+  padding-top: 60px;
 }
 .sidebar.active {
   transform: translateX(0);
@@ -31,9 +53,10 @@
   color: #fff;
   border: none;
   border-radius: 6px;
-  padding: 10px 12px;
+  padding: 12px 14px;
   cursor: pointer;
   z-index: 1100;
+  font-size: 1rem;
 }
 
 /* Navigation list */
@@ -43,21 +66,22 @@
   padding: 0 8px 24px 8px;
 }
 .nav-list > li {
-  margin: 4px 0;
+  margin: 6px 0;
   border-radius: 6px;
 }
 .nav-list a {
   color: #fff;
   text-decoration: none;
   display: block;
-  padding: 10px 14px;
+  padding: 12px 16px;
   border-radius: 6px;
+  font-size: 1rem;
 }
 .nav-list a:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.15);
 }
 
-/* Submenu behavior */
+/* Submenu */
 .has-submenu > .menu-link::after {
   content: "▸";
   float: right;
@@ -70,7 +94,7 @@
 .submenu {
   display: none;
   list-style: none;
-  padding-left: 8px;
+  padding-left: 12px;
   margin: 4px 0 8px 8px;
   border-left: 2px solid rgba(255, 255, 255, 0.15);
 }
@@ -78,25 +102,24 @@
   display: block;
 }
 .submenu li a {
-  padding: 8px 12px;
+  padding: 10px 14px;
   font-size: 0.95rem;
   opacity: 0.95;
 }
 
-/* Main content layout */
+/* Main content */
 .main-content {
   flex: 1;
   margin-left: 20px;
   padding: 20px;
   min-height: 100vh;
 }
-
-/* Topbar in dashboard content */
 .topbar {
   background: #2d3748;
   color: #fff;
-  padding: 12px 16px;
+  padding: 14px 18px;
   border-radius: 8px;
+  font-size: 1rem;
 }
 
 /* Cards */
@@ -115,44 +138,7 @@
   text-align: center;
 }
 
-/* Hover-to-open edge area (optional UX) */
-.dashboard-page::before {
-  content: "";
-  position: fixed;
-  left: 0;
-  top: 0;
-  width: 24px;
-  height: 100vh;
-  z-index: 900;
-}
-.dashboard-page {
-  display: flex;
-  background: url("background.jpg") no-repeat center center fixed;
-  background-size: cover;
-}
-
-/* Sales form */
-.sales-form {
-  display: flex;
-  gap: 1rem;
-  margin-bottom: 1rem;
-  flex-wrap: wrap;
-}
-.sales-form .form-row {
-  display: flex;
-  flex-direction: column;
-}
-.sales-form label {
-  font-weight: bold;
-  margin-bottom: 4px;
-}
-.sales-form input {
-  padding: 8px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-}
-
-/* === Unified Table Styles for Sales & Products === */
+/* Tables */
 .dashboard-table {
   width: 100%;
   border-collapse: collapse;
@@ -160,10 +146,11 @@
   border-radius: 8px;
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  font-size: 0.95rem;
 }
 .dashboard-table th,
 .dashboard-table td {
-  padding: 10px;
+  padding: 12px;
   border-bottom: 1px solid #eee;
   text-align: center;
 }
@@ -171,166 +158,101 @@
   background: #2d3748;
   color: #fff;
 }
-.dashboard-table tfoot td {
-  font-weight: bold;
-  background: #f4f4f4;
-}
-.dashboard-table td button {
-  margin: 0 4px;
-  padding: 4px 8px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-.dashboard-table td button.edit {
-  background: #4facfe;
-  color: #fff;
-}
-.dashboard-table td button.remove {
-  background: #e53e3e;
-  color: #fff;
-}
-.dashboard-table td[contenteditable="true"] {
-  background: #fdfdfd;
-  cursor: text;
-}
-/* Image cells */
-.dashboard-table td img {
-  max-width: 50px;
-  border-radius: 4px;
-}
-/* Row hover effect */
 .dashboard-table tbody tr:hover {
   background-color: #f1f5f9;
   transition: background-color 0.2s ease;
 }
-/* Selected row style (when checkbox is ticked) */
 .dashboard-table tbody tr.selected {
-  background-color: #e0f2fe; /* light blue */
+  background-color: #e0f2fe;
 }
 
-/* Banner messages */
-.banner {
-  padding: 10px;
-  margin: 10px 0;
-  border-radius: 4px;
-  font-weight: bold;
-  text-align: center;
-  display: none;
-}
-.banner-success {
-  background-color: #d4edda;
-  color: #155724;
-  border: 1px solid #c3e6cb;
-}
-.banner-error {
-  background-color: #f8d7da;
-  color: #721c24;
-  border: 1px solid #f5c6cb;
-}
-.banner-warning {
-  background-color: #fff3cd;
-  color: #856404;
-  border: 1px solid #ffeeba;
-}
-
-/* Editable cells highlight */
-.edited-cell {
-  background-color: #fff3cd;
-  border: 1px solid #ffeeba;
-}
-
-/* Product form */
+/* Forms */
+.sales-form,
 .inline-form {
   display: flex;
-  flex-wrap: wrap;
   gap: 1rem;
+  flex-wrap: wrap;
 }
+.sales-form label,
 .inline-form label {
-  display: flex;
-  flex-direction: column;
   font-weight: bold;
+  margin-bottom: 4px;
 }
+.sales-form input,
 .inline-form input,
 .inline-form select {
-  padding: 8px;
+  padding: 10px;
   border: 1px solid #ddd;
   border-radius: 4px;
+  font-size: 1rem;
 }
 
-/* Save button */
+/* Buttons */
 .save-btn {
   margin-top: 1rem;
-  padding: 10px 16px;
+  padding: 12px 18px;
   background: #4facfe;
   color: #fff;
   border: none;
   border-radius: 6px;
   cursor: pointer;
+  font-size: 1rem;
 }
 .save-btn:hover {
   background: #00c6fb;
 }
 
-.form-row label {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-.form-row {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 8px;
-}
-.form-field {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-.form-field label {
-  font-size: 12px;
-  margin-bottom: 2px;
-}
-.form-field input, .form-field select {
-  padding: 4px;
-  font-size: 14px;
-}
-input.error {
-  border: 2px solid #dc3545;   /* red border */
-  background-color: #f8d7da;   /* light red background */
-  animation: shake 0.3s;       /* trigger shake */
-}
-
-@keyframes shake {
-  0% { transform: translateX(0); }
-  25% { transform: translateX(-4px); }
-  50% { transform: translateX(4px); }
-  75% { transform: translateX(-4px); }
-  100% { transform: translateX(0); }
-}
-button[disabled] {
-  background-color: #ccc;
-  color: #666;
-  cursor: not-allowed;
-  position: relative;
-}
-
-button[disabled]::after {
-  content: attr(data-tooltip);
-  position: absolute;
-  top: -28px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: #333;
-  color: #fff;
-  font-size: 12px;
-  padding: 4px 8px;
+/* Banner messages */
+.banner {
+  padding: 12px;
+  margin: 10px 0;
   border-radius: 4px;
-  white-space: nowrap;
+  font-weight: bold;
+  text-align: center;
   display: none;
+  font-size: 0.95rem;
 }
 
-button[disabled]:hover::after {
-  display: block;
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .sidebar {
+    width: 220px;
+    transform: translateX(-220px);
+  }
+  .main-content {
+    margin-left: 0;
+    padding: 16px;
+  }
+  .cards {
+    flex-direction: column;
+  }
+  .card {
+    flex: 1 1 100%;
+  }
+  .dashboard-table th,
+  .dashboard-table td {
+    padding: 8px;
+    font-size: 0.85rem;
+  }
 }
+
+@media (max-width: 480px) {
+  .toggle-btn {
+    padding: 10px;
+    font-size: 0.9rem;
+  }
+  .nav-list a {
+    padding: 10px 12px;
+    font-size: 0.9rem;
+  }
+  .save-btn {
+    width: 100%;
+    padding: 14px;
+    font-size: 1rem;
+  }
+  .sales-form,
+  .inline-form {
+    flex-direction: column;
+  }
+}
+

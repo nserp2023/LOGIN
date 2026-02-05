@@ -1,0 +1,511 @@
+/* Reset */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Background with overlay */
+body {
+  font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: url("background.jpg") no-repeat center center fixed;
+  background-size: cover;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+}
+
+body::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45); /* dark overlay */
+}
+
+/* Glassmorphism container */
+.login-container {
+  position: relative;
+  z-index: 1;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  padding: 40px 35px;
+  width: 380px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+  animation: fadeInUp 0.8s ease;
+}
+
+/* Heading */
+.login-container h2 {
+  margin-bottom: 25px;
+  font-size: 26px;
+  font-weight: 600;
+  color: #fff;
+  text-align: center;
+  letter-spacing: 0.5px;
+}
+
+/* Input groups */
+.input-group {
+  margin-bottom: 20px;
+}
+
+.input-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #f1f1f1;
+  font-size: 14px;
+}
+
+.input-group input {
+  width: 100%;
+  padding: 12px 14px;
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  background: rgba(255, 255, 255, 0.25);
+  color: #fff;
+  transition: all 0.3s ease;
+}
+
+.input-group input::placeholder {
+  color: #e0e0e0;
+}
+
+.input-group input:focus {
+  background: rgba(255, 255, 255, 0.35);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(0, 120, 215, 0.4);
+}
+
+/* Button */
+button {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, #00c6ff, #0078d7);
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 120, 215, 0.5);
+}
+
+/* Error message */
+#error-message {
+  color: #ff6b6b;
+  margin-top: 12px;
+  font-size: 14px;
+  text-align: center;
+}
+
+/* Login link */
+.login-container p {
+  margin-top: 20px;
+  font-size: 14px;
+  color: #f1f1f1;
+  text-align: center;
+}
+
+.login-container a {
+  color: #00c6ff;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.login-container a:hover {
+  text-decoration: underline;
+}
+
+/* Animation */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Background with overlay */
+body {
+  font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: url("background.jpg") no-repeat center center fixed;
+  background-size: cover;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+}
+
+body::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+/* Glassmorphism container */
+.login-container {
+  position: relative;
+  z-index: 2;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  padding: 40px 35px;
+  width: 380px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+  animation: fadeInUp 0.8s ease;
+}
+
+/* Floating shapes */
+.shape {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.6;
+  filter: blur(40px);
+  animation: float 12s infinite ease-in-out;
+}
+
+.shape:nth-child(1) {
+  width: 200px;
+  height: 200px;
+  background: #00c6ff;
+  top: 10%;
+  left: 15%;
+  animation-delay: 0s;
+}
+
+.shape:nth-child(2) {
+  width: 150px;
+  height: 150px;
+  background: #ff6b6b;
+  bottom: 15%;
+  right: 20%;
+  animation-delay: 4s;
+}
+
+.shape:nth-child(3) {
+  width: 250px;
+  height: 250px;
+  background: #7d5fff;
+  top: 60%;
+  left: 5%;
+  animation-delay: 8s;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0) translateX(0);
+  }
+  50% {
+    transform: translateY(-40px) translateX(30px);
+  }
+}
+
+/* Heading */
+.login-container h2 {
+  margin-bottom: 25px;
+  font-size: 26px;
+  font-weight: 600;
+  color: #fff;
+  text-align: center;
+  letter-spacing: 0.5px;
+}
+
+/* Input groups */
+.input-group {
+  margin-bottom: 20px;
+}
+
+.input-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #f1f1f1;
+  font-size: 14px;
+}
+
+.input-group input {
+  width: 100%;
+  padding: 12px 14px;
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  background: rgba(255, 255, 255, 0.25);
+  color: #fff;
+  transition: all 0.3s ease;
+}
+
+.input-group input::placeholder {
+  color: #e0e0e0;
+}
+
+.input-group input:focus {
+  background: rgba(255, 255, 255, 0.35);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(0, 120, 215, 0.4);
+}
+
+/* Button */
+button {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, #00c6ff, #0078d7);
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 120, 215, 0.5);
+}
+
+/* Error message */
+#error-message {
+  color: #ff6b6b;
+  margin-top: 12px;
+  font-size: 14px;
+  text-align: center;
+}
+
+/* Login link */
+.login-container p {
+  margin-top: 20px;
+  font-size: 14px;
+  color: #f1f1f1;
+  text-align: center;
+}
+
+.login-container a {
+  color: #00c6ff;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.login-container a:hover {
+  text-decoration: underline;
+}
+
+/* Animation */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Particle layer */
+.particles {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.particles::before,
+.particles::after {
+  content: "";
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  background: #fff;
+  border-radius: 50%;
+  animation: twinkle 6s infinite ease-in-out;
+}
+
+.particles::before {
+  top: 20%;
+  left: 30%;
+  animation-delay: 0s;
+}
+
+.particles::after {
+  top: 70%;
+  left: 60%;
+  animation-delay: 3s;
+}
+
+/* Generate multiple particles */
+.particles span {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  background: #fff;
+  border-radius: 50%;
+  animation: twinkle 8s infinite ease-in-out;
+}
+
+.particles span:nth-child(1) { top: 10%; left: 80%; animation-delay: 1s; }
+.particles span:nth-child(2) { top: 40%; left: 20%; animation-delay: 2s; }
+.particles span:nth-child(3) { top: 65%; left: 50%; animation-delay: 4s; }
+.particles span:nth-child(4) { top: 85%; left: 70%; animation-delay: 5s; }
+.particles span:nth-child(5) { top: 30%; left: 90%; animation-delay: 6s; }
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.2; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.5); }
+}
+
+/* Glow around the container */
+.login-container {
+  position: relative;
+  z-index: 2;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  padding: 40px 35px;
+  width: 380px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+  animation: fadeInUp 0.8s ease;
+}
+
+/* Gradient glow effect */
+.login-container::before {
+  content: "";
+  position: absolute;
+  inset: -5px; /* expands slightly outside the container */
+  border-radius: 25px;
+  background: linear-gradient(135deg, rgba(0,198,255,0.6), rgba(125,95,255,0.6), rgba(255,107,107,0.6));
+  filter: blur(25px);
+  z-index: -1;
+  animation: glowPulse 6s infinite alternate ease-in-out;
+}
+
+/* Glow animation */
+@keyframes glowPulse {
+  from {
+    opacity: 0.5;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+}
+/* Button with glow */
+button {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, #00c6ff, #0078d7);
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  position: relative;
+  z-index: 1;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Glow aura around button */
+button::before {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(0,198,255,0.7), rgba(125,95,255,0.7), rgba(255,107,107,0.7));
+  filter: blur(15px);
+  z-index: -1;
+  animation: glowPulse 6s infinite alternate ease-in-out;
+}
+
+/* Hover effect */
+button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 120, 215, 0.5);
+}
+
+/* Button base */
+button {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, #00c6ff, #0078d7);
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  position: relative;
+  z-index: 1;
+  overflow: hidden; /* important for ripple */
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Glow aura around button */
+button::before {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(0,198,255,0.7), rgba(125,95,255,0.7), rgba(255,107,107,0.7));
+  filter: blur(15px);
+  z-index: -1;
+  animation: glowPulse 6s infinite alternate ease-in-out;
+}
+
+/* Ripple effect */
+button::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.5);
+  transform: scale(0);
+  opacity: 0;
+  pointer-events: none;
+  animation: none;
+}
+
+button:active::after {
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  opacity: 1;
+  animation: ripple 0.6s ease-out;
+}
+
+/* Ripple animation */
+@keyframes ripple {
+  to {
+    transform: translate(-50%, -50%) scale(12);
+    opacity: 0;
+  }
+}
+
+/* Hover effect */
+button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 120, 215, 0.5);
+}

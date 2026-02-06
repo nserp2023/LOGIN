@@ -483,6 +483,26 @@ name.addEventListener("input", async (e) => {
         syncTier(p3p, p3, p3g, Gp);
 
         maybeEnableSave();
+
+  const rows = document.querySelectorAll("#items tbody tr");
+  rows.forEach(row => {
+    const qty = parseFloat(row.querySelector(".qty").value) || 0;
+    const price = parseFloat(row.querySelector(".price").value) || 0;
+    const disc = parseFloat(row.querySelector(".disc").value) || 0;
+    const gst = parseFloat(row.querySelector(".gst").value) || 0;
+
+    const total = qty * price * (1 - disc / 100);
+    const total_gst = total * (1 + gst / 100);
+
+    row.querySelector(".total").value = fmt2(total);
+    row.querySelector(".total_gst").value = fmt2(total_gst);
+  });
+
+  // NEW: auto-update payable and invoice amount
+  updatePayableFromItems();
+
+
+
       }
 
       function syncTier(pctEl, baseEl, gstEl, gstPercent){
@@ -789,6 +809,129 @@ document.addEventListener("keydown", function(e){
     }
   }
 });
+
+
+
+
+
+
+
+
+function updatePayableFromItems() {
+  const items = collectItems();
+  const sum = items.reduce((acc, it) => acc + it.total_gst, 0);
+  byId("payable").value = fmt2(sum);
+  updateRoundOff();       // NEW: auto round off
+  updateInvoiceAmount();  // invoice = payable + roundOff
+  validateInvoiceTotals();
+}
+function updateInvoiceAmount() {
+  const payable = parseFloat(byId("payable").value) || 0;
+  const roundOff = parseFloat(byId("roundOff").value) || 0;
+  const invoiceAmount = payable + roundOff;
+  byId("invoiceAmount").value = fmt2(invoiceAmount);
+}
+
+function updateRoundOff() {
+  const payable = parseFloat(byId("payable").value) || 0;
+  // Round to nearest integer
+  const rounded = Math.round(payable);
+  const roundOff = rounded - payable;
+  byId("roundOff").value = fmt2(roundOff);
+  updateInvoiceAmount(); // refresh invoice amount after round off
+}
+
+byId("roundOff").addEventListener("input", updateInvoiceAmount);
+// REMOVE this line if you want roundOff fully automatic
+// byId("roundOff").addEventListener("input", updateInvoiceAmount);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+document.addEventListener("keydown", function(e) {
+  if (e.key === "Delete") {
+    const active = document.activeElement;
+    if (active) {
+      const row = active.closest("tr"); // works even if rows are JS-created
+      if (row) {
+        row.remove();
+        recalc(); // refresh totals after deletion
+      }
+    }
+  }
+});
+const row = active.closest(".itemRow"); // use your row’s class
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

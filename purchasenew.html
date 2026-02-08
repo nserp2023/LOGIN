@@ -100,6 +100,10 @@
     .flex{display:flex; gap:8px; align-items:center}
     .spacer{height:8px}
     .error-tip{position:absolute; transform:translateY(44px); background:#1b0f14; color:#ffd6e0; border:1px solid #ef476f; padding:6px 8px; border-radius:8px; font-size:12px}
+  
+
+
+  
   </style>
 </head>
 <body>
@@ -612,51 +616,18 @@ name.addEventListener("input", async (e) => {
 
       // 2) Upsert each stock item (by item_code)
 for (const it of items) {
-  // 1. Get existing stock
-  const { data: existing, error: fetchErr } = await sb
+  const { data: existing } = await sb
     .from("stock_items")
     .select("quantity")
     .eq("item_code", it.item_code)
     .single();
 
-  if (fetchErr && fetchErr.code !== "PGRST116") { // ignore 'no rows found'
-    status.innerHTML = `<span class="err">Fetch failed for ${it.item_code}: ${fetchErr.message}</span>`;
-    return;
-  }
-
   const currentQty = existing?.quantity || 0;
   const newQty = currentQty + it.quantity;
 
-  // 2. Upsert with updated quantity
-  const stockPayload = {
-    hsn_code: it.hsn_code,
-    item_code: it.item_code,
-    item_name: it.item_name,
-    quantity: newQty,   // <-- now adds instead of replacing
-    price: it.price,
-    discount_percent: it.discount_percent,
-    purchase_price: it.purchase_price,
-    purchase_price_gst: it.purchase_price_gst,
-    landing: it.landing,
-    price1_percent: it.price1_percent,
-    price1: it.price1,
-    price1_gst: it.price1_gst,
-    price2_percent: it.price2_percent,
-    price2: it.price2,
-    price2_gst: it.price2_gst,
-    price3_percent: it.price3_percent,
-    price3: it.price3,
-    price3_gst: it.price3_gst,
-  };
+  const stockPayload = { ...it, quantity: newQty };
 
-  const { error: e2 } = await sb
-    .from("stock_items")
-    .upsert(stockPayload, { onConflict: "item_code" });
-
-  if (e2) {
-    status.innerHTML = `<span class="err">Stock upsert failed for ${it.item_code}: ${e2.message}</span>`;
-    return;
-  }
+  await sb.from("stock_items").upsert(stockPayload, { onConflict: "item_code" });
 }
       // 3) Insert purchase_item_details rows
       const pidRows = items.map(it=>({
@@ -927,8 +898,21 @@ byId("roundOff").addEventListener("input", updateInvoiceAmount);
 
 
 
+document.addEventListener("DOMContentLoaded", function() {
+  // Force uppercase for all text inputs and textareas
+  document.querySelectorAll("input[type=text], textarea").forEach(el => {
+    el.addEventListener("input", function() {
+      this.value = this.value.toUpperCase();
+    });
+  });
 
-
+  // Force uppercase for any contenteditable elements
+  document.querySelectorAll("[contenteditable=true]").forEach(el => {
+    el.addEventListener("input", function() {
+      this.innerText = this.innerText.toUpperCase();
+    });
+  });
+});
 
 
 

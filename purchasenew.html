@@ -294,7 +294,20 @@
     }
 
     // --- ITEM ROWS ---
+
+
+
+
     let rowCount = 0;
+
+
+    function enforceUppercase(el) {
+  el.addEventListener("input", function() {
+    this.value = this.value.toUpperCase();
+  });
+}
+
+
     function newItemRow(prefill={}){
       rowCount++;
       const wrap = document.createElement("div");
@@ -305,8 +318,21 @@
         const i = document.createElement("input");
         i.placeholder = ph; if(cls) i.classList.add(cls);
         if(val!==undefined && val!=="") i.value = val;
+
+
+
+            // Attach uppercase enforcement only for text-like fields
+    if (i.type === "text" || i.type === "") {
+      enforceUppercase(i);
+    }
+
+
+
+
         return i;
       };
+
+      
 
       // Create inputs in required order
       const hsn = mk("HSN");
@@ -841,94 +867,6 @@ function updateRoundOff() {
 byId("roundOff").addEventListener("input", updateInvoiceAmount);
 // REMOVE this line if you want roundOff fully automatic
 // byId("roundOff").addEventListener("input", updateInvoiceAmount);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-document.addEventListener("DOMContentLoaded", function() {
-  // Force uppercase for all text inputs and textareas
-  document.querySelectorAll("input[type=text], textarea").forEach(el => {
-    el.addEventListener("input", function() {
-      this.value = this.value.toUpperCase();
-    });
-  });
-
-  // Force uppercase for any contenteditable elements
-  document.querySelectorAll("[contenteditable=true]").forEach(el => {
-    el.addEventListener("input", function() {
-      this.innerText = this.innerText.toUpperCase();
-    });
-  });
-});
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

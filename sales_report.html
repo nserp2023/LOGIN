@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Sales Report - VAJRA LIGHTS</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+
+/* ===== PAGE BACKGROUND - DARK WOOD ===== */
+body {
+    font-family: Arial, sans-serif;
+    padding:20px;
+    background-image: url("https://www.transparenttextures.com/patterns/dark-wood.png");
+    background-color: #3b2a1e; /* fallback */
+    color: #fff;
+}
+
+/* ===== TABLE MAIN STYLE ===== */
+table {
+    width:100%;
+    border-collapse:collapse;
+    margin-top:20px;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(4px);
+    border-radius:8px;
+    overflow:hidden;
+}
+
+th, td {
+    border:1px solid rgba(255,255,255,0.15);
+    padding:10px;
+    text-align:left;
+}
+
+th {
+    background: rgba(0,0,0,0.8);
+    color:#ffd700;
+    font-weight:bold;
+}
+
+tr:hover {
+    background: rgba(255,255,255,0.05);
+    cursor:pointer;
+}
+
+/* ===== TOTAL ROW ===== */
+.total-row {
+    font-weight:bold;
+    background: rgba(255,215,0,0.15);
+}
+
+/* ===== INPUTS & FILTERS ===== */
+input, select {
+    padding:6px;
+    border-radius:6px;
+    border:1px solid #aaa;
+    margin:5px;
+}
+
+/* ===== PRINT BUTTON ===== */
+button {
+    padding:6px 10px;
+    border:none;
+    border-radius:6px;
+    background:#ffd700;
+    cursor:pointer;
+    font-weight:bold;
+}
+
+button:hover {
+    background:#ffcc00;
+}
+
+/* ===== DROPDOWN DETAILS - LIGHT WOOD ===== */
+.dropdown-wood {
+    background-image: url("https://www.transparenttextures.com/patterns/light-wood.png");
+    background-color: #e4c9a8;
+    color:#000;
+    padding:15px;
+    border-radius:6px;
+}
+
+/* Nested table inside dropdown */
+.dropdown-wood table {
+    background: rgba(255,255,255,0.85);
+    color:#000;
+}
+
+.dropdown-wood th {
+    background:#c89f6d;
+    color:#000;
+}
+
+</style>
+</head>
+<body>
+
+<h2>Sales Report</h2>
+
+From: <input type="date" id="from_date">
+To: <input type="date" id="to_date">
+
+Series:
+<select id="series_filter">
+    <option value="">All</option>
+</select>
+
+Customer Name:
+<input type="text" id="customer_filter" placeholder="Search name">
+
+Mobile:
+<input type="text" id="mobile_filter" placeholder="Search mobile">
+
+
+<table>
+<thead>
+<tr>
+<th>Series</th>
+<th>Bill No</th>
+<th>Date</th>
+<th>Customer</th>
+<th>Mobile</th>
+<th>Total</th>
+<th>Print</th>
+</tr>
+</thead>
+<tbody id="report_body"></tbody>
+</table>
+
+<script>
+const sb = supabase.createClient(
+"https://gqxczzijntbvtlmmzppt.supabase.co",
+"sb_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs"
+);
+
+async function loadSales() {
+    const from = document.getElementById('from_date').value;
+    const to = document.getElementById('to_date').value;
+    const series = document.getElementById('series_filter').value;
+    const customer = document.getElementById('customer_filter').value.trim();
+    const mobile = document.getElementById('mobile_filter').value.trim();
+
+    let query = sb
+        .from('sales_details')
+        .select('*')
+        .gte('bill_date', from)
+        .lte('bill_date', to)
+        .order('sales_number', { ascending:false });
+
+    if (series) query = query.eq('series_code', series);
+    if (customer) query = query.ilike('customer_name', `%${customer}%`);
+    if (mobile) query = query.ilike('customer_mobile', `%${mobile}%`);
+
+    const { data, error } = await query;
+
+    if(error){
+        alert(error.message);
+        return;
+    }
+
+    const body = document.getElementById('report_body');
+    body.innerHTML = '';
+
+    let totalSum = 0;
+
+    for (let s of data) {
+
+        totalSum += parseFloat(s.invoice_amount || 0);
+
+        // MAIN ROW
+        body.innerHTML += `
+        <tr onclick="toggleDetails(${s.id})" style="cursor:pointer;">
+            <td>${s.series_code || ''}</td>
+            <td>${s.sales_number || ''}</td>
+            <td>${s.bill_date || ''}</td>
+            <td>${s.customer_name || ''}</td>
+            <td>${s.customer_mobile || ''}</td>
+            <td>₹${parseFloat(s.invoice_amount || 0).toFixed(2)}</td>
+            <td>
+                <button onclick="event.stopPropagation(); printBill(${s.id})">
+                    🖨 Print
+                </button>
+            </td>
+        </tr>
+
+        <!-- Hidden Details Row -->
+<tr id="details-${s.id}" style="display:none;">
+            <td colspan="7">
+                <div id="items-${s.id}">Loading...</div>
+            </td>
+        </tr>
+        `;
+    }
+
+    body.innerHTML += `
+        <tr class="total-row">
+            <td colspan="6">TOTAL SALES</td>
+            <td>₹${totalSum.toFixed(2)}</td>
+        </tr>`;
+}
+
+async function toggleDetails(id) {
+
+    const row = document.getElementById(`details-${id}`);
+    const container = document.getElementById(`items-${id}`);
+
+    // Toggle close
+    if (row.style.display === "table-row") {
+        row.style.display = "none";
+        return;
+    }
+
+    row.style.display = "table-row";
+    container.innerHTML = "Loading...";
+
+    const { data, error } = await sb
+        .from('sales_item_details')
+        .select('*')
+        .eq('sales_id', id);
+
+    if (error) {
+        container.innerHTML = "Error loading items";
+        return;
+    }
+
+    if (!data.length) {
+        container.innerHTML = "No items found.";
+        return;
+    }
+
+let html = `
+    <div class="dropdown-wood">
+        <table style="width:100%; margin-top:10px;">
+            <tr style="background:#eee;">
+                <th>Item Code</th>
+                <th>Item Name</th>
+                <th>Qty</th>
+                <th>Price</th>
+                <th>Total</th>
+            </tr>
+    `;
+
+    data.forEach(i => {
+        html += `
+            <tr>
+                <td>${i.item_code || ''}</td>
+                <td>${i.item_name || ''}</td>
+                <td>${i.quantity || 0}</td>
+                <td>₹${parseFloat(i.price || 0).toFixed(2)}</td>
+                <td>₹${parseFloat(i.sales_price || 0).toFixed(2)}</td>
+            </tr>
+        `;
+    });
+
+html += "</table></div>";
+
+    container.innerHTML = html;
+}
+
+function printBill(id) {
+
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'absolute';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+
+    iframe.src = `sales_details.html?id=${id}&print=true`;
+
+    document.body.appendChild(iframe);
+
+    // remove iframe after printing
+    setTimeout(() => {
+        document.body.removeChild(iframe);
+    }, 5000);
+}
+
+
+function viewBill(id) {
+    window.open(`sales_details.html?id=${id}`, '_blank');
+}
+
+document.addEventListener("DOMContentLoaded", async () => {
+    const today = new Date().toISOString().split("T")[0];
+
+    document.getElementById("from_date").value = today;
+    document.getElementById("to_date").value = today;
+
+    await loadSeries();   // if using series dropdown
+    loadSales();          // first auto load
+
+    // Auto reload when date changes
+    document.getElementById("from_date").addEventListener("change", loadSales);
+    document.getElementById("to_date").addEventListener("change", loadSales);
+
+    // Auto reload when series changes
+    document.getElementById("series_filter").addEventListener("change", loadSales);
+
+    // Auto reload when typing customer name
+    document.getElementById("customer_filter").addEventListener("input", debounce(loadSales, 500));
+
+    // Auto reload when typing mobile
+    document.getElementById("mobile_filter").addEventListener("input", debounce(loadSales, 500));
+    
+});
+
+function debounce(func, delay) {
+    let timeout;
+    return function() {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func(), delay);
+    };
+}
+
+
+async function loadSeries() {
+    const { data, error } = await sb
+        .from('bill_series')   // change if your table name different
+        .select('series_code');
+
+    if (error) {
+        console.error(error);
+        return;
+    }
+
+    const select = document.getElementById('series_filter');
+
+    data.forEach(s => {
+        select.innerHTML += `<option value="${s.series_code}">
+                                ${s.series_code}
+                             </option>`;
+    });
+}
+
+
+
+</script>
+
+</body>
+</html>

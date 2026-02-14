@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Sales Details</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+body {
+    font-family: Arial;
+    padding: 20px;
+}
+
+.invoice-container {
+    width: 210mm;
+    min-height: 297mm;
+    margin: auto;
+    padding: 15mm;
+    border: 1px solid #000;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th, td {
+    border: 1px solid #000;
+    padding: 5px;
+    font-size: 12px;
+}
+
+.header-center {
+    text-align: center;
+    font-weight: bold;
+}
+
+.right-align {
+    text-align: right;
+}
+
+@media print {
+    body {
+        margin: 0;
+        padding: 0;
+    }
+
+    .no-print {
+        display: none;
+    }
+}
+</style>
+</head>
+<body>
+
+<div class="invoice-container">
+
+    <div class="header-center">
+        <h2>VAJRA LIGHTS AND ELECTRICALS</h2>
+        KATHAKONAM KATTACAD (HO: S N TRADERS KATTACADA)<br>
+        Email: vajralightsandelectricals.sha@gmail.com<br>
+        Phone: 8608608063, 9495160771<br>
+        GSTIN: 32APBPM5593H1ZT
+        <hr>
+        <b>GST INVOICE</b>
+    </div>
+
+    <br>
+
+    <table>
+        <tr>
+            <td><b>Billed To:</b> <span id="customer_name"></span></td>
+            <td class="right-align">
+                <b>Bill No:</b> <span id="bill_no"></span><br>
+                <b>Bill Date:</b> <span id="bill_date"></span>
+            </td>
+        </tr>
+    </table>
+
+    <br>
+
+    <table>
+        <thead>
+            <tr>
+                <th>No</th>
+                <th>HSN</th>
+                <th>Code</th>
+                <th>Description</th>
+                <th>Qty</th>
+                <th>Price</th>
+                <th>GST%</th>
+                <th>Amount</th>
+            </tr>
+        </thead>
+        <tbody id="items_body"></tbody>
+    </table>
+
+    <br>
+
+    <div class="right-align">
+        <b>Grand Total: ₹ <span id="grand_total"></span></b>
+    </div>
+
+    <br>
+
+    <div>
+        <b>Amount in Words:</b> <span id="amount_words"></span>
+    </div>
+
+    <br><br>
+
+    <div class="right-align">
+        For VAJRA LIGHTS AND ELECTRICALS<br><br><br>
+        Authorised Signatory
+    </div>
+
+</div>
+
+<script>
+const sb = supabase.createClient(
+"https://gqxczzijntbvtlmmzppt.supabase.co",
+"sb_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs"
+);
+
+const urlParams = new URLSearchParams(window.location.search);
+const saleId = urlParams.get('id');
+
+document.addEventListener("DOMContentLoaded", loadDetails);
+
+async function loadDetails() {
+
+    if (!saleId) return;
+
+    // Fetch Header
+    const { data: header, error: headerError } = await sb
+        .from('sales_details')
+        .select('*')
+        .eq('id', saleId)
+        .single();
+
+    if (headerError) {
+        alert(headerError.message);
+        return;
+    }
+
+    // Fetch Items
+    const { data: items, error: itemsError } = await sb
+        .from('sales_item_details')
+        .select('*')
+        .eq('sales_id', saleId);
+
+    if (itemsError) {
+        alert(itemsError.message);
+        return;
+    }
+
+    // Fill Header Data
+    document.getElementById("customer_name").innerText = header.customer_name || '';
+    document.getElementById("bill_no").innerText = header.sales_number || '';
+    document.getElementById("bill_date").innerText = header.bill_date || '';
+
+    let total = 0;
+    let count = 1;
+    const body = document.getElementById("items_body");
+    body.innerHTML = "";
+
+    // Fill Items
+    items.forEach(i => {
+
+        const amount = parseFloat(i.sales_price || 0);
+        total += amount;
+
+        body.innerHTML += `
+        <tr>
+            <td>${count++}</td>
+            <td>${i.hsn_code || ''}</td>
+            <td>${i.item_code || ''}</td>
+            <td>${i.item_name || ''}</td>
+            <td>${i.quantity || 0}</td>
+            <td>${parseFloat(i.price || 0).toFixed(2)}</td>
+            <td>${i.gst_percent || 0}%</td>
+            <td>${amount.toFixed(2)}</td>
+        </tr>`;
+    });
+
+    // Fill Total
+    document.getElementById("grand_total").innerText = total.toFixed(2);
+
+    // Simple Amount in Words
+    document.getElementById("amount_words").innerText =
+        numberToWords(total) + " Only";
+
+    // 🔥 Print Only If Requested
+    if (urlParams.get('print') === 'true') {
+        setTimeout(() => {
+            window.print();
+        }, 300);
+    }
+}
+
+
+// Simple number to words (basic version)
+function numberToWords(amount) {
+    return amount.toFixed(2);
+}
+</script>
+
+</body>
+</html>

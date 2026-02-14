@@ -16,59 +16,39 @@
             --row-hover: #f1f5f9;
         }
 
-body {
-    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-    margin: 0;
-    padding: 10px;
-
-    /* WALNUT WOOD TEXTURE */
-    background-image: 
-        linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.45)),
-        url('https://www.transparenttextures.com/patterns/wood-pattern.png');
-    
-    background-color: #3b2a1a;  /* Deep walnut base */
-    background-size: 300px 300px;
-    background-attachment: fixed;
-
-    color: #f8fafc;
-    height: 100vh;
-    overflow: hidden;
-    font-size: 14px;
-}
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 10px;
+            background-image: url('background.jpg'); 
+            background-size: cover;
+            background-attachment: fixed;
+            color: var(--text);
+            height: 100vh;
+            overflow: hidden;
+            font-size: 14px;
+        }
 
         /* Main App Container */
-.container {
-    max-width: 100%;
-    height: 96vh;
-
-    background: linear-gradient(
-        145deg,
-        #5a3d2b,
-        #4a2f20
-    );
-
-    border: 1px solid #2d1b12;
-    border-radius: 10px;
-    box-shadow:
-        inset 0 0 15px rgba(0,0,0,0.5),
-        0 15px 35px rgba(0,0,0,0.6);
-
-    display: flex;
-    flex-direction: column;
-}
+        .container {
+            max-width: 100%;
+            height: 96vh;
+            background: var(--bg-overlay);
+            border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            display: flex;
+            flex-direction: column;
+        }
 
         /* 1. TOP SECTION (Header) */
         .header-section {
             padding: 12px 15px;
- border-bottom: 2px solid #2d1b12;
-             display: flex;
+            border-bottom: 2px solid var(--border);
+            display: flex;
             gap: 12px;
             align-items: flex-end;
- background: linear-gradient(
-        to right,
-        #6b4a33,
-        #5a3d2b
-    );        }
+            background: #f8fafc;
+        }
 
         .form-group {
             display: flex;
@@ -82,10 +62,6 @@ body {
             margin-bottom: 3px;
             text-transform: uppercase;
         }
-
-        background-image: 
-    linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)),
-    url('walnut-texture.jpg');
 
         .form-control {
             padding: 6px 10px;
@@ -137,21 +113,20 @@ body {
         }
 
         thead {
-background: #6b4a33;
-    color: #fff;
-                position: sticky;
+            background: #e2e8f0;
+            position: sticky;
             top: 0;
             z-index: 10;
         }
 
-th {
-    padding: 8px;
-    text-align: left;
-    font-size: 11px;
-    color: #f3f4f6;
-    font-weight: 700;
-    border-bottom: 1px solid #3d2417;
-}
+        th {
+            padding: 8px;
+            text-align: left;
+            font-size: 11px;
+            color: #475569;
+            font-weight: 700;
+            border-bottom: 1px solid #cbd5e1;
+        }
 
         td {
             border-bottom: 1px solid #f1f5f9;
@@ -189,23 +164,12 @@ th {
         .footer-section {
             position: relative;
             padding: 10px 20px;
- border-top: 2px solid #2d1b12;
-  background: linear-gradient(
-        to right,
-        #6b4a33,
-        #5a3d2b
-    );
-                display: flex;
+            border-top: 1px solid var(--border);
+            background: #f8fafc;
+            display: flex;
             justify-content: flex-end;
             gap: 15px;
         }
-        .form-control,
-td input,
-td select {
-    background: rgba(255,255,255,0.95);
-    border-radius: 4px;
-}
-
 
         .btn {
             padding: 10px 25px;
@@ -1026,6 +990,13 @@ if (!qty || qty <= 0) {
                         hsn_code: row.querySelector('.hsn-store').value
                     });
 
+                    // Update Stock (Subtract)
+                    const { data: currentItem } = await sb.from('stock_items').select('quantity').eq('item_code', code).single();
+                    if (currentItem) {
+                        await sb.from('stock_items')
+                                .update({ quantity: currentItem.quantity - qty })
+                                .eq('item_code', code);
+                    }
                 }
             }
 

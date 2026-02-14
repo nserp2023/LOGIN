@@ -1,451 +1,1094 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Sales Billing</title>
-  <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VAJRA LIGHTS - Billing Software</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <style>
+        :root {
+            --primary: #2563eb; /* Blue */
+            --accent: #059669;  /* Green */
+            --bg-overlay: rgba(255, 255, 255, 0.98);
+            --border: #cbd5e1;
+            --text: #1e293b;
+            --row-hover: #f1f5f9;
+        }
+
+body {
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    margin: 0;
+    padding: 10px;
+
+    /* WALNUT WOOD TEXTURE */
+    background-image: 
+        linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.45)),
+        url('https://www.transparenttextures.com/patterns/wood-pattern.png');
+    
+    background-color: #3b2a1a;  /* Deep walnut base */
+    background-size: 300px 300px;
+    background-attachment: fixed;
+
+    color: #f8fafc;
+    height: 100vh;
+    overflow: hidden;
+    font-size: 14px;
+}
+
+        /* Main App Container */
+.container {
+    max-width: 100%;
+    height: 96vh;
+
+    background: linear-gradient(
+        145deg,
+        #5a3d2b,
+        #4a2f20
+    );
+
+    border: 1px solid #2d1b12;
+    border-radius: 10px;
+    box-shadow:
+        inset 0 0 15px rgba(0,0,0,0.5),
+        0 15px 35px rgba(0,0,0,0.6);
+
+    display: flex;
+    flex-direction: column;
+}
+
+        /* 1. TOP SECTION (Header) */
+        .header-section {
+            padding: 12px 15px;
+ border-bottom: 2px solid #2d1b12;
+             display: flex;
+            gap: 12px;
+            align-items: flex-end;
+ background: linear-gradient(
+        to right,
+        #6b4a33,
+        #5a3d2b
+    );        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            font-size: 11px;
+            font-weight: 700;
+            color: #64748b;
+            margin-bottom: 3px;
+            text-transform: uppercase;
+        }
+
+        background-image: 
+    linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)),
+    url('walnut-texture.jpg');
+
+        .form-control {
+            padding: 6px 10px;
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            font-size: 14px;
+            transition: all 0.15s;
+            height: 32px;
+            box-sizing: border-box;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+        }
+
+        /* Width Utilities */
+        .w-xs { width: 60px; }
+        .w-sm { width: 100px; }
+        .w-md { width: 140px; }
+        .w-lg { width: 200px; }
+        .w-xl { width: 250px; }
+
+        /* Grand Total Box */
+        .grand-total-box {
+            margin-left: auto;
+            background: var(--text);
+            color: white;
+            padding: 5px 20px;
+            border-radius: 6px;
+            text-align: right;
+            min-width: 150px;
+        }
+        .grand-total-box span { font-size: 10px; opacity: 0.8; display: block; }
+        .grand-total-box div { font-size: 24px; font-weight: bold; line-height: 1.2; }
+
+        /* 2. MIDDLE SECTION (Table) */
+        .items-container {
+            flex: 1;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed; /* Fixed Layout for speed */
+        }
+
+        thead {
+background: #6b4a33;
+    color: #fff;
+                position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+th {
+    padding: 8px;
+    text-align: left;
+    font-size: 11px;
+    color: #f3f4f6;
+    font-weight: 700;
+    border-bottom: 1px solid #3d2417;
+}
+
+        td {
+            border-bottom: 1px solid #f1f5f9;
+            padding: 0; /* Remove padding to make inputs fit full cell */
+        }
+
+        /* Table Inputs */
+        td input, td select {
+            width: 100%;
+            border: none;
+            padding: 8px 5px;
+            font-size: 13px;
+            background: transparent;
+            font-family: inherit;
+        }
+
+        td input:focus, td select:focus {
+            background: #fff;
+            box-shadow: inset 0 0 0 2px var(--primary);
+            outline: none;
+        }
+
+        /* Column Widths */
+        .col-idx { width: 30px; text-align: center; }
+        .col-code { width: 100px; }
+        .col-name { width: auto; } /* Takes remaining space */
+        .col-qty  { width: 60px; }
+        .col-type { width: 50px; }
+        .col-price { width: 90px; }
+        .col-gst  { width: 50px; }
+        .col-tot  { width: 100px; }
+        .col-act  { width: 30px; }
+
+        /* 3. BOTTOM SECTION (Footer) */
+        .footer-section {
+            position: relative;
+            padding: 10px 20px;
+ border-top: 2px solid #2d1b12;
+  background: linear-gradient(
+        to right,
+        #6b4a33,
+        #5a3d2b
+    );
+                display: flex;
+            justify-content: flex-end;
+            gap: 15px;
+        }
+        .form-control,
+td input,
+td select {
+    background: rgba(255,255,255,0.95);
+    border-radius: 4px;
+}
+
+
+        .btn {
+            padding: 10px 25px;
+            border: none;
+            border-radius: 4px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-save {
+            background: var(--accent);
+            color: white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .btn-save:hover { background: #047857; }
+        .btn-save:disabled { background: #94a3b8; cursor: not-allowed; }
+
+        /* Autocomplete List */
+        .autocomplete-wrapper { position: relative; width: 100%; height: 100%; }
+        
+        .autocomplete-list {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            width: 300px; /* Wider than input */
+            background: white;
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 100;
+            display: none;
+            border-radius: 4px;
+        }
+
+        .autocomplete-item {
+            padding: 8px 10px;
+            cursor: pointer;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 13px;
+        }
+
+        .autocomplete-item:hover, .autocomplete-item.selected {
+            background-color: #eff6ff;
+            color: var(--primary);
+        }
+
+        .autocomplete-item strong { display: block; color: var(--text); }
+        .autocomplete-item small { color: #64748b; }
+
+        /* Print Styles */
+        @media print {
+            .footer-section, .autocomplete-list, button { display: none !important; }
+            .container { box-shadow: none; border: none; height: auto; }
+            body { background: white; overflow: auto; padding: 0; }
+            input, select { border: none !important; box-shadow: none !important; }
+        }
+    </style>
 </head>
 <body>
-  <!-- Header -->
-  <header>
-    <h1>SALES BILLING</h1>
-    <button id="logout">Logout</button>
-  </header>
 
-  <!-- Sidebar -->
-  <aside id="sidebar">
-    <button id="toggleBtn">☰</button>
-    <nav>
-      <ul>
-        <li><a href="sales.html">Sales</a></li>
-        <li><a href="history.html">Sales History</a></li>
-      </ul>
-    </nav>
-  </aside>
+<div class="container">
+    <div class="header-section">
+        <div class="form-group">
+            <label>Series</label>
+<select id="bill_series" class="form-control w-xs nav-input" tabindex="1">
+</select>
+        </div>
+        <div class="form-group">
+            <label>Bill No</label>
+            <input type="text" id="bill_number" class="form-control w-sm" readonly tabindex="-1">
+        </div>
+        <div class="form-group">
+            <label>Date</label>
+            <input type="date" id="bill_date" class="form-control nav-input" tabindex="2">
+        </div>
+        
+        <div class="form-group" style="position: relative;">
+            <label>Mobile</label>
+            <input type="text" id="cust_mobile" class="form-control w-md nav-input" placeholder="Search..." tabindex="3" autocomplete="off">
+            <div id="mobile_suggestions" class="autocomplete-list"></div>
+        </div>
 
-  <!-- Main content -->
-  <main>
-    <!-- Bill Info -->
-    <section class="card">
-      <form id="billForm" class="inline-form">
-        <label>Bill Date <input type="date" id="billDate" required></label>
-        <label>Series 
-          <select id="billSeries" required></select>
-        </label>
-        <label>Bill Number <input type="text" id="billNumber" readonly></label>
-        <label>Salesman <input type="text" id="salesman" required></label>
-        <label>Vehicle Number <input type="text" id="vehicleNumber" required></label>
-      </form>
-    </section>
+        <div class="form-group">
+            <label>Customer Name</label>
+            <input type="text" id="cust_name" class="form-control w-lg nav-input" tabindex="4">
+        </div>
 
-    <!-- Customer Info -->
-    <section class="card">
-      <h2>Customer Details</h2>
-      <form id="customerForm" class="inline-form">
-        <label>Mobile <input type="tel" id="customerMobile" required></label>
-        <label>Name <input type="text" id="customerName" required></label>
-        <label>Address <input type="text" id="customerAddress" required></label>
-        <label>GST Number <input type="text" id="customerGST"></label>
-        <label>State Code <input type="text" id="customerStateCode"></label>
-      </form>
-    </section>
+        <div class="form-group">
+            <label>Address</label>
+            <input type="text" id="cust_address" class="form-control w-lg nav-input" tabindex="5">
+        </div>
+        
+        <div class="form-group">
+            <label>GST No</label>
+            <input type="text" id="cust_gst" class="form-control w-md nav-input" tabindex="6">
+        </div>
 
-    <!-- Sales Entry -->
-    <section class="card">
-      <h2>Sales Entry</h2>
-      <form id="salesForm" class="inline-form">
-        <input type="text" id="product" placeholder="Product" required>
-        <input type="number" id="qty" placeholder="Qty" required>
-        <input type="number" id="price" placeholder="Price" required step="0.01">
-        <select id="priceType">
-          <option value="exclusive">Exclusive</option>
-          <option value="inclusive">Inclusive</option>
-        </select>
-        <input type="number" id="gstPercent" placeholder="GST %" step="0.01">
-        <input type="number" id="cgstPercent" placeholder="CGST %" value="50" step="0.01">
-        <input type="number" id="sgstPercent" placeholder="SGST %" value="50" step="0.01">
-        <div class="action-bar"><button type="submit">Add Item</button></div>
-      </form>
+        <div class="grand-total-box">
+            <span>GRAND TOTAL</span>
+            <div id="display_grand_total">₹0.00</div>
+        </div>
+    </div>
 
-      <table>
-        <thead>
-          <tr>
-            <th>Product</th>
-            <th>Qty</th>
-            <th>Price</th>
-            <th>Price Type</th>
-            <th>GST %</th>
-            <th>GST Amount</th>
-            <th>CGST %</th>
-            <th>CGST Amount</th>
-            <th>SGST %</th>
-            <th>SGST Amount</th>
-            <th>Price + GST</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody id="salesBody"></tbody>
-      </table>
+    <div class="items-container">
+        <table id="bill_table">
+            <thead>
+                <tr>
+                    <th class="col-idx">#</th>
+                    <th class="col-code">Item Code</th>
+                    <th class="col-name">Item Name</th>
+                    <th class="col-qty">Qty</th>
+                    <th class="col-type">Type</th>
+                    <th class="col-price">Price</th>
+                    <th class="col-price">Price+GST</th>
+                    <th class="col-gst">GST%</th>
+                    <th class="col-tot">Total</th>
+                    <th class="col-act"></th>
+                </tr>
+            </thead>
+            <tbody id="bill_body">
+                </tbody>
+        </table>
+        
+        <div style="padding: 10px; opacity: 0.6; font-size: 12px;">
+            <span style="color: var(--primary);">Tip:</span> Use <b>Enter</b> to navigate. Use <b>Arrow Keys</b> for dropdowns. <b>Shift+Enter</b> to go back.
+        </div>
+    </div>
 
-      <h3>
-        Grand Total: <span id="grandTotal">₹0.00</span> |
-        GST Total: <span id="gstTotal">₹0.00</span> |
-        Price+GST Total: <span id="priceWithGstTotal">₹0.00</span>
-      </h3>
-      <div class="action-bar"><button id="saveInvoice">Save Invoice</button></div>
-    </section>
-  </main>
+    <div class="footer-section">
+        <div id="profit_box" 
+     style="
+        position:absolute;
+        left:20px;
+        bottom:15px;
+        background:#111827;
+        color:#22c55e;
+        padding:8px 15px;
+        border-radius:6px;
+        font-weight:bold;
+        font-size:14px;
+        display:none;
+        cursor:pointer;">
+    Profit: ₹<span id="display_profit">0.00</span>
+</div>
 
-  <!-- Scripts -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script>
-    const { createClient } = supabase;
+<button class="btn"
+        style="background:#2563eb;color:white;"
+        onclick="window.open('sales_report.html','_blank')">
+    SALES REPORT
+</button>
 
-const supabaseUrl = "https://gqxczzijntbvtlmmzppt.supabase.co";
-const supabaseKey = "sb_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs";
-const supabaseClient = createClient(supabaseUrl, supabaseKey);
 
-// ===== Auth =====
-(async () => {
-  const { data: { session } } = await supabaseClient.auth.getSession();
-  if (!session) window.location.href = "index.html";
-})();
+        <button class="btn" style="color: #64748b; background:transparent;" onclick="location.reload()">Reset / New Bill</button>
+        <button id="btn_save" class="btn btn-save" onclick="saveAndPrint()" tabindex="100">PRINT & SAVE</button>
+    </div>
+</div>
+<div id="profit_trigger"
+     style="
+        position:fixed;
+        bottom:0;
+        left:0;
+        width:120px;
+        height:60px;
+        z-index:9999;">
+</div>
 
-document.getElementById("logout")?.addEventListener("click", async (e) => {
-  e.preventDefault();
-  await supabaseClient.auth.signOut();
-  window.location.href = "index.html";
+
+<script>
+    // --- 1. SUPABASE CONNECTION ---
+    const supabaseUrl = "https://gqxczzijntbvtlmmzppt.supabase.co";
+    const supabaseKey = "sb_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs";
+    const sb = supabase.createClient(supabaseUrl, supabaseKey);
+
+    // --- 2. APP STATE ---
+    let stockData = []; 
+    let currentRowId = 0;
+
+    // --- 3. INITIALIZATION ---
+window.onload = async () => {
+    setupDate();
+    await loadBillSeries();     // 🔥 ADD THIS
+    await fetchNextBillNumber();
+    await loadStockData();
+    addNewRow();
+    document.getElementById('cust_mobile').focus();
+};
+
+    function setupDate() {
+        document.getElementById('bill_date').valueAsDate = new Date();
+    }
+
+    async function fetchNextBillNumber() {
+        const series = document.getElementById('bill_series').value;
+        const { data } = await sb.from('bill_series').select('bill_number').eq('series_code', series).single();
+        document.getElementById('bill_number').value = data ? (data.bill_number + 1) : 1;
+    }
+
+async function loadStockData() {
+        let allItems = [];
+        let from = 0;
+        let to = 999;
+        let fetchMore = true;
+
+        // Loop to fetch ALL data in chunks of 1000
+        while (fetchMore) {
+            const { data, error } = await sb
+                .from('stock_items')
+                .select('*')
+                .range(from, to);
+
+            if (error) {
+                console.error("Error loading stock:", error);
+                alert("Error loading stock items. Check console.");
+                break;
+            }
+
+            if (data && data.length > 0) {
+                allItems = allItems.concat(data);
+                
+                // Prepare for next chunk
+                from += 1000;
+                to += 1000;
+
+                // If we got less than 1000 items, we reached the end
+                if (data.length < 1000) {
+                    fetchMore = false;
+                }
+            } else {
+                fetchMore = false;
+            }
+        }
+
+        stockData = allItems;
+        console.log("Total Stock Items Loaded:", stockData.length);
+    }
+// --- 4. SEARCH ENGINES (Updated with Sorting) ---
+    
+    function searchStock(query, field) {
+        if (!query) return [];
+        const terms = query.toLowerCase().split(' ');
+        
+        // 1. Filter items based on search terms
+        const filtered = stockData.filter(item => {
+            const val = (item[field] || '').toLowerCase();
+            return terms.every(t => val.includes(t));
+        });
+
+        // 2. Sort results alphabetically by the field being searched (A-Z)
+        filtered.sort((a, b) => {
+            const valA = (a[field] || '').toLowerCase();
+            const valB = (b[field] || '').toLowerCase();
+            if (valA < valB) return -1;
+            if (valA > valB) return 1;
+            return 0;
+        });
+
+        // 3. Return top 15 results
+        return filtered.slice(0, 15);
+    }
+    // Customer Search (Debounced)
+    const mobileInput = document.getElementById('cust_mobile');
+    const mobileList = document.getElementById('mobile_suggestions');
+    let custTimer;
+
+    mobileInput.addEventListener('input', (e) => {
+        clearTimeout(custTimer);
+        const val = e.target.value;
+        if(val.length < 3) { mobileList.style.display = 'none'; return; }
+
+        custTimer = setTimeout(async () => {
+            const { data } = await sb.from('customers').select('*').ilike('mobile', '%' + val + '%').limit(5);
+            
+            mobileList.innerHTML = '';
+            if(data && data.length > 0) {
+                mobileList.style.display = 'block';
+                data.forEach((c, idx) => {
+                    const div = document.createElement('div');
+                    div.className = 'autocomplete-item';
+                    div.dataset.index = idx;
+                    div.innerHTML = `<strong>${c.mobile}</strong><small>${c.name}</small>`;
+                    div.onclick = () => selectCustomer(c);
+                    mobileList.appendChild(div);
+                });
+            } else {
+                mobileList.style.display = 'none';
+            }
+        }, 300);
+    });
+
+    mobileInput.addEventListener('keydown', (e) => handleListNav(e, mobileList, (div) => div.click()));
+
+    function selectCustomer(c) {
+        document.getElementById('cust_mobile').value = c.mobile;
+        document.getElementById('cust_name').value = c.name;
+        document.getElementById('cust_address').value = c.address || '';
+        document.getElementById('cust_gst').value = c.gst_number || '';
+        mobileList.style.display = 'none';
+        document.getElementById('cust_name').focus();
+    }
+
+    // --- 5. GRID & ROW LOGIC ---
+
+function addNewRow() {
+    const tbody = document.getElementById('bill_body');
+    const rId = currentRowId++;
+    const row = document.createElement('tr');
+    row.id = `row_${rId}`;
+    row.className = 'item-row';
+    
+    row.innerHTML = `
+        <td class="col-idx" style="text-align:center; color:#94a3b8">${rId + 1}</td>
+        <td class="col-code">
+            <div class="autocomplete-wrapper">
+                <input type="text" class="row-inp code-inp" data-rid="${rId}" placeholder="Code">
+                <div class="autocomplete-list" id="list_code_${rId}"></div>
+            </div>
+        </td>
+        <td class="col-name">
+            <div class="autocomplete-wrapper">
+                <input type="text" class="row-inp name-inp" data-rid="${rId}" placeholder="Item Name">
+                <div class="autocomplete-list" id="list_name_${rId}"></div>
+                <input type="hidden" class="hsn-store">
+                <input type="hidden" class="raw-data">
+            </div>
+        </td>
+        <td class="col-qty">
+<input type="number" 
+       class="row-inp qty-inp" 
+       data-rid="${rId}" 
+value="1"
+       step="0.01"
+       style="text-align:center">
+       </td>
+        <td class="col-type">
+            <select class="row-inp type-inp" data-rid="${rId}">
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+            </select>
+        </td>
+        <td class="col-price">
+            <input type="number" class="row-inp price-inp" data-rid="${rId}" step="0.01">
+        </td>
+        <td class="col-price">
+            <input type="number" class="row-inp price-gst-inp" data-rid="${rId}" step="0.01">
+        </td>
+        <td class="col-gst">
+            <input type="text" class="row-inp gst-inp" data-rid="${rId}" readonly tabindex="-1" style="color:#64748b">
+        </td>
+        <td class="col-tot">
+            <input type="text" class="row-inp total-inp" data-rid="${rId}" readonly tabindex="-1" style="font-weight:bold">
+        </td>
+        <td class="col-act">
+            <button onclick="deleteRow(${rId})" tabindex="-1" style="color:red; border:none; background:none; cursor:pointer">&times;</button>
+        </td>
+    `;
+
+    tbody.appendChild(row);
+
+const qtyInput = row.querySelector('.qty-inp');
+
+// Block only invalid keys
+qtyInput.addEventListener('keydown', function(e) {
+    if (e.key === '-' || e.key === '+' || e.key === 'e') {
+        e.preventDefault();
+    }
 });
 
-// ===== Sidebar =====
-const sidebar = document.getElementById("sidebar");
-const toggleBtn = document.getElementById("toggleBtn");
-if (sidebar && toggleBtn) {
-  toggleBtn.addEventListener("click", () => sidebar.classList.toggle("active"));
-  document.addEventListener("mousemove", (e) => { if (e.clientX < 24) sidebar.classList.add("active"); });
-  sidebar.addEventListener("mouseleave", () => sidebar.classList.remove("active"));
-}
-
-// ===== Elements =====
-const salesForm = document.getElementById("salesForm");
-const salesBody = document.getElementById("salesBody");
-const grandTotalEl = document.getElementById("grandTotal");
-const gstTotalEl = document.getElementById("gstTotal");
-const priceWithGstTotalEl = document.getElementById("priceWithGstTotal");
-
-const billForm = document.getElementById("billForm");
-const billDateEl = document.getElementById("billDate");
-const billSeriesEl = document.getElementById("billSeries");
-const billNumberEl = document.getElementById("billNumber");
-const salesmanEl = document.getElementById("salesman");
-const vehicleNumberEl = document.getElementById("vehicleNumber");
-
-const customerForm = document.getElementById("customerForm");
-const inputMobile = document.getElementById("customerMobile");
-const inputName = document.getElementById("customerName");
-const inputAddress = document.getElementById("customerAddress");
-const inputGST = document.getElementById("customerGST");
-const inputStateCode = document.getElementById("customerStateCode");
-
-const inputProduct = document.getElementById("product");
-const inputQty = document.getElementById("qty");
-const inputPrice = document.getElementById("price");
-const inputPriceType = document.getElementById("priceType");
-const inputGstPercent = document.getElementById("gstPercent");
-const inputCgstPercent = document.getElementById("cgstPercent");
-const inputSgstPercent = document.getElementById("sgstPercent");
-
-let grandTotal = 0;
-
-// ===== Helpers =====
-function setTodayDate() {
-  if (billDateEl) {
-    const today = new Date().toISOString().split("T")[0];
-    billDateEl.value = today;
-  }
-}
-
-function recalcTotals() {
-  let baseTotal = 0, gstTotal = 0, priceWithGstTotal = 0;
-
-  salesBody.querySelectorAll("tr").forEach(row => {
-    const qty = parseFloat(row.querySelector("td:nth-child(2)").textContent) || 0;
-    const price = parseFloat(row.querySelector("td:nth-child(3)").textContent) || 0;
-    const gstAmount = parseFloat(row.querySelector("td:nth-child(6)").textContent.replace("₹","")) || 0;
-    const priceWithGst = parseFloat(row.querySelector("td:nth-child(11)").textContent.replace("₹","")) || 0;
-
-    baseTotal += qty * price;
-    gstTotal += gstAmount;
-    priceWithGstTotal += priceWithGst;
-  });
-
-  grandTotal = baseTotal;
-  if (grandTotalEl) grandTotalEl.textContent = "₹" + baseTotal.toFixed(2);
-  if (gstTotalEl) gstTotalEl.textContent = "₹" + gstTotal.toFixed(2);
-  if (priceWithGstTotalEl) priceWithGstTotalEl.textContent = "₹" + priceWithGstTotal.toFixed(2);
-}
-
-// ===== Bill counter =====
-async function readBillNumber(series) {
-  if (!billNumberEl || !series) return;
-  const { data, error } = await supabaseClient
-    .from("bill_counters")
-    .select("current_number")
-    .eq("series_code", series)
-    .single();
-
-  if (error || !data) {
-    console.warn("Error reading bill counter:", error?.message || "no data");
-    billNumberEl.value = "1";
-    return;
-  }
-  billNumberEl.value = String(data.current_number + 1);
-}
-
-async function incrementBillNumber(series) {
-  const { data, error } = await supabaseClient.rpc("increment_bill_number", {
-    series_code_input: series
-  });
-  if (error) throw error;
-  return data;
-}
-
-// ===== Customer lookup =====
-async function fetchCustomerByMobile(mobile) {
-  if (!mobile) return;
-  const { data, error } = await supabaseClient
-    .from("customers")
-    .select("name, address, mobile, gst_number, state_code")
-    .eq("mobile", mobile)
-    .maybeSingle();
-
-  if (error) return;
-  if (data) {
-    inputName.value = data.name || "";
-    inputAddress.value = data.address || "";
-    inputGST.value = data.gst_number || "";
-    inputStateCode.value = data.state_code || "";
-  }
-}
-inputMobile?.addEventListener("blur", async (e) => {
-  await fetchCustomerByMobile(e.target.value.trim());
+// Validate only when leaving field (important!)
+qtyInput.addEventListener('keydown', function(e) {
+    if (e.key === '-' || e.key === '+' || e.key === 'e') {
+        e.preventDefault();
+    }
 });
 
-// ===== Initial load =====
-document.addEventListener("DOMContentLoaded", async () => {
-  inputMobile?.focus();
-  setTodayDate();
+    setupRow(rId);
 
-  if (billSeriesEl) {
-    const { data, error } = await supabaseClient.from("bill_series").select("series_code");
-    billSeriesEl.innerHTML = "";
-    if (!error && Array.isArray(data) && data.length) {
-      data.forEach(s => {
-        const opt = document.createElement("option");
-        opt.value = s.series_code;
-        opt.textContent = s.series_code;
-        billSeriesEl.appendChild(opt);
-      });
+    setTimeout(() => row.querySelector('.code-inp').focus(), 50);
+}
+
+    function deleteRow(id) {
+        const row = document.getElementById(`row_${id}`);
+        if(row) row.remove();
+        calcTotal();
+    }
+
+    function setupRow(id) {
+        const row = document.getElementById(`row_${id}`);
+        
+        // Inputs
+        const codeInp = row.querySelector('.code-inp');
+        const nameInp = row.querySelector('.name-inp');
+        const qtyInp = row.querySelector('.qty-inp');
+        const typeInp = row.querySelector('.type-inp');
+        const priceInp = row.querySelector('.price-inp');
+        const priceGstInp = row.querySelector('.price-gst-inp');
+        
+        // 1. Search Logic
+        const attachSearch = (inp, listId, field) => {
+            const list = document.getElementById(listId);
+            inp.addEventListener('input', () => {
+                const val = inp.value;
+                if(val.length < 1) { list.style.display = 'none'; return; }
+                const matches = searchStock(val, field);
+                
+                list.innerHTML = '';
+                if(matches.length) {
+                    list.style.display = 'block';
+                    matches.forEach((item, idx) => {
+                        const div = document.createElement('div');
+                        div.className = 'autocomplete-item';
+                        div.dataset.index = idx;
+div.innerHTML = `
+    <strong>${item.item_name}</strong>
+    <medium>
+        Code: ${item.item_code} |
+        P1: ₹${item.price1 || 0} |
+        P2: ₹${item.price2 || 0} |
+        P3: ₹${item.price3 || 0} |
+        L: ₹${item.landing || 0}
+    </medium>
+`;
+                        div.onclick = () => {
+                            fillItem(id, item);
+                            list.style.display = 'none';
+                        };
+                        list.appendChild(div);
+                    });
+                } else { list.style.display = 'none'; }
+            });
+            inp.addEventListener('keydown', (e) => handleListNav(e, list, (div) => div.click()));
+        };
+
+        attachSearch(codeInp, `list_code_${id}`, 'item_code');
+        attachSearch(nameInp, `list_name_${id}`, 'item_name');
+
+        // 2. Calculation Events
+        const inputs = [qtyInp, typeInp, priceInp, priceGstInp, codeInp, nameInp];
+        inputs.forEach(el => {
+            el.addEventListener('input', (e) => {
+                if(e.target === typeInp) updatePriceFromType(id);
+                else if(e.target === priceGstInp) calcReverse(id);
+                else calcForward(id);
+            });
+            // Global Enter Key
+            el.addEventListener('keydown', handleEnterKey);
+            el.addEventListener('keydown', handleGridNav); 
+        });
+        
+        // Add Enter Key to search inputs too
+        codeInp.addEventListener('keydown', handleEnterKey);
+        nameInp.addEventListener('keydown', handleEnterKey);
+    }
+
+    // --- 6. CALCULATION LOGIC ---
+
+async function fillItem(id, item) {
+        const row = document.getElementById(`row_${id}`);
+        
+        // --- 1. INSTANT FILL (Using Cached Data) ---
+        row.querySelector('.code-inp').value = item.item_code;
+        row.querySelector('.name-inp').value = item.item_name;
+        row.querySelector('.gst-inp').value = item.gst_percent;
+        row.querySelector('.hsn-store').value = item.hsn_code;
+        
+        // Default Price (Type 1)
+        row.querySelector('.type-inp').value = "1";
+        row.querySelector('.price-inp').value = item.price1 || 0;
+        
+        // Focus Qty
+        row.querySelector('.qty-inp').focus();
+        if(row.querySelector('.qty-inp').select) row.querySelector('.qty-inp').select();
+
+        // Calculate based on cache first
+        calcForward(id);
+
+        // --- 2. LIVE CHECK (The Fix) ---
+        // Fetch the absolute latest version of this item from Supabase
+        const { data: fresh, error } = await sb
+            .from('stock_items')
+            .select('*')
+            // Using item_code to find the item (Ensure item_code is unique)
+            .eq('item_code', item.item_code) 
+            .single();
+
+        if (fresh && !error) {
+             // Update the hidden raw data with FRESH data
+             row.querySelector('.raw-data').value = JSON.stringify(fresh);
+             
+             // A. CHECK PRICE CHANGE
+             // If the live price is different from the cached price
+             if (parseFloat(fresh.price1) !== parseFloat(item.price1)) {
+                 console.log("Price updated from server!");
+                 
+                 // Update the visual field
+                 row.querySelector('.price-inp').value = fresh.price1;
+                 
+                 // Flash the box Yellow to show user it changed
+                 const priceBox = row.querySelector('.price-inp');
+                 priceBox.style.backgroundColor = "#fef08a"; // Yellow
+                 setTimeout(() => priceBox.style.backgroundColor = "", 1000);
+
+                 // Recalculate totals
+                 calcForward(id);
+             }
+
+             // B. CHECK STOCK (Show Warning)
+             const currentQty = fresh.quantity;
+             const qtyBox = row.querySelector('.qty-inp');
+             
+             // Add a tooltip so hovering shows real stock
+             qtyBox.title = `Available Stock: ${currentQty}`;
+
+             if (currentQty <= 0) {
+                 // Stock is 0 or negative
+                 qtyBox.style.backgroundColor = "#fee2e2"; // Red
+                 alert(`⚠️ WARNING: "${fresh.item_name}" is Out of Stock! (Qty: ${currentQty})`);
+             } else if (currentQty < 5) {
+                 // Stock is Low
+                 qtyBox.style.backgroundColor = "#ffedd5"; // Orange
+             } else {
+                 qtyBox.style.backgroundColor = ""; // Normal
+             }
+        }
+    }
+
+function calcProfit() {
+    let totalProfit = 0;
+
+    document.querySelectorAll('#bill_body tr').forEach(row => {
+        const raw = row.querySelector('.raw-data').value;
+        if (!raw) return;
+
+        const item = JSON.parse(raw);
+        const qty = parseFloat(row.querySelector('.qty-inp').value) || 0;
+        const sellPrice = parseFloat(row.querySelector('.price-gst-inp').value) || 0;
+        const landing = parseFloat(item.landing) || 0;
+
+        const profitPerItem = sellPrice - landing;
+        totalProfit += profitPerItem * qty;
+    });
+
+    document.getElementById('display_profit').innerText = totalProfit.toFixed(2);
+}
+
+
+
+
+    function updatePriceFromType(id) {
+        const row = document.getElementById(`row_${id}`);
+        const type = row.querySelector('.type-inp').value;
+        const raw = row.querySelector('.raw-data').value;
+        if(!raw) return;
+        
+        const item = JSON.parse(raw);
+        let p = 0;
+        // Logic for Prices 1-4
+             if(type == "1") p = item.price1;
+        else if(type == "2") p = item.price2;
+        else if(type == "3") p = item.price3;
+
+        row.querySelector('.price-inp').value = p;
+        calcForward(id);
+    }
+
+    function calcForward(id) {
+        const row = document.getElementById(`row_${id}`);
+        const qty = parseFloat(row.querySelector('.qty-inp').value) || 0;
+        const price = parseFloat(row.querySelector('.price-inp').value) || 0;
+        const gst = parseFloat(row.querySelector('.gst-inp').value) || 0;
+
+        const taxAmt = price * (gst/100);
+        const pGst = price + taxAmt;
+        const total = pGst * qty;
+
+        row.querySelector('.price-gst-inp').value = pGst.toFixed(2);
+        row.querySelector('.total-inp').value = total.toFixed(2);
+        calcTotal();
+        calcProfit();
+
+    }
+
+    function calcReverse(id) {
+        const row = document.getElementById(`row_${id}`);
+        const qty = parseFloat(row.querySelector('.qty-inp').value) || 0;
+        const pGst = parseFloat(row.querySelector('.price-gst-inp').value) || 0;
+        const gst = parseFloat(row.querySelector('.gst-inp').value) || 0;
+
+        const price = pGst / (1 + (gst/100));
+        const total = pGst * qty;
+
+        row.querySelector('.price-inp').value = price.toFixed(2);
+        row.querySelector('.total-inp').value = total.toFixed(2);
+        calcTotal();
+        calcProfit();
+
+    }
+
+    function calcTotal() {
+        let sum = 0;
+        document.querySelectorAll('.total-inp').forEach(i => sum += parseFloat(i.value) || 0);
+        document.getElementById('display_grand_total').innerText = '₹' + sum.toFixed(2);
+    }
+
+    const trigger = document.getElementById('profit_trigger');
+const profitBox = document.getElementById('profit_box');
+
+trigger.addEventListener('dblclick', () => {
+    if (profitBox.style.display === 'none') {
+        calcProfit();
+        profitBox.style.display = 'block';
     } else {
-      ["Q","A","B","C"].forEach(s => {
-        const opt = document.createElement("option");
-        opt.value = s; opt.textContent = s;
-        billSeriesEl.appendChild(opt);
-      });
+        profitBox.style.display = 'none';
     }
-    billSeriesEl.value = billSeriesEl.options[0]?.value || "Q";
-    await readBillNumber(billSeriesEl.value);
-    billSeriesEl.addEventListener("change", async () => {
-      await readBillNumber(billSeriesEl.value);
-    });
-  }
 });
 
-// ===== Enter navigation =====
-function jump(from, to) {
-  const a = document.getElementById(from), b = document.getElementById(to);
-  if (a && b) {
-    a.addEventListener("keydown", e => {
-      if (e.key === "Enter") { e.preventDefault(); b.focus(); }
-    });
-  }
+
+    // --- 7. NAVIGATION HELPERS ---
+
+    function handleEnterKey(e) {
+        if(e.key === 'Enter') {
+            e.preventDefault();
+            // Logic: Find next input. If last, add row.
+            const allInputs = Array.from(document.querySelectorAll('input:not([type="hidden"]), select, button#btn_save'));
+            const idx = allInputs.indexOf(e.target);
+            
+            if(e.shiftKey) {
+                if(idx > 0) allInputs[idx-1].focus();
+            } else {
+                // If it's the last input in the current row's flow (Price+GST)
+                if(e.target.classList.contains('price-gst-inp')) {
+                     addNewRow();
+                } else if(idx < allInputs.length - 1) {
+                    allInputs[idx+1].focus();
+                }
+            }
+        }
+    }
+
+function handleListNav(e, list, callback) {
+        // If list is hidden, let the grid navigation handle the key
+        if(list.style.display === 'none') return false; 
+        
+        const items = list.querySelectorAll('.autocomplete-item');
+        let active = list.querySelector('.selected');
+        let idx = active ? parseInt(active.dataset.index) : -1;
+
+        if(e.key === 'ArrowDown') {
+            e.preventDefault();
+            idx = Math.min(idx + 1, items.length - 1);
+        } else if(e.key === 'ArrowUp') {
+            e.preventDefault();
+            idx = Math.max(idx - 1, 0);
+        } else if(e.key === 'Enter' && idx > -1) {
+            e.preventDefault();
+            callback(items[idx]);
+            return true;
+        } else { 
+            return false; // Key not used by list
+        }
+
+        items.forEach(i => i.classList.remove('selected'));
+        if(items[idx]) {
+            items[idx].classList.add('selected');
+            items[idx].scrollIntoView({block: 'nearest'});
+        }
+        return true; // Key was used
+    }
+
+function handleGridNav(e) {
+        // 1. Only act on Up/Down arrows
+        if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+
+        // 2. Stop if a dropdown is open
+        const activeList = document.querySelector('.autocomplete-list[style*="block"]');
+        if (activeList && activeList.style.display !== 'none') return;
+
+        const currentInput = e.target;
+        const currentRow = currentInput.closest('tr');
+        if (!currentRow) return;
+
+        // --- THE FIX IS HERE ---
+        // We look for a class that ends with '-inp' BUT is NOT 'row-inp'
+        const specificClass = Array.from(currentInput.classList)
+                                   .find(c => c.endsWith('-inp') && c !== 'row-inp');
+
+        if (!specificClass) return; // If we can't find a specific column class, stop.
+
+        // 3. Find target row index
+        const rows = Array.from(document.querySelectorAll('#bill_body tr'));
+        const currentIndex = rows.indexOf(currentRow);
+        let targetRowIndex = -1;
+
+        if (e.key === 'ArrowUp') {
+            targetRowIndex = currentIndex - 1;
+        } else if (e.key === 'ArrowDown') {
+            targetRowIndex = currentIndex + 1;
+        }
+
+        // 4. Move Focus
+        if (targetRowIndex >= 0 && targetRowIndex < rows.length) {
+            e.preventDefault(); // Stop page scroll
+            const targetRow = rows[targetRowIndex];
+            
+            // Find the input in the NEXT row that has the EXACT SAME specific class
+            const targetInput = targetRow.querySelector('.' + specificClass);
+            
+            if (targetInput) {
+                targetInput.focus();
+                if (targetInput.select) targetInput.select(); // Highlight text
+            }
+        }
+    }
+            // --- 8. SAVE FUNCTION ---
+
+async function saveAndPrint() {
+        const btn = document.getElementById('btn_save');
+        if(btn.disabled) return; 
+        btn.disabled = true;
+        btn.innerText = "SAVING...";
+
+        try {
+            // --- 1. PREPARE DATA ---
+            const head = {
+                series: document.getElementById('bill_series').value,
+                date: document.getElementById('bill_date').value,
+                mob: document.getElementById('cust_mobile').value,
+                name: document.getElementById('cust_name').value,
+                addr: document.getElementById('cust_address').value,
+                gst: document.getElementById('cust_gst').value,
+                total: parseFloat(document.getElementById('display_grand_total').innerText.replace('₹',''))
+            };
+
+            if(!head.mob || !head.name) throw new Error("Customer Name & Mobile are required.");
+
+// --- 2. GET SAFE NEXT BILL NUMBER FROM DATABASE ---
+const seriesCode = document.getElementById('bill_series').value;
+
+const { data: nextBillNo, error: rpcError } =
+    await sb.rpc('get_next_sales_number', { p_series: seriesCode });
+
+if (rpcError) throw rpcError;
+
+if (rpcError) throw rpcError;
+
+console.log("Auto-detected Bill No:", nextBillNo);
+            
+            console.log("Auto-detected Bill No:", nextBillNo);
+
+            // --- 3. CUSTOMER UPSERT ---
+            let custId;
+            const { data: existC } = await sb.from('customers').select('customer_id').eq('mobile', head.mob).single();
+            
+            if(existC) {
+                custId = existC.customer_id;
+                // Optional: Update address if changed
+                await sb.from('customers').update({ name: head.name, address: head.addr, gst_number: head.gst })
+                        .eq('customer_id', custId);
+            } else {
+                const { data: newC, error: cErr } = await sb.from('customers').insert([{
+                    mobile: head.mob, name: head.name, address: head.addr, gst_number: head.gst
+                }]).select().single();
+                if(cErr) throw cErr;
+                custId = newC.customer_id;
+            }
+
+            // --- 4. INSERT SALES HEADER ---
+            // We use 'nextBillNo' which is guaranteed to be unique
+const { data: sale, error: sErr } = await sb.from('sales_details').insert([{
+    series_code: head.series,   // 🔥 ADD THIS
+    sales_number: nextBillNo,
+    bill_date: head.date,
+    gst_number: head.gst,
+    customer_name: head.name,
+    customer_mobile: head.mob,
+    invoice_number: nextBillNo,
+    invoice_date: head.date,
+    invoice_amount: head.total,
+    round_off: 0 
+}]).select().single();
+
+if (sErr) throw sErr;
+
+if (!sale || !sale.id) {
+    throw new Error("Sale ID not generated properly.");
 }
-jump("customerMobile","customerName");
-jump("customerName","customerAddress");
-jump("customerAddress","customerGST");
-jump("customerGST","customerStateCode");
-jump("customerStateCode","product");
 
-// ===== Enter on Price adds item =====
-inputPrice?.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    e.preventDefault();
-    salesForm?.dispatchEvent(new Event("submit"));
-    inputProduct?.focus();
-  }
-});
+const saleId = sale.id;
 
-// ===== Add item =====
-salesForm?.addEventListener("submit", (e) => {
-  e.preventDefault();
-  const product = (inputProduct?.value || "").trim();
-  const qty = parseFloat(inputQty?.value || "0");
-  const price = parseFloat(inputPrice?.value || "0");
-  const priceType = inputPriceType?.value || "exclusive";
-  const gstPercent = parseFloat(inputGstPercent?.value || "0");
-  const cgstPercent = parseFloat(inputCgstPercent?.value || "0");
-  const sgstPercent = parseFloat(inputSgstPercent?.value || "0");
+            // --- 5. INSERT ITEMS & UPDATE STOCK ---
+            const rows = document.querySelectorAll('#bill_body tr');
+            const itemsToSave = [];
+            
+            // Loop rows to build payload AND update stock
+            for (const row of rows) {
+                const code = row.querySelector('.code-inp').value;
+                if(code) {
+const qty = parseFloat(row.querySelector('.qty-inp').value);
 
-  if (!product || qty <= 0 || price < 0) return;
+if (!qty || qty <= 0) {
+    throw new Error("Invalid quantity entered for item: " + code);
+}
+                    
+                    // Add to sales list
+                    itemsToSave.push({
+                        sales_id: saleId,
+                        item_code: code,
+                        item_name: row.querySelector('.name-inp').value,
+                        quantity: qty,
+                        price: row.querySelector('.price-inp').value,
+                        sales_price: row.querySelector('.total-inp').value,
+                        sales_price_gst: row.querySelector('.price-gst-inp').value,
+                        hsn_code: row.querySelector('.hsn-store').value
+                    });
 
-  const baseAmount = qty * price;
-  const gstAmount = (baseAmount * gstPercent) / 100;
-  const cgstAmount = (gstAmount * cgstPercent) / 100;
-  const sgstAmount = (gstAmount * sgstPercent) / 100;
-  const priceWithGst = baseAmount + gstAmount;
+                }
+            }
 
-  const row = document.createElement("tr");
-  row.innerHTML = `
-    <td contenteditable="true">${product}</td>
-    <td contenteditable="true">${qty}</td>
-    <td contenteditable="true">${price.toFixed(2)}</td>
-    <td>${priceType}</td>
-    <td>${gstPercent}%</td>
-    <td>₹${gstAmount.toFixed(2)}</td>
-    <td>${cgstPercent}%</td>
-    <td>₹${cgstAmount.toFixed(2)}</td>
-    <td>${sgstPercent}%</td>
-    <td>₹${sgstAmount.toFixed(2)}</td>
-    <td>₹${priceWithGst.toFixed(2)}</td>
-    <td><button class="remove">Remove</button></td>
-  `;
-  salesBody.appendChild(row);
+            if(itemsToSave.length > 0) {
+                const { error: iErr } = await sb.from('sales_item_details').insert(itemsToSave);
+                if(iErr) throw iErr;
+            }
 
-  recalcTotals();
 
-  // Reset only the sales item inputs
-  salesForm.reset();
-  inputProduct?.focus();
-});
+            // --- 7. FINISH ---
+            // Update the UI Bill Number box just so the user sees what was saved
+            document.getElementById('bill_number').value = nextBillNo;
+            
+            alert(`Bill #${nextBillNo} Saved Successfully!`);
+            window.print();
+            location.reload();
 
-// ===== Remove row =====
-salesBody?.addEventListener("click", (e) => {
-  if (e.target.classList.contains("remove")) {
-    e.target.closest("tr").remove();
-    recalcTotals();
-  }
-});
+        } catch(e) {
+            console.error(e);
+            alert("Error: " + (e.message || e));
+            btn.disabled = false;
+            btn.innerText = "PRINT & SAVE";
+        }
+            // ... (Previous code: insert into sales_item_details success) ...
 
-// ===== Save invoice =====
-document.getElementById("saveInvoice")?.addEventListener("click", async (e) => {
-  const saveBtn = e.target;
-  saveBtn.disabled = true;
 
-  try {
-    // Collect items
-    const items = [];
-    salesBody.querySelectorAll("tr").forEach(row => {
-      items.push({
-        product: row.querySelector("td:nth-child(1)").textContent.trim(),
-        qty: parseFloat(row.querySelector("td:nth-child(2)").textContent) || 0,
-        price: parseFloat(row.querySelector("td:nth-child(3)").textContent) || 0,
-        price_type: row.querySelector("td:nth-child(4)").textContent.trim(),
-        gst_percent: parseFloat(row.querySelector("td:nth-child(5)").textContent.replace("%","")) || 0,
-        gst_amount: parseFloat(row.querySelector("td:nth-child(6)").textContent.replace("₹","")) || 0,
-        cgst_percent: parseFloat(row.querySelector("td:nth-child(7)").textContent.replace("%","")) || 0,
-        cgst_amount: parseFloat(row.querySelector("td:nth-child(8)").textContent.replace("₹","")) || 0,
-        sgst_percent: parseFloat(row.querySelector("td:nth-child(9)").textContent.replace("%","")) || 0,
-        sgst_amount: parseFloat(row.querySelector("td:nth-child(10)").textContent.replace("₹","")) || 0,
-        price_with_gst: parseFloat(row.querySelector("td:nth-child(11)").textContent.replace("₹","")) || 0,
-        total: parseFloat(row.querySelector("td:nth-child(11)").textContent.replace("₹","")) || 0
-      });
-    });
-
-    if (!items.length) {
-      alert("Please add at least one item before saving.");
-      return;
+            // ... (Continue to: Update Series, Alert, Print) ...
     }
 
-    // Required fields check
-    if (!inputMobile?.value || !inputName?.value || !billDateEl?.value || !billSeriesEl?.value) {
-      alert("Please complete required customer and bill fields.");
-      return;
-    }
+    // --- AUTO-SELECT TEXT ON FOCUS ---
+    // This makes it so when you tab/enter into a field, the text is highlighted
+    document.addEventListener('focus', (e) => {
+        // Only select if it's an input and not read-only
+        if (e.target.tagName === 'INPUT' && !e.target.readOnly) {
+            // Safety check: ensure the element supports selection
+            if(typeof e.target.select === 'function') {
+                e.target.select();
+            }
+        }
+    }, true); // 'true' captures the event early
 
-    const customerName = inputName.value.trim();
-    const customerAddress = inputAddress.value.trim();
-    const customerMobile = inputMobile.value.trim();
-    const customerGST = inputGST.value.trim();
-    const customerStateCode = inputStateCode.value.trim();
+    async function loadBillSeries() {
+    const { data, error } = await sb
+        .from('bill_series')
+        .select('series_code')
+        .order('series_code');
 
-    const billDate = billDateEl.value;
-    const billSeries = billSeriesEl.value;
-    const salesman = salesmanEl?.value.trim() || "";
-    const vehicleNumber = vehicleNumberEl?.value.trim() || "";
-
-    // Increment bill number
-    const newBillNumber = await incrementBillNumber(billSeries);
-    if (billNumberEl) billNumberEl.value = String(newBillNumber);
-
-    // Ensure customer exists
-    const { data: existingCustomer } = await supabaseClient
-      .from("customers")
-      .select("customer_id")
-      .eq("mobile", customerMobile)
-      .maybeSingle();
-
-    if (!existingCustomer) {
-      const { error: insertCustErr } = await supabaseClient.from("customers").insert([{
-        name: customerName,
-        mobile: customerMobile,
-        address: customerAddress,
-        gst_number: customerGST,
-        state_code: customerStateCode
-      }]);
-      if (insertCustErr) {
-        alert("Error creating customer: " + insertCustErr.message);
+    if (error) {
+        console.error("Error loading series:", error);
         return;
-      }
     }
 
-    // Insert invoice
-    const totalamount = items.reduce((sum, it) => sum + (it.total || 0), 0);
-    const { error: invErr } = await supabaseClient.from("invoices").insert([{
-      customer_name: customerName,
-      customer_address: customerAddress,
-      customer_mobile: customerMobile,
-      items,
-      totalamount: Number(totalamount.toFixed(2)),
-      invoicedate: billDate,
-      bill_series: billSeries,
-      bill_number: newBillNumber,
-      salesman,
-      vehicle_number: vehicleNumber
-    }]);
+    const select = document.getElementById('bill_series');
+    select.innerHTML = '';
 
-    if (invErr) {
-      alert("Error saving invoice: " + invErr.message);
-      return;
-    }
+    data.forEach(series => {
+        const option = document.createElement('option');
+        option.value = series.series_code;
+        option.textContent = series.series_code;
+        select.appendChild(option);
+    });
+}
 
-    alert("Invoice saved successfully!");
-
-    // Reset for next invoice
-    salesBody.innerHTML = "";
-    recalcTotals();
-    billForm?.reset();
-    salesForm?.reset();
-    customerForm?.reset();
-    setTodayDate();
-    inputMobile?.focus();
-    await readBillNumber(billSeriesEl?.value);
-
-  } catch (err) {
-    alert("Unexpected error: " + (err?.message || String(err)));
-  } finally {
-    saveBtn.disabled = false;
-  }
-});
-  </script>
+</script>
 </body>
 </html>

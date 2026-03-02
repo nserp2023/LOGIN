@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Purchase Details</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+body {
+    font-family: Arial;
+    padding: 20px;
+}
+
+.invoice-container {
+    width: 210mm;
+    min-height: 297mm;
+    margin: auto;
+    padding: 15mm;
+    border: 1px solid #000;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th, td {
+    border: 1px solid #000;
+    padding: 5px;
+    font-size: 12px;
+}
+
+.header-center {
+    text-align: center;
+    font-weight: bold;
+}
+
+.right-align {
+    text-align: right;
+}
+
+@media print {
+    body {
+        margin: 0;
+        padding: 0;
+    }
+
+    .no-print {
+        display: none;
+    }
+}
+</style>
+</head>
+<body>
+
+<div class="invoice-container">
+
+    <div class="header-center">
+        <h2>VAJRA LIGHTS AND ELECTRICALS</h2>
+        KATHAKONAM KATTACAD (HO: S N TRADERS KATTACADA)<br>
+        Email: vajralightsandelectricals.sha@gmail.com<br>
+        Phone: 8608608063, 9495160771<br>
+        GSTIN: 32APBPM5593H1ZT
+        <hr>
+        <b>PURCHASE BILL</b>
+    </div>
+
+    <br>
+
+    <table>
+        <tr>
+            <td><b>Supplier:</b> <span id="supplier_name"></span></td>
+            <td class="right-align">
+                <b>Purchase No:</b> <span id="purchase_no"></span><br>
+                <b>Date:</b> <span id="purchase_date"></span>
+            </td>
+        </tr>
+    </table>
+
+    <br>
+
+    <table>
+        <thead>
+            <tr>
+                <th>No</th>
+                <th>HSN</th>
+                <th>Code</th>
+                <th>Description</th>
+                <th>Qty</th>
+                <th>Price</th>
+                <th>GST%</th>
+                <th>Amount</th>
+            </tr>
+        </thead>
+        <tbody id="items_body"></tbody>
+    </table>
+
+    <br>
+
+    <div class="right-align">
+        <b>Total: ₹ <span id="grand_total"></span></b>
+    </div>
+
+</div>
+
+<script>
+const sb = supabase.createClient(
+"https://gqxczzijntbvtlmmzppt.supabase.co",
+"sb_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs"
+);
+
+const urlParams = new URLSearchParams(window.location.search);
+const purchaseId = urlParams.get('id');
+
+document.addEventListener("DOMContentLoaded", loadDetails);
+
+async function loadDetails() {
+
+    if (!purchaseId) return;
+
+    // Fetch Header
+    const { data: header, error: headerError } = await sb
+        .from('purchase_details')
+        .select('*')
+        .eq('id', purchaseId)
+        .single();
+
+    if (headerError) {
+        alert(headerError.message);
+        return;
+    }
+
+    // Fetch Items
+    const { data: items, error: itemsError } = await sb
+        .from('purchase_item_details')
+        .select('*')
+        .eq('purchase_id', purchaseId);
+
+    if (itemsError) {
+        alert(itemsError.message);
+        return;
+    }
+
+    // Fill Header
+    document.getElementById("supplier_name").innerText = header.supplier_name || '';
+    document.getElementById("purchase_no").innerText = header.purchase_number || '';
+    document.getElementById("purchase_date").innerText = header.purchase_date || '';
+
+    let total = 0;
+    let count = 1;
+    const body = document.getElementById("items_body");
+    body.innerHTML = "";
+
+    items.forEach(i => {
+
+        const amount = parseFloat(i.purchase_price || 0);
+        total += amount;
+
+        body.innerHTML += `
+        <tr>
+            <td>${count++}</td>
+            <td>${i.hsn_code || ''}</td>
+            <td>${i.item_code || ''}</td>
+            <td>${i.item_name || ''}</td>
+            <td>${i.quantity || 0}</td>
+            <td>${parseFloat(i.price || 0).toFixed(2)}</td>
+            <td>${i.gst_percent || 0}%</td>
+            <td>${amount.toFixed(2)}</td>
+        </tr>`;
+    });
+
+    document.getElementById("grand_total").innerText = total.toFixed(2);
+
+    if (urlParams.get('print') === 'true') {
+        setTimeout(() => {
+            window.print();
+        }, 300);
+    }
+}
+</script>
+
+</body>
+</html>

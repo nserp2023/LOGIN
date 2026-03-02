@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>VAJRA LIGHTS - Stock Ledger</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f6f9;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #1f2937;
+        }
+
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.1);
+            max-width: 1100px;
+            margin: auto;
+        }
+
+        .filters {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .filters input {
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+        }
+
+        .filters button {
+            padding: 8px 15px;
+            border-radius: 6px;
+            border: none;
+            background: #2563eb;
+            color: white;
+            cursor: pointer;
+        }
+
+        .filters button:hover {
+            background: #1e40af;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: #e5e7eb;
+        }
+
+        th, td {
+            padding: 8px;
+            border: 1px solid #ddd;
+            text-align: center;
+        }
+
+        tr:nth-child(even) {
+            background: #f9fafb;
+        }
+
+        .in {
+            color: green;
+            font-weight: bold;
+        }
+
+        .out {
+            color: red;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+
+<h1>📊 VAJRA LIGHTS - Stock Ledger</h1>
+
+<div class="container">
+
+    <div class="filters">
+        <input type="text" id="itemCode" placeholder="Item Code">
+        <input type="date" id="fromDate">
+        <input type="date" id="toDate">
+        <button onclick="clearFilters()">Clear</button>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Item Code</th>
+                <th>Type</th>
+                <th>Qty In</th>
+                <th>Qty Out</th>
+                <th>Balance</th>
+                <th>Reference ID</th>
+            </tr>
+        </thead>
+        <tbody id="ledgerBody"></tbody>
+    </table>
+
+</div>
+
+<script>
+const SUPABASE_URL = "https://gqxczzijntbvtlmmzppt.supabase.co";
+const SUPABASE_KEY = "sb_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs";
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ------------------ AUTO LOAD WITH DEBOUNCE ------------------
+let debounceTimer;
+
+function autoLoad() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+        loadLedger();
+    }, 400); // 400ms delay (prevents too many queries)
+}
+
+// ------------------ LOAD LEDGER ------------------
+async function loadLedger() {
+
+    const itemCode = document.getElementById("itemCode").value.trim();
+    const fromDate = document.getElementById("fromDate").value;
+    const toDate = document.getElementById("toDate").value;
+
+    let query = sb.from("stock_ledger")
+                  .select("*")
+                  .order("created_at", { ascending: true });
+
+    if (itemCode) {
+        query = query.ilike("item_code", `%${itemCode}%`);
+    }
+
+    if (fromDate) {
+        query = query.gte("created_at", fromDate + " 00:00:00");
+    }
+
+    if (toDate) {
+        query = query.lte("created_at", toDate + " 23:59:59");
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+        alert(error.message);
+        return;
+    }
+
+    const tbody = document.getElementById("ledgerBody");
+    tbody.innerHTML = "";
+
+    let balanceMap = {};
+
+    data.forEach(row => {
+
+        if (!balanceMap[row.item_code]) {
+            balanceMap[row.item_code] = 0;
+        }
+
+        balanceMap[row.item_code] += Number(row.qty_in) - Number(row.qty_out);
+
+        const tr = document.createElement("tr");
+
+        tr.innerHTML = `
+            <td>${new Date(row.created_at).toLocaleString()}</td>
+            <td>${row.item_code}</td>
+            <td>${row.txn_type}</td>
+            <td class="in">${row.qty_in || 0}</td>
+            <td class="out">${row.qty_out || 0}</td>
+            <td>${balanceMap[row.item_code]}</td>
+            <td>${row.reference_id || ''}</td>
+        `;
+
+        tbody.appendChild(tr);
+    });
+}
+
+// ------------------ CLEAR ------------------
+function clearFilters() {
+    document.getElementById("itemCode").value = "";
+    document.getElementById("fromDate").value = "";
+    document.getElementById("toDate").value = "";
+    loadLedger();
+}
+
+// ------------------ EVENT LISTENERS ------------------
+document.getElementById("itemCode").addEventListener("input", autoLoad);
+document.getElementById("fromDate").addEventListener("change", loadLedger);
+document.getElementById("toDate").addEventListener("change", loadLedger);
+
+// Initial Load
+window.onload = loadLedger;
+
+</script>
+</body>
+</html>

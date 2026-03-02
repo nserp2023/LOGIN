@@ -53,12 +53,12 @@
       <li class="has-submenu">
         <a href="#" class="menu-link">📊 Reports</a>
         <ul class="submenu">
-          <li><a href="#">Sales Report</a></li>
+          <li><a href="sales_report.html">Sales Report</a></li>
           <li><a href="#">Sales Return Report</a></li>
           <li><a href="#">Quotation Report</a></li>
           <li><a href="#">Sales Order Report</a></li>
           <li><a href="#">Transfer Out Report</a></li>
-          <li><a href="#">Purchase Report</a></li>
+          <li><a href="purchase_report.html">Purchase Report</a></li>
           <li><a href="#">Purchase Return Report</a></li>
           <li><a href="#">Transfer In Report</a></li>
           <li><a href="#">Manufacture Report</a></li>
@@ -66,6 +66,7 @@
           <li><a href="#">Credit Note Report</a></li>
           <li><a href="#">Receipt Report</a></li>
           <li><a href="#">Debit Note Report</a></li>
+          <li><a href="stockledger.html">Stock Report</a></li>
         </ul>
       </li>
 
@@ -95,13 +96,20 @@
       <p id="welcome"></p>
     </section>
 
-    <section class="cards">
-      <div class="card">📊 Reports</div>
-      <div class="card">💳 Billing</div>
-      <div class="card" id="createCard">📝 Create</div> <!-- ✅ New card -->
-      <div class="card">⚙️ Settings</div>
-    </section>
-  </main>
+<section class="cards">
+  <div class="card" onclick="window.location.href='sales.html'">💰 Sales</div>
+  <div class="card" onclick="window.location.href='sales_return.html'">💰 Sales Return</div>
+  <div class="card" onclick="window.location.href='sales_return_modification.html'">💰 Sales Return Modification</div>
+  <div class="card" onclick="window.location.href='sales_report.html'">💰📊 Sales Reports</div>
+  <div class="card" onclick="window.location.href='purchasenew.html'">📦 Purchase</div>
+  <div class="card" onclick="window.location.href='purchase_report.html'">📦📊 Purchase Reports</div>
+  <div class="card" onclick="window.location.href='stockledger.html'">📊 Stock Report</div>
+
+  <div class="card" onclick="window.location.href='customer.html'">📝 Create</div>
+
+  <div class="card">⚙️ Settings</div>
+
+</section>  </main>
 
   <!-- Supabase client -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

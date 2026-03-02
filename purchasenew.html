@@ -39,34 +39,46 @@
     .field input:focus{border-color:var(--focus); box-shadow:0 0 0 3px rgba(58,134,255,.15)}
     .pill{display:flex; align-items:center; gap:8px}
     .pill .badge{font:12px var(--mono); color:var(--muted)}
-    .grid{
-      display:grid; gap:8px; margin-top:12px;
-      grid-template-columns:
-        /* single-row item fields with requested visual widths */
-        90px   /* HSN */
-        120px  /* Item Code (visible ~10 chars) */
-        1fr    /* Item Name (takes remaining space) */
-        80px   /* Qty (visible ~5 digits) */
-        100px  /* Price */
-        80px   /* Disc% (4 digits) */
-        110px  /* Total */
-        80px   /* GST% (4 digits) */
-        120px  /* Total+GST */
-        120px  /* Purchase Price */
-        130px  /* Purchase+GST */
-        130px  /* Landing (editable) */
-        90px   /* Price1% */
-        120px  /* Price1 */
-        130px  /* Price1+GST */
-        90px   /* Price2% */
-        120px  /* Price2 */
-        130px  /* Price2+GST */
-        90px   /* Price3% */
-        120px  /* Price3 */
-        130px  /* Price3+GST */
-      ;
-      align-items:center;
-    }
+.table-container{
+  overflow-x:auto;
+  width:100%;
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:
+    90px
+    120px
+    200px
+    80px
+    100px
+    80px
+    110px
+    80px
+    120px
+    120px
+    130px
+    130px
+    90px
+    120px
+    130px
+    90px
+    120px
+    130px
+    90px
+    120px
+    130px;
+  gap:8px;
+  align-items:center;
+  min-width:2200px; /* IMPORTANT */
+}
+
+.hdr{
+  font-size:13px;
+  font-weight:600;
+  color:var(--muted);
+  margin-bottom:6px;
+}
     .grid .hdr{color:var(--muted); font-size:12px}
     .grid input{
       height:var(--row-h); padding:0 8px; border-radius:8px;
@@ -132,18 +144,44 @@
     <div class="spacer"></div>
 
     <!-- Item grid header -->
-    <div class="panel">
-      <div class="grid hdr">
-        <div>HSN</div><div>Item code</div><div>Item name</div><div>Qty</div><div>Price</div><div>Disc%</div>
-        <div>Total</div><div>GST%</div><div>Total+GST</div><div>Purchase</div><div>Purchase+GST</div>
-        <div>Landing</div><div>P1%</div><div>P1</div><div>P1+GST</div><div>P2%</div><div>P2</div><div>P2+GST</div>
-        <div>P3%</div><div>P3</div><div>P3+GST</div>
-      </div>
-      <div id="items"></div>
-      <div class="actions">
-        <button class="btn" id="addRowBtn">+ Add row</button>
-        <button class="btn primary" id="saveBtn" disabled>Save & Update</button>
-      </div>
+<div class="panel">
+  <div class="table-container">
+    
+    <!-- HEADER -->
+    <div class="grid hdr">
+      <div>HSN</div>
+      <div>Item code</div>
+      <div>Item name</div>
+      <div>Qty</div>
+      <div>Price</div>
+      <div>Disc%</div>
+      <div>Total</div>
+      <div>GST%</div>
+      <div>Total+GST</div>
+      <div>Purchase</div>
+      <div>Purchase+GST</div>
+      <div>Landing</div>
+      <div>P1%</div>
+      <div>P1</div>
+      <div>P1+GST</div>
+      <div>P2%</div>
+      <div>P2</div>
+      <div>P2+GST</div>
+      <div>P3%</div>
+      <div>P3</div>
+      <div>P3+GST</div>
+    </div>
+
+    <!-- BODY -->
+    <div id="items"></div>
+
+  </div>
+
+  <div class="actions">
+    <button class="btn" id="addRowBtn">+ Add row</button>
+    <button class="btn primary" id="saveBtn" disabled>Save & Update</button>
+  </div>
+</div>
       <div class="status" id="saveStatus"></div>
     </div>
   </div>
@@ -163,30 +201,89 @@
     const byId = id => document.getElementById(id);
 
     // Dropdown manager
-    let dropdown;
-    function showDropdown(anchorInput, items, onPick){
-      hideDropdown();
-      const rect = anchorInput.getBoundingClientRect();
-      dropdown = document.createElement("div");
-      dropdown.className = "dropdown";
-      dropdown.style.top = (window.scrollY + rect.bottom + 4) + "px";
-      dropdown.style.left = (window.scrollX + rect.left) + "px";
-      dropdown.style.minWidth = rect.width + "px";
-      items.forEach(it=>{
-        const opt = document.createElement("div");
-        opt.className = "opt";
-        opt.innerHTML = `
-          <div class="muted">${it.item_code ?? it.gst_number ?? ""}</div>
-          <div>${it.item_name ?? it.name ?? ""}</div>
-          <div class="muted">${fmt2(it.quantity ?? 0)}</div>
-          <div class="muted">${fmt2(it.purchase_price ?? it.price ?? 0)} / ${fmt2(it.purchase_price_gst ?? it.price_gst ?? 0)}</div>
-        `;
-        opt.onclick = ()=>{ onPick(it); hideDropdown(); };
-        dropdown.appendChild(opt);
-      });
-      document.body.appendChild(dropdown);
+let activeIndex = -1;
+let dropdown;
+
+function showDropdown(anchorInput, items, onPick){
+  hideDropdown();
+
+  const rect = anchorInput.getBoundingClientRect();
+  dropdown = document.createElement("div");
+  dropdown.className = "dropdown";
+  dropdown.style.top = (window.scrollY + rect.bottom + 4) + "px";
+  dropdown.style.left = (window.scrollX + rect.left) + "px";
+  dropdown.style.minWidth = rect.width + "px";
+
+  items.forEach((it, index) => {
+    const opt = document.createElement("div");
+    opt.className = "opt";
+
+    // ✅ If supplier data
+    if(it.gst_number !== undefined){
+      opt.innerHTML = `
+        <div class="muted">${it.gst_number ?? ""}</div>
+        <div>${it.name ?? ""}</div>
+      `;
     }
-    function hideDropdown(){
+    // ✅ If item data
+    else{
+      opt.innerHTML = `
+        <div class="muted">${it.item_code ?? ""}</div>
+        <div>${it.item_name ?? ""}</div>
+        <div class="muted">Stock: ${fmt2(it.quantity ?? 0)}</div>
+        <div class="muted">
+          ${fmt2(it.purchase_price ?? 0)} / 
+          ${fmt2(it.purchase_price_gst ?? 0)}
+        </div>
+      `;
+    }
+
+    opt.onclick = () => {
+      onPick(it);
+      hideDropdown();
+    };
+
+    dropdown.appendChild(opt);
+  });
+
+  document.body.appendChild(dropdown);
+
+  // Auto highlight first
+  activeIndex = 0;
+  highlightOption();
+
+  anchorInput.onkeydown = (e) => {
+    const opts = dropdown.querySelectorAll(".opt");
+    if(!opts.length) return;
+
+    if(e.key === "ArrowDown"){
+      e.preventDefault();
+      activeIndex = (activeIndex + 1) % opts.length;
+      highlightOption();
+    }
+    else if(e.key === "ArrowUp"){
+      e.preventDefault();
+      activeIndex = (activeIndex - 1 + opts.length) % opts.length;
+      highlightOption();
+    }
+    else if(e.key === "Enter"){
+      e.preventDefault();
+      opts[activeIndex]?.click();
+    }
+    else if(e.key === "Escape"){
+      hideDropdown();
+    }
+  };
+}
+function highlightOption(){
+  const opts = dropdown.querySelectorAll(".opt");
+  opts.forEach((opt, i) => {
+    opt.style.background = (i === activeIndex) ? "#1b2130" : "";
+    if(i === activeIndex){
+      opt.scrollIntoView({ block: "nearest" });
+    }
+  });
+}    function hideDropdown(){
       if(dropdown){ dropdown.remove(); dropdown=null; }
     }
     document.addEventListener("click", e=>{
@@ -641,7 +738,9 @@ name.addEventListener("input", async (e) => {
       const purchase_id = pd?.[0]?.id;
 
       // 2) Upsert each stock item (by item_code)
+// 2) Update stock_items properly
 for (const it of items) {
+
   const { data: existing } = await sb
     .from("stock_items")
     .select("quantity")
@@ -651,9 +750,38 @@ for (const it of items) {
   const currentQty = existing?.quantity || 0;
   const newQty = currentQty + it.quantity;
 
-  const stockPayload = { ...it, quantity: newQty };
+  const stockPayload = {
+    item_code: it.item_code,
+    item_name: it.item_name,
+    hsn_code: it.hsn_code,
 
-  await sb.from("stock_items").upsert(stockPayload, { onConflict: "item_code" });
+    quantity: newQty,
+
+    purchase_price: it.purchase_price,
+    purchase_price_gst: it.purchase_price_gst,
+    gst_percent: it.gst_percent,
+    landing: it.landing,
+
+    price1_percent: it.price1_percent,
+    price1: it.price1,
+    price1_gst: it.price1_gst,
+
+    price2_percent: it.price2_percent,
+    price2: it.price2,
+    price2_gst: it.price2_gst,
+
+    price3_percent: it.price3_percent,
+    price3: it.price3,
+    price3_gst: it.price3_gst,
+  };
+
+  const { error } = await sb
+    .from("stock_items")
+    .upsert(stockPayload, { onConflict: "item_code" });
+
+  if (error) {
+    console.error("Stock update error:", error);
+  }
 }
       // 3) Insert purchase_item_details rows
       const pidRows = items.map(it=>({
@@ -719,114 +847,66 @@ for (const it of items) {
   }
 }
 
-let activeIndex = -1; // reuse your existing dropdown variable
-
-function showDropdown(anchorInput, items, onPick){
-  hideDropdown();
-  const rect = anchorInput.getBoundingClientRect();
-  dropdown = document.createElement("div");
-  dropdown.className = "dropdown";
-  dropdown.style.top = (window.scrollY + rect.bottom + 4) + "px";
-  dropdown.style.left = (window.scrollX + rect.left) + "px";
-  dropdown.style.minWidth = rect.width + "px";
-
-  items.forEach((it) => {
-    const opt = document.createElement("div");
-    opt.className = "opt";
-    opt.innerHTML = `
-      <div class="muted">${it.item_code ?? it.gst_number ?? ""}</div>
-      <div>${it.item_name ?? it.name ?? ""}</div>
-      <div class="muted">${fmt2(it.quantity ?? 0)}</div>
-      <div class="muted">${fmt2(it.purchase_price ?? it.price ?? 0)} / ${fmt2(it.purchase_price_gst ?? it.price_gst ?? 0)}</div>
-    `;
-    opt.onclick = () => { onPick(it); hideDropdown(); };
-    dropdown.appendChild(opt);
-  });
-
-  activeIndex = -1;
-  document.body.appendChild(dropdown);
-
-  anchorInput.onkeydown = (e) => {
-    const opts = dropdown.querySelectorAll(".opt");
-    if(!opts.length) return;
-
-    if(e.key === "ArrowDown"){
-      e.preventDefault();
-      activeIndex = (activeIndex + 1) % opts.length;
-      highlightOption(opts);
-    } else if(e.key === "ArrowUp"){
-      e.preventDefault();
-      activeIndex = (activeIndex - 1 + opts.length) % opts.length;
-      highlightOption(opts);
-    } else if(e.key === "Enter" && activeIndex >= 0){
-      e.preventDefault();
-      opts[activeIndex].click();
-    } else if(e.key === "Escape"){
-      hideDropdown();
-    }
-  };
-}
-
-function highlightOption(opts){
-  opts.forEach((opt, i) => {
-    opt.style.background = (i === activeIndex) ? "#1b2130" : "";
-    if(i === activeIndex){
-      // Scroll highlighted option into view
-      opt.scrollIntoView({ block: "nearest" });
-    }
-  });
-}
 
 // Enable Enter to move forward, Shift+Enter to move backward
 document.addEventListener("keydown", function(e){
-  // Collect all inputs in both header row and item rows
+
   const headerInputs = Array.from(document.querySelectorAll("#invoiceRow input"));
   const itemInputs   = Array.from(document.querySelectorAll("#items input"));
   const allInputs    = headerInputs.concat(itemInputs);
 
-  const idx = allInputs.indexOf(document.activeElement);
-  if(idx >= 0){
-    const colsPerRow = headerInputs.length; // number of fields in header row
-    const colsPerItemRow = 21; // number of fields per item row
+  const current = document.activeElement;
+  const idx = allInputs.indexOf(current);
 
+  if(idx >= 0){
+
+    const colsPerRow = headerInputs.length;
+    const colsPerItemRow = 21;
+
+    function focusAndSelect(el){
+      if(!el) return;
+      el.focus();
+      setTimeout(() => el.select(), 0); // ensures selection after focus
+    }
+
+    // ENTER navigation
     if(e.key === "Enter"){
       e.preventDefault();
+
       if(e.shiftKey){
-        const prev = allInputs[idx - 1];
-        if(prev) prev.focus();
+        focusAndSelect(allInputs[idx - 1]);
       } else {
-        const next = allInputs[idx + 1];
-        if(next) next.focus();
+        focusAndSelect(allInputs[idx + 1]);
       }
     }
 
+    // ARROW DOWN
     if(e.key === "ArrowDown"){
       e.preventDefault();
- {
-        // Inside item rows: move down to same column in next row
+
+      if(idx >= headerInputs.length){
         const colIndex = (idx - headerInputs.length) % colsPerItemRow;
         const rowIndex = Math.floor((idx - headerInputs.length) / colsPerItemRow);
         const nextRowIndex = rowIndex + 1;
         const target = itemInputs[nextRowIndex * colsPerItemRow + colIndex];
-        if(target) target.focus();
+        focusAndSelect(target);
       }
     }
 
+    // ARROW UP
     if(e.key === "ArrowUp"){
       e.preventDefault();
-      // If currently in first item row, jump back to header row
+
       if(idx >= headerInputs.length && idx < headerInputs.length + colsPerItemRow){
         const colIndex = (idx - headerInputs.length) % colsPerItemRow;
-        const target = headerInputs[colIndex];
-        if(target) target.focus();
+        focusAndSelect(headerInputs[colIndex]);
       } else {
-        // Inside item rows: move up to same column in previous row
         const colIndex = (idx - headerInputs.length) % colsPerItemRow;
         const rowIndex = Math.floor((idx - headerInputs.length) / colsPerItemRow);
         const prevRowIndex = rowIndex - 1;
         if(prevRowIndex >= 0){
           const target = itemInputs[prevRowIndex * colsPerItemRow + colIndex];
-          if(target) target.focus();
+          focusAndSelect(target);
         }
       }
     }

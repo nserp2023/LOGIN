@@ -122,6 +122,7 @@ Mobile:
 <th>Mobile</th>
 <th>Total</th>
 <th>Print</th>
+<th>Edit</th>
 </tr>
 </thead>
 <tbody id="report_body"></tbody>
@@ -168,28 +169,32 @@ async function loadSales() {
         totalSum += parseFloat(s.invoice_amount || 0);
 
         // MAIN ROW
-        body.innerHTML += `
-        <tr onclick="toggleDetails(${s.id})" style="cursor:pointer;">
-            <td>${s.series_code || ''}</td>
-            <td>${s.sales_number || ''}</td>
-            <td>${s.bill_date || ''}</td>
-            <td>${s.customer_name || ''}</td>
-            <td>${s.customer_mobile || ''}</td>
-            <td>₹${parseFloat(s.invoice_amount || 0).toFixed(2)}</td>
-            <td>
-                <button onclick="event.stopPropagation(); printBill(${s.id})">
-                    🖨 Print
-                </button>
-            </td>
-        </tr>
+body.innerHTML += `
+<tr onclick="toggleDetails(${s.id})" style="cursor:pointer;">
+    <td>${s.series_code || ''}</td>
+    <td>${s.sales_number || ''}</td>
+    <td>${s.bill_date || ''}</td>
+    <td>${s.customer_name || ''}</td>
+    <td>${s.customer_mobile || ''}</td>
+    <td>₹${parseFloat(s.invoice_amount || 0).toFixed(2)}</td>
+    <td>
+        <button onclick="event.stopPropagation(); printBill(${s.id})">
+            🖨 Print
+        </button>
+    </td>
+    <td>
+        <button onclick="event.stopPropagation(); editBill(${s.id})">
+            ✏ Edit
+        </button>
+    </td>
+</tr>
 
-        <!-- Hidden Details Row -->
 <tr id="details-${s.id}" style="display:none;">
-            <td colspan="7">
-                <div id="items-${s.id}">Loading...</div>
-            </td>
-        </tr>
-        `;
+    <td colspan="8">
+        <div id="items-${s.id}">Loading...</div>
+    </td>
+</tr>
+`;
     }
 
     body.innerHTML += `
@@ -332,7 +337,9 @@ async function loadSeries() {
     });
 }
 
-
+function editBill(id) {
+    window.location = `salesmod.html?edit=${id}`;
+}
 
 </script>
 

@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sales Return - VAJRA LIGHTS</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+:root{
+    --primary:#2563eb;
+    --accent:#059669;
+    --bg:#f1f5f9;
+    --panel:#ffffff;
+    --border:#cbd5e1;
+    --text:#1e293b;
+}
+
+body{
+    font-family:Segoe UI,Roboto;
+    background:var(--bg);
+    margin:0;
+    padding:20px;
+}
+
+.container{
+    background:var(--panel);
+    padding:20px;
+    border-radius:8px;
+    box-shadow:0 10px 25px rgba(0,0,0,0.1);
+}
+
+h2{
+    margin-top:0;
+}
+
+.section{
+    margin-bottom:15px;
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    align-items:center;
+}
+
+input,select{
+    padding:6px 8px;
+    border:1px solid var(--border);
+    border-radius:4px;
+    font-size:14px;
+}
+
+button{
+    padding:8px 16px;
+    border:none;
+    border-radius:4px;
+    background:var(--primary);
+    color:white;
+    cursor:pointer;
+    font-weight:600;
+}
+
+button:hover{
+    background:#1d4ed8;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+    margin-top:15px;
+}
+
+th,td{
+    border:1px solid #e2e8f0;
+    padding:8px;
+    text-align:center;
+    font-size:14px;
+}
+
+th{
+    background:#e2e8f0;
+    font-weight:600;
+}
+
+.total-box{
+    text-align:right;
+    font-size:18px;
+    font-weight:bold;
+    margin-top:10px;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+<h2>Sales Return</h2>
+
+<!-- SEARCH -->
+<div class="section">
+    <label>Series</label>
+    <select id="series"></select>
+
+    <label>Bill No</label>
+    <input type="number" id="bill_no">
+
+    <span style="font-weight:bold;">OR</span>
+
+    <label>Customer Mobile</label>
+    <input type="text" id="search_mobile" placeholder="Type mobile">
+
+    <select id="customer_bills" style="min-width:250px;">
+        <option value="">Select Bill</option>
+    </select>
+
+    <button onclick="loadBill()">Load Bill</button>
+</div>
+
+<!-- CUSTOMER INFO -->
+<div class="section">
+    <label>Customer</label>
+    <input id="cust_name" readonly>
+
+    <label>Mobile</label>
+    <input id="cust_mobile" readonly>
+
+    <label>Bill Date</label>
+    <input id="bill_date" readonly>
+</div>
+
+<!-- ITEMS TABLE -->
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Sold Qty</th>
+<th>Price+GST</th>
+<th>Return Qty</th>
+<th>Return Amount</th>
+</tr>
+</thead>
+<tbody id="items_body"></tbody>
+</table>
+
+<div class="total-box">
+Total Return: ₹ <span id="return_total">0.00</span>
+</div>
+
+<button onclick="saveReturn()">Save Return</button>
+
+</div>
+
+<script>
+
+// ================= SUPABASE =================
+const sb = supabase.createClient(
+"https://gqxczzijntbvtlmmzppt.supabase.co",
+"sb_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs"
+);
+
+let currentSaleId = null;
+
+// ================= INIT =================
+window.onload = async () => {
+
+    const { data } = await sb
+    .from('bill_series')
+    .select('series_code')
+    .order('series_code');
+
+    const sel = document.getElementById('series');
+    data.forEach(s=>{
+        const opt=document.createElement('option');
+        opt.value=s.series_code;
+        opt.textContent=s.series_code;
+        sel.appendChild(opt);
+    });
+};
+
+
+// ================= SEARCH BY MOBILE =================
+document.getElementById('search_mobile')
+.addEventListener('input', async function(){
+
+    const mobile=this.value;
+    if(mobile.length<3) return;
+
+    const { data } = await sb
+    .from('sales_details')
+    .select('id,sales_number,bill_date,invoice_amount')
+    .eq('customer_mobile',mobile)
+    .order('sales_number',{ascending:false});
+
+    const dropdown=document.getElementById('customer_bills');
+    dropdown.innerHTML='<option value="">Select Bill</option>';
+
+    data.forEach(b=>{
+        const opt=document.createElement('option');
+        opt.value=b.id;
+        opt.textContent=
+        `Bill#${b.sales_number} | ${b.bill_date} | ₹${b.invoice_amount}`;
+        dropdown.appendChild(opt);
+    });
+
+});
+
+
+// ================= LOAD BILL =================
+async function loadBill(){
+
+    let saleId;
+
+    const dropdown=document.getElementById('customer_bills');
+
+    if(dropdown.value){
+        saleId=dropdown.value;
+    }
+    else{
+        const series=document.getElementById('series').value;
+        const billNo=document.getElementById('bill_no').value;
+
+        const { data,error } = await sb
+        .from('sales_details')
+        .select('*')
+        .eq('series_code',series)
+        .eq('sales_number',billNo)
+        .single();
+
+        if(error || !data){
+            alert("Bill not found");
+            return;
+        }
+
+        saleId=data.id;
+    }
+
+    currentSaleId=saleId;
+
+    const { data:sale } = await sb
+    .from('sales_details')
+    .select('*')
+    .eq('id',saleId)
+    .single();
+
+    document.getElementById('cust_name').value=sale.customer_name;
+    document.getElementById('cust_mobile').value=sale.customer_mobile;
+    document.getElementById('bill_date').value=sale.bill_date;
+
+    const { data:items } = await sb
+    .from('sales_item_details')
+    .select('*')
+    .eq('sales_id',saleId);
+
+    const tbody=document.getElementById('items_body');
+    tbody.innerHTML='';
+
+items.forEach(item=>{
+
+    const tr=document.createElement('tr');
+    tr.setAttribute("data-item-code", item.item_code);
+
+    tr.innerHTML=`
+        <td>${item.item_name}</td>
+        <td>${item.quantity}</td>
+        <td>${item.sales_price_gst}</td>
+        <td>
+            <input type="number"
+                   min="0"
+                   max="${item.quantity}"
+                   value="0"
+                   onchange="calcReturn(this,${item.quantity},${item.sales_price_gst})">
+        </td>
+        <td class="ret_amt">0.00</td>
+    `;
+
+    tbody.appendChild(tr);
+});
+}
+
+
+// ================= CALCULATION =================
+function calcReturn(input,soldQty,price){
+
+    let qty=parseFloat(input.value)||0;
+
+    if(qty>soldQty){
+        alert("Return qty cannot exceed sold qty");
+        input.value=0;
+        qty=0;
+    }
+
+    const amt=qty*price;
+
+    input.parentElement.nextElementSibling
+    .innerText=amt.toFixed(2);
+
+    calcTotal();
+}
+
+function calcTotal(){
+
+    let total=0;
+
+    document.querySelectorAll('.ret_amt')
+    .forEach(td=>{
+        total+=parseFloat(td.innerText)||0;
+    });
+
+    document.getElementById('return_total')
+    .innerText=total.toFixed(2);
+}
+
+
+// ================= SAVE RETURN =================
+async function saveReturn(){
+
+    if(!currentSaleId){
+        alert("Load a bill first");
+        return;
+    }
+
+    const totalReturn=
+    parseFloat(document.getElementById('return_total').innerText);
+
+    if(totalReturn<=0){
+        alert("No return quantity entered");
+        return;
+    }
+
+    const { data:retHead,error } = await sb
+    .from('sales_return_details')
+    .insert([{
+        original_sales_id:currentSaleId,
+        return_date:new Date(),
+        total_return_amount:totalReturn
+    }])
+    .select()
+    .single();
+
+    if(error){
+        alert("Error saving return");
+        return;
+    }
+
+    const returnId=retHead.id;
+
+    const rows=document.querySelectorAll('#items_body tr');
+
+    for(const row of rows){
+
+        const retQty=
+        parseFloat(row.querySelector('input').value)||0;
+
+        if(retQty>0){
+            const itemCode = row.getAttribute("data-item-code");
+            const itemName=row.cells[0].innerText;
+            const soldQty=row.cells[1].innerText;
+            const price=row.cells[2].innerText;
+
+await sb.from('sales_return_item_details')
+.insert([{
+    return_id: returnId,
+    item_code: itemCode,     // ✅ ADD THIS
+    item_name: itemName,
+    sold_qty: soldQty,
+    return_qty: retQty,
+    price_gst: price
+}]);
+            // STOCK INCREASE
+await sb.rpc('increase_stock',{
+    p_item_code:itemCode,
+    p_qty:retQty,
+    p_reference_id:returnId
+});        }
+    }
+
+    alert("Return Saved Successfully!");
+    location.reload();
+}
+
+</script>
+</body>
+</html>

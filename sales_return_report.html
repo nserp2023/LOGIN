@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Sales Return Report</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+body { font-family: Arial; background:#f4f6f9; padding:20px;}
+.container { background:#fff; padding:20px; border-radius:10px;}
+table { width:100%; border-collapse:collapse; margin-top:10px;}
+th, td { border:1px solid #ddd; padding:8px; text-align:center;}
+button { padding:6px 10px; cursor:pointer;}
+</style>
+</head>
+
+<body>
+<div class="container">
+<h2>Sales Return Report</h2>
+
+<label>From:</label>
+<input type="date" id="from_date">
+
+<label>To:</label>
+<input type="date" id="to_date">
+
+<button onclick="loadReport()">Filter</button>
+
+<table>
+<thead>
+<tr>
+<th>Return No</th>
+<th>Date</th>
+<th>Customer</th>
+<th>Total</th>
+</tr>
+</thead>
+<tbody id="reportBody"></tbody>
+</table>
+
+<h3>Total Returns: ₹ <span id="report_total">0.00</span></h3>
+
+</div>
+
+<script>
+
+const supabase = window.supabase.createClient(
+  "YOUR_SUPABASE_URL",
+  "YOUR_SUPABASE_ANON_KEY"
+);
+
+async function loadReport(){
+
+  const from = document.getElementById("from_date").value;
+  const to = document.getElementById("to_date").value;
+
+  let query = supabase
+    .from("sales_returns")
+    .select("*, customers(name)")
+    .order("return_date",{ascending:false});
+
+  if(from) query = query.gte("return_date",from);
+  if(to) query = query.lte("return_date",to);
+
+  const { data } = await query;
+
+  const body = document.getElementById("reportBody");
+  body.innerHTML = "";
+
+  let total = 0;
+
+  data.forEach(r=>{
+    total += Number(r.total_amount);
+    body.innerHTML += `
+      <tr>
+        <td>${r.return_no}</td>
+        <td>${r.return_date}</td>
+        <td>${r.customers?.name || ""}</td>
+        <td>${r.total_amount}</td>
+      </tr>
+    `;
+  });
+
+  document.getElementById("report_total").innerText = total.toFixed(2);
+}
+
+loadReport();
+
+</script>
+</body>
+</html>

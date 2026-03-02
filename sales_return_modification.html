@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sales Return Modification - VAJRA LIGHTS</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+:root{
+    --primary:#2563eb;
+    --bg:#f1f5f9;
+    --panel:#ffffff;
+    --border:#cbd5e1;
+}
+body{
+    font-family:Segoe UI,Roboto;
+    background:var(--bg);
+    padding:20px;
+}
+.container{
+    background:var(--panel);
+    padding:20px;
+    border-radius:8px;
+    box-shadow:0 10px 25px rgba(0,0,0,0.1);
+}
+h2{margin-top:0;}
+input{
+    padding:6px 8px;
+    border:1px solid var(--border);
+    border-radius:4px;
+}
+button{
+    padding:8px 15px;
+    background:var(--primary);
+    color:white;
+    border:none;
+    border-radius:4px;
+    cursor:pointer;
+    font-weight:600;
+}
+button:hover{background:#1d4ed8;}
+table{
+    width:100%;
+    border-collapse:collapse;
+    margin-top:15px;
+}
+th,td{
+    border:1px solid #e2e8f0;
+    padding:8px;
+    text-align:center;
+}
+th{background:#e2e8f0;}
+.total{
+    text-align:right;
+    font-size:18px;
+    font-weight:bold;
+    margin-top:10px;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+<h2>Sales Return Modification</h2>
+
+<label>Return ID</label>
+<input type="number" id="return_id">
+<button onclick="loadReturn()">Load Return</button>
+
+<hr>
+
+<div>
+<label>Customer</label>
+<input id="cust_name" readonly>
+
+<label>Return Date</label>
+<input type="date" id="return_date">
+</div>
+
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Sold Qty</th>
+<th>Price+GST</th>
+<th>Return Qty</th>
+<th>Return Amount</th>
+</tr>
+</thead>
+<tbody id="items_body"></tbody>
+</table>
+
+<div class="total">
+Total Return: ₹ <span id="total">0.00</span>
+</div>
+
+<button id="updateBtn" onclick="updateReturn()">Update Return</button>
+</div>
+
+<script>
+
+// ================= SUPABASE =================
+const sb = supabase.createClient(
+"https://gqxczzijntbvtlmmzppt.supabase.co",
+"sb_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs"
+);
+
+let currentReturnId=null;
+let originalSaleId=null;
+let oldReturnItems=[];
+
+// ================= LOAD RETURN =================
+async function loadReturn(){
+
+const returnId=document.getElementById("return_id").value;
+if(!returnId){ alert("Enter Return ID"); return; }
+
+currentReturnId=returnId;
+
+// Load return header
+const { data:head } = await sb
+.from("sales_return_details")
+.select("*")
+.eq("id",returnId)
+.single();
+
+if(!head){ alert("Return not found"); return; }
+
+originalSaleId=head.original_sales_id;
+document.getElementById("return_date").value=
+head.return_date?.split("T")[0];
+
+// Load old return items
+const { data:items } = await sb
+.from("sales_return_item_details")
+.select("*")
+.eq("return_id",returnId);
+
+oldReturnItems = items || [];
+
+// Load original sale items
+const { data:saleItems } = await sb
+.from("sales_item_details")
+.select("*")
+.eq("sales_id",originalSaleId);
+
+const tbody=document.getElementById("items_body");
+tbody.innerHTML='';
+
+saleItems.forEach(si=>{
+
+const oldItem = oldReturnItems.find(
+i=>i.item_code===si.item_code
+);
+
+const oldQty = oldItem ? oldItem.return_qty : 0;
+
+const tr=document.createElement("tr");
+tr.setAttribute("data-item-code",si.item_code);
+
+tr.innerHTML=`
+<td>${si.item_name}</td>
+<td>${si.quantity}</td>
+<td>${si.sales_price_gst}</td>
+<td>
+<input type="number"
+min="0"
+max="${si.quantity}"
+value="${oldQty}"
+oninput="calcRow(this,${si.quantity},${si.sales_price_gst})">
+</td>
+<td class="amt">${(oldQty*si.sales_price_gst).toFixed(2)}</td>
+`;
+
+tbody.appendChild(tr);
+
+});
+
+calcTotal();
+}
+
+// ================= CALCULATE =================
+function calcRow(input,max,price){
+
+let qty=parseFloat(input.value)||0;
+if(qty>max){
+    alert("Return qty cannot exceed sold qty");
+    input.value=0;
+    qty=0;
+}
+
+input.parentElement.nextElementSibling.innerText=
+(qty*price).toFixed(2);
+
+calcTotal();
+}
+
+function calcTotal(){
+let total=0;
+document.querySelectorAll(".amt").forEach(td=>{
+total+=parseFloat(td.innerText)||0;
+});
+document.getElementById("total").innerText=total.toFixed(2);
+}
+
+// ================= UPDATE RETURN =================
+let isUpdating = false;   // GLOBAL LOCK
+
+async function updateReturn(){
+
+if(isUpdating) return;
+isUpdating = true;
+
+const btn = document.getElementById("updateBtn");
+btn.disabled = true;
+btn.innerText = "Updating...";
+
+try {
+
+if(!currentReturnId){
+    alert("Load return first");
+    return;
+}
+
+const total = parseFloat(
+document.getElementById("total").innerText
+);
+
+if(total <= 0){
+    alert("Return qty required");
+    return;
+}
+
+const rows = document.querySelectorAll("#items_body tr");
+
+for(const row of rows){
+
+const code = row.getAttribute("data-item-code");
+const name = row.cells[0].innerText;
+const sold = parseFloat(row.cells[1].innerText);
+const price = parseFloat(row.cells[2].innerText);
+
+const newQty = parseFloat(
+row.querySelector("input").value
+) || 0;
+
+const oldItem = oldReturnItems.find(
+i => i.item_code === code
+);
+
+const oldQty = oldItem
+? parseFloat(oldItem.return_qty)
+: 0;
+
+/* ======================================
+   STEP 1 → REVERSE OLD RETURN (FULL)
+====================================== */
+if(oldQty > 0){
+
+const { error } = await sb.rpc("deduct_stock",{
+    p_item_code: code,
+    p_qty: oldQty,
+    p_reference_id: currentReturnId,
+    p_txn_type: "SALES_RETURN_DELETE_REVERSAL"
+});
+
+if(error) throw error;
+}
+
+/* ======================================
+   STEP 2 → APPLY NEW RETURN (FULL)
+====================================== */
+if(newQty > 0){
+
+const { error } = await sb.rpc("increase_stock",{
+    p_item_code: code,
+    p_qty: newQty,
+    p_reference_id: currentReturnId,
+    p_txn_type: "SALES RETURN"
+});
+
+if(error) throw error;
+}
+
+/* ======================================
+   STEP 3 → UPDATE RETURN ITEM TABLE
+====================================== */
+
+if(newQty === 0){
+
+const { error } = await sb
+.from("sales_return_item_details")
+.delete()
+.eq("return_id", currentReturnId)
+.eq("item_code", code);
+
+if(error) throw error;
+
+}else{
+
+const { error } = await sb
+.from("sales_return_item_details")
+.upsert([{
+    return_id: currentReturnId,
+    item_code: code,
+    item_name: name,
+    sold_qty: sold,
+    return_qty: newQty,
+    price_gst: price
+}], { onConflict: ['return_id','item_code'] });
+
+if(error) throw error;
+
+}
+
+}
+
+/* ======================================
+   STEP 4 → UPDATE HEADER
+====================================== */
+
+const { error: headError } = await sb
+.from("sales_return_details")
+.update({
+    total_return_amount: total,
+    return_date: document.getElementById("return_date").value
+})
+.eq("id", currentReturnId);
+
+if(headError) throw headError;
+
+alert("Return Updated Successfully!");
+location.reload();
+
+}
+catch(error){
+console.error("Update Error:", error);
+alert("Error updating return!");
+}
+finally{
+isUpdating = false;
+btn.disabled = false;
+btn.innerText = "Update Return";
+}
+}
+</script>
+</body>
+</html>

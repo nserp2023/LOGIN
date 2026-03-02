@@ -381,7 +381,7 @@ async function loadStockData() {
         // Loop to fetch ALL data in chunks of 1000
         while (fetchMore) {
             const { data, error } = await sb
-                .from('stock_items')
+                .from('stock_balance_view')
                 .select('*')
                 .range(from, to);
 
@@ -581,29 +581,43 @@ qtyInput.addEventListener('keydown', function(e) {
                 const matches = searchStock(val, field);
                 
                 list.innerHTML = '';
-                if(matches.length) {
-                    list.style.display = 'block';
-                    matches.forEach((item, idx) => {
-                        const div = document.createElement('div');
-                        div.className = 'autocomplete-item';
-                        div.dataset.index = idx;
-div.innerHTML = `
-    <strong>${item.item_name}</strong>
-    <medium>
-        Code: ${item.item_code} |
-        P1: ₹${item.price1 || 0} |
-        P2: ₹${item.price2 || 0} |
-        P3: ₹${item.price3 || 0} |
-        L: ₹${item.landing || 0}
-    </medium>
-`;
-                        div.onclick = () => {
-                            fillItem(id, item);
-                            list.style.display = 'none';
-                        };
-                        list.appendChild(div);
-                    });
-                } else { list.style.display = 'none'; }
+if(matches.length) {
+    list.style.display = 'block';
+
+    matches.forEach((item, idx) => {
+        const div = document.createElement('div');
+        div.className = 'autocomplete-item';
+        div.dataset.index = idx;
+
+        div.innerHTML = `
+            <strong>${item.item_name}</strong>
+            <medium>
+                Code: ${item.item_code} |
+                Stock: ${item.balance || 0} |
+                P1: ₹${item.price1 || 0} |
+                P2: ₹${item.price2 || 0} |
+                P3: ₹${item.price3 || 0} |
+                L: ₹${item.landing || 0}
+            </medium>
+        `;
+
+        div.onclick = () => {
+            fillItem(id, item);
+            list.style.display = 'none';
+        };
+
+        list.appendChild(div);
+    });
+
+    // ✅ AUTO SELECT FIRST ITEM
+    const firstItem = list.querySelector('.autocomplete-item');
+    if (firstItem) {
+        firstItem.classList.add('selected');
+    }
+
+} else {
+    list.style.display = 'none';
+}
             });
             inp.addEventListener('keydown', (e) => handleListNav(e, list, (div) => div.click()));
         };
@@ -643,6 +657,9 @@ async function fillItem(id, item) {
         // Default Price (Type 1)
         row.querySelector('.type-inp').value = "1";
         row.querySelector('.price-inp').value = item.price1 || 0;
+
+        // Store full item data for price switching
+        row.querySelector('.raw-data').value = JSON.stringify(item);
         
         // Focus Qty
         row.querySelector('.qty-inp').focus();
@@ -651,15 +668,13 @@ async function fillItem(id, item) {
         // Calculate based on cache first
         calcForward(id);
 
-        // --- 2. LIVE CHECK (The Fix) ---
-        // Fetch the absolute latest version of this item from Supabase
-        const { data: fresh, error } = await sb
-            .from('stock_items')
-            .select('*')
-            // Using item_code to find the item (Ensure item_code is unique)
-            .eq('item_code', item.item_code) 
-            .single();
-
+// --- 2. LIVE CHECK USING VIEW ---
+const { data: freshStock, error } = await sb
+    .from('stock_balance_view')
+    .select('balance')
+    .eq('item_code', item.item_code)
+    .single();
+        
         if (fresh && !error) {
              // Update the hidden raw data with FRESH data
              row.querySelector('.raw-data').value = JSON.stringify(fresh);
@@ -682,7 +697,7 @@ async function fillItem(id, item) {
              }
 
              // B. CHECK STOCK (Show Warning)
-             const currentQty = fresh.quantity;
+             const currentQty = freshStock ? freshStock.balance : 0;
              const qtyBox = row.querySelector('.qty-inp');
              
              // Add a tooltip so hovering shows real stock
@@ -990,13 +1005,6 @@ if (!qty || qty <= 0) {
                         hsn_code: row.querySelector('.hsn-store').value
                     });
 
-                    // Update Stock (Subtract)
-                    const { data: currentItem } = await sb.from('stock_items').select('quantity').eq('item_code', code).single();
-                    if (currentItem) {
-                        await sb.from('stock_items')
-                                .update({ quantity: currentItem.quantity - qty })
-                                .eq('item_code', code);
-                    }
                 }
             }
 
@@ -1011,7 +1019,8 @@ if (!qty || qty <= 0) {
             document.getElementById('bill_number').value = nextBillNo;
             
             alert(`Bill #${nextBillNo} Saved Successfully!`);
-            window.print();
+            window.open(`print.html?type=sales&id=${saleId}`, "_blank");
+
             location.reload();
 
         } catch(e) {

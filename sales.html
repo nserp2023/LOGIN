@@ -1002,7 +1002,8 @@ if (!qty || qty <= 0) {
                         price: row.querySelector('.price-inp').value,
                         sales_price: row.querySelector('.total-inp').value,
                         sales_price_gst: row.querySelector('.price-gst-inp').value,
-                        hsn_code: row.querySelector('.hsn-store').value
+                        hsn_code: row.querySelector('.hsn-store').value,
+                        gst_percent: parseFloat(row.querySelector('.gst-inp').value) || 0,
                     });
 
                 }

@@ -129,7 +129,39 @@ th{
 @media print{
     body{margin:0;}
 }
+/* LEFT BOTTOM WRAPPER */
+.left-bottom{
+    width:60%;
+}
 
+
+/* BANK + QR SAME ROW */
+.bank-qr-row{
+    display:flex;
+    border:1px solid #000;
+    border-top:none;
+}
+
+.qr-left{
+    width:40%;
+    text-align:center;
+    padding:6px;
+    border-right:1px solid #000;
+    font-size:11px;
+}
+
+.qr-left img{
+    width:110px;
+    height:110px;
+    margin-top:5px;
+}
+
+.bank-right{
+    width:60%;
+    padding:6px;
+    font-size:11px;
+    line-height:1.5;
+}
 
 
 </style>
@@ -155,7 +187,7 @@ th{
 
 <div class="bill-info">
     <div>
-        <b>Bill To:</b><br>
+        <b>Consignee:</b><br>
         <span id="customer"></span>
     </div>
 
@@ -193,24 +225,26 @@ th{
 <div class="left-bottom">
 
     <!-- GST SUMMARY -->
-    <table class="gst-summary-table" id="gstSummaryTable"></table>
 
     <!-- BANK DETAILS -->
-    <div class="bank-details">
-        <b>Bank Details</b><br>
-        Bank Name : Federal Bank<br>
-        A/C No : 15490200002687<br>
-        IFSC : FDRL0001549<br>
-        Branch : Kattakada
-    </div>
+     
 
-    <!-- QR CODE -->
-    <div class="qr-section">
+    <!-- BANK + QR ROW -->
+<div class="bank-qr-row">
+
+    <div class="qr-left">
         <div><b>Scan to Pay</b></div>
         <img id="paymentQR" src="" alt="QR Code">
-        <div>UPI ID : vajralights@okaxis</div>
     </div>
 
+    <div class="bank-right">
+            <table class="gst-summary-table" id="gstSummaryTable"></table>
+
+        A/C No : 15490200002687<br>
+        IFSC : FDRL0001549<br>
+    </div>
+
+</div>
 </div>
 
 <table class="summary-box">
@@ -234,6 +268,18 @@ th{
 <td><b>Bill Total</b></td>
 <td><b id="grandTotal"></b></td>
 </tr>
+<tr>
+<td colspan="2" style="font-size:10px; text-align:center;">
+    <i>Goods once sold will not be taken back or exchanged without original bill. Subject to Trivandrum Jurisdiction.</i>
+</tr>
+<tr>
+<td colspan="2" style="font-size:10px; text-align:center;">
+    <i>This is a computer generated invoice and does not require signature.</i>
+</td>
+</tr>
+<tr>
+<td colspan="2" style="font-size:10px; text-align:center;"> 
+    <i>Thank you for your business!</i>     
 </table>
 
 </div>
@@ -345,7 +391,7 @@ document.getElementById("itemsBody").innerHTML += `
 
 let summaryHtml = `
 <tr>
-<th>GST %</th>
+<th>GST</th>
 <th>Taxable</th>
 <th>CGST</th>
 <th>SGST</th>
@@ -381,6 +427,15 @@ let otherCharges = 0;
 let grossTotal = totalTaxable + totalGst + otherCharges;
 let roundedTotal = Math.round(grossTotal);
 let roundOff = roundedTotal - grossTotal;
+/* ===== GENERATE UPI QR ===== */
+
+let upiId = "vajralights@okaxis";
+let payeeName = "Vajra Lights & Electricals";
+
+let qrData = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(payeeName)}&am=${roundedTotal}&cu=INR`;
+
+document.getElementById("paymentQR").src =
+"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" + encodeURIComponent(qrData);
 
 document.getElementById("beforeGstAmount").innerText =
 totalTaxable.toFixed(2);

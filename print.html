@@ -6,188 +6,244 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
+
 body{
     font-family: Arial, sans-serif;
-    width: 800px;
-    margin: auto;
-    font-size:13px;
+    width: 900px;
+    margin:auto;
+    font-size:12px;
 }
+
+/* ================= HEADER ================= */
 
 .header{
     display:flex;
     justify-content:space-between;
-    align-items:center;
-    border-bottom:2px solid #000;
-    padding-bottom:8px;
+    align-items:flex-start;
+    border:1px solid #000;
+    padding:10px;
+    border-bottom:none;
 }
 
-.logo{
-    width:90px;
-    height:90px;
-    object-fit:contain;
-}
-
-.company{
-    text-align:center;
-    flex:1;
-}
-
-.company h1{
-    margin:0;
-    font-size:20px;
-}
-
-.doc-title{
+.invoice-title{
+    background:#d9d9d9;
     text-align:center;
     font-weight:bold;
-    margin:10px 0;
-    font-size:16px;
+    font-size:17px;
+    padding:10px 0;
+    border:1px solid #000;
+    border-top:none;
+    letter-spacing:1.5px;
 }
 
-.info{
+.header-left h2{
+    margin:0;
+}
+
+.header-right{
+    font-weight:bold;
+    text-align:right;
+}
+
+/* ================= BILL INFO ================= */
+
+.bill-info{
     display:flex;
     justify-content:space-between;
+    border:1px solid #000;
+    border-top:none;
+    padding:8px;
 }
+
+/* ================= TABLE ================= */
 
 table{
     width:100%;
     border-collapse:collapse;
-    margin-top:8px;
 }
 
-th, td{
+th,td{
     border:1px solid #000;
-    padding:5px;
+    padding:4px;
     text-align:center;
 }
 
-th{ background:#f2f2f2; }
+th{
+    background:#f2f2f2;
+}
 
-.right{ text-align:right; }
+.left{text-align:left;}
+.right{text-align:right;}
 
-.summary-table{
+/* ================= BOTTOM SECTION ================= */
+
+.bottom-section{
+    display:flex;
     margin-top:10px;
 }
 
-.total-box{
-    width:300px;
-    margin-left:auto;
-    margin-top:10px;
+.gst-summary-table{
+    width:60%;
 }
 
-.bank{
-    margin-top:20px;
+.summary-box{
+    width:40%;
 }
+
+.gst-summary-table th,
+.gst-summary-table td,
+.summary-box td{
+    border:1px solid #000;
+    padding: 2px 6px; /* Reduced vertical padding from 6px to 2px */
+    font-size: 11px;  /* Slightly smaller font to save height */
+}
+
+.gst-summary-table th:first-child,
+.gst-summary-table td:first-child{
+    text-align:left;
+}
+
+.bottom-section {
+    display: flex;
+    margin-top: 5px;  /* Reduced margin from 10px to 5px */
+    align-items: flex-start; /* Ensures both tables align at the top */
+}
+.gst-summary-table td,
+.summary-box td{
+    text-align:right;
+}
+
+.summary-box tr:last-child td{
+    border-top:2px solid #000;
+    font-size:14px;
+}
+
+/* ================= FOOTER ================= */
 
 .footer{
-    margin-top:30px;
+    margin-top:60px;
     display:flex;
     justify-content:space-between;
 }
 
-.qr{
-    width:120px;
+@media print{
+    body{margin:0;}
 }
 
-@media print{
-    body{ margin:0; }
-}
+
+
 </style>
 </head>
+
 <body>
 
 <div class="header">
-    <img src="logo.png" class="logo">
-    <div class="company">
-        <h1>VAJRA LIGHTS & ELECTRICALS</h1>
+    <div class="header-left">
+        <h2>VAJRA LIGHTS & ELECTRICALS</h2>
         <div>KAITHAKONAM, KATTAKADA, TRIVANDRUM-72, KERALA</div>
+        <div>Email id: vajralightsandelectricals.sha@gmail.com</div>
+        <div>PH: 8606808063, 9495160771</div>
+    </div>
+
+    <div class="header-right">
+        <div>STATE: KERALA[32]</div>
         <div>GSTIN: 32APBPN5593H1ZT</div>
-        <div>Ph: 8606808063, 9495160771</div>
     </div>
 </div>
 
-<div class="doc-title">GST INVOICE</div>
+<div class="invoice-title" id="docTitle"></div>
 
-<div class="info">
+<div class="bill-info">
     <div>
-        Customer: <span id="customer"></span>
+        <b>Bill To:</b><br>
+        <span id="customer"></span>
     </div>
+
     <div class="right">
-        Bill No: <span id="docNo"></span><br>
-        Date: <span id="docDate"></span>
+        Bill No : <span id="docNo"></span><br>
+        Date : <span id="docDate"></span><br>
+        State : Kerala<br>
+        Page No : 1
     </div>
 </div>
+
+<!-- ITEMS TABLE -->
 
 <table>
 <thead>
 <tr>
-<th>#</th>
-<th>Item</th>
-<th>HSN</th>
+<th>No</th>
+<th>HSN/SAC</th>
+<th>Item Code</th>
+<th class="left">Commodity Name</th>
 <th>Qty</th>
-<th>Rate (Incl GST)</th>
-<th>Taxable</th>
+<th>Price</th>
+<th>GST %</th>
 <th>GST</th>
-<th>Total</th>
+<th>Amount</th>
 </tr>
 </thead>
 <tbody id="itemsBody"></tbody>
 </table>
 
-<h4>HSN Summary</h4>
+<!-- BOTTOM SECTION -->
 
-<table class="summary-table">
-<thead>
-<tr>
-<th>HSN</th>
-<th>Taxable Value</th>
-<th>CGST</th>
-<th>SGST</th>
-<th>Total GST</th>
+<div class="bottom-section">
+
+<div class="left-bottom">
+
+    <!-- GST SUMMARY -->
+    <table class="gst-summary-table" id="gstSummaryTable"></table>
+
+    <!-- BANK DETAILS -->
+    <div class="bank-details">
+        <b>Bank Details</b><br>
+        Bank Name : Federal Bank<br>
+        A/C No : 15490200002687<br>
+        IFSC : FDRL0001549<br>
+        Branch : Kattakada
+    </div>
+
+    <!-- QR CODE -->
+    <div class="qr-section">
+        <div><b>Scan to Pay</b></div>
+        <img id="paymentQR" src="" alt="QR Code">
+        <div>UPI ID : vajralights@okaxis</div>
+    </div>
+
+</div>
+
+<table class="summary-box">
+    <tr>
+<td>Amount (Before GST)</td>
+<td id="beforeGstAmount"></td>
 </tr>
-</thead>
-<tbody id="hsnSummary"></tbody>
+<tr>
+<td>GST</td>
+<td id="totalGstBox"></td>
+</tr>
+<tr>
+<td>Other Charges</td>
+<td id="otherCharges"></td>
+</tr>
+<tr>
+<td>Round Off</td>
+<td id="roundOff"></td>
+</tr>
+<tr>
+<td><b>Bill Total</b></td>
+<td><b id="grandTotal"></b></td>
+</tr>
 </table>
 
-<table class="total-box">
-<tr>
-<td class="right">Taxable</td>
-<td class="right" id="taxableTotal"></td>
-</tr>
-<tr>
-<td class="right">CGST</td>
-<td class="right" id="cgstTotal"></td>
-</tr>
-<tr>
-<td class="right">SGST</td>
-<td class="right" id="sgstTotal"></td>
-</tr>
-<tr>
-<td class="right">Round Off</td>
-<td class="right" id="roundOff"></td>
-</tr>
-<tr>
-<td class="right"><b>Grand Total</b></td>
-<td class="right"><b id="grandTotal"></b></td>
-</tr>
-</table>
-
-<div class="bank">
-<b>Bank Details:</b><br>
-Bank: Federal Bank<br>
-A/c No: 123456789012<br>
-IFSC: FDRL0001234
 </div>
 
 <div class="footer">
-    <div>
-        <img src="upi_qr.png" class="qr"><br>
-        Scan to Pay
-    </div>
-    <div>
-        For VAJRA LIGHTS & ELECTRICALS<br><br><br>
-        Authorised Signatory
-    </div>
+<div></div>
+<div>
+For VAJRA LIGHTS & ELECTRICALS<br><br><br>
+Authorised Signatory
+</div>
 </div>
 
 <script>
@@ -208,73 +264,138 @@ const { data: head } = await sb
 .eq("id", id)
 .single();
 
+/* ===== DOCUMENT TITLE ===== */
+
+let type = head.doc_type || "invoice"; // column in DB
+
+let titleText = "";
+
+switch(type){
+    case "invoice":
+        titleText = "GST INVOICE";
+        break;
+    case "quotation":
+        titleText = "QUOTATION";
+        break;
+    case "sales_order":
+        titleText = "SALES ORDER";
+        break;
+    case "sales_return":
+        titleText = "SALES RETURN";
+        break;
+    default:
+        titleText = "DOCUMENT";
+}
+
+document.getElementById("docTitle").innerText = titleText;
 document.getElementById("customer").innerText = head.customer_name;
 document.getElementById("docNo").innerText = head.id;
-document.getElementById("docDate").innerText = head.created_at.split("T")[0];
+document.getElementById("docDate").innerText =
+head.created_at.split("T")[0];
+
+/* ===== ITEMS ===== */
 
 const { data: items } = await sb
 .from("sales_item_details")
 .select("*")
 .eq("sales_id", id);
 
-let taxableTotal = 0;
-let gstTotal = 0;
-let hsnMap = {};
+let totalTaxable = 0;
+let totalGst = 0;
+let gstMap = {};
+let rowNo = 1;
 
-items.forEach((item,i)=>{
+items.forEach(item=>{
 
-let qty = item.quantity;
-let rateIncl = item.price_gst;
-let taxable = (rateIncl / 1.18) * qty;
-let gst = (rateIncl * qty) - taxable;
+let qty = parseFloat(item.quantity) || 0;
+let price = parseFloat(item.sales_price_gst) || 0;
+let gstPercent = parseFloat(item.gst_percent) || 0;
 
-taxableTotal += taxable;
-gstTotal += gst;
+let amount = qty * price;
+let taxable = amount / (1 + gstPercent/100);
+let gstAmount = amount - taxable;
 
-if(!hsnMap[item.hsn]) hsnMap[item.hsn] = {taxable:0,gst:0};
+totalTaxable += taxable;
+totalGst += gstAmount;
 
-hsnMap[item.hsn].taxable += taxable;
-hsnMap[item.hsn].gst += gst;
+if(!gstMap[gstPercent]){
+    gstMap[gstPercent] = {taxable:0,gst:0};
+}
+
+gstMap[gstPercent].taxable += taxable;
+gstMap[gstPercent].gst += gstAmount;
 
 document.getElementById("itemsBody").innerHTML += `
 <tr>
-<td>${i+1}</td>
-<td>${item.item_name}</td>
-<td>${item.hsn}</td>
+<td>${rowNo++}</td>
+<td>${item.hsn_code || "-"}</td>
+<td>${item.item_code || "-"}</td>
+<td class="left">${item.item_name}</td>
 <td>${qty}</td>
-<td>${rateIncl}</td>
+<td>${price.toFixed(2)}</td>
+<td>${gstPercent}%</td>
+<td>${gstAmount.toFixed(2)}</td>
+<td>${amount.toFixed(2)}</td>
+</tr>
+`;
+
+});
+
+/* ===== GST SUMMARY ===== */
+
+let summaryHtml = `
+<tr>
+<th>GST %</th>
+<th>Taxable</th>
+<th>CGST</th>
+<th>SGST</th>
+<th>Total</th>
+</tr>
+`;
+
+Object.keys(gstMap).forEach(g=>{
+
+let taxable = gstMap[g].taxable;
+let gstAmt = gstMap[g].gst;
+
+let cgst = gstAmt/2;
+let sgst = gstAmt/2;
+
+summaryHtml += `
+<tr>
+<td>${g}%</td>
 <td>${taxable.toFixed(2)}</td>
-<td>${gst.toFixed(2)}</td>
-<td>${(qty*rateIncl).toFixed(2)}</td>
+<td>${cgst.toFixed(2)}</td>
+<td>${sgst.toFixed(2)}</td>
+<td>${(taxable + gstAmt).toFixed(2)}</td>
 </tr>
 `;
 });
 
-let cgst = gstTotal/2;
-let sgst = gstTotal/2;
+document.getElementById("gstSummaryTable").innerHTML = summaryHtml;
 
-let grand = taxableTotal + gstTotal;
-let rounded = Math.round(grand);
-let roundOff = rounded - grand;
+/* ===== FINAL TOTAL CALCULATION ===== */
 
-document.getElementById("taxableTotal").innerText = taxableTotal.toFixed(2);
-document.getElementById("cgstTotal").innerText = cgst.toFixed(2);
-document.getElementById("sgstTotal").innerText = sgst.toFixed(2);
-document.getElementById("roundOff").innerText = roundOff.toFixed(2);
-document.getElementById("grandTotal").innerText = rounded.toFixed(2);
+let otherCharges = 0;
 
-for(const hsn in hsnMap){
-let row = hsnMap[hsn];
-document.getElementById("hsnSummary").innerHTML += `
-<tr>
-<td>${hsn}</td>
-<td>${row.taxable.toFixed(2)}</td>
-<td>${(row.gst/2).toFixed(2)}</td>
-<td>${(row.gst/2).toFixed(2)}</td>
-<td>${row.gst.toFixed(2)}</td>
-</tr>
-`;
-}
+let grossTotal = totalTaxable + totalGst + otherCharges;
+let roundedTotal = Math.round(grossTotal);
+let roundOff = roundedTotal - grossTotal;
+
+document.getElementById("beforeGstAmount").innerText =
+totalTaxable.toFixed(2);
+
+document.getElementById("totalGstBox").innerText =
+totalGst.toFixed(2);
+
+document.getElementById("otherCharges").innerText =
+otherCharges.toFixed(2);
+
+document.getElementById("roundOff").innerText =
+roundOff.toFixed(2);
+
+document.getElementById("grandTotal").innerText =
+roundedTotal.toFixed(2);
 
 window.print();
 }

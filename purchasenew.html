@@ -204,6 +204,11 @@
 let activeIndex = -1;
 let dropdown;
 
+document.addEventListener("input", function(e){
+    if(e.target.tagName === "INPUT" && e.target.type === "text"){
+        e.target.value = e.target.value.toUpperCase();
+    }
+});
 function showDropdown(anchorInput, items, onPick){
   hideDropdown();
 

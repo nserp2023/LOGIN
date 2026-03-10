@@ -1073,7 +1073,7 @@ if (itemsToSave.length > 0) {
             document.getElementById('bill_number').value = nextBillNo;
             
 alert(`Bill #${nextBillNo} Saved Successfully!`);
-window.print();
+            window.open(`print.html?type=sales&id=${saleId}`, "_blank");
 
 if (editSaleId) {
     // If editing → go back to report

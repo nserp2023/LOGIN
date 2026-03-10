@@ -1,296 +1,203 @@
 <!DOCTYPE html>
+
 <html>
 <head>
 <meta charset="UTF-8">
 <title>GST Invoice</title>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
 
 body{
-    font-family: Arial, sans-serif;
-    width: 900px;
-    margin:auto;
-    font-size:12px;
+font-family:Arial;
+width:900px;
+margin:auto;
+font-size:12px;
 }
 
-/* ================= HEADER ================= */
+/* HEADER */
 
 .header{
-    display:flex;
-    justify-content:space-between;
-    align-items:flex-start;
-    border:1px solid #000;
-    padding:10px;
-    border-bottom:none;
+display:flex;
+justify-content:space-between;
+border:1px solid #000;
+padding:10px;
+border-bottom:none;
 }
 
-.invoice-title{
-    background:#d9d9d9;
-    text-align:center;
-    font-weight:bold;
-    font-size:17px;
-    padding:10px 0;
-    border:1px solid #000;
-    border-top:none;
-    letter-spacing:1.5px;
-}
-
-.header-left h2{
-    margin:0;
+.header-left h1{
+margin:0;
 }
 
 .header-right{
-    font-weight:bold;
-    text-align:right;
+text-align:right;
+font-weight:bold;
 }
 
-/* ================= BILL INFO ================= */
+.invoice-title{
+background:#d9d9d9;
+text-align:center;
+font-weight:bold;
+font-size:18px;
+padding:8px;
+border:1px solid #000;
+border-top:none;
+}
 
 .bill-info{
-    display:flex;
-    justify-content:space-between;
-    border:1px solid #000;
-    border-top:none;
-    padding:8px;
+display:flex;
+justify-content:space-between;
+border:1px solid #000;
+border-top:none;
+padding:8px;
 }
 
-/* ================= TABLE ================= */
+/* PAGE */
+
+.page{
+display:flex;
+flex-direction:column;
+}
+
+.page-half{ height:520px; }
+
+.page-full{ height:1050px; }
+
+
+/* TABLE */
 
 table{
-    width:100%;
-    border-collapse:collapse;
+width:100%;
+border-collapse:collapse;
 }
 
 th,td{
-    border:1px solid #000;
-    padding:4px;
-    text-align:center;
+border:1px solid #000;
+padding:4px;
+text-align:center;
 }
 
 th{
-    background:#f2f2f2;
+background:#f2f2f2;
 }
 
 .left{text-align:left;}
 .right{text-align:right;}
 
-/* ================= BOTTOM SECTION ================= */
+#itemsBody td{
+border-top:none;
+border-bottom:none;
+}
+
+/* BOTTOM SECTION */
 
 .bottom-section{
-    display:flex;
-    margin-top:10px;
+border-top:1px solid #000;
+border-bottom:1px solid #000;   /* ADD THIS */
+display:flex;
+align-items:stretch;
+}
+.qr{
+width:18%;
+border-left:1px solid #000;   /* ADD THIS */
+border-right:1px solid #000;
+text-align:center;
+padding:5px;
+}
+.qr img{
+width:110px;
 }
 
-.gst-summary-table{
-    width:60%;
+.bank{
+width:50%;
+padding:6px;
+font-size:11px;
 }
 
-.summary-box{
-    width:40%;
+.summary{
+width:32%;
+height:100%;
 }
 
-.gst-summary-table th,
-.gst-summary-table td,
-.summary-box td{
-    border:1px solid #000;
-    padding: 2px 6px; /* Reduced vertical padding from 6px to 2px */
-    font-size: 11px;  /* Slightly smaller font to save height */
+.summary td{
+border:1px solid #000;
+padding:4px;
 }
 
-.gst-summary-table th:first-child,
-.gst-summary-table td:first-child{
-    text-align:left;
+.summary tr:last-child td{
+font-weight:bold;
+font-size:20px;     /* Bigger text */
+border-top:3px solid #000;
+padding:8px;        /* More space */
+background:#f2f2f2; /* Light highlight */
+}
+/* GST TABLE */
+
+.gst-summary{
+width:100%;
+margin-bottom:5px;
 }
 
-.bottom-section {
-    display: flex;
-    margin-top: 5px;  /* Reduced margin from 10px to 5px */
-    align-items: flex-start; /* Ensures both tables align at the top */
-}
-.gst-summary-table td,
-.summary-box td{
-    text-align:right;
+.gst-summary th,
+.gst-summary td{
+border:1px solid #000;
+font-size:10px;
+padding:3px;
 }
 
-.summary-box tr:last-child td{
-    border-top:2px solid #000;
-    font-size:14px;
+/* FOOT NOTE */
+
+.note{
+font-size:10px;
+text-align:center;
+padding:3px;
 }
 
-/* ================= FOOTER ================= */
-
-.footer{
-    margin-top:60px;
-    display:flex;
-    justify-content:space-between;
-}
+/* PRINT */
 
 @media print{
-    body{margin:0;}
-}
-/* LEFT BOTTOM WRAPPER */
-.left-bottom{
-    width:60%;
-}
 
+body{margin:0;}
 
-/* BANK + QR SAME ROW */
-.bank-qr-row{
-    display:flex;
-    border:1px solid #000;
-    border-top:none;
+.page{
+page-break-after:always;
 }
 
-.qr-left{
-    width:40%;
-    text-align:center;
-    padding:6px;
-    border-right:1px solid #000;
-    font-size:11px;
+thead{
+display:table-header-group;
 }
 
-.qr-left img{
-    width:110px;
-    height:110px;
-    margin-top:5px;
+}
+.summary td{
+border:1px solid #000;
+padding:4px;
+height:22px;   /* ADD THIS */
+width: 40%;   /* ADD THIS */
+}
+.summary{
+width:32%;
+height:100%;
+}
+.summary-box{
+width:32%;
+display:flex;
+flex-direction:column;
+justify-content:space-between;
 }
 
-.bank-right{
-    width:60%;
-    padding:6px;
-    font-size:11px;
-    line-height:1.5;
+.summary-note{
+font-size:10px;
+text-align:center;
+padding:5px;
 }
-
-
 </style>
+
 </head>
 
 <body>
 
-<div class="header">
-    <div class="header-left">
-        <h2>VAJRA LIGHTS & ELECTRICALS</h2>
-        <div>KAITHAKONAM, KATTAKADA, TRIVANDRUM-72, KERALA</div>
-        <div>Email id: vajralightsandelectricals.sha@gmail.com</div>
-        <div>PH: 8606808063, 9495160771</div>
-    </div>
-
-    <div class="header-right">
-        <div>STATE: KERALA[32]</div>
-        <div>GSTIN: 32APBPN5593H1ZT</div>
-    </div>
-</div>
-
-<div class="invoice-title" id="docTitle"></div>
-
-<div class="bill-info">
-    <div>
-        <b>Consignee:</b><br>
-        <span id="customer"></span>
-    </div>
-
-    <div class="right">
-        Bill No : <span id="docNo"></span><br>
-        Date : <span id="docDate"></span><br>
-        State : Kerala<br>
-        Page No : 1
-    </div>
-</div>
-
-<!-- ITEMS TABLE -->
-
-<table>
-<thead>
-<tr>
-<th>No</th>
-<th>HSN/SAC</th>
-<th>Item Code</th>
-<th class="left">Commodity Name</th>
-<th>Qty</th>
-<th>Price</th>
-<th>GST %</th>
-<th>GST</th>
-<th>Amount</th>
-</tr>
-</thead>
-<tbody id="itemsBody"></tbody>
-</table>
-
-<!-- BOTTOM SECTION -->
-
-<div class="bottom-section">
-
-<div class="left-bottom">
-
-    <!-- GST SUMMARY -->
-
-    <!-- BANK DETAILS -->
-     
-
-    <!-- BANK + QR ROW -->
-<div class="bank-qr-row">
-
-    <div class="qr-left">
-        <div><b>Scan to Pay</b></div>
-        <img id="paymentQR" src="" alt="QR Code">
-    </div>
-
-    <div class="bank-right">
-            <table class="gst-summary-table" id="gstSummaryTable"></table>
-
-        A/C No : 15490200002687<br>
-        IFSC : FDRL0001549<br>
-    </div>
-
-</div>
-</div>
-
-<table class="summary-box">
-    <tr>
-<td>Amount (Before GST)</td>
-<td id="beforeGstAmount"></td>
-</tr>
-<tr>
-<td>GST</td>
-<td id="totalGstBox"></td>
-</tr>
-<tr>
-<td>Other Charges</td>
-<td id="otherCharges"></td>
-</tr>
-<tr>
-<td>Round Off</td>
-<td id="roundOff"></td>
-</tr>
-<tr>
-<td><b>Bill Total</b></td>
-<td><b id="grandTotal"></b></td>
-</tr>
-<tr>
-<td colspan="2" style="font-size:10px; text-align:center;">
-    <i>Goods once sold will not be taken back or exchanged without original bill. Subject to Trivandrum Jurisdiction.</i>
-</tr>
-<tr>
-<td colspan="2" style="font-size:10px; text-align:center;">
-    <i>This is a computer generated invoice and does not require signature.</i>
-</td>
-</tr>
-<tr>
-<td colspan="2" style="font-size:10px; text-align:center;"> 
-    <i>Thank you for your business!</i>     
-</table>
-
-</div>
-
-<div class="footer">
-<div></div>
-<div>
-For VAJRA LIGHTS & ELECTRICALS<br><br><br>
-Authorised Signatory
-</div>
-</div>
+<div id="pages"></div>
 
 <script>
 
@@ -299,160 +206,302 @@ const sb = supabase.createClient(
 "sb_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs"
 );
 
-const params = new URLSearchParams(window.location.search);
-const id = params.get("id");
+const params=new URLSearchParams(window.location.search);
+const id=params.get("id");
+const type=params.get("type") || "sales";
 
 async function loadData(){
 
-const { data: head } = await sb
-.from("sales_details")
+/* HEADER */
+
+const headerTable = type === "quotation"
+    ? "quotation_details"
+    : "sales_details";
+
+const {data:head}=await sb
+.from(headerTable)
 .select("*")
-.eq("id", id)
+.eq("id",id)
 .single();
 
-/* ===== DOCUMENT TITLE ===== */
 
-let type = head.doc_type || "invoice"; // column in DB
+/* ITEMS */
 
-let titleText = "";
+const itemTable = type === "quotation"
+    ? "quotation_item_details"
+    : "sales_item_details";
 
-switch(type){
-    case "invoice":
-        titleText = "GST INVOICE";
-        break;
-    case "quotation":
-        titleText = "QUOTATION";
-        break;
-    case "sales_order":
-        titleText = "SALES ORDER";
-        break;
-    case "sales_return":
-        titleText = "SALES RETURN";
-        break;
-    default:
-        titleText = "DOCUMENT";
-}
-
-document.getElementById("docTitle").innerText = titleText;
-document.getElementById("customer").innerText = head.customer_name;
-document.getElementById("docNo").innerText = head.id;
-document.getElementById("docDate").innerText =
-head.created_at.split("T")[0];
-
-/* ===== ITEMS ===== */
-
-const { data: items } = await sb
-.from("sales_item_details")
+const {data:items}=await sb
+.from(itemTable)
 .select("*")
-.eq("sales_id", id);
+.eq("sales_id",id);
 
-let totalTaxable = 0;
-let totalGst = 0;
-let gstMap = {};
-let rowNo = 1;
+let rowsPerPage = items.length<=10 ? 10 : 40;
+let pageClass = items.length<=10 ? "page-half":"page-full";
 
-items.forEach(item=>{
+let pages=Math.ceil(items.length/rowsPerPage);
 
-let qty = parseFloat(item.quantity) || 0;
-let price = parseFloat(item.sales_price_gst) || 0;
-let gstPercent = parseFloat(item.gst_percent) || 0;
 
-let amount = qty * price;
-let taxable = amount / (1 + gstPercent/100);
-let gstAmount = amount - taxable;
+let container=document.getElementById("pages");
 
-totalTaxable += taxable;
-totalGst += gstAmount;
+/* TOTALS */
 
-if(!gstMap[gstPercent]){
-    gstMap[gstPercent] = {taxable:0,gst:0};
-}
+let totalTaxable=0;
+let totalGst=0;
+let gstMap={};
 
-gstMap[gstPercent].taxable += taxable;
-gstMap[gstPercent].gst += gstAmount;
+for(let p=0;p<pages;p++){
 
-document.getElementById("itemsBody").innerHTML += `
+let start=p*rowsPerPage;
+let pageItems=items.slice(start,start+rowsPerPage);
+
+let html=`<div class="page ${pageClass}">
+
+<div class="header">
+
+<div class="header-left">
+<h1>VAJRA LIGHTS & ELECTRICALS</h1>
+(H.O: SN.TRADERS, KATTAKADA, TRIVANDRUM-72)<br>
+Email: vajralightsandelectricals.sha@gmail.com<br>
+KAITHAKONAM, KATTAKADA, TRIVANDRUM-72<br>
+PH: 8606808063,9495160771
+</div>
+
+<div class="header-right">
+STATE: KERALA[32]<br>
+GSTIN: 32APBPN5593H1ZT
+</div>
+
+</div>
+
+<div class="invoice-title">
+${type === "quotation" ? "QUOTATION" : "GST INVOICE"}
+</div>
+
+<div class="bill-info">
+
+<div>
+<b>Consignee</b><br>
+${head.customer_name}<br>
+${head.customer_address}<br>
+GSTIN: ${head.customer_gst || "NA"}<br>
+Mobile: ${head.customer_mobile || "NA"}
+</div>
+
+<div class="right">
+Bill No : ${head.sales_number || head.id}<br>
+Date : ${head.created_at.split("T")[0]}<br>
+S.Man : ${head.salesman}<br>
+Page : ${p+1} / ${pages}
+</div>
+
+</div>
+<div class="items-area">
+
+<table>
+
+<thead>
 <tr>
-<td>${rowNo++}</td>
-<td>${item.hsn_code || "-"}</td>
-<td>${item.item_code || "-"}</td>
+<th>No</th>
+<th>HSN</th>
+<th>Code</th>
+<th class="left">Item</th>
+<th>Qty</th>
+<th>Price</th>
+<th>GST%</th>
+<th>Amount</th>
+</tr>
+</thead>
+
+<tbody id="itemsBody">`;
+
+let row=1;
+
+pageItems.forEach(item=>{
+
+let qty=parseFloat(item.quantity)||0;
+let price=parseFloat(item.sales_price_gst)||0;
+let gstPercent=parseFloat(item.gst_percent)||0;
+
+let amount=qty*price;
+let taxable=amount/(1+gstPercent/100);
+let gst=amount-taxable;
+
+totalTaxable+=taxable;
+totalGst+=gst;
+
+if(!gstMap[gstPercent])
+gstMap[gstPercent]={taxable:0,gst:0};
+
+gstMap[gstPercent].taxable+=taxable;
+gstMap[gstPercent].gst+=gst;
+
+html+=`
+<tr>
+<td>${row}</td>
+<td>${item.hsn_code||""}</td>
+<td>${item.item_code||""}</td>
 <td class="left">${item.item_name}</td>
 <td>${qty}</td>
 <td>${price.toFixed(2)}</td>
 <td>${gstPercent}%</td>
-<td>${gstAmount.toFixed(2)}</td>
 <td>${amount.toFixed(2)}</td>
-</tr>
-`;
+</tr>`;
+
+row++;
 
 });
 
-/* ===== GST SUMMARY ===== */
+for(let i=pageItems.length;i<rowsPerPage;i++){
 
-let summaryHtml = `
+html+=`
 <tr>
-<th>GST</th>
-<th>Taxable</th>
-<th>CGST</th>
-<th>SGST</th>
-<th>Total</th>
-</tr>
-`;
+<td>&nbsp;</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>`;
+
+}
+
+html+=`
+
+</tbody>
+</table>
+
+</div>
+
+<div class="bottom-section">
+
+<div class="qr">
+Scan to Pay<br>
+<img class="qrimg">
+</div>
+
+<div class="bank">
+
+<table class="gst-summary">`;
+
+if(p === pages-1){
 
 Object.keys(gstMap).forEach(g=>{
 
-let taxable = gstMap[g].taxable;
-let gstAmt = gstMap[g].gst;
+let taxable=gstMap[g].taxable;
+let gst=gstMap[g].gst;
 
-let cgst = gstAmt/2;
-let sgst = gstAmt/2;
+html+=`
+<tr><td>&nbsp;GST%</td><td>AMOUNT</td><td>CGST</td><td>SGST</td><td>Total</td></tr>
 
-summaryHtml += `
 <tr>
 <td>${g}%</td>
 <td>${taxable.toFixed(2)}</td>
-<td>${cgst.toFixed(2)}</td>
-<td>${sgst.toFixed(2)}</td>
-<td>${(taxable + gstAmt).toFixed(2)}</td>
-</tr>
-`;
+<td>${(gst/2).toFixed(2)}</td>
+<td>${(gst/2).toFixed(2)}</td>
+<td>${(taxable+gst).toFixed(2)}</td>
+</tr>`;
+
 });
 
-document.getElementById("gstSummaryTable").innerHTML = summaryHtml;
+}else{
 
-/* ===== FINAL TOTAL CALCULATION ===== */
+html+=`
+<tr><td>&nbsp;GST%</td><td>AMOUNT</td><td>CGST</td><td>SGST</td><td>Total</td></tr>
+<tr><td>&nbsp;</td><td></td><td></td><td></td><td></td></tr>
+<tr><td>&nbsp;</td><td></td><td></td><td></td><td></td></tr>
+`;
 
-let otherCharges = 0;
+}
 
-let grossTotal = totalTaxable + totalGst + otherCharges;
-let roundedTotal = Math.round(grossTotal);
-let roundOff = roundedTotal - grossTotal;
-/* ===== GENERATE UPI QR ===== */
+html+=`
+</table>
 
-let upiId = "vajralights@okaxis";
-let payeeName = "Vajra Lights & Electricals";
+A/C No : 15490200002687<br>
+IFSC : FDRL0001549
+<div class="summary-note">
+Goods once sold will not be taken back or exchanged without original bill.<br>
+Subject to Trivandrum Jurisdiction.<br>
+This is a Computer Generated Invoice and does not require signature.<br>
+Thank you for your valueable patronage. Visit Again!
 
-let qrData = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(payeeName)}&am=${roundedTotal}&cu=INR`;
+</div>
 
-document.getElementById("paymentQR").src =
-"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" + encodeURIComponent(qrData);
+</div>
 
-document.getElementById("beforeGstAmount").innerText =
-totalTaxable.toFixed(2);
+<table class="summary">`;
+if(p === pages-1){
 
-document.getElementById("totalGstBox").innerText =
-totalGst.toFixed(2);
+html+=`
+<tr>
+<td>Amount</td>
+<td>${totalTaxable.toFixed(2)}</td>
+</tr>
 
-document.getElementById("otherCharges").innerText =
-otherCharges.toFixed(2);
+<tr>
+<td>GST</td>
+<td>${totalGst.toFixed(2)}</td>
+</tr>
 
-document.getElementById("roundOff").innerText =
-roundOff.toFixed(2);
+<tr>
+<td>Round Off</td>
+<td>${(Math.round(totalTaxable+totalGst)-(totalTaxable+totalGst)).toFixed(2)}</td>
+</tr>
 
-document.getElementById("grandTotal").innerText =
-roundedTotal.toFixed(2);
+<tr>
+<td>Total</td>
+<td>${Math.round(totalTaxable+totalGst).toFixed(2)}</td>
+</tr>
+`;
 
-window.print();
+}else{
+
+html+=`
+<tr><td>Amount</td><td></td></tr>
+<tr><td>GST</td><td></td></tr>
+<tr><td>Round Off</td><td></td></tr>
+<tr><td>Total</td><td></td></tr>
+`;
+
+}
+
+html+=`
+
+</table>
+
+</div>
+
+
+</div>`;
+container.innerHTML+=html;
+
+}
+
+/* QR */
+
+let grand = Math.round(totalTaxable + totalGst);
+
+let qr = `upi://pay?pa=q137103198@ybl&pn=Vajra Lights&am=${grand}&cu=INR`;
+
+let qrImgs = document.querySelectorAll(".qrimg");
+
+let loaded = 0;
+
+qrImgs.forEach(img => {
+
+    img.onload = () => {
+        loaded++;
+        if(loaded === qrImgs.length){
+            window.print();
+        }
+    };
+
+    img.src = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" + encodeURIComponent(qr);
+
+});
+
 }
 
 loadData();

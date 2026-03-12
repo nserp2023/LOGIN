@@ -406,6 +406,8 @@ window.location = `quotation_edit.html?edit=${id}`;
 
 }
 function convertToSales(id){
+if(!confirm("Open this quotation for conversion to Sales?")) return;
+
 
 window.open(`quotation.html?convert=${id}`,"_blank");
 

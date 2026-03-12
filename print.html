@@ -231,10 +231,14 @@ const itemTable = type === "quotation"
     ? "quotation_item_details"
     : "sales_item_details";
 
+const idField = type === "quotation"
+    ? "quotation_id"
+    : "sales_id";
+
 const {data:items}=await sb
 .from(itemTable)
 .select("*")
-.eq("sales_id",id);
+.eq(idField,id);
 
 let rowsPerPage = items.length<=10 ? 10 : 40;
 let pageClass = items.length<=10 ? "page-half":"page-full";
@@ -290,7 +294,7 @@ Mobile: ${head.customer_mobile || "NA"}
 
 <div class="right">
 Bill No : ${head.sales_number || head.id}<br>
-Date : ${head.created_at.split("T")[0]}<br>
+Date : ${(head.bill_date || head.quotation_date || head.created_at || "").split("T")[0]}<br>
 S.Man : ${head.salesman}<br>
 Page : ${p+1} / ${pages}
 </div>

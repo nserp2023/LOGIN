@@ -103,6 +103,7 @@
         .items-container {
             flex: 1;
             overflow-y: auto;
+            scroll-behavior:smooth;
             position: relative;
         }
 
@@ -202,7 +203,7 @@
             background: white;
             border: 1px solid var(--border);
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            max-height: 200px;
+            max-height: 300px;
             overflow-y: auto;
             z-index: 100;
             display: none;
@@ -310,7 +311,7 @@ LOAD QUOTATION
         </table>
         
         <div style="padding: 10px; opacity: 0.6; font-size: 12px;">
-            <span style="color: var(--primary);">Tip:</span> Use <b>Enter</b> to navigate. Use <b>Arrow Keys</b> for dropdowns. <b>Shift+Enter</b> to go back.
+            <span style="color: var(--primary);">Tip:</span> Use <b>Enter</b> key to jump. Use <b>Up & Down Arrow</b> keys for navigation. Use <b>Shift+Enter</b> key to jump back.
         </div>
     </div>
 
@@ -365,12 +366,22 @@ LOAD QUOTATION
 
     // --- 3. INITIALIZATION ---
 window.onload = async () => {
-    setupDate();
-    await loadBillSeries();     // 🔥 ADD THIS
-    await fetchNextBillNumber();
-    await loadStockData();
-    addNewRow();
-    document.getElementById('cust_mobile').focus();
+
+setupDate();
+await loadBillSeries();
+await fetchNextBillNumber();
+await loadStockData();
+
+const params = new URLSearchParams(window.location.search);
+const convertId = params.get("convert");
+
+if(convertId){
+await loadQuotation(convertId);
+}else{
+addNewRow();
+}
+
+document.getElementById('cust_mobile').focus();    document.getElementById('cust_mobile').focus();
     document.getElementById("doc_type").addEventListener("change",()=>{
     const type=document.getElementById("doc_type").value;
 
@@ -608,6 +619,9 @@ qtyInput.addEventListener('keydown', function(e) {
                 
                 list.innerHTML = '';
 if(matches.length) {
+
+    adjustDropdownPosition(inp, list); // ⭐ ADD THIS
+
     list.style.display = 'block';
 
     matches.forEach((item, idx) => {
@@ -788,7 +802,19 @@ function calcProfit() {
     document.getElementById('display_profit').innerText = totalProfit.toFixed(2);
 }
 
+function adjustDropdownPosition(input, list){
+    const rect = input.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const dropdownHeight = 200;
 
+    if(spaceBelow < dropdownHeight){
+        list.style.top = "auto";
+        list.style.bottom = "100%";  // open upward
+    }else{
+        list.style.top = "100%";
+        list.style.bottom = "auto";  // open downward
+    }
+}
 
 
     function updatePriceFromType(id) {
@@ -1028,21 +1054,41 @@ console.log("Auto-detected Bill No:", nextBillNo);
 
             // --- 4. INSERT SALES HEADER ---
             // We use 'nextBillNo' which is guaranteed to be unique
-const headerTable = docType==="quotation" ? "quotation_details" : "sales_details";
+let insertData;
 
-const { data: sale, error: sErr } = await sb.from(headerTable).insert([{
-    series_code: head.series,   // 🔥 ADD THIS
-    sales_number: nextBillNo,
-    bill_date: head.date,
-    gst_number: head.gst,
+if(docType === "quotation"){
+
+insertData = {
+    series_code: head.series,
+    quotation_number: nextBillNo,
+    quotation_date: head.date,
     customer_name: head.name,
     customer_mobile: head.mob,
+    gst_number: head.gst,
+    total_amount: head.total
+};
+
+}else{
+
+insertData = {
+    series_code: head.series,
+    sales_number: nextBillNo,
+    bill_date: head.date,
+    customer_name: head.name,
+    customer_mobile: head.mob,
+    gst_number: head.gst,
     invoice_number: nextBillNo,
     invoice_date: head.date,
     invoice_amount: head.total,
-    round_off: 0 
-}]).select().single();
+    round_off: 0
+};
 
+}
+
+const headerTable = docType==="quotation" ? "quotation_details" : "sales_details";
+
+const { data: sale, error: sErr } =
+await sb.from(headerTable).insert([insertData]).select().single();
 if (sErr) throw sErr;
 
 if (!sale || !sale.id) {
@@ -1103,7 +1149,7 @@ if (!qty || qty <= 0) {
 
 await sb
 .from("quotation_details")
-.update({status:"CONVERTED"})
+.update({converted:true})
 .eq("id", window.loadedQuotationId);
 
 window.loadedQuotationId=null;
@@ -1167,7 +1213,7 @@ if(!qno) return;
 const {data,error} = await sb
 .from("quotation_details")
 .select("*")
-.eq("sales_number", qno)
+.eq("quotation_number", qno)
 .single();
 
 if(error || !data){
@@ -1181,7 +1227,7 @@ loadQuotation(data.id);
 
 async function loadQuotation(qid){
 window.loadedQuotationId=qid;
-document.getElementById("doc_type").value = "quotation";
+document.getElementById("doc_type").value = "sales";
 await fetchNextBillNumber();
 // clear existing rows
 document.getElementById("bill_body").innerHTML="";
@@ -1191,7 +1237,7 @@ currentRowId=0;
 const {data,error}=await sb
 .from("quotation_item_details")
 .select("*")
-.eq("sales_id", qid);
+.eq("quotation_id", qid);
 
 if(error){
 alert("Error loading quotation");

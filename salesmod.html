@@ -322,7 +322,7 @@
 
 <button class="btn"
         style="background:#2563eb;color:white;"
-        onclick="window.open('sales_report.html','_blank')">
+        onclick="window.open('report.html','_blank')">
     SALES REPORT
 </button>
 
@@ -609,7 +609,7 @@ if(matches.length) {
                 P1: ₹${item.price1 || 0} |
                 P2: ₹${item.price2 || 0} |
                 P3: ₹${item.price3 || 0} |
-                L: ₹${item.landing || 0}
+                P: ₹${item.purchase_price_gst || 0}
             </medium>
         `;
 
@@ -762,7 +762,7 @@ function calcProfit() {
              if(type == "1") p = item.price1;
         else if(type == "2") p = item.price2;
         else if(type == "3") p = item.price3;
-        else if(type == "P") p = item.landing;
+        else if(type == "P") p = item.purchase_price_gst;
 
         row.querySelector('.price-inp').value = p;
         calcForward(id);
@@ -1045,15 +1045,16 @@ for (const row of rows) {
 
     // Build insert array
     itemsToSave.push({
-        sales_id: saleId,
-        item_code: code,
-        item_name: row.querySelector('.name-inp').value,
-        quantity: qty,
-        price: row.querySelector('.price-inp').value,
-        sales_price: row.querySelector('.total-inp').value,
-        sales_price_gst: row.querySelector('.price-gst-inp').value,
-        hsn_code: row.querySelector('.hsn-store').value
-    });
+    sales_id: saleId,
+    item_code: code,
+    item_name: row.querySelector('.name-inp').value,
+    quantity: qty,
+    price: row.querySelector('.price-inp').value,
+    sales_price: row.querySelector('.total-inp').value,
+    sales_price_gst: row.querySelector('.price-gst-inp').value,
+    gst_percent: row.querySelector('.gst-inp').value,   // ⭐ ADD THIS
+    hsn_code: row.querySelector('.hsn-store').value
+});
 
     // Build stock map
     itemQtyMap[code] = (itemQtyMap[code] || 0) + qty;
@@ -1079,7 +1080,7 @@ alert(`Bill #${nextBillNo} Saved Successfully!`);
 
 if (editSaleId) {
     // If editing → go back to report
-    window.location.href = "sales_report.html";
+    window.location.href = "report.html";
 } else {
     // If new bill → fresh page
     location.reload();

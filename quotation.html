@@ -381,7 +381,7 @@ await loadQuotation(convertId);
 addNewRow();
 }
 
-document.getElementById('cust_mobile').focus();    document.getElementById('cust_mobile').focus();
+    document.getElementById('cust_mobile').focus();    
     document.getElementById("doc_type").addEventListener("change",()=>{
     const type=document.getElementById("doc_type").value;
 
@@ -1112,8 +1112,10 @@ if (!qty || qty <= 0) {
 }
                     
                     // Add to sales list
+                    const idField = docType === "quotation" ? "quotation_id" : "sales_id";
+
                     itemsToSave.push({
-                        sales_id: saleId,
+                        [idField]: saleId,
                         item_code: code,
                         item_name: row.querySelector('.name-inp').value,
                         quantity: qty,
@@ -1232,6 +1234,18 @@ await fetchNextBillNumber();
 // clear existing rows
 document.getElementById("bill_body").innerHTML="";
 currentRowId=0;
+
+const {data: qHead} = await sb
+.from("quotation_details")
+.select("*")
+.eq("id", qid)
+.single();
+
+if(qHead){
+document.getElementById("cust_name").value = qHead.customer_name || "";
+document.getElementById("cust_mobile").value = qHead.customer_mobile || "";
+document.getElementById("cust_gst").value = qHead.gst_number || "";
+}
 
 // get items
 const {data,error}=await sb

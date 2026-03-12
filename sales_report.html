@@ -48,6 +48,9 @@ tr:hover {
     font-weight:bold;
     background: rgba(255,215,0,0.15);
 }
+.converted-row{
+background: rgba(0,200,0,0.25);
+}
 
 /* ===== INPUTS & FILTERS ===== */
 input, select {
@@ -96,6 +99,11 @@ button:hover {
 <body>
 
 <h2>Sales Report</h2>
+Report Type:
+<select id="report_type">
+    <option value="sales">Sales</option>
+    <option value="quotation">Quotation</option>
+</select>
 
 From: <input type="date" id="from_date">
 To: <input type="date" id="to_date">
@@ -134,153 +142,200 @@ const sb = supabase.createClient(
 "sb_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs"
 );
 
-async function loadSales() {
-    const from = document.getElementById('from_date').value;
-    const to = document.getElementById('to_date').value;
-    const series = document.getElementById('series_filter').value;
-    const customer = document.getElementById('customer_filter').value.trim();
-    const mobile = document.getElementById('mobile_filter').value.trim();
+async function loadReport() {
 
-    let query = sb
-        .from('sales_details')
-        .select('*')
-        .gte('bill_date', from)
-        .lte('bill_date', to)
-        .order('sales_number', { ascending:false });
+const type = document.getElementById("report_type").value;
 
-    if (series) query = query.eq('series_code', series);
-    if (customer) query = query.ilike('customer_name', `%${customer}%`);
-    if (mobile) query = query.ilike('customer_mobile', `%${mobile}%`);
+const from = document.getElementById('from_date').value;
+const to = document.getElementById('to_date').value;
+const series = document.getElementById('series_filter').value;
+const customer = document.getElementById('customer_filter').value.trim();
+const mobile = document.getElementById('mobile_filter').value.trim();
 
-    const { data, error } = await query;
+let table = "sales_details";
+let numberField = "sales_number";
+let dateField = "bill_date";
+let amountField = "invoice_amount";
 
-    if(error){
-        alert(error.message);
-        return;
-    }
+if(type === "quotation"){
+    table = "quotation_details";
+    numberField = "quotation_number";
+    dateField = "quotation_date";
+    amountField = "total_amount";
+}
 
-    const body = document.getElementById('report_body');
-    body.innerHTML = '';
 
-    let totalSum = 0;
+let query = sb
+.from(table)
+.select('*')
+.gte(dateField, from)
+.lte(dateField, to)
+.order(numberField,{ascending:false});
 
-    for (let s of data) {
+if(series) query = query.eq('series_code', series);
+if(customer) query = query.ilike('customer_name', `%${customer}%`);
+if(mobile) query = query.ilike('customer_mobile', `%${mobile}%`);
 
-        totalSum += parseFloat(s.invoice_amount || 0);
+const { data, error } = await query;
 
-        // MAIN ROW
+if(error){
+alert(error.message);
+return;
+}
+
+const body = document.getElementById('report_body');
+body.innerHTML='';
+
+let totalSum = 0;
+
+for(let s of data){
+
+totalSum += parseFloat(s[amountField] || 0);
+
 body.innerHTML += `
-<tr onclick="toggleDetails(${s.id})" style="cursor:pointer;">
-    <td>${s.series_code || ''}</td>
-    <td>${s.sales_number || ''}</td>
-    <td>${s.bill_date || ''}</td>
-    <td>${s.customer_name || ''}</td>
-    <td>${s.customer_mobile || ''}</td>
-    <td>₹${parseFloat(s.invoice_amount || 0).toFixed(2)}</td>
-    <td>
-        <button onclick="event.stopPropagation(); printBill(${s.id})">
-            🖨 Print
-        </button>
-    </td>
-    <td>
-        <button onclick="event.stopPropagation(); editBill(${s.id})">
-            ✏ Edit
-        </button>
-    </td>
+
+<tr class="${type === 'quotation' && s.converted ? 'converted-row' : ''}"
+onclick="toggleDetails(${s.id})">
+<td>${s.series_code || ''}</td>
+<td>${s[numberField] || ''}</td>
+<td>${s[dateField] || ''}</td>
+<td>${s.customer_name || ''}</td>
+<td>${s.customer_mobile || ''}</td>
+<td>₹${parseFloat(s[amountField] || 0).toFixed(2)}</td>
+
+<td>
+<button onclick="event.stopPropagation(); printDoc(${s.id})">
+🖨 Print
+</button>
+</td>
+
+<td>
+
+<button onclick="event.stopPropagation(); editDoc(${s.id})">
+✏ Edit
+</button>
+
+${type === "quotation" && !s.converted ? `
+<br>
+<button onclick="event.stopPropagation(); convertToSales(${s.id})">
+🔄 Convert
+</button>
+` : ""}
+
+</td>
+
 </tr>
 
 <tr id="details-${s.id}" style="display:none;">
-    <td colspan="8">
-        <div id="items-${s.id}">Loading...</div>
-    </td>
+<td colspan="8">
+<div id="items-${s.id}">Loading...</div>
+</td>
 </tr>
-`;
-    }
 
-    body.innerHTML += `
-        <tr class="total-row">
-            <td colspan="6">TOTAL SALES</td>
-            <td>₹${totalSum.toFixed(2)}</td>
-        </tr>`;
+`;
 }
 
-async function toggleDetails(id) {
+body.innerHTML += `
+<tr class="total-row">
+<td colspan="5">TOTAL</td>
+<td>₹${totalSum.toFixed(2)}</td>
+</tr>
+`;
 
-    const row = document.getElementById(`details-${id}`);
-    const container = document.getElementById(`items-${id}`);
+}
+async function toggleDetails(id){
 
-    // Toggle close
-    if (row.style.display === "table-row") {
-        row.style.display = "none";
-        return;
-    }
+const type = document.getElementById("report_type").value;
 
-    row.style.display = "table-row";
-    container.innerHTML = "Loading...";
+let table = "sales_item_details";
+let idField = "sales_id";
 
-    const { data, error } = await sb
-        .from('sales_item_details')
-        .select('*')
-        .eq('sales_id', id);
+if(type === "quotation"){
+table = "quotation_item_details";
+idField = "quotation_id";
+}
 
-    if (error) {
-        container.innerHTML = "Error loading items";
-        return;
-    }
+const row = document.getElementById(`details-${id}`);
+const container = document.getElementById(`items-${id}`);
 
-    if (!data.length) {
-        container.innerHTML = "No items found.";
-        return;
-    }
+if(row.style.display==="table-row"){
+row.style.display="none";
+return;
+}
+
+row.style.display="table-row";
+
+const { data, error } = await sb
+.from(table)
+.select('*')
+.eq(idField, id);
+
+if(error){
+container.innerHTML = "Error loading items";
+console.error(error);
+return;
+}
+
+if(!data || data.length === 0){
+container.innerHTML = "No items found.";
+return;
+}
 
 let html = `
-    <div class="dropdown-wood">
-        <table style="width:100%; margin-top:10px;">
-            <tr style="background:#eee;">
-                <th>Item Code</th>
-                <th>Item Name</th>
-                <th>Qty</th>
-                <th>Price</th>
-                <th>Total</th>
-            </tr>
-    `;
+<div class="dropdown-wood">
+<table>
+<tr>
+<th>Item Code</th>
+<th>Item Name</th>
+<th>Qty</th>
+<th>Price</th>
+<th>Total</th>
+</tr>
+`;
 
-    data.forEach(i => {
-        html += `
-            <tr>
-                <td>${i.item_code || ''}</td>
-                <td>${i.item_name || ''}</td>
-                <td>${i.quantity || 0}</td>
-                <td>₹${parseFloat(i.price || 0).toFixed(2)}</td>
-                <td>₹${parseFloat(i.sales_price || 0).toFixed(2)}</td>
-            </tr>
-        `;
-    });
+data.forEach(i=>{
+html += `
+<tr>
+<td>${i.item_code}</td>
+<td>${i.item_name}</td>
+<td>${i.quantity}</td>
+<td>₹${parseFloat(i.price).toFixed(2)}</td>
+<td>₹${parseFloat(i.total).toFixed(2)}</td>
+</tr>
+`;
+});
 
 html += "</table></div>";
 
-    container.innerHTML = html;
+container.innerHTML = html;
+
 }
 
-function printBill(id) {
+function printDoc(id){
 
-    const iframe = document.createElement('iframe');
-    iframe.style.position = 'absolute';
-    iframe.style.width = '0';
-    iframe.style.height = '0';
-    iframe.style.border = '0';
+const type = document.getElementById("report_type").value;
 
-    iframe.src = `sales_details.html?id=${id}&print=true`;
+let file = "print.html";
 
-    document.body.appendChild(iframe);
-
-    // remove iframe after printing
-    setTimeout(() => {
-        document.body.removeChild(iframe);
-    }, 5000);
+if(type === "quotation"){
+file = "quotation_print.html";
 }
 
+const iframe = document.createElement('iframe');
 
+iframe.style.position='absolute';
+iframe.style.width='0';
+iframe.style.height='0';
+
+iframe.src = `${file}?id=${id}`;
+
+document.body.appendChild(iframe);
+
+setTimeout(()=>{
+document.body.removeChild(iframe);
+},5000);
+
+}
 function viewBill(id) {
     window.open(`sales_details.html?id=${id}`, '_blank');
 }
@@ -292,20 +347,20 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("to_date").value = today;
 
     await loadSeries();   // if using series dropdown
-    loadSales();          // first auto load
+    loadReport();
 
     // Auto reload when date changes
-    document.getElementById("from_date").addEventListener("change", loadSales);
-    document.getElementById("to_date").addEventListener("change", loadSales);
+    document.getElementById("from_date").addEventListener("change", loadReport);
+    document.getElementById("to_date").addEventListener("change", loadReport);
 
     // Auto reload when series changes
-    document.getElementById("series_filter").addEventListener("change", loadSales);
+    document.getElementById("series_filter").addEventListener("change", loadReport);
 
     // Auto reload when typing customer name
-    document.getElementById("customer_filter").addEventListener("input", debounce(loadSales, 500));
+    document.getElementById("customer_filter").addEventListener("input", debounce(loadReport, 500));
 
     // Auto reload when typing mobile
-    document.getElementById("mobile_filter").addEventListener("input", debounce(loadSales, 500));
+    document.getElementById("mobile_filter").addEventListener("input", debounce(loadReport, 500));
     
 });
 
@@ -337,10 +392,25 @@ async function loadSeries() {
     });
 }
 
-function editBill(id) {
-    window.location = `salesmod.html?edit=${id}`;
+function editDoc(id){
+
+const type = document.getElementById("report_type").value;
+
+if(type === "sales"){
+window.location = `salesmod.html?edit=${id}`;
 }
 
+if(type === "quotation"){
+window.location = `quotation_edit.html?edit=${id}`;
+}
+
+}
+function convertToSales(id){
+
+window.open(`quotation.html?convert=${id}`,"_blank");
+
+}
+document.getElementById("report_type").addEventListener("change", loadReport);
 </script>
 
 </body>

@@ -214,9 +214,16 @@ async function loadData(){
 
 /* HEADER */
 
-const headerTable = type === "quotation"
-    ? "quotation_details"
-    : "sales_details";
+let headerTable;
+
+if(type==="quotation")
+headerTable="quotation_details";
+else if(type==="sales_order")
+headerTable="sales_order_details";
+else if(type==="packing")
+headerTable="sales_details";   // packing uses sales data
+else
+headerTable="sales_details";
 
 const {data:head}=await sb
 .from(headerTable)
@@ -227,13 +234,25 @@ const {data:head}=await sb
 
 /* ITEMS */
 
-const itemTable = type === "quotation"
-    ? "quotation_item_details"
-    : "sales_item_details";
+let itemTable;
+let idField;
 
-const idField = type === "quotation"
-    ? "quotation_id"
-    : "sales_id";
+if(type==="quotation"){
+itemTable="quotation_item_details";
+idField="quotation_id";
+}
+else if(type==="sales_order"){
+itemTable="sales_order_item_details";
+idField="sales_order_id";
+}
+else if(type==="packing"){
+itemTable="sales_item_details";   // packing uses same items
+idField="sales_id";
+}
+else{
+itemTable="sales_item_details";
+idField="sales_id";
+}
 
 const {data:items}=await sb
 .from(itemTable)
@@ -253,6 +272,11 @@ let container=document.getElementById("pages");
 let totalTaxable=0;
 let totalGst=0;
 let gstMap={};
+let titleText =
+type==="quotation" ? "QUOTATION" :
+type==="sales_order" ? "SALES ORDER" :
+type==="packing" ? "PACKING SLIP" :
+"GST INVOICE";
 
 for(let p=0;p<pages;p++){
 
@@ -278,9 +302,7 @@ GSTIN: 32APBPN5593H1ZT
 
 </div>
 
-<div class="invoice-title">
-${type === "quotation" ? "QUOTATION" : "GST INVOICE"}
-</div>
+<div class="invoice-title">${titleText}</div>
 
 <div class="bill-info">
 
@@ -293,10 +315,14 @@ Mobile: ${head.customer_mobile || "NA"}
 </div>
 
 <div class="right">
-Bill No : ${head.sales_number || head.id}<br>
+
+${type==="packing" || type==="sales_pack" ? "" :
+`Bill No : ${head.sales_number || head.quotation_number || head.order_number || head.id}<br>`}
+
 Date : ${(head.bill_date || head.quotation_date || head.created_at || "").split("T")[0]}<br>
 S.Man : ${head.salesman}<br>
 Page : ${p+1} / ${pages}
+
 </div>
 
 </div>
@@ -480,6 +506,19 @@ html+=`
 
 </div>`;
 container.innerHTML+=html;
+
+
+}
+// ===== ADD PACKING COPY =====
+
+if(type==="sales_pack"){
+
+let originalHTML = container.innerHTML;
+
+// create packing copy
+let packingHTML = originalHTML.replace(/GST INVOICE/g,"PACKING SLIP");
+
+container.innerHTML = originalHTML + packingHTML;
 
 }
 

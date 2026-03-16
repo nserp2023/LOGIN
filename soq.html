@@ -33,7 +33,7 @@
         .container {
             max-width: 100%;
             height: 96vh;
-            background: var(--bg-overlay);
+            background: transparent;
             border-radius: 8px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.2);
             display: flex;
@@ -47,7 +47,7 @@
             display: flex;
             gap: 12px;
             align-items: flex-end;
-            background: #f8fafc;
+            background: #030303;
         }
 
         .form-group {
@@ -114,7 +114,7 @@
         }
 
         thead {
-            background: #e2e8f0;
+            background: #f0e6e2;
             position: sticky;
             top: 0;
             z-index: 10;
@@ -124,7 +124,7 @@
             padding: 8px;
             text-align: left;
             font-size: 11px;
-            color: #475569;
+            color: #694747;
             font-weight: 700;
             border-bottom: 1px solid #cbd5e1;
         }
@@ -136,6 +136,7 @@
 
         /* Table Inputs */
         td input, td select {
+            color: white;
             width: 100%;
             border: none;
             padding: 8px 5px;
@@ -145,7 +146,8 @@
         }
 
         td input:focus, td select:focus {
-            background: #fff;
+            color: white;
+            background: transparent;
             box-shadow: inset 0 0 0 2px var(--primary);
             outline: none;
         }
@@ -166,7 +168,7 @@
             position: relative;
             padding: 10px 20px;
             border-top: 1px solid var(--border);
-            background: #f8fafc;
+            background: #000000;
             display: flex;
             justify-content: flex-end;
             gap: 15px;
@@ -196,19 +198,42 @@
         .autocomplete-wrapper { position: relative; width: 100%; height: 100%; }
         
         .autocomplete-list {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            width: 300px; /* Wider than input */
-            background: white;
-            border: 1px solid var(--border);
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            max-height: 300px;
-            overflow-y: auto;
-            z-index: 100;
-            display: none;
-            border-radius: 4px;
-        }
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 1000px; /* Increased width for better visibility */
+    background: white;
+    border: 1px solid var(--border);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 100;
+    display: none;
+}
+
+.autocomplete-table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:13px;
+    font-weight:bold;
+}
+
+.autocomplete-table th{
+    background:#f1f5f9;
+    padding:6px;
+    border:1px solid black;
+    text-align:left;
+}
+
+.autocomplete-table td{
+    padding:6px;
+    border:1px solid black;
+}
+
+.autocomplete-row:hover{
+    background:#dbeafe;
+    cursor:pointer;
+}
 
         .autocomplete-item {
             padding: 8px 10px;
@@ -217,13 +242,19 @@
             font-size: 13px;
         }
 
-        .autocomplete-item:hover, .autocomplete-item.selected {
-            background-color: #eff6ff;
-            color: var(--primary);
-        }
+        .autocomplete-row:hover,
+.autocomplete-row.selected {
+    background-color: #dbeafe;
+}
 
         .autocomplete-item strong { display: block; color: var(--text); }
         .autocomplete-item small { color: #64748b; }
+
+
+        .autocomplete-table th:first-child,
+        .autocomplete-table td:first-child{
+    width: 350px;
+}
 
         /* Print Styles */
         @media print {
@@ -232,6 +263,7 @@
             body { background: white; overflow: auto; padding: 0; }
             input, select { border: none !important; box-shadow: none !important; }
         }
+
     </style>
 </head>
 <body>
@@ -242,7 +274,9 @@
 <label>Type</label>
 <select id="doc_type" class="form-control w-sm">
 <option value="sales">SALES</option>
+<option value="sales_pack">SALES + PACKING</option>
 <option value="quotation">QUOTATION</option>
+<option value="sales_order">SALES ORDER</option>
 </select>
 </div>
         <div class="form-group">
@@ -283,7 +317,15 @@ LOAD QUOTATION
             <label>GST No</label>
             <input type="text" id="cust_gst" class="form-control w-md nav-input" tabindex="6">
         </div>
-
+        <div class="form-group">
+<label>Salesman</label>
+<select id="salesman" class="form-control w-md">
+<option value="">Select</option>
+<option value="RAJU">RAJU</option>
+<option value="SHAFI">SHAFI</option>
+<option value="VAJRA">VAJRA</option>
+</select>
+</div>
         <div class="grand-total-box">
             <span>GRAND TOTAL</span>
             <div id="display_grand_total">₹0.00</div>
@@ -377,32 +419,58 @@ await loadStockData();
 
 const params = new URLSearchParams(window.location.search);
 const convertId = params.get("convert");
+const convertSO = params.get("convert_so");
 const editId = params.get("edit");
 const editType = params.get("type");
 
 if(editId){
 await loadEditDocument(editId, editType);
 }
-else 
-if(convertId){
+else if(convertId){
 await loadQuotation(convertId);
-}else{
+}
+else if(convertSO){
+await loadSalesOrder(convertSO);
+await sb
+.from("sales_order_details")
+.update({ converted: true })
+.eq("id", convertSO);
+}
+else{
 addNewRow();
 }
 
     document.getElementById('cust_mobile').focus();    
-    document.getElementById("doc_type").addEventListener("change",()=>{
-    const type=document.getElementById("doc_type").value;
+document.getElementById("doc_type").addEventListener("change",()=>{
 
-    if(type==="quotation"){
-        document.title="VAJRA LIGHTS - Quotation";
-        document.getElementById("btn_save").innerText="SAVE & PRINT QUOTATION";
-    }else{
-        document.title="VAJRA LIGHTS - Billing Software";
-        document.getElementById("btn_save").innerText="PRINT & SAVE";
-    }
-});
-};
+const type=document.getElementById("doc_type").value;
+const sm=document.getElementById("salesman");
+fetchNextBillNumber();
+
+if(type==="quotation"){
+    document.title="VAJRA LIGHTS - Quotation";
+    document.getElementById("btn_save").innerText="SAVE & PRINT QUOTATION";
+}
+else 
+if(type==="sales_order"){
+    document.title="VAJRA LIGHTS - Sales Order";
+    document.getElementById("btn_save").innerText="SAVE & PRINT SALES ORDER";
+}
+else{
+    document.title="VAJRA LIGHTS - Billing Software";
+    document.getElementById("btn_save").innerText="PRINT & SAVE";
+    sm.value="";
+}
+if(type==="sales_pack"){
+sm.value="VAJRA";
+sm.disabled=true;
+}
+else{
+sm.disabled=false;
+}
+
+
+});};
 
 
 document.addEventListener("input", function(e){
@@ -638,17 +706,56 @@ if(matches.length) {
         div.className = 'autocomplete-item';
         div.dataset.index = idx;
 
-        div.innerHTML = `
-            <strong>${item.item_name}</strong>
-            <medium>
-                Code: ${item.item_code} |
-                Stock: ${item.balance || 0} |
-                P1: ₹${item.price1 || 0} |
-                P2: ₹${item.price2 || 0} |
-                P3: ₹${item.price3 || 0} |
-                L: ₹${item.landing || 0}
-            </medium>
-        `;
+        if(matches.length){
+
+adjustDropdownPosition(inp, list);
+
+list.style.display="block";
+
+let html=`
+<table class="autocomplete-table">
+<tr>
+<th>Item</th>
+<th>Code</th>
+<th>Stock</th>
+<th>P1</th>
+<th>P2</th>
+<th>P3</th>
+<th>Landing</th>
+</tr>
+`;
+
+matches.forEach((item,idx)=>{
+
+html+=`
+<tr class="autocomplete-row" data-idx="${idx}">
+<td>${item.item_name}</td>
+<td>${item.item_code}</td>
+<td>${item.balance||0}</td>
+<td>₹${item.price1||0}</td>
+<td>₹${item.price2||0}</td>
+<td>₹${item.price3||0}</td>
+<td>₹${item.landing||0}</td>
+</tr>
+`;
+
+});
+
+html+="</table>";
+
+list.innerHTML=html;
+
+list.querySelectorAll(".autocomplete-row").forEach((tr,i)=>{
+tr.onclick=()=>{
+fillItem(id,matches[i]);
+list.style.display="none";
+};
+});
+
+}
+else{
+list.style.display="none";
+}
 
         div.onclick = () => {
             fillItem(id, item);
@@ -659,7 +766,7 @@ if(matches.length) {
     });
 
     // ✅ AUTO SELECT FIRST ITEM
-    const firstItem = list.querySelector('.autocomplete-item');
+    const firstItem = list.querySelector('.autocomplete-row');
     if (firstItem) {
         firstItem.classList.add('selected');
     }
@@ -781,17 +888,26 @@ const { data: freshStock, error } = await sb
              
              // Add a tooltip so hovering shows real stock
              qtyBox.title = `Available Stock: ${currentQty}`;
+            
+             
+            // Show warning ONLY for SALES
+        if(docType === "sales"){
 
              if (currentQty <= 0) {
                  // Stock is 0 or negative
-                 qtyBox.style.backgroundColor = "#fee2e2"; // Red
+                 qtyBox.style.backgroundColor = "#0000FF"; // Red
                  alert(`⚠️ WARNING: "${item.item_name}" is Out of Stock! (Qty: ${currentQty})`);
              } else if (currentQty < 5) {
                  // Stock is Low
-                 qtyBox.style.backgroundColor = "#ffedd5"; // Orange
+                 qtyBox.style.backgroundColor = "#90EE90"; // Green
              } else {
                  qtyBox.style.backgroundColor = ""; // Normal
              }
+             }
+else{
+    // No warning for quotation or sales order
+    qtyBox.style.backgroundColor = "";
+}
         }
     }
 
@@ -924,9 +1040,9 @@ function handleListNav(e, list, callback) {
         // If list is hidden, let the grid navigation handle the key
         if(list.style.display === 'none') return false; 
         
-        const items = list.querySelectorAll('.autocomplete-item');
+        const items = list.querySelectorAll('.autocomplete-row');
         let active = list.querySelector('.selected');
-        let idx = active ? parseInt(active.dataset.index) : -1;
+        let idx = active ? parseInt(active.dataset.idx) : -1;
 
         if(e.key === 'ArrowDown') {
             e.preventDefault();
@@ -1029,7 +1145,7 @@ nextBillNo = document.getElementById("bill_number").value;
 
 }else{
 
-if(docType === "sales"){
+if(docType === "sales" || docType === "sales_pack"){
 
 const { data, error } =
 await sb.rpc('get_next_sales_number', { p_series: seriesCode });
@@ -1037,7 +1153,17 @@ await sb.rpc('get_next_sales_number', { p_series: seriesCode });
 if(error) throw error;
 nextBillNo = data;
 
-}else{
+}
+else if(docType === "sales_order"){
+
+const { data, error } =
+await sb.rpc('get_next_sales_order_number', { p_series: seriesCode });
+
+if(error) throw error;
+nextBillNo = data;
+
+}
+else{
 
 const { data, error } =
 await sb.rpc('get_next_quotation_number', { p_series: seriesCode });
@@ -1048,11 +1174,6 @@ nextBillNo = data;
 }
 
 }
-
-
-
-
-console.log("Auto-detected Bill No:", nextBillNo);
             
             console.log("Auto-detected Bill No:", nextBillNo);
 
@@ -1077,6 +1198,20 @@ console.log("Auto-detected Bill No:", nextBillNo);
             // We use 'nextBillNo' which is guaranteed to be unique
 let insertData;
 
+if(docType === "sales_order"){
+insertData = {
+    series_code: head.series,
+    order_number: editingId ? document.getElementById("bill_number").value : nextBillNo,
+    order_date: head.date || new Date().toISOString().split("T")[0],
+    customer_name: head.name,
+    customer_mobile: head.mob,
+    gst_number: head.gst,
+    total_amount: head.total
+};
+
+}
+else
+
 if(docType === "quotation"){
 
 insertData = {
@@ -1089,8 +1224,8 @@ insertData = {
     total_amount: head.total
 };
 
-}else{
-
+}
+else if(docType === "sales" || docType === "sales_pack"){
 insertData = {
     series_code: head.series,
     sales_number: nextBillNo,
@@ -1101,12 +1236,17 @@ insertData = {
     invoice_number: nextBillNo,
     invoice_date: head.date,
     invoice_amount: head.total,
+    salesman: document.getElementById("salesman").value,
     round_off: 0
 };
 
 }
 
-const headerTable = docType==="quotation" ? "quotation_details" : "sales_details";
+let headerTable;
+
+if(docType==="quotation") headerTable="quotation_details";
+else if(docType==="sales_order") headerTable="sales_order_details";
+else headerTable="sales_details";
 
 let sale;
 
@@ -1143,16 +1283,27 @@ if (!sale || !sale.id) {
 }
 
 const saleId = sale.id;
+let itemTable;
+let idField;
+
+if(docType==="quotation"){
+itemTable="quotation_item_details";
+idField="quotation_id";
+}
+else if(docType==="sales_order"){
+itemTable="sales_order_item_details";
+idField="sales_order_id";
+}
+else{
+itemTable="sales_item_details";
+idField="sales_id";
+}
+
 if(editingId){
-
-const itemTable = docType==="quotation" ? "quotation_item_details" : "sales_item_details";
-const idField = docType==="quotation" ? "quotation_id" : "sales_id";
-
 await sb
 .from(itemTable)
 .delete()
 .eq(idField, editingId);
-
 }
             // --- 5. INSERT ITEMS & UPDATE STOCK ---
             const rows = document.querySelectorAll('#bill_body tr');
@@ -1169,7 +1320,11 @@ if (!qty || qty <= 0) {
 }
                     
                     // Add to sales list
-                    const idField = docType === "quotation" ? "quotation_id" : "sales_id";
+                    let idField;
+
+if(docType==="quotation") idField="quotation_id";
+else if(docType==="sales_order") idField="sales_order_id";
+else idField="sales_id";
 
                     itemsToSave.push({
                         [idField]: saleId,
@@ -1187,7 +1342,11 @@ if (!qty || qty <= 0) {
             }
 
             if(itemsToSave.length > 0) {
-            const itemTable = docType==="quotation" ? "quotation_item_details" : "sales_item_details";
+            let itemTable;
+
+if(docType==="quotation") itemTable="quotation_item_details";
+else if(docType==="sales_order") itemTable="sales_order_item_details";
+else itemTable="sales_item_details";
 
             const { error: iErr } = await sb.from(itemTable).insert(itemsToSave);
 
@@ -1199,10 +1358,22 @@ if (!qty || qty <= 0) {
 
             // --- 7. FINISH ---
             // Update the UI Bill Number box just so the user sees what was saved
-            document.getElementById('bill_number').value = nextBillNo;
+            if(!editingId){
+document.getElementById('bill_number').value = nextBillNo;
+}
             
             alert(`Bill #${nextBillNo} Saved Successfully!`);
-            window.open(`print.html?type=${docType}&id=${saleId}`, "_blank");
+
+if(docType==="sales_pack"){
+
+window.open(`print.html?type=sales_pack&id=${saleId}`, "_blank");
+
+}
+else{
+
+window.open(`print.html?type=${docType}&id=${saleId}`, "_blank");
+
+}
 
             if(docType==="sales" && window.loadedQuotationId){
 
@@ -1284,6 +1455,59 @@ loadQuotation(data.id);
 
 }
 
+async function loadSalesOrder(id){
+
+document.getElementById("doc_type").value = "sales";
+
+await fetchNextBillNumber();
+
+document.getElementById("bill_body").innerHTML="";
+currentRowId=0;
+
+const {data:head} = await sb
+.from("sales_order_details")
+.select("*")
+.eq("id",id)
+.single();
+
+if(head){
+document.getElementById("cust_name").value=head.customer_name || "";
+document.getElementById("cust_mobile").value=head.customer_mobile || "";
+document.getElementById("cust_gst").value=head.gst_number || "";
+}
+
+const {data, error} = await sb
+.from("sales_order_item_details")
+.select("*")
+.eq("sales_order_id",id);
+
+if(error){
+alert("Error loading sales order");
+return;
+}
+
+data.forEach(item=>{
+addNewRow();
+
+const row=document.getElementById(`row_${currentRowId-1}`);
+
+row.querySelector(".code-inp").value=item.item_code;
+row.querySelector(".name-inp").value=item.item_name;
+row.querySelector(".qty-inp").value=item.quantity;
+row.querySelector(".price-inp").value=item.price;
+row.querySelector(".price-gst-inp").value=item.sales_price_gst;
+row.querySelector(".gst-inp").value=item.gst_percent;
+row.querySelector(".hsn-store").value=item.hsn_code;
+
+calcForward(currentRowId-1);
+});
+
+calcTotal();
+
+alert("Sales Order loaded. Modify if needed and save as Sales.");
+
+}
+
 async function loadQuotation(qid){
 window.loadedQuotationId=qid;
 document.getElementById("doc_type").value = "sales";
@@ -1344,10 +1568,25 @@ async function loadEditDocument(id,type){
 
 document.getElementById("doc_type").value = type;
 
-const headerTable = type==="quotation" ? "quotation_details" : "sales_details";
-const itemTable = type==="quotation" ? "quotation_item_details" : "sales_item_details";
-const idField = type==="quotation" ? "quotation_id" : "sales_id";
+let headerTable;
+let itemTable;
+let idField;
 
+if(type==="quotation"){
+headerTable="quotation_details";
+itemTable="quotation_item_details";
+idField="quotation_id";
+}
+else if(type==="sales_order"){
+headerTable="sales_order_details";
+itemTable="sales_order_item_details";
+idField="sales_order_id";
+}
+else{
+headerTable="sales_details";
+itemTable="sales_item_details";
+idField="sales_id";
+}
 const {data:head} = await sb
 .from(headerTable)
 .select("*")
@@ -1364,10 +1603,10 @@ document.getElementById("cust_mobile").value = head.customer_mobile || "";
 document.getElementById("cust_gst").value = head.gst_number || "";
 
 document.getElementById("bill_date").value =
-(head.bill_date || head.quotation_date || "").split("T")[0];
+(head.bill_date || head.quotation_date || head.order_date || "").split("T")[0];
 
 document.getElementById("bill_number").value =
-head.sales_number || head.quotation_number || "";
+head.sales_number || head.quotation_number || head.order_number || "";
 
 // clear rows
 document.getElementById("bill_body").innerHTML="";

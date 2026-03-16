@@ -103,6 +103,7 @@ Report Type:
 <select id="report_type">
     <option value="sales">Sales</option>
     <option value="quotation">Quotation</option>
+    <option value="sales_order">Sales Order</option>
 </select>
 
 From: <input type="date" id="from_date">
@@ -164,6 +165,13 @@ if(type === "quotation"){
     amountField = "total_amount";
 }
 
+if(type === "sales_order"){
+    table = "sales_order_details";
+    numberField = "order_number";
+    dateField = "order_date";
+    amountField = "total_amount";
+}
+
 
 let query = sb
 .from(table)
@@ -194,7 +202,11 @@ totalSum += parseFloat(s[amountField] || 0);
 
 body.innerHTML += `
 
-<tr class="${type === 'quotation' && s.converted ? 'converted-row' : ''}"
+<tr class="${
+(type === 'quotation' && s.converted) || 
+(type === 'sales_order' && s.converted)
+? 'converted-row' : ''
+}"
 onclick="toggleDetails(${s.id})">
 <td>${s.series_code || ''}</td>
 <td>${s[numberField] || ''}</td>
@@ -204,9 +216,17 @@ onclick="toggleDetails(${s.id})">
 <td>₹${parseFloat(s[amountField] || 0).toFixed(2)}</td>
 
 <td>
+
 <button onclick="event.stopPropagation(); printDoc(${s.id})">
 🖨 Print
 </button>
+
+${type === "sales" ? `
+<button onclick="event.stopPropagation(); printPacking(${s.id})">
+📦 Packing
+</button>
+` : ""}
+
 </td>
 
 <td>
@@ -215,7 +235,7 @@ onclick="toggleDetails(${s.id})">
 ✏ Edit
 </button>
 
-${type === "quotation" && !s.converted ? `
+${(type === "quotation" || type === "sales_order") && !s.converted ? `
 <br>
 <button onclick="event.stopPropagation(); convertToSales(${s.id})">
 🔄 Convert
@@ -253,6 +273,11 @@ let idField = "sales_id";
 if(type === "quotation"){
 table = "quotation_item_details";
 idField = "quotation_id";
+}
+
+if(type === "sales_order"){
+table = "sales_order_item_details";
+idField = "sales_order_id";
 }
 
 const row = document.getElementById(`details-${id}`);
@@ -300,7 +325,7 @@ html += `
 <td>${i.item_name}</td>
 <td>${i.quantity}</td>
 <td>₹${parseFloat(i.price).toFixed(2)}</td>
-<td>₹${parseFloat(i.total).toFixed(2)}</td>
+<td>₹${(i.sales_price_gst * i.quantity).toFixed(2)}</td>
 </tr>
 `;
 });
@@ -322,6 +347,23 @@ iframe.style.width='0';
 iframe.style.height='0';
 
 iframe.src = `print.html?id=${id}&type=${type}`;
+
+document.body.appendChild(iframe);
+
+setTimeout(()=>{
+document.body.removeChild(iframe);
+},5000);
+
+}
+function printPacking(id){
+
+const iframe = document.createElement('iframe');
+
+iframe.style.position='absolute';
+iframe.style.width='0';
+iframe.style.height='0';
+
+iframe.src = `print.html?id=${id}&type=packing`;
 
 document.body.appendChild(iframe);
 
@@ -398,12 +440,24 @@ if(type === "quotation"){
 window.location = `soq.html?edit=${id}&type=quotation`;
 }
 
+if(type === "sales_order"){
+window.location = `soq.html?edit=${id}&type=sales_order`;
+}
+
 }
 function convertToSales(id){
-if(!confirm("Open this quotation for conversion to Sales?")) return;
 
+const type = document.getElementById("report_type").value;
 
+if(!confirm("Convert this document to Sales?")) return;
+
+if(type === "quotation"){
 window.open(`soq.html?convert=${id}`,"_blank");
+}
+
+if(type === "sales_order"){
+window.open(`soq.html?convert_so=${id}`,"_blank");
+}
 
 }
 document.getElementById("report_type").addEventListener("change", loadReport);

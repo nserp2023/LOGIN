@@ -484,7 +484,11 @@ document.addEventListener("input", function(e){
 
     async function fetchNextBillNumber() {
         const series = document.getElementById('bill_series').value;
-        const { data } = await sb.from('bill_series').select('bill_number').eq('series_code', series).single();
+        const { data } = await sb
+.from('bill_series')
+.select('bill_number')
+.eq('series_code', series)
+.maybeSingle();
         document.getElementById('bill_number').value = data ? (data.bill_number + 1) : 1;
     }
 
@@ -866,11 +870,11 @@ async function fillItem(id, item) {
         calcForward(id);
 
 // --- 2. LIVE CHECK USING VIEW ---
-const { data: freshStock, error } = await sb
-    .from('stock_balance_view')
-    .select('balance, price1, price2, price3, landing')
-    .eq('item_code', item.item_code)
-    .single();
+const { data: freshStock } = await sb
+.from('stock_balance_view')
+.select('balance, price1, price2, price3, landing')
+.eq('item_code', item.item_code)
+.maybeSingle();
         
         if (freshStock && !error) {
              // Update the hidden raw data with FRESH data
@@ -915,15 +919,25 @@ function calcProfit() {
     let totalProfit = 0;
 
     document.querySelectorAll('#bill_body tr').forEach(row => {
-        const raw = row.querySelector('.raw-data').value;
-        if (!raw) return;
+
+        const rawField = row.querySelector('.raw-data');
+        if(!rawField) return;
+
+        const raw = rawField.value;
+        if(!raw) return;
 
         const item = JSON.parse(raw);
-        const qty = parseFloat(row.querySelector('.qty-inp').value) || 0;
-        const sellPrice = parseFloat(row.querySelector('.price-gst-inp').value) || 0;
+
+        const qtyInput = row.querySelector('.qty-inp');
+        const priceInput = row.querySelector('.price-gst-inp');
+
+        const qty = qtyInput ? parseFloat(qtyInput.value) || 0 : 0;
+        const sellPrice = priceInput ? parseFloat(priceInput.value) || 0 : 0;
+
         const landing = parseFloat(item.landing) || 0;
 
         const profitPerItem = sellPrice - landing;
+
         totalProfit += profitPerItem * qty;
     });
 
@@ -1123,7 +1137,7 @@ async function saveAndPrint() {
             // --- 1. PREPARE DATA ---
             const head = {
                 series: document.getElementById('bill_series').value,
-                date: document.getElementById('bill_date').value,
+                date: document.getElementById('bill_date').value || new Date().toISOString().split("T")[0],
                 mob: document.getElementById('cust_mobile').value,
                 name: document.getElementById('cust_name').value,
                 addr: document.getElementById('cust_address').value,
@@ -1179,7 +1193,11 @@ nextBillNo = data;
 
             // --- 3. CUSTOMER UPSERT ---
             let custId;
-            const { data: existC } = await sb.from('customers').select('customer_id').eq('mobile', head.mob).single();
+            const { data: existC } = await sb
+.from('customers')
+.select('customer_id')
+.eq('mobile', head.mob)
+.maybeSingle();
             
             if(existC) {
                 custId = existC.customer_id;
@@ -1246,18 +1264,35 @@ let headerTable;
 
 if(docType==="quotation") headerTable="quotation_details";
 else if(docType==="sales_order") headerTable="sales_order_details";
+else if(docType==="sales_pack") headerTable="sales_details"; // sales still needed
 else headerTable="sales_details";
 
 let sale;
 
 if(editingId){
 
-const { data, error } = await sb
-.from(headerTable)
-.update(insertData)
+
+// 1. UPDATE SALES TABLE (use sales_id if packing)
+if(docType === "sales_pack"){
+
+// get correct sales_id first
+const { data: pack } = await sb
+.from("sales_packing_details")
+.select("sales_id")
 .eq("id", editingId)
+.maybeSingle();
+
+if(!pack){
+alert("Packing record not found");
+return;
+}
+
+const { data, error } = await sb
+.from("sales_details")
+.update(insertData)
+.eq("id", pack.sales_id)
 .select()
-.single();
+.maybeSingle();
 
 if(error) throw error;
 
@@ -1267,9 +1302,24 @@ sale = data;
 
 const { data, error } = await sb
 .from(headerTable)
+.update(insertData)
+.eq("id", editingId)
+.select()
+.maybeSingle();
+
+if(error) throw error;
+
+sale = data;
+
+}
+}
+else{
+
+const { data, error } = await sb
+.from(headerTable)
 .insert([insertData])
 .select()
-.single();
+.maybeSingle();
 
 if(error) throw error;
 
@@ -1283,6 +1333,60 @@ if (!sale || !sale.id) {
 }
 
 const saleId = sale.id;
+let packingId = null;
+
+if(docType === "sales_pack"){
+
+let pack;
+
+if(editingId){
+
+const {data, error} = await sb
+.from("sales_packing_details")
+.update({
+series_code: head.series,
+packing_number: nextBillNo,
+packing_date: head.date,
+customer_name: head.name,
+customer_mobile: head.mob,
+gst_number: head.gst,
+packing_amount: head.total,
+salesman: document.getElementById("salesman").value
+})
+.eq("sales_id", saleId)
+.select()
+.single();
+
+if(error) throw error;
+
+pack = data;
+
+}else{
+
+const {data, error} = await sb
+.from("sales_packing_details")
+.insert([{
+sales_id: saleId,
+series_code: head.series,
+packing_number: nextBillNo,
+packing_date: head.date,
+customer_name: head.name,
+customer_mobile: head.mob,
+gst_number: head.gst,
+packing_amount: head.total,
+salesman: document.getElementById("salesman").value
+}])
+.select()
+.single();
+
+if(error) throw error;
+
+pack = data;
+
+}
+
+packingId = pack.id;
+}
 let itemTable;
 let idField;
 
@@ -1300,10 +1404,28 @@ idField="sales_id";
 }
 
 if(editingId){
+
+if(docType === "sales_pack"){
+
+await sb
+.from("sales_item_details")
+.delete()
+.eq("sales_id", saleId);   // ✅ correct
+
+await sb
+.from("sales_packing_item_details")
+.delete()
+.eq("packing_id", packingId); // ✅ correct
+
+}else{
+
 await sb
 .from(itemTable)
 .delete()
 .eq(idField, editingId);
+
+}
+
 }
             // --- 5. INSERT ITEMS & UPDATE STOCK ---
             const rows = document.querySelectorAll('#bill_body tr');
@@ -1311,7 +1433,15 @@ await sb
             
             // Loop rows to build payload AND update stock
             for (const row of rows) {
-                const code = row.querySelector('.code-inp').value;
+                const codeField = row.querySelector('.code-inp');
+if(!codeField) continue;
+
+const code = codeField.value;
+const qtyField = row.querySelector('.qty-inp');
+const priceField = row.querySelector('.price-inp');
+const priceGstField = row.querySelector('.price-gst-inp');
+const gstField = row.querySelector('.gst-inp');
+const hsnField = row.querySelector('.hsn-store');
                 if(code) {
 const qty = parseFloat(row.querySelector('.qty-inp').value);
 
@@ -1327,21 +1457,50 @@ else if(docType==="sales_order") idField="sales_order_id";
 else idField="sales_id";
 
                     itemsToSave.push({
-                        [idField]: saleId,
-                        item_code: code,
-                        item_name: row.querySelector('.name-inp').value,
-                        quantity: qty,
-                        price: row.querySelector('.price-inp').value,
-                        sales_price: row.querySelector('.price-inp').value,
-                        sales_price_gst: row.querySelector('.price-gst-inp').value,
-                        hsn_code: row.querySelector('.hsn-store').value,
-                        gst_percent: parseFloat(row.querySelector('.gst-inp').value) || 0,
-                    });
+    [idField]: saleId,
+    item_code: code,
+    item_name: row.querySelector('.name-inp').value,
+
+    quantity: qtyField ? qtyField.value : 0,
+    price: priceField ? priceField.value : 0,
+    sales_price: priceField ? priceField.value : 0,
+    sales_price_gst: priceGstField ? priceGstField.value : 0,
+    hsn_code: hsnField ? hsnField.value : "",
+    gst_percent: gstField ? parseFloat(gstField.value) : 0
+});
 
                 }
             }
 
             if(itemsToSave.length > 0) {
+                if(docType === "sales_pack"){
+
+// DELETE OLD ITEMS WHEN EDITING
+if(editingId){
+await sb
+.from("sales_packing_item_details")
+.delete()
+.eq("packing_id", packingId);
+}
+
+const packingItems = itemsToSave.map(i => ({
+packing_id: packingId,
+item_code: i.item_code,
+item_name: i.item_name,
+quantity: i.quantity,
+price: i.price,
+sales_price_gst: i.sales_price_gst,
+hsn_code: i.hsn_code,
+gst_percent: i.gst_percent
+}));
+
+const { error: pErr } = await sb
+.from("sales_packing_item_details")
+.insert(packingItems);
+
+if(pErr) throw pErr;
+
+}
             let itemTable;
 
 if(docType==="quotation") itemTable="quotation_item_details";
@@ -1366,7 +1525,7 @@ document.getElementById('bill_number').value = nextBillNo;
 
 if(docType==="sales_pack"){
 
-window.open(`print.html?type=sales_pack&id=${saleId}`, "_blank");
+window.open(`print.html?type=sales_pack&id=${packingId}`, "_blank");
 
 }
 else{
@@ -1440,11 +1599,11 @@ const qno = prompt("Enter Quotation Number");
 
 if(!qno) return;
 
-const {data,error} = await sb
+const {data} = await sb
 .from("quotation_details")
 .select("*")
 .eq("quotation_number", qno)
-.single();
+.maybeSingle();
 
 if(error || !data){
 alert("Quotation not found");
@@ -1468,7 +1627,7 @@ const {data:head} = await sb
 .from("sales_order_details")
 .select("*")
 .eq("id",id)
-.single();
+.maybeSingle();
 
 if(head){
 document.getElementById("cust_name").value=head.customer_name || "";
@@ -1520,7 +1679,7 @@ const {data: qHead} = await sb
 .from("quotation_details")
 .select("*")
 .eq("id", qid)
-.single();
+.maybeSingle();
 
 if(qHead){
 document.getElementById("cust_name").value = qHead.customer_name || "";
@@ -1582,16 +1741,55 @@ headerTable="sales_order_details";
 itemTable="sales_order_item_details";
 idField="sales_order_id";
 }
+else if(type==="sales_pack"){
+headerTable="sales_packing_details";
+itemTable="sales_packing_item_details";
+idField="packing_id";
+}
 else{
 headerTable="sales_details";
 itemTable="sales_item_details";
 idField="sales_id";
 }
-const {data:head} = await sb
+let head;
+
+if(type === "sales_pack"){
+
+const {data, error} = await sb
+.from("sales_packing_details")
+.select("*")
+.eq("id", id)
+.maybeSingle();   // ✅ SAFE
+if(!data){
+alert("Document Not Found");
+return;
+}
+
+head = data;
+
+}
+else{
+
+const {data, error} = await sb
 .from(headerTable)
 .select("*")
-.eq("id",id)
-.single();
+.eq("id", id)
+.maybeSingle();
+
+if(error){
+console.error(error);
+alert("Error loading document");
+return;
+}
+
+if(!data){
+alert("Document Not Found");
+return;
+}
+
+head = data;
+
+}
 
 if(!head){
 alert("Document not found");
@@ -1602,21 +1800,48 @@ document.getElementById("cust_name").value = head.customer_name || "";
 document.getElementById("cust_mobile").value = head.customer_mobile || "";
 document.getElementById("cust_gst").value = head.gst_number || "";
 
+const rawDate =
+head.bill_date ||
+head.quotation_date ||
+head.order_date ||
+head.packing_date ||
+null;
+
 document.getElementById("bill_date").value =
-(head.bill_date || head.quotation_date || head.order_date || "").split("T")[0];
+rawDate ? rawDate.split("T")[0] : "";
 
 document.getElementById("bill_number").value =
-head.sales_number || head.quotation_number || head.order_number || "";
+head.sales_number ||
+head.packing_number ||
+head.quotation_number ||
+head.order_number || "";
 
 // clear rows
 document.getElementById("bill_body").innerHTML="";
 currentRowId=0;
 
 // load items
-const {data:items} = await sb
+let items;
+
+if(type === "sales_pack"){
+
+const {data} = await sb
+.from("sales_packing_item_details")
+.select("*")
+.eq("packing_id", head.id);   // ✅ correct
+
+items = data;
+
+}else{
+
+const {data} = await sb
 .from(itemTable)
 .select("*")
-.eq(idField,id);
+.eq(idField, id);
+
+items = data;
+
+}
 
 items.forEach(item=>{
 
@@ -1637,6 +1862,11 @@ calcForward(currentRowId-1);
 });
 
 calcTotal();
+
+if(type === "sales_pack"){
+document.getElementById("salesman").value="VAJRA";
+document.getElementById("salesman").disabled=true;
+}
 
 }
 

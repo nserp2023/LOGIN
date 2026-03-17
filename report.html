@@ -98,10 +98,11 @@ button:hover {
 </head>
 <body>
 
-<h2>Sales Report</h2>
+<h2 id="report_title">Sales Report</h2>
 Report Type:
 <select id="report_type">
     <option value="sales">Sales</option>
+    <option value="sales_pack">Sales + Packing</option>
     <option value="quotation">Quotation</option>
     <option value="sales_order">Sales Order</option>
 </select>
@@ -144,6 +145,7 @@ const sb = supabase.createClient(
 );
 
 async function loadReport() {
+    
 
 const type = document.getElementById("report_type").value;
 
@@ -152,11 +154,23 @@ const to = document.getElementById('to_date').value;
 const series = document.getElementById('series_filter').value;
 const customer = document.getElementById('customer_filter').value.trim();
 const mobile = document.getElementById('mobile_filter').value.trim();
+document.getElementById("report_title").innerText =
+type === "sales_pack" ? "Sales + Packing Report" :
+type === "quotation" ? "Quotation Report" :
+type === "sales_order" ? "Sales Order Report" :
+"Sales Report";
 
 let table = "sales_details";
 let numberField = "sales_number";
 let dateField = "bill_date";
 let amountField = "invoice_amount";
+
+if(type === "sales_pack"){
+    table = "sales_packing_details";
+    numberField = "packing_number";   // change if your column name differs
+    dateField = "packing_date";
+    amountField = "total_amount";     // change if needed
+}
 
 if(type === "quotation"){
     table = "quotation_details";
@@ -217,14 +231,26 @@ onclick="toggleDetails(${s.id})">
 
 <td>
 
-<button onclick="event.stopPropagation(); printDoc(${s.id})">
-🖨 Print
-</button>
+${
+type === "sales_pack"
+? `<button onclick="event.stopPropagation(); printSalesPacking(${s.id})">
+🧾📦 Sales + Packing
+</button>`
+: `<button onclick="event.stopPropagation(); printDoc(${s.id})">
+🖨 Invoice
+</button>`
+}
 
 ${type === "sales" ? `
+
 <button onclick="event.stopPropagation(); printPacking(${s.id})">
 📦 Packing
 </button>
+
+<button onclick="event.stopPropagation(); printSalesPacking(${s.id})">
+🧾📦 Sales + Packing
+</button>
+
 ` : ""}
 
 </td>
@@ -269,6 +295,11 @@ const type = document.getElementById("report_type").value;
 
 let table = "sales_item_details";
 let idField = "sales_id";
+
+if(type === "sales_pack"){
+table = "sales_packing_item_details";
+idField = "packing_id";
+}
 
 if(type === "quotation"){
 table = "quotation_item_details";
@@ -372,6 +403,23 @@ document.body.removeChild(iframe);
 },5000);
 
 }
+function printSalesPacking(id){
+
+const iframe = document.createElement('iframe');
+
+iframe.style.position='absolute';
+iframe.style.width='0';
+iframe.style.height='0';
+
+iframe.src = `print.html?id=${id}&type=sales_pack`;
+
+document.body.appendChild(iframe);
+
+setTimeout(()=>{
+document.body.removeChild(iframe);
+},5000);
+
+}
 function viewBill(id) {
     window.open(`sales_details.html?id=${id}`, '_blank');
 }
@@ -433,7 +481,11 @@ function editDoc(id){
 const type = document.getElementById("report_type").value;
 
 if(type === "sales"){
-window.location = `salesmod.html?edit=${id}`;
+window.location = `salesmod.html?edit=${id}&type=sales`;
+}
+
+if(type === "sales_pack"){
+window.location = `soq.html?edit=${id}&type=sales_pack`;
 }
 
 if(type === "quotation"){

@@ -218,18 +218,29 @@ let headerTable;
 
 if(type==="quotation")
 headerTable="quotation_details";
+
 else if(type==="sales_order")
 headerTable="sales_order_details";
+
+else if(type==="sales_pack")
+headerTable="sales_packing_details";   // ✅ FIX
+
 else if(type==="packing")
-headerTable="sales_details";   // packing uses sales data
+headerTable="sales_details";
+
 else
 headerTable="sales_details";
 
-const {data:head}=await sb
+const { data: head, error: headError } = await sb
 .from(headerTable)
 .select("*")
-.eq("id",id)
-.single();
+.eq("id", id)
+.maybeSingle();
+
+if (headError || !head) {
+    document.body.innerHTML = "<h2>❌ Document not found</h2>";
+    return;
+}
 
 
 /* ITEMS */
@@ -249,9 +260,9 @@ else if(type==="packing"){
 itemTable="sales_item_details";   // packing uses same items
 idField="sales_id";
 }
-else{
-itemTable="sales_item_details";
-idField="sales_id";
+else if(type==="sales_pack"){
+itemTable="sales_packing_item_details";
+idField="packing_id";
 }
 
 const {data:items}=await sb
@@ -316,7 +327,7 @@ Mobile: ${head.customer_mobile || "NA"}
 
 <div class="right">
 
-${type==="packing" || type==="sales_pack" ? "" :
+${type==="packing" ? "" :
 `Bill No : ${head.sales_number || head.quotation_number || head.order_number || head.id}<br>`}
 
 Date : ${(head.bill_date || head.quotation_date || head.created_at || "").split("T")[0]}<br>
@@ -516,7 +527,9 @@ if(type==="sales_pack"){
 let originalHTML = container.innerHTML;
 
 // create packing copy
-let packingHTML = originalHTML.replace(/GST INVOICE/g,"PACKING SLIP");
+let packingHTML = originalHTML
+.replace(/GST INVOICE/g,"PACKING SLIP")
+.replace(/Bill No\s*:.*?<br>/g,"");   // remove bill number
 
 container.innerHTML = originalHTML + packingHTML;
 

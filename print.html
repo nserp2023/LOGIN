@@ -249,26 +249,36 @@ let itemTable;
 let idField;
 
 if(type==="quotation"){
-itemTable="quotation_item_details";
-idField="quotation_id";
+    itemTable="quotation_item_details";
+    idField="quotation_id";
 }
 else if(type==="sales_order"){
-itemTable="sales_order_item_details";
-idField="sales_order_id";
+    itemTable="sales_order_item_details";
+    idField="sales_order_id";
 }
 else if(type==="packing"){
-itemTable="sales_item_details";   // packing uses same items
-idField="sales_id";
+    itemTable="sales_item_details";
+    idField="sales_id";
 }
 else if(type==="sales_pack"){
-itemTable="sales_packing_item_details";
-idField="packing_id";
+    itemTable="sales_packing_item_details";
+    idField="packing_id";
+}
+else {   // ✅ THIS FIX
+    itemTable="sales_item_details";
+    idField="sales_id";
 }
 
-const {data:items}=await sb
+const { data: items, error: itemError } = await sb
 .from(itemTable)
 .select("*")
-.eq(idField,id);
+.eq(idField, id);
+
+if (itemError || !items) {
+    document.body.innerHTML = "<h2>❌ Items not found</h2>";
+    console.error(itemError);
+    return;
+}
 
 let rowsPerPage = items.length<=10 ? 10 : 40;
 let pageClass = items.length<=10 ? "page-half":"page-full";
@@ -330,7 +340,13 @@ Mobile: ${head.customer_mobile || "NA"}
 ${type==="packing" ? "" :
 `Bill No : ${head.sales_number || head.quotation_number || head.order_number || head.id}<br>`}
 
-Date : ${(head.bill_date || head.quotation_date || head.created_at || "").split("T")[0]}<br>
+Date : ${(
+    head.bill_date || 
+    head.quotation_date || 
+    head.order_date ||
+    head.packing_date ||
+    head.created_at || ""
+).split("T")[0]}<br>
 S.Man : ${head.salesman}<br>
 Page : ${p+1} / ${pages}
 

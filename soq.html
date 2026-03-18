@@ -574,9 +574,35 @@ async function loadStockData() {
                 mobileList.style.display = 'block';
                 data.forEach((c, idx) => {
                     const div = document.createElement('div');
-                    div.className = 'autocomplete-item';
-                    div.dataset.index = idx;
-                    div.innerHTML = `<strong>${c.mobile}</strong><small>${c.name}</small>`;
+                    mobileList.innerHTML = `
+<table class="autocomplete-table">
+<tr>
+<th>Mobile</th>
+<th>Name</th>
+<th>Address</th>
+<th>GST</th>
+</tr>
+${data.map((c, idx) => `
+<tr class="autocomplete-row" data-idx="${idx}">
+<td>${c.mobile}</td>
+<td>${c.name}</td>
+<td>${c.address}</td>
+<td>${c.gst_number || ''}</td>
+</tr>
+`).join("")}
+</table>
+`;
+
+mobileList.style.display = 'block';
+
+// click select
+mobileList.querySelectorAll(".autocomplete-row").forEach((tr, i) => {
+    tr.onclick = () => selectCustomer(data[i]);
+});
+
+// ✅ auto select first row
+const first = mobileList.querySelector(".autocomplete-row");
+if (first) first.classList.add("selected");
                     div.onclick = () => selectCustomer(c);
                     mobileList.appendChild(div);
                 });
@@ -586,7 +612,14 @@ async function loadStockData() {
         }, 300);
     });
 
-    mobileInput.addEventListener('keydown', (e) => handleListNav(e, mobileList, (div) => div.click()));
+    mobileInput.addEventListener('keydown', (e) => {
+    const used = handleListNav(e, mobileList, (row) => row.click());
+
+    if (used) {
+        e.stopPropagation(); // 🔥 IMPORTANT
+        return;
+    }
+});
 
     function selectCustomer(c) {
         document.getElementById('cust_mobile').value = c.mobile;

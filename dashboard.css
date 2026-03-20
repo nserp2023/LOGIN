@@ -269,7 +269,7 @@
   padding: 1.5rem;
   flex: 1 1 220px;
   text-align: center;
-  color: #fff; /* ensure text is readable */
+  color: #000000; /* ensure text is readable */
 }
 
 /* Glassmorphism for topbar */
@@ -477,7 +477,7 @@
 body.dashboard-page {
   margin: 0;
   font-family: 'Segoe UI', Arial, sans-serif;
-  background: #f1f5f9;
+  background: url("background.jpg") no-repeat center center fixed;
   color: #1e293b;
 }
 

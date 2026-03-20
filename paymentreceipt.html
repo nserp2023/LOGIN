@@ -353,6 +353,7 @@
                         <th>Party</th>
                         <th class="amount">Amount</th>
                         <th>Remarks</th>
+                        <th>Approve</th>
                     </tr>
                 </thead>
                 <tbody id="resultsBody">
@@ -783,6 +784,7 @@
                 <td>${escapeHtml(row.party_name || "")}</td>
                 <td class="amount">${Number(row.amount).toFixed(2)}</td>
                 <td>${escapeHtml(row.remarks || "")}</td>
+                <td><button class="accept-btn" onclick="approvePayment(${row.id})">Accept</button></td>
             </tr>
         `).join("");
     }
@@ -802,6 +804,37 @@
             .replaceAll('"', "&quot;")
             .replaceAll("'", "&#039;");
     }
+
+    async function approvePayment(id) {
+  const role = (localStorage.getItem("role") || "staff").toLowerCase();
+  const username = localStorage.getItem("username") || "Unknown";
+
+  if (!["admin", "manager", "owner"].includes(role)) {
+    alert("Only admin or manager can approve payment.");
+    return;
+  }
+
+  const ok = confirm("Do you want to approve this payment?");
+  if (!ok) return;
+
+  const { error } = await sb
+    .from("cash_transactions")
+    .update({
+      approval_status: "approved",
+      approved_by: username,
+      approved_at: new Date().toISOString()
+    })
+    .eq("id", id)
+    .eq("txn_type", "payment");
+
+  if (error) {
+    alert("Approval failed: " + error.message);
+    return;
+  }
+
+  alert("Payment approved successfully");
+  loadPayments();
+}
 
     // =========================
     // 11. ENTER KEY NAVIGATION

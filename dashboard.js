@@ -101,13 +101,13 @@ async function loadTodayDashboardSummary() {
   // APPROVED SALES RETURNS ONLY
   try {
     const { data, error } = await sb
-      .from("sales_returns")
-      .select("grand_total")
+      .from("sales_return_details")
+      .select("total_return_amount")
       .eq("return_date", today)
       .eq("approval_status", "approved");
 
     if (!error && data) {
-      todaySalesReturn = data.reduce((sum, row) => sum + Number(row.grand_total || 0), 0);
+      todaySalesReturn = data.reduce((sum, row) => sum + Number(row.total_return_amount || 0), 0);
     }
   } catch (err) {
     console.error("Sales return fetch error:", err);
@@ -131,7 +131,7 @@ async function loadTodayDashboardSummary() {
   // PENDING RETURNS
   try {
     const { data, error } = await sb
-      .from("sales_returns")
+      .from("sales_return_details")
       .select("id")
       .eq("approval_status", "pending");
 

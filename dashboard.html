@@ -2,14 +2,16 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard</title>
-  <link rel="stylesheet" href="style.css">        <!-- Keep your original styles -->
-  <link rel="stylesheet" href="dashboard.css">    <!-- Dashboard-specific styles -->
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="dashboard.css">
 </head>
 <body class="dashboard-page">
-  <!-- Sidebar -->
+
   <aside id="sidebar" class="sidebar">
     <button class="toggle-btn" id="toggleBtn" aria-label="Toggle sidebar">☰</button>
+
     <ul class="nav-list">
       <li><a href="#">🏠 Home</a></li>
 
@@ -17,8 +19,8 @@
         <a href="#" class="menu-link">💳 Billing</a>
         <ul class="submenu">
           <li><a href="sales.html">Sales</a></li>
-          <li><a href="#">Sales Return</a></li>
-          <li><a href="#">Quotation</a></li>
+          <li><a href="sales_return.html">Sales Return</a></li>
+          <li><a href="soq.html">Quotation</a></li>
           <li><a href="#">Sales Order</a></li>
           <li><a href="#">Transfer Out</a></li>
         </ul>
@@ -37,7 +39,7 @@
       <li class="has-submenu">
         <a href="#" class="menu-link">💸 Cash Out</a>
         <ul class="submenu">
-          <li><a href="#">Payment</a></li>
+          <li><a href="paymentreceipt.html?type=payment">Payment</a></li>
           <li><a href="#">Credit Note</a></li>
         </ul>
       </li>
@@ -45,7 +47,7 @@
       <li class="has-submenu">
         <a href="#" class="menu-link">💰 Cash In</a>
         <ul class="submenu">
-          <li><a href="#">Receipt</a></li>
+          <li><a href="paymentreceipt.html?type=receipt">Receipt</a></li>
           <li><a href="#">Debit Note</a></li>
         </ul>
       </li>
@@ -54,7 +56,7 @@
         <a href="#" class="menu-link">📊 Reports</a>
         <ul class="submenu">
           <li><a href="report.html">Sales Report</a></li>
-          <li><a href="#">Sales Return Report</a></li>
+          <li><a href="sales_return_report.html">Sales Return Report</a></li>
           <li><a href="#">Quotation Report</a></li>
           <li><a href="#">Sales Order Report</a></li>
           <li><a href="#">Transfer Out Report</a></li>
@@ -62,57 +64,97 @@
           <li><a href="#">Purchase Return Report</a></li>
           <li><a href="#">Transfer In Report</a></li>
           <li><a href="#">Manufacture Report</a></li>
-          <li><a href="#">Payment Report</a></li>
+          <li><a href="payment_report.html">Payment Report</a></li>
           <li><a href="#">Credit Note Report</a></li>
-          <li><a href="#">Receipt Report</a></li>
+          <li><a href="receipt_report.html">Receipt Report</a></li>
           <li><a href="#">Debit Note Report</a></li>
           <li><a href="stockledger.html">Stock Report</a></li>
         </ul>
       </li>
 
-      <!-- ✅ New Create Menu -->
-<li class="has-submenu">
-  <a href="#" class="menu-link">📝 Create</a>
-  <ul class="submenu" id="createMenu">
-    <li><a href="customer.html">Customer</a></li>
-    <li><a href="customer-list.html">Customer List</a></li> <!-- ✅ New -->
-    <li><a href="supplier.html">Supplier</a></li>
-    <li><a href="supplier_list.html">Supplier List</a></li>
-    <li><a href="products.html">Products</a></li>
-    <li><a href="hsn.html">HSN</a></li>
-  </ul>
-</li>
+      <li class="has-submenu">
+        <a href="#" class="menu-link">📝 Create</a>
+        <ul class="submenu" id="createMenu">
+          <li><a href="customer.html">Customer</a></li>
+          <li><a href="customer-list.html">Customer List</a></li>
+          <li><a href="supplier.html">Supplier</a></li>
+          <li><a href="supplier_list.html">Supplier List</a></li>
+          <li><a href="products.html">Products</a></li>
+          <li><a href="hsn.html">HSN</a></li>
+        </ul>
+      </li>
+
       <li><a href="#" id="logout">🚪 Logout</a></li>
     </ul>
   </aside>
 
-  <!-- Main Content -->
   <main class="main-content">
     <nav class="topbar">
-      <h1>RIYARIN BILLING</h1>
+      <div class="topbar-left">
+        <button class="mobile-menu-btn" id="mobileMenuBtn">☰</button>
+        <h1>RIYARIN BILLING</h1>
+      </div>
+      <div class="topbar-right">
+        <span id="userRoleBadge" class="role-badge">Staff</span>
+      </div>
     </nav>
 
     <section class="user-info">
       <p id="welcome"></p>
     </section>
 
- <section class="cards">
-  <div class="card" onclick="window.location.href='sales.html'">💰 Sales</div>
-  <div class="card" onclick="window.location.href='sales_return.html'">💰 Sales Return</div>
-  <div class="card" onclick="window.location.href='sales_return_modification.html'">💰 Sales Return Modification</div>
-  <div class="card" onclick="window.location.href='report.html'">💰📊 Sales Reports</div>
-  <div class="card" onclick="window.location.href='soq.html'">💰 Quotation</div>
-  <div class="card" onclick="window.location.href='purchasenew.html'">📦 Purchase</div>
-  <div class="card" onclick="window.location.href='purchase_report.html'">📦📊 Purchase Reports</div>
-  <div class="card" onclick="window.location.href='stockledger.html'">📊 Stock Report</div>
-  <div class="card" onclick="window.location.href='paymentreceipt.html'">💸 Payment/Receipt</div>
-  <div class="card" onclick="window.location.href='customer.html'">📝 Create</div>
+    <section class="summary-grid">
+      <div class="summary-card balance-card">
+        <div class="summary-title">Today's Balance</div>
+        <div class="summary-value" id="todayBalance">₹ 0.00</div>
+        <div class="summary-note">Sales + Receipt - Approved Sales Return - Approved Payment</div>
+      </div>
 
-  <div class="card">⚙️ Settings</div>
+      <div class="summary-card">
+        <div class="summary-title">Today's Sales</div>
+        <div class="summary-value" id="todaySales">₹ 0.00</div>
+      </div>
 
-</section>  </main>
+      <div class="summary-card">
+        <div class="summary-title">Today's Receipt</div>
+        <div class="summary-value" id="todayReceipt">₹ 0.00</div>
+      </div>
 
-  <!-- Supabase client -->
+      <div class="summary-card">
+        <div class="summary-title">Approved Sales Return</div>
+        <div class="summary-value" id="todaySalesReturn">₹ 0.00</div>
+      </div>
+
+      <div class="summary-card">
+        <div class="summary-title">Approved Payment</div>
+        <div class="summary-value" id="todayPayment">₹ 0.00</div>
+      </div>
+
+      <div class="summary-card">
+        <div class="summary-title">Pending Approvals</div>
+        <div class="summary-value" id="pendingApprovals">0</div>
+      </div>
+    </section>
+
+    <section class="cards">
+      <div class="card" onclick="window.location.href='sales.html'">💰 Sales</div>
+      <div class="card" onclick="window.location.href='sales_return.html'">↩️ Sales Return</div>
+      <div class="card" onclick="window.location.href='sales_return_modification.html'">🛠️ Return Modification</div>
+      <div class="card" onclick="window.location.href='report.html'">📊 Sales Reports</div>
+      <div class="card" onclick="window.location.href='soq.html'">🧾 Quotation</div>
+      <div class="card" onclick="window.location.href='purchasenew.html'">📦 Purchase</div>
+      <div class="card" onclick="window.location.href='purchase_report.html'">📦📊 Purchase Reports</div>
+      <div class="card" onclick="window.location.href='stockledger.html'">📊 Stock Report</div>
+      <div class="card" onclick="window.location.href='paymentreceipt.html'">💸 Payment / Receipt</div>
+      <div class="card" onclick="window.location.href='payment_report.html'">✅ Payment Approval</div>
+      <div class="card" onclick="window.location.href='sales_return_report.html'">✅ Return Approval</div>
+      <div class="card" onclick="window.location.href='customer.html'">📝 Create</div>
+      <div class="card">⚙️ Settings</div>
+    </section>
+  </main>
+
+  <div id="overlay" class="overlay"></div>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="dashboard.js"></script>
 </body>

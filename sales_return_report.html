@@ -45,8 +45,8 @@ button { padding:6px 10px; cursor:pointer;}
 <script>
 
 const supabase = window.supabase.createClient(
-  "YOUR_SUPABASE_URL",
-  "YOUR_SUPABASE_ANON_KEY"
+  "https://gqxczzijntbvtlmmzppt.supabase.co",
+  "b_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs"
 );
 
 async function loadReport(){
@@ -82,6 +82,36 @@ async function loadReport(){
   });
 
   document.getElementById("report_total").innerText = total.toFixed(2);
+}
+
+async function approveSalesReturn(id) {
+  const role = (localStorage.getItem("role") || "staff").toLowerCase();
+  const username = localStorage.getItem("username") || "Unknown";
+
+  if (!["admin", "manager", "owner"].includes(role)) {
+    alert("Only admin or manager can approve sales return.");
+    return;
+  }
+
+  const ok = confirm("Do you want to approve this sales return?");
+  if (!ok) return;
+
+  const { error } = await sb
+    .from("sales_returns")
+    .update({
+      approval_status: "approved",
+      approved_by: username,
+      approved_at: new Date().toISOString()
+    })
+    .eq("id", id);
+
+  if (error) {
+    alert("Approval failed: " + error.message);
+    return;
+  }
+
+  alert("Sales return approved successfully");
+  loadSalesReturns();
 }
 
 loadReport();

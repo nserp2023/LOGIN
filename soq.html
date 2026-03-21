@@ -264,6 +264,99 @@
             input, select { border: none !important; box-shadow: none !important; }
         }
 
+        .history-panel{
+    position: fixed;
+    top: 75px;
+    left: 10px;
+    width: 520px;
+    max-height: 320px;
+    overflow: hidden;
+    background: rgba(255,255,255,0.98);
+    border: 1px solid #94a3b8;
+    border-radius: 10px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+    z-index: 9998;
+    color: #0f172a;
+    backdrop-filter: blur(4px);
+}
+
+.history-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:8px 12px;
+    background:#0f172a;
+    color:white;
+    font-weight:700;
+    font-size:13px;
+}
+
+.history-close{
+    border:none;
+    background:transparent;
+    color:white;
+    font-size:18px;
+    cursor:pointer;
+    line-height:1;
+}
+
+.history-block{
+    padding:8px 10px 10px;
+}
+
+.history-subtitle{
+    font-size:11px;
+    font-weight:700;
+    color:#475569;
+    margin-bottom:6px;
+    text-transform:uppercase;
+}
+
+.history-table-wrap{
+    max-height:120px;
+    overflow:auto;
+    border:1px solid #cbd5e1;
+}
+
+.history-table{
+    width:100%;
+    border-collapse:collapse;
+    table-layout:fixed;
+    background:white;
+}
+
+.history-table th,
+.history-table td{
+    border:1px solid #cbd5e1;
+    padding:5px 6px;
+    font-size:12px;
+    color:#0f172a;
+    white-space:nowrap;
+    text-align:left;
+}
+
+.history-table th{
+    position:sticky;
+    top:0;
+    background:#e2e8f0;
+    z-index:1;
+}
+
+.history-empty{
+    color:#64748b;
+    font-style:italic;
+}
+
+@media (max-width: 900px){
+    .history-panel{
+        width: calc(100vw - 20px);
+        left: 10px;
+        right: 10px;
+        top: 70px;
+        max-height: 260px;
+    }
+}
+
     </style>
 </head>
 <body>
@@ -396,6 +489,50 @@ LOAD QUOTATION
 </div>
 
 
+<div id="purchase_history_panel" class="history-panel" style="display:none;">
+    <div class="history-header">
+        <span id="history_title">Customer Item History</span>
+        <button type="button" class="history-close" onclick="hidePurchaseHistory()">×</button>
+    </div>
+
+    <div id="history_sales_wrap" class="history-block" style="display:none;">
+        <div class="history-subtitle">OLD SALES</div>
+        <div class="history-table-wrap">
+            <table class="history-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Bill No</th>
+                        <th>Qty</th>
+                        <th>Price</th>
+                        <th>Price+GST</th>
+                    </tr>
+                </thead>
+                <tbody id="history_sales_body"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="history_pack_wrap" class="history-block" style="display:none;">
+        <div class="history-subtitle">OLD SALES + PACKING</div>
+        <div class="history-table-wrap">
+            <table class="history-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Bill No</th>
+                        <th>Qty</th>
+                        <th>Price</th>
+                        <th>Price+GST</th>
+                    </tr>
+                </thead>
+                <tbody id="history_pack_body"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+
 <script>
     // --- 1. SUPABASE CONNECTION ---
     const supabaseUrl = "https://gqxczzijntbvtlmmzppt.supabase.co";
@@ -408,6 +545,9 @@ let currentRowId = 0;
 
 let editingId = null;
 let editingType = null;
+
+let historyTimer = null;
+let lastHistoryKey = "";
 
     // --- 3. INITIALIZATION ---
 window.onload = async () => {
@@ -442,6 +582,9 @@ addNewRow();
 
     document.getElementById('cust_mobile').focus();    
 document.getElementById("doc_type").addEventListener("change",()=>{
+
+    hidePurchaseHistory();
+lastHistoryKey = "";
 
 const type=document.getElementById("doc_type").value;
 const sm=document.getElementById("salesman");
@@ -611,6 +754,14 @@ if (first) first.classList.add("selected");
         }, 300);
     });
 
+    document.getElementById("cust_mobile").addEventListener("input", () => {
+    if(!(document.getElementById("cust_mobile").value || "").trim()){
+        hidePurchaseHistory();
+    } else {
+        lastHistoryKey = "";
+    }
+});
+
 // 🔥 FIX MOBILE SEARCH NAV
 mobileInput.addEventListener('keydown', (e) => {
 
@@ -629,6 +780,7 @@ mobileInput.addEventListener('keydown', (e) => {
         document.getElementById('cust_address').value = c.address || '';
         document.getElementById('cust_gst').value = c.gst_number || '';
         mobileList.style.display = 'none';
+        lastHistoryKey = "";
         document.getElementById('cust_name').focus();
     }
 
@@ -665,6 +817,7 @@ function addNewRow(autoFocus = true) {
             <option value="1">1</option>
             <option value="2">2</option>
             <option value="3">3</option>
+            <option value="L">L</option>
         </select>
     </td>
     <td class="col-price">
@@ -721,6 +874,10 @@ function addNewRow(autoFocus = true) {
         const typeInp = row.querySelector('.type-inp');
         const priceInp = row.querySelector('.price-inp');
         const priceGstInp = row.querySelector('.price-gst-inp');
+        [codeInp, nameInp, qtyInp, typeInp, priceInp, priceGstInp].forEach(el => {
+    el.addEventListener("focus", () => triggerPurchaseHistory(row));
+    el.addEventListener("click", () => triggerPurchaseHistory(row));
+});
 
         row.addEventListener('click', (e) => {
     const input = e.target.closest('input, select');
@@ -908,6 +1065,7 @@ async function fillItem(id, item) {
     }, 0);
 
     calcForward(id);
+    triggerPurchaseHistory(row);
 
     const { data: freshStock, error } = await sb
     .from('stock_balance_view')
@@ -998,6 +1156,7 @@ function adjustDropdownPosition(input, list){
              if(type == "1") p = item.price1;
         else if(type == "2") p = item.price2;
         else if(type == "3") p = item.price3;
+        else if(type == "L") p = item.landing;
 
         row.querySelector('.price-inp').value = p;
         calcForward(id);
@@ -1296,6 +1455,221 @@ document.getElementById('bill_body').addEventListener('keydown', function(e){
     );
 }
 
+function hidePurchaseHistory(){
+    document.getElementById("purchase_history_panel").style.display = "none";
+    document.getElementById("history_sales_wrap").style.display = "none";
+    document.getElementById("history_pack_wrap").style.display = "none";
+    document.getElementById("history_sales_body").innerHTML = "";
+    document.getElementById("history_pack_body").innerHTML = "";
+    lastHistoryKey = "";
+}
+
+function getCurrentCustomerMobile(){
+    return (document.getElementById("cust_mobile").value || "").trim();
+}
+
+function getRowItemCode(row){
+    return (row?.querySelector(".code-inp")?.value || "").trim();
+}
+
+function getRowItemName(row){
+    return (row?.querySelector(".name-inp")?.value || "").trim();
+}
+
+function formatHistoryBill(series, number){
+    const s = series || "";
+    const n = number || "";
+    return s && n ? `${s}-${n}` : (n || "");
+}
+
+function buildHistoryRows(rows){
+    if(!rows || !rows.length){
+        return `<tr><td colspan="5" class="history-empty">No previous purchase found</td></tr>`;
+    }
+
+    return rows.map(r => `
+        <tr>
+            <td>${(r.bill_date || r.packing_date || "").split("T")[0]}</td>
+            <td>${r.bill_no || ""}</td>
+            <td>${parseFloat(r.quantity || 0).toFixed(2)}</td>
+            <td>${parseFloat(r.price || 0).toFixed(2)}</td>
+            <td>${parseFloat(r.sales_price_gst || 0).toFixed(2)}</td>
+        </tr>
+    `).join("");
+}
+
+async function loadSalesHistory(customerMobile, itemCode, itemName){
+    let q = sb
+        .from("sales_item_details")
+        .select(`
+            quantity,
+            price,
+            sales_price_gst,
+            item_code,
+            item_name,
+            sales_details!inner(
+                id,
+                bill_date,
+                sales_number,
+                series_code,
+                customer_mobile
+            )
+        `)
+        .eq("sales_details.customer_mobile", customerMobile)
+        .order("sales_id", { ascending: false })
+        .limit(10);
+
+    if(itemCode){
+        q = q.eq("item_code", itemCode);
+    }else if(itemName){
+        q = q.ilike("item_name", itemName);
+    }
+
+    const { data, error } = await q;
+
+    if(error){
+        console.error("Sales history load error:", error);
+        return [];
+    }
+
+    return (data || []).map(x => ({
+        bill_date: x.sales_details?.bill_date || "",
+        bill_no: formatHistoryBill(
+            x.sales_details?.series_code,
+            x.sales_details?.sales_number
+        ),
+        quantity: x.quantity,
+        price: x.price,
+        sales_price_gst: x.sales_price_gst
+    }));
+}
+
+async function loadSalesPackHistory(customerMobile, itemCode, itemName){
+    const { data: packHeads, error: headErr } = await sb
+        .from("sales_packing_details")
+        .select("id, packing_date, packing_number, series_code, customer_mobile")
+        .eq("customer_mobile", customerMobile)
+        .order("id", { ascending: false })
+        .limit(20);
+
+    if(headErr){
+        console.error("Sales pack header load error:", headErr);
+        return [];
+    }
+
+    if(!packHeads || !packHeads.length){
+        return [];
+    }
+
+    const packingIds = packHeads.map(x => x.id);
+    const headMap = {};
+    packHeads.forEach(h => {
+        headMap[h.id] = h;
+    });
+
+    let q = sb
+        .from("sales_packing_item_details")
+        .select(`
+            packing_id,
+            quantity,
+            price,
+            sales_price_gst,
+            item_code,
+            item_name
+        `)
+        .in("packing_id", packingIds)
+        .order("packing_id", { ascending: false })
+        .limit(50);
+
+    if(itemCode){
+        q = q.eq("item_code", itemCode);
+    }else if(itemName){
+        q = q.ilike("item_name", itemName);
+    }
+
+    const { data: items, error: itemErr } = await q;
+
+    if(itemErr){
+        console.error("Sales pack item load error:", itemErr);
+        return [];
+    }
+
+    return (items || []).map(x => ({
+        packing_date: headMap[x.packing_id]?.packing_date || "",
+        bill_no: formatHistoryBill(
+            headMap[x.packing_id]?.series_code,
+            headMap[x.packing_id]?.packing_number
+        ),
+        quantity: x.quantity,
+        price: x.price,
+        sales_price_gst: x.sales_price_gst
+    }));
+}
+async function showPurchaseHistoryForRow(row){
+    const docType = document.getElementById("doc_type").value;
+
+    if(docType !== "sales" && docType !== "sales_pack"){
+        hidePurchaseHistory();
+        return;
+    }
+
+    const customerMobile = getCurrentCustomerMobile();
+    if(!customerMobile){
+        hidePurchaseHistory();
+        return;
+    }
+
+    const itemCode = getRowItemCode(row);
+    const itemName = getRowItemName(row);
+
+    if(!itemCode && !itemName){
+        hidePurchaseHistory();
+        return;
+    }
+
+    const key = `${docType}|${customerMobile}|${itemCode}|${itemName}`;
+    if(lastHistoryKey === key) return;
+    lastHistoryKey = key;
+
+    const panel = document.getElementById("purchase_history_panel");
+    const salesWrap = document.getElementById("history_sales_wrap");
+    const packWrap = document.getElementById("history_pack_wrap");
+    const salesBody = document.getElementById("history_sales_body");
+    const packBody = document.getElementById("history_pack_body");
+
+    panel.style.display = "block";
+    salesWrap.style.display = "none";
+    packWrap.style.display = "none";
+    salesBody.innerHTML = `<tr><td colspan="5" class="history-empty">Loading...</td></tr>`;
+    packBody.innerHTML = "";
+
+    if(docType === "sales"){
+        const salesRows = await loadSalesHistory(customerMobile, itemCode, itemName);
+        salesWrap.style.display = "block";
+        salesBody.innerHTML = buildHistoryRows(salesRows);
+    }
+
+    if(docType === "sales_pack"){
+        const [salesRows, packRows] = await Promise.all([
+            loadSalesHistory(customerMobile, itemCode, itemName),
+            loadSalesPackHistory(customerMobile, itemCode, itemName)
+        ]);
+
+        salesWrap.style.display = "block";
+        packWrap.style.display = "block";
+        salesBody.innerHTML = buildHistoryRows(salesRows);
+        packBody.innerHTML = buildHistoryRows(packRows);
+    }
+}
+
+function triggerPurchaseHistory(row){
+    clearTimeout(historyTimer);
+
+    historyTimer = setTimeout(() => {
+        showPurchaseHistoryForRow(row);
+    }, 180);
+}
+
 async function saveAndPrint() {
         const docType=document.getElementById("doc_type").value;
         const btn = document.getElementById('btn_save');
@@ -1316,6 +1690,11 @@ async function saveAndPrint() {
             };
 
             if(!head.mob || !head.name) throw new Error("Customer Name & Mobile are required.");
+            const createdBy =
+    localStorage.getItem("staff_name") ||
+    localStorage.getItem("username") ||
+    localStorage.getItem("user") ||
+    "SYSTEM";
 
 // --- 2. GET SAFE NEXT BILL NUMBER FROM DATABASE ---
 const seriesCode = document.getElementById('bill_series').value;
@@ -1394,7 +1773,9 @@ insertData = {
     customer_name: head.name,
     customer_mobile: head.mob,
     gst_number: head.gst,
-    total_amount: head.total
+    total_amount: head.total,
+    salesman: document.getElementById("salesman").value || "",
+    created_by: createdBy
 };
 
 }
@@ -1409,7 +1790,9 @@ insertData = {
     customer_name: head.name,
     customer_mobile: head.mob,
     gst_number: head.gst,
-    total_amount: head.total
+    total_amount: head.total,
+    salesman: document.getElementById("salesman").value || "",
+    created_by: createdBy
 };
 
 }
@@ -1425,6 +1808,7 @@ insertData = {
     invoice_date: head.date,
     invoice_amount: head.total,
     salesman: document.getElementById("salesman").value,
+    created_by: createdBy,
     round_off: 0
 };
 

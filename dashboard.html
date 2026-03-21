@@ -5,7 +5,729 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard</title>
   <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="dashboard.css">
+  <style>
+    /* Scope dashboard styles */
+.dashboard-page {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: url("background.jpg") no-repeat center center fixed;
+  background-size: cover;
+}
+
+/* Gradient overlay */
+.dashboard-page::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    rgba(0, 0, 0, 0.6) 0%,
+    rgba(0, 0, 0, 0.3) 40%,
+    rgba(0, 0, 0, 0.15) 100%
+  );
+  z-index: 0;
+}
+
+/* Ensure content sits above overlay */
+.main-content,
+.sidebar,
+.topbar,
+.cards,
+.banner {
+  position: relative;
+  z-index: 1;
+}
+
+/* Sidebar */
+.sidebar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 260px;
+  height: 100vh;
+  background: rgba(45, 55, 72, 0.95);
+  color: #fff;
+  backdrop-filter: saturate(120%) blur(4px);
+  transform: translateX(-260px);
+  transition: transform 0.25s ease;
+  overflow-y: auto;
+  z-index: 1000;
+  padding-top: 60px;
+}
+.sidebar.active {
+  transform: translateX(0);
+}
+.toggle-btn {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  background: #2d3748;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 12px 14px;
+  cursor: pointer;
+  z-index: 1100;
+  font-size: 1rem;
+}
+
+/* Navigation list */
+.nav-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 8px 24px 8px;
+}
+.nav-list > li {
+  margin: 6px 0;
+  border-radius: 6px;
+}
+.nav-list a {
+  color: #fff;
+  text-decoration: none;
+  display: block;
+  padding: 12px 16px;
+  border-radius: 6px;
+  font-size: 1rem;
+}
+.nav-list a:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* Submenu */
+.has-submenu > .menu-link::after {
+  content: "▸";
+  float: right;
+  opacity: 0.8;
+  transition: transform 0.2s ease;
+}
+.has-submenu.open > .menu-link::after {
+  transform: rotate(90deg);
+}
+.submenu {
+  display: none;
+  list-style: none;
+  padding-left: 12px;
+  margin: 4px 0 8px 8px;
+  border-left: 2px solid rgba(255, 255, 255, 0.15);
+}
+.has-submenu.open > .submenu {
+  display: block;
+}
+.submenu li a {
+  padding: 10px 14px;
+  font-size: 0.95rem;
+  opacity: 0.95;
+}
+
+/* Main content */
+.main-content {
+  flex: 1;
+  margin-left: 20px;
+  padding: 20px;
+  min-height: 100vh;
+}
+.topbar {
+  background: #2d3748;
+  color: #fff;
+  padding: 14px 18px;
+  border-radius: 8px;
+  font-size: 1rem;
+}
+
+/* Cards */
+.cards {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+.card {
+  background: #fff;
+  padding: 1.2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  flex: 1 1 220px;
+  text-align: center;
+}
+
+/* Tables */
+.dashboard-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  font-size: 0.95rem;
+}
+.dashboard-table th,
+.dashboard-table td {
+  padding: 12px;
+  border-bottom: 1px solid #eee;
+  text-align: center;
+}
+.dashboard-table th {
+  background: #2d3748;
+  color: #fff;
+}
+.dashboard-table tbody tr:hover {
+  background-color: #f1f5f9;
+  transition: background-color 0.2s ease;
+}
+.dashboard-table tbody tr.selected {
+  background-color: #e0f2fe;
+}
+
+/* Forms */
+.sales-form,
+.inline-form {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.sales-form label,
+.inline-form label {
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+.sales-form input,
+.inline-form input,
+.inline-form select {
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+/* Buttons */
+.save-btn {
+  margin-top: 1rem;
+  padding: 12px 18px;
+  background: #4facfe;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+.save-btn:hover {
+  background: #00c6fb;
+}
+
+/* Banner messages */
+.banner {
+  padding: 12px;
+  margin: 10px 0;
+  border-radius: 4px;
+  font-weight: bold;
+  text-align: center;
+  display: none;
+  font-size: 0.95rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .sidebar {
+    width: 220px;
+    transform: translateX(-220px);
+  }
+  .main-content {
+    margin-left: 0;
+    padding: 16px;
+  }
+  .cards {
+    flex-direction: column;
+  }
+  .card {
+    flex: 1 1 100%;
+  }
+  .dashboard-table th,
+  .dashboard-table td {
+    padding: 8px;
+    font-size: 0.85rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .toggle-btn {
+    padding: 10px;
+    font-size: 0.9rem;
+  }
+  .nav-list a {
+    padding: 10px 12px;
+    font-size: 0.9rem;
+  }
+  .save-btn {
+    width: 100%;
+    padding: 14px;
+    font-size: 1rem;
+  }
+  .sales-form,
+  .inline-form {
+    flex-direction: column;
+  }
+}
+
+/* Glassmorphism effect for cards */
+.card {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  backdrop-filter: blur(12px) saturate(120%);
+  -webkit-backdrop-filter: blur(12px) saturate(120%);
+  padding: 1.5rem;
+  flex: 1 1 220px;
+  text-align: center;
+  color: #000000;
+}
+
+/* Glassmorphism for topbar */
+.topbar {
+  background: rgba(45, 55, 72, 0.6);
+  backdrop-filter: blur(10px) saturate(120%);
+  -webkit-backdrop-filter: blur(10px) saturate(120%);
+  color: #fff;
+  padding: 14px 18px;
+  border-radius: 12px;
+}
+
+/* Glassmorphism for sidebar */
+.sidebar {
+  background: rgba(45, 55, 72, 0.65);
+  backdrop-filter: blur(10px) saturate(120%);
+  -webkit-backdrop-filter: blur(10px) saturate(120%);
+  color: #fff;
+}
+
+.card {
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+}
+
+.save-btn,
+.dashboard-table td button {
+  transition: transform 0.15s ease, background-color 0.25s ease;
+}
+.save-btn:active,
+.dashboard-table td button:active {
+  transform: scale(0.96);
+}
+.sidebar {
+  transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+.nav-list a {
+  transition: background 0.25s ease, color 0.25s ease;
+}
+.nav-list a:hover {
+  background: rgba(255,255,255,0.2);
+  color: #e0f2fe;
+}
+.dashboard-table tbody tr {
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+.dashboard-table tbody tr:hover {
+  transform: scale(1.01);
+}
+/* Shimmer animation */
+@keyframes shimmer {
+  0% { background-position: -200px 0; }
+  100% { background-position: 200px 0; }
+}
+
+.card.loading {
+  position: relative;
+  overflow: hidden;
+  background: #f6f7f8;
+  background-image: linear-gradient(
+    to right,
+    #f6f7f8 0%,
+    #edeef1 20%,
+    #f6f7f8 40%,
+    #f6f7f8 100%
+  );
+  background-repeat: no-repeat;
+  background-size: 800px 100%;
+  animation: shimmer 1.5s infinite linear;
+}
+/* Spinner */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid rgba(0,0,0,0.1);
+  border-top-color: #4facfe;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: auto;
+}
+.fade-in {
+  animation: fadeIn 0.4s ease forwards;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (max-width: 768px) {
+  .sidebar {
+    width: 80%;
+    max-width: 280px;
+    transform: translateX(-100%);
+  }
+  .sidebar.active {
+    transform: translateX(0);
+  }
+  .main-content {
+    margin-left: 0;
+    padding: 16px;
+  }
+}
+@media (max-width: 768px) {
+  .cards {
+    flex-direction: column;
+  }
+  .card {
+    flex: 1 1 100%;
+    margin-bottom: 1rem;
+  }
+}
+@media (max-width: 600px) {
+  .dashboard-table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+  .dashboard-table th,
+  .dashboard-table td {
+    padding: 8px;
+    font-size: 0.85rem;
+  }
+}
+@media (max-width: 480px) {
+  .sales-form,
+  .inline-form {
+    flex-direction: column;
+  }
+  .sales-form input,
+  .inline-form input,
+  .inline-form select {
+    width: 100%;
+  }
+  .save-btn {
+    width: 100%;
+    padding: 14px;
+  }
+}
+.toggle-btn,
+.save-btn,
+.dashboard-table td button {
+  min-height: 44px;
+  padding: 12px 16px;
+  font-size: 1rem;
+}
+/* Sticky action bar */
+.action-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: rgba(45, 55, 72, 0.95);
+  backdrop-filter: blur(8px) saturate(120%);
+  -webkit-backdrop-filter: blur(8px) saturate(120%);
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 12px;
+  z-index: 1200;
+}
+
+/* Buttons inside bar */
+.action-bar button {
+  flex: 1;
+  margin: 0 6px;
+  padding: 14px;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+  color: #fff;
+  transition: background 0.25s ease, transform 0.15s ease;
+}
+
+.action-bar button.save {
+  background: #4facfe;
+}
+.action-bar button.save:hover {
+  background: #00c6fb;
+}
+.action-bar button.add {
+  background: #38a169;
+}
+.action-bar button.add:hover {
+  background: #2f855a;
+}
+
+/* Mobile adjustments */
+@media (max-width: 480px) {
+  .action-bar {
+    padding: 10px;
+  }
+  .action-bar button {
+    font-size: 0.95rem;
+    padding: 12px;
+  }
+}
+
+body.dashboard-page {
+  margin: 0;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: url("background.jpg") no-repeat center center fixed;
+  color: #1e293b;
+}
+
+.sidebar {
+  width: 260px;
+  background: #0f172a;
+  color: #fff;
+  min-height: 100vh;
+  position: fixed;
+  left: 0;
+  top: 0;
+  overflow-y: auto;
+  transition: transform 0.3s ease;
+  z-index: 1000;
+}
+
+.sidebar .toggle-btn {
+  background: transparent;
+  color: #fff;
+  border: none;
+  font-size: 22px;
+  padding: 15px;
+  cursor: pointer;
+  display: none;
+}
+
+.nav-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.nav-list li a,
+.menu-link {
+  display: block;
+  color: #fff;
+  text-decoration: none;
+  padding: 12px 18px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.nav-list li a:hover,
+.menu-link:hover {
+  background: #1e293b;
+}
+
+.submenu {
+  display: none;
+  background: #172554;
+  padding-left: 0;
+}
+
+.has-submenu.open .submenu {
+  display: block;
+}
+
+.main-content {
+  margin-left: 260px;
+  padding: 18px;
+  transition: margin-left 0.3s ease;
+}
+
+.topbar {
+  background: #fff;
+  padding: 14px 18px;
+  border-radius: 14px;
+  box-shadow: 0 8px 18px rgba(0,0,0,0.06);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.topbar h1 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.mobile-menu-btn {
+  display: none;
+  border: none;
+  background: #2563eb;
+  color: #fff;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.role-badge {
+  background: #dbeafe;
+  color: #1d4ed8;
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.user-info {
+  margin-top: 16px;
+  background: #fff;
+  border-radius: 14px;
+  padding: 14px 18px;
+  box-shadow: 0 8px 18px rgba(0,0,0,0.06);
+}
+
+.summary-grid {
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.summary-card {
+  background: #fff;
+  padding: 18px;
+  border-radius: 14px;
+  box-shadow: 0 8px 18px rgba(0,0,0,0.06);
+}
+
+.balance-card {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #fff;
+}
+
+.summary-title {
+  font-size: 14px;
+  opacity: 0.9;
+  margin-bottom: 8px;
+}
+
+.summary-value {
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.summary-note {
+  margin-top: 8px;
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+.cards {
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+
+.card {
+  background: #fff;
+  border-radius: 14px;
+  padding: 22px 16px;
+  text-align: center;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 8px 18px rgba(0,0,0,0.06);
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  background: #eff6ff;
+}
+
+.overlay {
+  display: none;
+}
+
+@media (max-width: 1024px) {
+  .cards {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .summary-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    transform: translateX(-100%);
+  }
+
+  .sidebar.mobile-open {
+    transform: translateX(0);
+  }
+
+  .main-content {
+    margin-left: 0;
+    padding: 12px;
+  }
+
+  .mobile-menu-btn {
+    display: inline-block;
+  }
+
+  .overlay.show {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.35);
+    z-index: 999;
+  }
+
+  .summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .topbar h1 {
+    font-size: 18px;
+  }
+
+  .summary-value {
+    font-size: 24px;
+  }
+}
+
+@media (max-width: 480px) {
+  .cards {
+    grid-template-columns: 1fr;
+  }
+
+  .card {
+    padding: 18px 14px;
+    font-size: 15px;
+  }
+}
+  </style>
 </head>
 <body class="dashboard-page">
 
@@ -143,7 +865,7 @@
       <div class="card" onclick="window.location.href='purchase_report.html'">📦📊 Purchase Reports</div>
       <div class="card" onclick="window.location.href='stockledger.html'">📊 Stock Report</div>
       <div class="card" onclick="window.location.href='paymentreceipt.html'">💸 Payment / Receipt</div>
-      <div class="card" onclick="window.location.href='customer.html'">📝 Create</div>
+      <div class="card" onclick="window.location.href='customer_manager.html'">📝 Customer</div>
       <div class="card">⚙️ Settings</div>
     </section>
   </main>
@@ -151,6 +873,192 @@
   <div id="overlay" class="overlay"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="dashboard.js"></script>
+  <script>
+const supabaseUrl = "https://gqxczzijntbvtlmmzppt.supabase.co";
+const supabaseKey = "sb_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs";
+const sb = supabase.createClient(supabaseUrl, supabaseKey);
+
+document.addEventListener("DOMContentLoaded", async () => {
+  setupSidebar();
+  await loadUserInfo();
+  await loadTodayDashboardSummary();
+});
+
+function setupSidebar() {
+  document.querySelectorAll(".has-submenu > .menu-link").forEach(link => {
+    link.addEventListener("click", function(e) {
+      e.preventDefault();
+      this.parentElement.classList.toggle("open");
+    });
+  });
+
+  const mobileMenuBtn = document.getElementById("mobileMenuBtn");
+  const sidebar = document.getElementById("sidebar");
+  const overlay = document.getElementById("overlay");
+
+  if (mobileMenuBtn) {
+    mobileMenuBtn.addEventListener("click", () => {
+      sidebar.classList.toggle("mobile-open");
+      overlay.classList.toggle("show");
+    });
+  }
+
+  if (overlay) {
+    overlay.addEventListener("click", () => {
+      sidebar.classList.remove("mobile-open");
+      overlay.classList.remove("show");
+    });
+  }
+}
+
+async function loadUserInfo() {
+  const username = localStorage.getItem("username") || "User";
+  const role = (localStorage.getItem("role") || "staff").toLowerCase();
+
+  document.getElementById("welcome").innerText = `Welcome, ${username}`;
+  document.getElementById("userRoleBadge").innerText =
+    role.charAt(0).toUpperCase() + role.slice(1);
+}
+
+function getTodayRange() {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+
+  const end = new Date();
+  end.setHours(23, 59, 59, 999);
+
+  return {
+    startIso: start.toISOString(),
+    endIso: end.toISOString(),
+    dateOnly: start.toISOString().split("T")[0]
+  };
+}
+
+async function loadTodayDashboardSummary() {
+  const { dateOnly } = getTodayRange();
+
+  let todaySales = 0;
+  let todayReceipt = 0;
+  let todaySalesReturn = 0;
+  let todayPayment = 0;
+  let pendingPayments = 0;
+  let pendingReturns = 0;
+
+  // SALES
+  try {
+    const { data, error } = await sb
+      .from("sales_details")
+      .select("invoice_amount")
+      .eq("bill_date", dateOnly);
+
+    if (error) {
+      console.error("Sales fetch error:", error);
+    } else {
+      todaySales = (data || []).reduce((sum, row) => sum + Number(row.invoice_amount || 0), 0);
+    }
+  } catch (err) {
+    console.error("Sales fetch error:", err);
+  }
+
+  // RECEIPTS
+  try {
+    const { data, error } = await sb
+      .from("cash_transactions")
+      .select("amount")
+      .eq("txn_date", dateOnly)
+      .eq("txn_type", "receipt");
+
+    if (error) {
+      console.error("Receipt fetch error:", error);
+    } else {
+      todayReceipt = (data || []).reduce((sum, row) => sum + Number(row.amount || 0), 0);
+    }
+  } catch (err) {
+    console.error("Receipt fetch error:", err);
+  }
+
+  // APPROVED PAYMENTS ONLY
+  try {
+    const { data, error } = await sb
+      .from("cash_transactions")
+      .select("amount")
+      .eq("txn_date", dateOnly)
+      .eq("txn_type", "payment")
+      .eq("approval_status", "approved");
+
+    if (error) {
+      console.error("Payment fetch error:", error);
+    } else {
+      todayPayment = (data || []).reduce((sum, row) => sum + Number(row.amount || 0), 0);
+    }
+  } catch (err) {
+    console.error("Payment fetch error:", err);
+  }
+
+  // ONLY TODAY'S RETURN DATE + ACCEPTED
+  try {
+    const { data, error } = await sb
+      .from("sales_return_details")
+      .select("total_return_amount, return_date, is_accepted")
+      .eq("is_accepted", true)
+      .gte("return_date", dateOnly + "T00:00:00")
+      .lte("return_date", dateOnly + "T23:59:59.999");
+
+    if (error) {
+      console.error("Sales return fetch error:", error);
+    } else {
+      todaySalesReturn = (data || []).reduce((sum, row) => sum + Number(row.total_return_amount || 0), 0);
+    }
+  } catch (err) {
+    console.error("Sales return fetch error:", err);
+  }
+
+  // PENDING PAYMENTS
+  try {
+    const { data, error } = await sb
+      .from("cash_transactions")
+      .select("id")
+      .eq("txn_type", "payment")
+      .eq("approval_status", "pending");
+
+    if (error) {
+      console.error("Pending payment fetch error:", error);
+    } else {
+      pendingPayments = (data || []).length;
+    }
+  } catch (err) {
+    console.error("Pending payment fetch error:", err);
+  }
+
+  // PENDING RETURNS
+  try {
+    const { data, error } = await sb
+      .from("sales_return_details")
+      .select("id")
+      .eq("is_accepted", false);
+
+    if (error) {
+      console.error("Pending return fetch error:", error);
+    } else {
+      pendingReturns = (data || []).length;
+    }
+  } catch (err) {
+    console.error("Pending return fetch error:", err);
+  }
+
+  const todayBalance = todaySales + todayReceipt - todaySalesReturn - todayPayment;
+
+  document.getElementById("todaySales").innerText = formatCurrency(todaySales);
+  document.getElementById("todayReceipt").innerText = formatCurrency(todayReceipt);
+  document.getElementById("todaySalesReturn").innerText = formatCurrency(todaySalesReturn);
+  document.getElementById("todayPayment").innerText = formatCurrency(todayPayment);
+  document.getElementById("todayBalance").innerText = formatCurrency(todayBalance);
+  document.getElementById("pendingApprovals").innerText = pendingPayments + pendingReturns;
+}
+
+function formatCurrency(value) {
+  return `₹ ${Number(value || 0).toFixed(2)}`;
+}
+  </script>
 </body>
 </html>

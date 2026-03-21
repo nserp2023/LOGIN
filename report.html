@@ -11,8 +11,22 @@ body {
     font-family: Arial, sans-serif;
     padding:20px;
     background-image: url("https://www.transparenttextures.com/patterns/dark-wood.png");
-    background-color: #3b2a1e; /* fallback */
+    background-color: #3b2a1e;
     color: #fff;
+}
+
+/* ===== TOP FILTER AREA ===== */
+.filter-bar{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:8px;
+    margin-bottom:10px;
+}
+
+.filter-bar label{
+    font-weight:bold;
+    margin-right:2px;
 }
 
 /* ===== TABLE MAIN STYLE ===== */
@@ -30,6 +44,7 @@ th, td {
     border:1px solid rgba(255,255,255,0.15);
     padding:10px;
     text-align:left;
+    vertical-align:top;
 }
 
 th {
@@ -49,7 +64,7 @@ tr:hover {
     background: rgba(255,215,0,0.15);
 }
 .converted-row{
-background: rgba(0,200,0,0.25);
+    background: rgba(0,200,0,0.25);
 }
 
 /* ===== INPUTS & FILTERS ===== */
@@ -94,32 +109,51 @@ button:hover {
     color:#000;
 }
 
+/* ===== SMALL HELPER ===== */
+.small-note{
+    opacity:.85;
+    font-size:12px;
+    margin-top:6px;
+}
+
 </style>
 </head>
 <body>
 
 <h2 id="report_title">Sales Report</h2>
-Report Type:
-<select id="report_type">
-    <option value="sales">Sales</option>
-    <option value="sales_pack">Sales + Packing</option>
-    <option value="quotation">Quotation</option>
-    <option value="sales_order">Sales Order</option>
-</select>
 
-From: <input type="date" id="from_date">
-To: <input type="date" id="to_date">
+<div class="filter-bar">
+    <label>Report Type:</label>
+    <select id="report_type">
+        <option value="sales">Sales</option>
+        <option value="sales_pack">Sales + Packing</option>
+        <option value="quotation">Quotation</option>
+        <option value="sales_order">Sales Order</option>
+    </select>
 
-Series:
-<select id="series_filter">
-    <option value="">All</option>
-</select>
+    <label>From:</label>
+    <input type="date" id="from_date">
 
-Customer Name:
-<input type="text" id="customer_filter" placeholder="Search name">
+    <label>To:</label>
+    <input type="date" id="to_date">
 
-Mobile:
-<input type="text" id="mobile_filter" placeholder="Search mobile">
+    <label>Series:</label>
+    <select id="series_filter">
+        <option value="">All</option>
+    </select>
+
+    <label>Customer Name:</label>
+    <input type="text" id="customer_filter" placeholder="Search name">
+
+    <label>Mobile:</label>
+    <input type="text" id="mobile_filter" placeholder="Search mobile">
+
+    <label>Salesman:</label>
+    <input type="text" id="salesman_filter" placeholder="Search salesman">
+
+    <label>Created By:</label>
+    <input type="text" id="created_by_filter" placeholder="Search created user">
+</div>
 
 
 <table>
@@ -130,6 +164,8 @@ Mobile:
 <th>Date</th>
 <th>Customer</th>
 <th>Mobile</th>
+<th>Salesman</th>
+<th>Created By</th>
 <th>Total</th>
 <th>Print</th>
 <th>Edit</th>
@@ -140,286 +176,282 @@ Mobile:
 
 <script>
 const sb = supabase.createClient(
-"https://gqxczzijntbvtlmmzppt.supabase.co",
-"sb_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs"
+    "https://gqxczzijntbvtlmmzppt.supabase.co",
+    "sb_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs"
 );
 
+function normalizeText(v){
+    return String(v || "").trim().toLowerCase();
+}
+
+function getCreatedByValue(row){
+    return row.created_by || row.created_user || row.created_by_user || row.user_name || row.username || "";
+}
+
 async function loadReport() {
-    
+    const type = document.getElementById("report_type").value;
 
-const type = document.getElementById("report_type").value;
+    const from = document.getElementById('from_date').value;
+    const to = document.getElementById('to_date').value;
+    const series = document.getElementById('series_filter').value;
+    const customer = document.getElementById('customer_filter').value.trim();
+    const mobile = document.getElementById('mobile_filter').value.trim();
+    const salesmanFilter = document.getElementById('salesman_filter').value.trim();
+    const createdByFilter = document.getElementById('created_by_filter').value.trim();
 
-const from = document.getElementById('from_date').value;
-const to = document.getElementById('to_date').value;
-const series = document.getElementById('series_filter').value;
-const customer = document.getElementById('customer_filter').value.trim();
-const mobile = document.getElementById('mobile_filter').value.trim();
-document.getElementById("report_title").innerText =
-type === "sales_pack" ? "Sales + Packing Report" :
-type === "quotation" ? "Quotation Report" :
-type === "sales_order" ? "Sales Order Report" :
-"Sales Report";
+    document.getElementById("report_title").innerText =
+        type === "sales_pack" ? "Sales + Packing Report" :
+        type === "quotation" ? "Quotation Report" :
+        type === "sales_order" ? "Sales Order Report" :
+        "Sales Report";
 
-let table = "sales_details";
-let numberField = "sales_number";
-let dateField = "bill_date";
-let amountField = "invoice_amount";
+    let table = "sales_details";
+    let numberField = "sales_number";
+    let dateField = "bill_date";
+    let amountField = "invoice_amount";
 
-if(type === "sales_pack"){
-    table = "sales_packing_details";
-    numberField = "packing_number";   // change if your column name differs
-    dateField = "packing_date";
-    amountField = "total_amount";     // change if needed
+    if(type === "sales_pack"){
+        table = "sales_packing_details";
+        numberField = "packing_number";
+        dateField = "packing_date";
+        amountField = "packing_amount";
+    }
+
+    if(type === "quotation"){
+        table = "quotation_details";
+        numberField = "quotation_number";
+        dateField = "quotation_date";
+        amountField = "total_amount";
+    }
+
+    if(type === "sales_order"){
+        table = "sales_order_details";
+        numberField = "order_number";
+        dateField = "order_date";
+        amountField = "total_amount";
+    }
+
+    let query = sb
+        .from(table)
+        .select('*')
+        .order(numberField, { ascending:false });
+
+    if(from) query = query.gte(dateField, from);
+    if(to) query = query.lte(dateField, to);
+    if(series) query = query.eq('series_code', series);
+    if(customer) query = query.ilike('customer_name', `%${customer}%`);
+    if(mobile) query = query.ilike('customer_mobile', `%${mobile}%`);
+
+    const { data, error } = await query;
+
+    if(error){
+        alert(error.message);
+        console.error(error);
+        return;
+    }
+
+    let rows = data || [];
+
+    // client-side filtering for salesman and created_by
+    if(salesmanFilter){
+        rows = rows.filter(r =>
+            normalizeText(r.salesman).includes(normalizeText(salesmanFilter))
+        );
+    }
+
+    if(createdByFilter){
+        rows = rows.filter(r =>
+            normalizeText(getCreatedByValue(r)).includes(normalizeText(createdByFilter))
+        );
+    }
+
+    const body = document.getElementById('report_body');
+    body.innerHTML = '';
+
+    let totalSum = 0;
+
+    for(let s of rows){
+        const amount = parseFloat(s[amountField] || 0);
+        totalSum += amount;
+
+        body.innerHTML += `
+        <tr class="${
+            ((type === 'quotation' || type === 'sales_order') && s.converted)
+            ? 'converted-row' : ''
+        }" onclick="toggleDetails(${s.id})">
+
+            <td>${s.series_code || ''}</td>
+            <td>${s[numberField] || ''}</td>
+            <td>${s[dateField] || ''}</td>
+            <td>${s.customer_name || ''}</td>
+            <td>${s.customer_mobile || ''}</td>
+            <td>${s.salesman || ''}</td>
+            <td>${getCreatedByValue(s) || ''}</td>
+            <td>₹${amount.toFixed(2)}</td>
+
+            <td>
+                ${
+                    type === "sales_pack"
+                    ? `<button onclick="event.stopPropagation(); printSalesPacking(${s.id})">🧾📦 Sales + Packing</button>`
+                    : `<button onclick="event.stopPropagation(); printDoc(${s.id})">🖨 Invoice</button>`
+                }
+
+                ${type === "sales" ? `
+                    <button onclick="event.stopPropagation(); printPacking(${s.id})">📦 Packing</button>
+                    <button onclick="event.stopPropagation(); printSalesPacking(${s.id})">🧾📦 Sales + Packing</button>
+                ` : ""}
+            </td>
+
+            <td>
+                <button onclick="event.stopPropagation(); editDoc(${s.id})">✏ Edit</button>
+
+                ${(type === "quotation" || type === "sales_order") && !s.converted ? `
+                    <br>
+                    <button onclick="event.stopPropagation(); convertToSales(${s.id})">🔄 Convert</button>
+                ` : ""}
+            </td>
+        </tr>
+
+        <tr id="details-${s.id}" style="display:none;">
+            <td colspan="10">
+                <div id="items-${s.id}">Loading...</div>
+            </td>
+        </tr>
+        `;
+    }
+
+    body.innerHTML += `
+    <tr class="total-row">
+        <td colspan="7">TOTAL</td>
+        <td>₹${totalSum.toFixed(2)}</td>
+        <td colspan="2"></td>
+    </tr>
+    `;
 }
 
-if(type === "quotation"){
-    table = "quotation_details";
-    numberField = "quotation_number";
-    dateField = "quotation_date";
-    amountField = "total_amount";
-}
-
-if(type === "sales_order"){
-    table = "sales_order_details";
-    numberField = "order_number";
-    dateField = "order_date";
-    amountField = "total_amount";
-}
-
-
-let query = sb
-.from(table)
-.select('*')
-.gte(dateField, from)
-.lte(dateField, to)
-.order(numberField,{ascending:false});
-
-if(series) query = query.eq('series_code', series);
-if(customer) query = query.ilike('customer_name', `%${customer}%`);
-if(mobile) query = query.ilike('customer_mobile', `%${mobile}%`);
-
-const { data, error } = await query;
-
-if(error){
-alert(error.message);
-return;
-}
-
-const body = document.getElementById('report_body');
-body.innerHTML='';
-
-let totalSum = 0;
-
-for(let s of data){
-
-totalSum += parseFloat(s[amountField] || 0);
-
-body.innerHTML += `
-
-<tr class="${
-(type === 'quotation' && s.converted) || 
-(type === 'sales_order' && s.converted)
-? 'converted-row' : ''
-}"
-onclick="toggleDetails(${s.id})">
-<td>${s.series_code || ''}</td>
-<td>${s[numberField] || ''}</td>
-<td>${s[dateField] || ''}</td>
-<td>${s.customer_name || ''}</td>
-<td>${s.customer_mobile || ''}</td>
-<td>₹${parseFloat(s[amountField] || 0).toFixed(2)}</td>
-
-<td>
-
-${
-type === "sales_pack"
-? `<button onclick="event.stopPropagation(); printSalesPacking(${s.id})">
-🧾📦 Sales + Packing
-</button>`
-: `<button onclick="event.stopPropagation(); printDoc(${s.id})">
-🖨 Invoice
-</button>`
-}
-
-${type === "sales" ? `
-
-<button onclick="event.stopPropagation(); printPacking(${s.id})">
-📦 Packing
-</button>
-
-<button onclick="event.stopPropagation(); printSalesPacking(${s.id})">
-🧾📦 Sales + Packing
-</button>
-
-` : ""}
-
-</td>
-
-<td>
-
-<button onclick="event.stopPropagation(); editDoc(${s.id})">
-✏ Edit
-</button>
-
-${(type === "quotation" || type === "sales_order") && !s.converted ? `
-<br>
-<button onclick="event.stopPropagation(); convertToSales(${s.id})">
-🔄 Convert
-</button>
-` : ""}
-
-</td>
-
-</tr>
-
-<tr id="details-${s.id}" style="display:none;">
-<td colspan="8">
-<div id="items-${s.id}">Loading...</div>
-</td>
-</tr>
-
-`;
-}
-
-body.innerHTML += `
-<tr class="total-row">
-<td colspan="5">TOTAL</td>
-<td>₹${totalSum.toFixed(2)}</td>
-</tr>
-`;
-
-}
 async function toggleDetails(id){
+    const type = document.getElementById("report_type").value;
 
-const type = document.getElementById("report_type").value;
+    let table = "sales_item_details";
+    let idField = "sales_id";
 
-let table = "sales_item_details";
-let idField = "sales_id";
+    if(type === "sales_pack"){
+        table = "sales_packing_item_details";
+        idField = "packing_id";
+    }
 
-if(type === "sales_pack"){
-table = "sales_packing_item_details";
-idField = "packing_id";
-}
+    if(type === "quotation"){
+        table = "quotation_item_details";
+        idField = "quotation_id";
+    }
 
-if(type === "quotation"){
-table = "quotation_item_details";
-idField = "quotation_id";
-}
+    if(type === "sales_order"){
+        table = "sales_order_item_details";
+        idField = "sales_order_id";
+    }
 
-if(type === "sales_order"){
-table = "sales_order_item_details";
-idField = "sales_order_id";
-}
+    const row = document.getElementById(`details-${id}`);
+    const container = document.getElementById(`items-${id}`);
 
-const row = document.getElementById(`details-${id}`);
-const container = document.getElementById(`items-${id}`);
+    if(row.style.display === "table-row"){
+        row.style.display = "none";
+        return;
+    }
 
-if(row.style.display==="table-row"){
-row.style.display="none";
-return;
-}
+    row.style.display = "table-row";
 
-row.style.display="table-row";
+    const { data, error } = await sb
+        .from(table)
+        .select('*')
+        .eq(idField, id);
 
-const { data, error } = await sb
-.from(table)
-.select('*')
-.eq(idField, id);
+    if(error){
+        container.innerHTML = "Error loading items";
+        console.error(error);
+        return;
+    }
 
-if(error){
-container.innerHTML = "Error loading items";
-console.error(error);
-return;
-}
+    if(!data || data.length === 0){
+        container.innerHTML = "No items found.";
+        return;
+    }
 
-if(!data || data.length === 0){
-container.innerHTML = "No items found.";
-return;
-}
+    let html = `
+    <div class="dropdown-wood">
+    <table>
+    <tr>
+        <th>Item Code</th>
+        <th>Item Name</th>
+        <th>Qty</th>
+        <th>Price</th>
+        <th>Total</th>
+    </tr>
+    `;
 
-let html = `
-<div class="dropdown-wood">
-<table>
-<tr>
-<th>Item Code</th>
-<th>Item Name</th>
-<th>Qty</th>
-<th>Price</th>
-<th>Total</th>
-</tr>
-`;
+    data.forEach(i => {
+        const qty = parseFloat(i.quantity || 0);
+        const price = parseFloat(i.price || 0);
+        const total = (parseFloat(i.sales_price_gst || 0) * qty);
 
-data.forEach(i=>{
-html += `
-<tr>
-<td>${i.item_code}</td>
-<td>${i.item_name}</td>
-<td>${i.quantity}</td>
-<td>₹${parseFloat(i.price).toFixed(2)}</td>
-<td>₹${(i.sales_price_gst * i.quantity).toFixed(2)}</td>
-</tr>
-`;
-});
+        html += `
+        <tr>
+            <td>${i.item_code || ''}</td>
+            <td>${i.item_name || ''}</td>
+            <td>${qty}</td>
+            <td>₹${price.toFixed(2)}</td>
+            <td>₹${total.toFixed(2)}</td>
+        </tr>
+        `;
+    });
 
-html += "</table></div>";
-
-container.innerHTML = html;
-
+    html += "</table></div>";
+    container.innerHTML = html;
 }
 
 function printDoc(id){
+    const type = document.getElementById("report_type").value;
 
-const type = document.getElementById("report_type").value;
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'absolute';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.src = `print.html?id=${id}&type=${type}`;
 
-const iframe = document.createElement('iframe');
+    document.body.appendChild(iframe);
 
-iframe.style.position='absolute';
-iframe.style.width='0';
-iframe.style.height='0';
-
-iframe.src = `print.html?id=${id}&type=${type}`;
-
-document.body.appendChild(iframe);
-
-setTimeout(()=>{
-document.body.removeChild(iframe);
-},5000);
-
+    setTimeout(() => {
+        document.body.removeChild(iframe);
+    }, 5000);
 }
+
 function printPacking(id){
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'absolute';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.src = `print.html?id=${id}&type=packing`;
 
-const iframe = document.createElement('iframe');
+    document.body.appendChild(iframe);
 
-iframe.style.position='absolute';
-iframe.style.width='0';
-iframe.style.height='0';
-
-iframe.src = `print.html?id=${id}&type=packing`;
-
-document.body.appendChild(iframe);
-
-setTimeout(()=>{
-document.body.removeChild(iframe);
-},5000);
-
+    setTimeout(() => {
+        document.body.removeChild(iframe);
+    }, 5000);
 }
+
 function printSalesPacking(id){
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'absolute';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.src = `print.html?id=${id}&type=sales_pack`;
 
-const iframe = document.createElement('iframe');
+    document.body.appendChild(iframe);
 
-iframe.style.position='absolute';
-iframe.style.width='0';
-iframe.style.height='0';
-
-iframe.src = `print.html?id=${id}&type=sales_pack`;
-
-document.body.appendChild(iframe);
-
-setTimeout(()=>{
-document.body.removeChild(iframe);
-},5000);
-
+    setTimeout(() => {
+        document.body.removeChild(iframe);
+    }, 5000);
 }
+
 function viewBill(id) {
     window.open(`sales_details.html?id=${id}`, '_blank');
 }
@@ -430,22 +462,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("from_date").value = today;
     document.getElementById("to_date").value = today;
 
-    await loadSeries();   // if using series dropdown
+    await loadSeries();
     loadReport();
 
-    // Auto reload when date changes
     document.getElementById("from_date").addEventListener("change", loadReport);
     document.getElementById("to_date").addEventListener("change", loadReport);
-
-    // Auto reload when series changes
     document.getElementById("series_filter").addEventListener("change", loadReport);
+    document.getElementById("report_type").addEventListener("change", loadReport);
 
-    // Auto reload when typing customer name
-    document.getElementById("customer_filter").addEventListener("input", debounce(loadReport, 500));
-
-    // Auto reload when typing mobile
-    document.getElementById("mobile_filter").addEventListener("input", debounce(loadReport, 500));
-    
+    document.getElementById("customer_filter").addEventListener("input", debounce(loadReport, 400));
+    document.getElementById("mobile_filter").addEventListener("input", debounce(loadReport, 400));
+    document.getElementById("salesman_filter").addEventListener("input", debounce(loadReport, 400));
+    document.getElementById("created_by_filter").addEventListener("input", debounce(loadReport, 400));
 });
 
 function debounce(func, delay) {
@@ -456,10 +484,9 @@ function debounce(func, delay) {
     };
 }
 
-
 async function loadSeries() {
     const { data, error } = await sb
-        .from('bill_series')   // change if your table name different
+        .from('bill_series')
         .select('series_code');
 
     if (error) {
@@ -468,51 +495,46 @@ async function loadSeries() {
     }
 
     const select = document.getElementById('series_filter');
+    select.innerHTML = `<option value="">All</option>`;
 
-    data.forEach(s => {
-        select.innerHTML += `<option value="${s.series_code}">
-                                ${s.series_code}
-                             </option>`;
+    (data || []).forEach(s => {
+        select.innerHTML += `<option value="${s.series_code}">${s.series_code}</option>`;
     });
 }
 
 function editDoc(id){
+    const type = document.getElementById("report_type").value;
 
-const type = document.getElementById("report_type").value;
+    if(type === "sales"){
+        window.location = `salesmod.html?edit=${id}&type=sales`;
+    }
 
-if(type === "sales"){
-window.location = `salesmod.html?edit=${id}&type=sales`;
+    if(type === "sales_pack"){
+        window.location = `soq.html?edit=${id}&type=sales_pack`;
+    }
+
+    if(type === "quotation"){
+        window.location = `soq.html?edit=${id}&type=quotation`;
+    }
+
+    if(type === "sales_order"){
+        window.location = `soq.html?edit=${id}&type=sales_order`;
+    }
 }
 
-if(type === "sales_pack"){
-window.location = `soq.html?edit=${id}&type=sales_pack`;
-}
-
-if(type === "quotation"){
-window.location = `soq.html?edit=${id}&type=quotation`;
-}
-
-if(type === "sales_order"){
-window.location = `soq.html?edit=${id}&type=sales_order`;
-}
-
-}
 function convertToSales(id){
+    const type = document.getElementById("report_type").value;
 
-const type = document.getElementById("report_type").value;
+    if(!confirm("Convert this document to Sales?")) return;
 
-if(!confirm("Convert this document to Sales?")) return;
+    if(type === "quotation"){
+        window.open(`soq.html?convert=${id}`, "_blank");
+    }
 
-if(type === "quotation"){
-window.open(`soq.html?convert=${id}`,"_blank");
+    if(type === "sales_order"){
+        window.open(`soq.html?convert_so=${id}`, "_blank");
+    }
 }
-
-if(type === "sales_order"){
-window.open(`soq.html?convert_so=${id}`,"_blank");
-}
-
-}
-document.getElementById("report_type").addEventListener("change", loadReport);
 </script>
 
 </body>

@@ -1,121 +1,358 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Sales Return Report</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sales Return Report - VAJRA LIGHTS</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
-body { font-family: Arial; background:#f4f6f9; padding:20px;}
-.container { background:#fff; padding:20px; border-radius:10px;}
-table { width:100%; border-collapse:collapse; margin-top:10px;}
-th, td { border:1px solid #ddd; padding:8px; text-align:center;}
-button { padding:6px 10px; cursor:pointer;}
+:root{
+    --primary:#2563eb;
+    --accent:#059669;
+    --bg:#0f172a;
+    --panel:rgba(255,255,255,0.96);
+    --border:#cbd5e1;
+    --text:#1e293b;
+}
+body{
+    font-family:'Segoe UI',Roboto,Arial,sans-serif;
+    margin:0;
+    padding:20px;
+    background-image:url('background.jpg');
+    background-size:cover;
+    background-attachment:fixed;
+    color:var(--text);
+}
+.container{
+    max-width:1400px;
+    margin:auto;
+    background:var(--panel);
+    border-radius:14px;
+    box-shadow:0 10px 30px rgba(0,0,0,.22);
+    overflow:hidden;
+}
+.header{
+    background:#020617;
+    color:#fff;
+    padding:18px 20px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:10px;
+}
+.header h2{
+    margin:0;
+    font-size:22px;
+}
+.top-actions{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+}
+.btn{
+    border:none;
+    border-radius:8px;
+    padding:10px 16px;
+    cursor:pointer;
+    font-weight:700;
+}
+.btn-blue{ background:var(--primary); color:#fff; }
+.btn-green{ background:var(--accent); color:#fff; }
+.btn-gray{ background:#e2e8f0; color:#0f172a; }
+
+.filters{
+    padding:15px 20px;
+    display:grid;
+    grid-template-columns: repeat(auto-fit,minmax(170px,1fr));
+    gap:12px;
+    border-bottom:1px solid var(--border);
+    background:#f8fafc;
+}
+.form-group{
+    display:flex;
+    flex-direction:column;
+}
+.form-group label{
+    font-size:12px;
+    font-weight:700;
+    margin-bottom:4px;
+    color:#475569;
+    text-transform:uppercase;
+}
+.form-control{
+    height:38px;
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:0 10px;
+    font-size:14px;
+    box-sizing:border-box;
+}
+.summary{
+    padding:14px 20px;
+    display:flex;
+    gap:14px;
+    flex-wrap:wrap;
+    background:#fff;
+    border-bottom:1px solid var(--border);
+}
+.card{
+    min-width:200px;
+    background:#f8fafc;
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:12px 14px;
+}
+.card .label{
+    font-size:12px;
+    color:#64748b;
+    font-weight:700;
+    text-transform:uppercase;
+}
+.card .value{
+    font-size:24px;
+    font-weight:800;
+    margin-top:4px;
+}
+.table-wrap{
+    overflow:auto;
+}
+table{
+    width:100%;
+    border-collapse:collapse;
+}
+th,td{
+    padding:10px 8px;
+    border-bottom:1px solid #e2e8f0;
+    text-align:left;
+    white-space:nowrap;
+}
+th{
+    background:#e2e8f0;
+    position:sticky;
+    top:0;
+    z-index:1;
+    font-size:12px;
+    text-transform:uppercase;
+}
+tr:hover{
+    background:#f8fafc;
+}
+.action-btn{
+    border:none;
+    border-radius:6px;
+    padding:7px 10px;
+    cursor:pointer;
+    font-size:12px;
+    font-weight:700;
+    margin-right:6px;
+}
+.edit-btn{ background:#2563eb; color:#fff; }
+.print-btn{ background:#059669; color:#fff; }
+
+@media (max-width:768px){
+    body{ padding:8px; }
+    .header h2{ font-size:18px; }
+    th,td{ font-size:12px; padding:8px 6px; }
+}
 </style>
 </head>
-
 <body>
+
 <div class="container">
-<h2>Sales Return Report</h2>
+    <div class="header">
+        <h2>Sales Return Report</h2>
+        <div class="top-actions">
+            <button class="btn btn-gray" onclick="window.location.href='dashboard.html'">Dashboard</button>
+            <button class="btn btn-blue" onclick="window.location.href='sales_return.html'">New Return</button>
+            <button class="btn btn-green" onclick="loadReport()">Refresh</button>
+        </div>
+    </div>
 
-<label>From:</label>
-<input type="date" id="from_date">
+    <div class="filters">
+        <div class="form-group">
+            <label>From Date</label>
+            <input type="date" id="from_date" class="form-control">
+        </div>
 
-<label>To:</label>
-<input type="date" id="to_date">
+        <div class="form-group">
+            <label>To Date</label>
+            <input type="date" id="to_date" class="form-control">
+        </div>
 
-<button onclick="loadReport()">Filter</button>
+        <div class="form-group">
+            <label>Customer Mobile</label>
+            <input type="text" id="search_mobile" class="form-control" placeholder="Mobile">
+        </div>
 
-<table>
-<thead>
-<tr>
-<th>Return No</th>
-<th>Date</th>
-<th>Customer</th>
-<th>Total</th>
-</tr>
-</thead>
-<tbody id="reportBody"></tbody>
-</table>
+        <div class="form-group">
+            <label>Customer Name</label>
+            <input type="text" id="search_name" class="form-control" placeholder="Customer name">
+        </div>
 
-<h3>Total Returns: ₹ <span id="report_total">0.00</span></h3>
+        <div class="form-group">
+            <label>Original Bill No</label>
+            <input type="text" id="search_bill" class="form-control" placeholder="Bill no">
+        </div>
 
+        <div class="form-group" style="align-self:end;">
+            <button class="btn btn-blue" onclick="loadReport()">Search</button>
+        </div>
+    </div>
+
+    <div class="summary">
+        <div class="card">
+            <div class="label">Total Returns</div>
+            <div class="value" id="total_returns_count">0</div>
+        </div>
+        <div class="card">
+            <div class="label">Total Return Amount</div>
+            <div class="value" id="total_returns_amount">₹0.00</div>
+        </div>
+    </div>
+
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Return ID</th>
+                    <th>Return Date</th>
+                    <th>Customer Name</th>
+                    <th>Mobile</th>
+                    <th>Original Bill No</th>
+                    <th>Return Amount</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="report_body"></tbody>
+        </table>
+    </div>
 </div>
 
 <script>
-
-const supabase = window.supabase.createClient(
-  "https://gqxczzijntbvtlmmzppt.supabase.co",
-  "b_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs"
+const sb = supabase.createClient(
+    "https://gqxczzijntbvtlmmzppt.supabase.co",
+    "sb_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs"
 );
 
+window.onload = async () => {
+    setDefaultDates();
+    await loadReport();
+};
+
+function setDefaultDates(){
+    const today = new Date();
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+
+    document.getElementById("from_date").value = firstDay.toISOString().split("T")[0];
+    document.getElementById("to_date").value = today.toISOString().split("T")[0];
+}
+
 async function loadReport(){
+    const tbody = document.getElementById("report_body");
+    tbody.innerHTML = `<tr><td colspan="8">Loading...</td></tr>`;
 
-  const from = document.getElementById("from_date").value;
-  const to = document.getElementById("to_date").value;
+    const fromDate = document.getElementById("from_date").value;
+    const toDate = document.getElementById("to_date").value;
+    const mobile = document.getElementById("search_mobile").value.trim().toLowerCase();
+    const name = document.getElementById("search_name").value.trim().toLowerCase();
+    const billNo = document.getElementById("search_bill").value.trim().toLowerCase();
 
-  let query = supabase
-    .from("sales_returns")
-    .select("*, customers(name)")
-    .order("return_date",{ascending:false});
+    let { data: returns, error } = await sb
+        .from("sales_return_details")
+        .select(`
+            id,
+            original_sales_id,
+            return_date,
+            total_return_amount
+        `)
+        .order("id", { ascending:false });
 
-  if(from) query = query.gte("return_date",from);
-  if(to) query = query.lte("return_date",to);
+    if(error){
+        console.error(error);
+        tbody.innerHTML = `<tr><td colspan="8">Error loading report</td></tr>`;
+        return;
+    }
 
-  const { data } = await query;
+    returns = returns || [];
 
-  const body = document.getElementById("reportBody");
-  body.innerHTML = "";
+    const salesIds = [...new Set(returns.map(r => r.original_sales_id).filter(Boolean))];
 
-  let total = 0;
+    let salesMap = {};
+    if(salesIds.length){
+        const { data: salesData, error: salesErr } = await sb
+            .from("sales_details")
+            .select("id, sales_number, customer_name, customer_mobile, series_code, bill_date")
+            .in("id", salesIds);
 
-  data.forEach(r=>{
-    total += Number(r.total_amount);
-    body.innerHTML += `
-      <tr>
-        <td>${r.return_no}</td>
-        <td>${r.return_date}</td>
-        <td>${r.customers?.name || ""}</td>
-        <td>${r.total_amount}</td>
-      </tr>
-    `;
-  });
+        if(salesErr){
+            console.error(salesErr);
+        } else {
+            (salesData || []).forEach(s => {
+                salesMap[s.id] = s;
+            });
+        }
+    }
 
-  document.getElementById("report_total").innerText = total.toFixed(2);
+    let filtered = returns.filter(r => {
+        const sale = salesMap[r.original_sales_id] || {};
+        const returnDate = r.return_date ? r.return_date.split("T")[0] : "";
+
+        if(fromDate && returnDate < fromDate) return false;
+        if(toDate && returnDate > toDate) return false;
+        if(mobile && !(String(sale.customer_mobile || "").toLowerCase().includes(mobile))) return false;
+        if(name && !(String(sale.customer_name || "").toLowerCase().includes(name))) return false;
+
+        const billText = `${sale.series_code || ""}-${sale.sales_number || ""}`.toLowerCase();
+        if(billNo && !billText.includes(billNo)) return false;
+
+        return true;
+    });
+
+    tbody.innerHTML = "";
+
+    let totalAmount = 0;
+
+    if(!filtered.length){
+        tbody.innerHTML = `<tr><td colspan="8">No sales return records found</td></tr>`;
+    }
+
+    filtered.forEach((r, index) => {
+        const sale = salesMap[r.original_sales_id] || {};
+        const amt = parseFloat(r.total_return_amount || 0);
+        totalAmount += amt;
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+            <td>${index + 1}</td>
+            <td>${r.id}</td>
+            <td>${r.return_date ? r.return_date.split("T")[0] : ""}</td>
+            <td>${sale.customer_name || ""}</td>
+            <td>${sale.customer_mobile || ""}</td>
+            <td>${sale.series_code || ""}-${sale.sales_number || ""}</td>
+            <td>₹${amt.toFixed(2)}</td>
+            <td>
+                <button class="action-btn edit-btn" onclick="modifyReturn(${r.id})">Modify</button>
+                <button class="action-btn print-btn" onclick="printReturn(${r.id})">Print</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    document.getElementById("total_returns_count").innerText = filtered.length;
+    document.getElementById("total_returns_amount").innerText = "₹" + totalAmount.toFixed(2);
 }
 
-async function approveSalesReturn(id) {
-  const role = (localStorage.getItem("role") || "staff").toLowerCase();
-  const username = localStorage.getItem("username") || "Unknown";
-
-  if (!["admin", "manager", "owner"].includes(role)) {
-    alert("Only admin or manager can approve sales return.");
-    return;
-  }
-
-  const ok = confirm("Do you want to approve this sales return?");
-  if (!ok) return;
-
-  const { error } = await sb
-    .from("sales_returns")
-    .update({
-      approval_status: "approved",
-      approved_by: username,
-      approved_at: new Date().toISOString()
-    })
-    .eq("id", id);
-
-  if (error) {
-    alert("Approval failed: " + error.message);
-    return;
-  }
-
-  alert("Sales return approved successfully");
-  loadSalesReturns();
+function modifyReturn(id){
+    window.location.href = `sales_return_modification.html?id=${id}`;
 }
 
-loadReport();
-
+function printReturn(id){
+    window.open(`sales_return_print.html?id=${id}`, "_blank");
+}
 </script>
+
 </body>
 </html>

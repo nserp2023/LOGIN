@@ -263,6 +263,12 @@ async function loadSavedReturn(returnId){
 
     document.getElementById("return_id").value = returnHead.id || "";
     document.getElementById("sale_ref").value = returnHead.original_sales_id || "";
+    
+    if(returnHead.is_accepted){
+    alert("This return is already accepted and cannot be modified.");
+    window.location.href = "sales_return_report.html";
+    return;
+}
 
     const { data: sale, error: saleErr } = await sb
         .from("sales_details")

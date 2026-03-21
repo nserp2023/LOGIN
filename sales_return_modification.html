@@ -3,348 +3,504 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sales Return Modification - VAJRA LIGHTS</title>
+<title>Modify Sales Return - VAJRA LIGHTS</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
-:root{
+:root {
     --primary:#2563eb;
-    --bg:#f1f5f9;
-    --panel:#ffffff;
+    --accent:#059669;
+    --danger:#dc2626;
     --border:#cbd5e1;
+    --text:#1e293b;
 }
 body{
-    font-family:Segoe UI,Roboto;
-    background:var(--bg);
-    padding:20px;
+    font-family:'Segoe UI',Roboto,Arial,sans-serif;
+    margin:0;
+    padding:10px;
+    background-image:url('background.jpg');
+    background-size:cover;
+    background-attachment:fixed;
+    color:var(--text);
+    height:100vh;
+    overflow:hidden;
+    font-size:14px;
 }
 .container{
-    background:var(--panel);
-    padding:20px;
-    border-radius:8px;
-    box-shadow:0 10px 25px rgba(0,0,0,0.1);
+    max-width:100%;
+    height:96vh;
+    display:flex;
+    flex-direction:column;
+    background:rgba(255,255,255,0.04);
+    border-radius:10px;
+    overflow:hidden;
+    box-shadow:0 10px 25px rgba(0,0,0,.2);
 }
-h2{margin-top:0;}
-input{
-    padding:6px 8px;
-    border:1px solid var(--border);
+.header-section{
+    padding:12px 15px;
+    border-bottom:1px solid var(--border);
+    display:flex;
+    gap:12px;
+    align-items:flex-end;
+    background:#020617;
+    flex-wrap:wrap;
+}
+.form-group{
+    display:flex;
+    flex-direction:column;
+}
+.form-group label{
+    font-size:11px;
+    font-weight:700;
+    color:#94a3b8;
+    margin-bottom:3px;
+    text-transform:uppercase;
+}
+.form-control{
+    padding:6px 10px;
+    border:1px solid #cbd5e1;
     border-radius:4px;
+    font-size:14px;
+    height:32px;
+    box-sizing:border-box;
 }
-button{
-    padding:8px 15px;
-    background:var(--primary);
-    color:white;
-    border:none;
-    border-radius:4px;
-    cursor:pointer;
-    font-weight:600;
+.w-sm{ width:120px; }
+.w-md{ width:170px; }
+.w-lg{ width:240px; }
+.w-xl{ width:280px; }
+
+.grand-total-box{
+    margin-left:auto;
+    background:#111827;
+    color:#fff;
+    padding:5px 20px;
+    border-radius:6px;
+    min-width:180px;
+    text-align:right;
 }
-button:hover{background:#1d4ed8;}
+.grand-total-box span{
+    font-size:10px;
+    display:block;
+    opacity:.8;
+}
+.grand-total-box div{
+    font-size:24px;
+    font-weight:800;
+}
+
+.items-container{
+    flex:1;
+    overflow:auto;
+    background:rgba(0,0,0,.72);
+}
 table{
     width:100%;
     border-collapse:collapse;
-    margin-top:15px;
+    table-layout:fixed;
 }
-th,td{
-    border:1px solid #e2e8f0;
+thead{
+    background:#f1f5f9;
+    position:sticky;
+    top:0;
+    z-index:5;
+}
+th{
     padding:8px;
-    text-align:center;
+    text-align:left;
+    font-size:11px;
+    border-bottom:1px solid #cbd5e1;
+    color:#475569;
 }
-th{background:#e2e8f0;}
-.total{
-    text-align:right;
-    font-size:18px;
-    font-weight:bold;
-    margin-top:10px;
+td{
+    border-bottom:1px solid #1e293b;
+    padding:0;
 }
+td input{
+    width:100%;
+    border:none;
+    padding:8px 5px;
+    font-size:13px;
+    color:#fff;
+    background:transparent;
+    box-sizing:border-box;
+}
+td input:focus{
+    outline:none;
+    box-shadow:inset 0 0 0 2px var(--primary);
+}
+.readonly-cell{
+    color:#e2e8f0;
+    padding:8px 5px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+}
+.readonly-strong{
+    color:#fff;
+    font-weight:700;
+}
+.footer-section{
+    padding:10px 20px;
+    border-top:1px solid var(--border);
+    background:#000;
+    display:flex;
+    justify-content:flex-end;
+    gap:12px;
+    flex-wrap:wrap;
+}
+.btn{
+    padding:10px 22px;
+    border:none;
+    border-radius:6px;
+    font-weight:700;
+    cursor:pointer;
+}
+.btn-update{ background:var(--accent); color:#fff; }
+.btn-back{ background:#e2e8f0; color:#0f172a; }
+
+.col-idx{ width:40px; text-align:center; }
+.col-code{ width:120px; }
+.col-name{ width:auto; }
+.col-sold{ width:100px; }
+.col-old{ width:110px; }
+.col-new{ width:110px; }
+.col-price{ width:110px; }
+.col-amt{ width:120px; }
 </style>
 </head>
 <body>
 
 <div class="container">
+    <div class="header-section">
+        <div class="form-group">
+            <label>Return ID</label>
+            <input id="return_id" class="form-control w-sm" readonly>
+        </div>
+        <div class="form-group">
+            <label>Original Sale ID</label>
+            <input id="sale_ref" class="form-control w-md" readonly>
+        </div>
+        <div class="form-group">
+            <label>Customer Name</label>
+            <input id="cust_name" class="form-control w-lg" readonly>
+        </div>
+        <div class="form-group">
+            <label>Customer Mobile</label>
+            <input id="cust_mobile" class="form-control w-md" readonly>
+        </div>
+        <div class="form-group">
+            <label>Bill No</label>
+            <input id="bill_no" class="form-control w-md" readonly>
+        </div>
 
-<h2>Sales Return Modification</h2>
+        <div class="grand-total-box">
+            <span>UPDATED RETURN TOTAL</span>
+            <div id="return_total">₹0.00</div>
+        </div>
+    </div>
 
-<label>Return ID</label>
-<input type="number" id="return_id">
-<button onclick="loadReturn()">Load Return</button>
+    <div class="items-container">
+        <table>
+            <thead>
+                <tr>
+                    <th class="col-idx">#</th>
+                    <th class="col-code">Item Code</th>
+                    <th class="col-name">Item Name</th>
+                    <th class="col-sold">Sold Qty</th>
+                    <th class="col-old">Old Return</th>
+                    <th class="col-new">New Return</th>
+                    <th class="col-price">Price+GST</th>
+                    <th class="col-amt">Amount</th>
+                </tr>
+            </thead>
+            <tbody id="items_body"></tbody>
+        </table>
+    </div>
 
-<hr>
-
-<div>
-<label>Customer</label>
-<input id="cust_name" readonly>
-
-<label>Return Date</label>
-<input type="date" id="return_date">
-</div>
-
-<table>
-<thead>
-<tr>
-<th>Item</th>
-<th>Sold Qty</th>
-<th>Price+GST</th>
-<th>Return Qty</th>
-<th>Return Amount</th>
-</tr>
-</thead>
-<tbody id="items_body"></tbody>
-</table>
-
-<div class="total">
-Total Return: ₹ <span id="total">0.00</span>
-</div>
-
-<button id="updateBtn" onclick="updateReturn()">Update Return</button>
+    <div class="footer-section">
+        <button class="btn btn-back" onclick="window.location.href='sales_return_report.html'">Back</button>
+        <button class="btn btn-update" id="btn_update_return" onclick="updateReturn()">Update Return</button>
+    </div>
 </div>
 
 <script>
-
-// ================= SUPABASE =================
 const sb = supabase.createClient(
-"https://gqxczzijntbvtlmmzppt.supabase.co",
-"sb_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs"
+    "https://gqxczzijntbvtlmmzppt.supabase.co",
+    "sb_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs"
 );
 
-let currentReturnId=null;
-let originalSaleId=null;
-let oldReturnItems=[];
+let currentReturnId = null;
+let currentSaleId = null;
+let oldReturnItems = [];
 
-// ================= LOAD RETURN =================
-async function loadReturn(){
+window.onload = async () => {
+    const params = new URLSearchParams(window.location.search);
+    const returnId = params.get("id");
 
-const returnId=document.getElementById("return_id").value;
-if(!returnId){ alert("Enter Return ID"); return; }
+    if(!returnId){
+        alert("Return id missing");
+        window.location.href = "sales_return_report.html";
+        return;
+    }
 
-currentReturnId=returnId;
+    currentReturnId = returnId;
+    await loadSavedReturn(returnId);
+};
 
-// Load return header
-const { data:head } = await sb
-.from("sales_return_details")
-.select("*")
-.eq("id",returnId)
-.single();
+async function loadSavedReturn(returnId){
+    const { data: returnHead, error: headErr } = await sb
+        .from("sales_return_details")
+        .select("*")
+        .eq("id", returnId)
+        .maybeSingle();
 
-if(!head){ alert("Return not found"); return; }
+    if(headErr || !returnHead){
+        alert("Saved return not found");
+        return;
+    }
 
-originalSaleId=head.original_sales_id;
-document.getElementById("return_date").value=
-head.return_date?.split("T")[0];
+    currentSaleId = returnHead.original_sales_id;
 
-// Load old return items
-const { data:items } = await sb
-.from("sales_return_item_details")
-.select("*")
-.eq("return_id",returnId);
+    document.getElementById("return_id").value = returnHead.id || "";
+    document.getElementById("sale_ref").value = returnHead.original_sales_id || "";
 
-oldReturnItems = items || [];
+    const { data: sale, error: saleErr } = await sb
+        .from("sales_details")
+        .select("*")
+        .eq("id", currentSaleId)
+        .maybeSingle();
 
-// Load original sale items
-const { data:saleItems } = await sb
-.from("sales_item_details")
-.select("*")
-.eq("sales_id",originalSaleId);
+    if(saleErr || !sale){
+        alert("Original sales bill not found");
+        return;
+    }
 
-const tbody=document.getElementById("items_body");
-tbody.innerHTML='';
+    document.getElementById("cust_name").value = sale.customer_name || "";
+    document.getElementById("cust_mobile").value = sale.customer_mobile || "";
+    document.getElementById("bill_no").value = `${sale.series_code || ""}-${sale.sales_number || ""}`;
 
-saleItems.forEach(si=>{
+    const { data: salesItems, error: itemsErr } = await sb
+        .from("sales_item_details")
+        .select("*")
+        .eq("sales_id", currentSaleId);
 
-const oldItem = oldReturnItems.find(
-i=>i.item_code===si.item_code
-);
+    if(itemsErr){
+        console.error(itemsErr);
+        alert("Error loading sales items");
+        return;
+    }
 
-const oldQty = oldItem ? oldItem.return_qty : 0;
+    const { data: returnItems, error: retItemsErr } = await sb
+        .from("sales_return_item_details")
+        .select("*")
+        .eq("return_id", returnId);
 
-const tr=document.createElement("tr");
-tr.setAttribute("data-item-code",si.item_code);
+    if(retItemsErr){
+        console.error(retItemsErr);
+        alert("Error loading saved return items");
+        return;
+    }
 
-tr.innerHTML=`
-<td>${si.item_name}</td>
-<td>${si.quantity}</td>
-<td>${si.sales_price_gst}</td>
-<td>
-<input type="number"
-min="0"
-max="${si.quantity}"
-value="${oldQty}"
-oninput="calcRow(this,${si.quantity},${si.sales_price_gst})">
-</td>
-<td class="amt">${(oldQty*si.sales_price_gst).toFixed(2)}</td>
-`;
+    oldReturnItems = returnItems || [];
 
-tbody.appendChild(tr);
+    const oldMap = {};
+    oldReturnItems.forEach(item => {
+        oldMap[item.item_code] = item;
+    });
 
-});
+    const tbody = document.getElementById("items_body");
+    tbody.innerHTML = "";
 
-calcTotal();
+    (salesItems || []).forEach((item, idx) => {
+        const oldRet = oldMap[item.item_code]?.return_qty || 0;
+        const priceGst = parseFloat(item.sales_price_gst || 0);
+        const amount = parseFloat(oldRet || 0) * priceGst;
+
+        const tr = document.createElement("tr");
+        tr.setAttribute("data-item-code", item.item_code || "");
+        tr.innerHTML = `
+            <td><div class="readonly-cell">${idx + 1}</div></td>
+            <td><div class="readonly-cell">${item.item_code || ""}</div></td>
+            <td><div class="readonly-cell readonly-strong">${item.item_name || ""}</div></td>
+            <td><div class="readonly-cell sold-qty">${parseFloat(item.quantity || 0).toFixed(2)}</div></td>
+            <td><div class="readonly-cell old-ret">${parseFloat(oldRet || 0).toFixed(2)}</div></td>
+            <td>
+                <input type="number"
+                       class="new-ret-qty"
+                       min="0"
+                       max="${parseFloat(item.quantity || 0)}"
+                       step="0.01"
+                       value="${parseFloat(oldRet || 0).toFixed(2)}">
+            </td>
+            <td><div class="readonly-cell price-gst">${priceGst.toFixed(2)}</div></td>
+            <td><input type="text" class="ret-amount" readonly value="${amount.toFixed(2)}"></td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    bindEvents();
+    calcTotal();
 }
 
-// ================= CALCULATE =================
-function calcRow(input,max,price){
-
-let qty=parseFloat(input.value)||0;
-if(qty>max){
-    alert("Return qty cannot exceed sold qty");
-    input.value=0;
-    qty=0;
+function bindEvents(){
+    document.querySelectorAll(".new-ret-qty").forEach(inp => {
+        inp.addEventListener("input", () => calcRow(inp));
+        inp.addEventListener("keydown", (e) => {
+            if(["e","+","-"].includes(e.key)) e.preventDefault();
+            moveFocus(e);
+        });
+        inp.addEventListener("focus", () => inp.select());
+    });
 }
 
-input.parentElement.nextElementSibling.innerText=
-(qty*price).toFixed(2);
+function moveFocus(e){
+    const inputs = Array.from(document.querySelectorAll(".new-ret-qty"));
+    const idx = inputs.indexOf(e.target);
+    if(idx === -1) return;
 
-calcTotal();
+    if(e.key === "Enter" || e.key === "ArrowDown"){
+        e.preventDefault();
+        if(inputs[idx + 1]){
+            inputs[idx + 1].focus();
+            inputs[idx + 1].select();
+        }
+    } else if(e.key === "ArrowUp"){
+        e.preventDefault();
+        if(inputs[idx - 1]){
+            inputs[idx - 1].focus();
+            inputs[idx - 1].select();
+        }
+    }
+}
+
+function calcRow(input){
+    const tr = input.closest("tr");
+    const soldQty = parseFloat(tr.querySelector(".sold-qty").innerText) || 0;
+    const priceGst = parseFloat(tr.querySelector(".price-gst").innerText) || 0;
+
+    let qty = parseFloat(input.value) || 0;
+
+    if(qty < 0){
+        qty = 0;
+        input.value = 0;
+    }
+
+    if(qty > soldQty){
+        alert("Return qty cannot exceed sold qty");
+        qty = soldQty;
+        input.value = soldQty;
+    }
+
+    tr.querySelector(".ret-amount").value = (qty * priceGst).toFixed(2);
+    calcTotal();
 }
 
 function calcTotal(){
-let total=0;
-document.querySelectorAll(".amt").forEach(td=>{
-total+=parseFloat(td.innerText)||0;
-});
-document.getElementById("total").innerText=total.toFixed(2);
+    let total = 0;
+    document.querySelectorAll(".ret-amount").forEach(inp => {
+        total += parseFloat(inp.value) || 0;
+    });
+    document.getElementById("return_total").innerText = "₹" + total.toFixed(2);
 }
-
-// ================= UPDATE RETURN =================
-let isUpdating = false;   // GLOBAL LOCK
 
 async function updateReturn(){
+    const btn = document.getElementById("btn_update_return");
+    if(btn.disabled) return;
 
-if(isUpdating) return;
-isUpdating = true;
+    btn.disabled = true;
+    btn.innerText = "UPDATING...";
 
-const btn = document.getElementById("updateBtn");
-btn.disabled = true;
-btn.innerText = "Updating...";
+    try{
+        let totalReturn = 0;
+        const rows = Array.from(document.querySelectorAll("#items_body tr"));
 
-try {
+        for(const row of rows){
+            totalReturn += parseFloat(row.querySelector(".ret-amount").value) || 0;
+        }
 
-if(!currentReturnId){
-    alert("Load return first");
-    return;
-}
+        if(totalReturn <= 0){
+            alert("Return total must be greater than zero");
+            btn.disabled = false;
+            btn.innerText = "Update Return";
+            return;
+        }
 
-const total = parseFloat(
-document.getElementById("total").innerText
-);
+        // 1. reverse previous stock
+        for(const oldItem of oldReturnItems){
+            const qty = parseFloat(oldItem.return_qty || 0);
+            if(qty > 0){
+                const { error: stockReverseErr } = await sb.rpc("decrease_stock", {
+                    p_item_code: oldItem.item_code,
+                    p_qty: qty,
+                    p_reference_id: currentReturnId
+                });
 
-if(total <= 0){
-    alert("Return qty required");
-    return;
-}
+                if(stockReverseErr) throw stockReverseErr;
+            }
+        }
 
-const rows = document.querySelectorAll("#items_body tr");
+        // 2. delete old return item rows
+        const { error: deleteErr } = await sb
+            .from("sales_return_item_details")
+            .delete()
+            .eq("return_id", currentReturnId);
 
-for(const row of rows){
+        if(deleteErr) throw deleteErr;
 
-const code = row.getAttribute("data-item-code");
-const name = row.cells[0].innerText;
-const sold = parseFloat(row.cells[1].innerText);
-const price = parseFloat(row.cells[2].innerText);
+        // 3. update header
+        const { error: headUpdateErr } = await sb
+            .from("sales_return_details")
+            .update({
+                total_return_amount: totalReturn,
+                return_date: new Date().toISOString()
+            })
+            .eq("id", currentReturnId);
 
-const newQty = parseFloat(
-row.querySelector("input").value
-) || 0;
+        if(headUpdateErr) throw headUpdateErr;
 
-const oldItem = oldReturnItems.find(
-i => i.item_code === code
-);
+        // 4. insert new rows and add stock again
+        for(const row of rows){
+            const itemCode = row.getAttribute("data-item-code") || "";
+            const itemName = row.children[2].innerText.trim();
+            const soldQty = parseFloat(row.querySelector(".sold-qty").innerText) || 0;
+            const returnQty = parseFloat(row.querySelector(".new-ret-qty").value) || 0;
+            const priceGst = parseFloat(row.querySelector(".price-gst").innerText) || 0;
 
-const oldQty = oldItem
-? parseFloat(oldItem.return_qty)
-: 0;
+            if(returnQty > 0){
+                const { error: insertErr } = await sb
+                    .from("sales_return_item_details")
+                    .insert([{
+                        return_id: currentReturnId,
+                        item_code: itemCode,
+                        item_name: itemName,
+                        sold_qty: soldQty,
+                        return_qty: returnQty,
+                        price_gst: priceGst
+                    }]);
 
-/* ======================================
-   STEP 1 → REVERSE OLD RETURN (FULL)
-====================================== */
-if(oldQty > 0){
+                if(insertErr) throw insertErr;
 
-const { error } = await sb.rpc("deduct_stock",{
-    p_item_code: code,
-    p_qty: oldQty,
-    p_reference_id: currentReturnId,
-    p_txn_type: "SALES_RETURN_DELETE_REVERSAL"
-});
+                const { error: stockAddErr } = await sb.rpc("increase_stock", {
+                    p_item_code: itemCode,
+                    p_qty: returnQty,
+                    p_reference_id: currentReturnId
+                });
 
-if(error) throw error;
-}
+                if(stockAddErr) throw stockAddErr;
+            }
+        }
 
-/* ======================================
-   STEP 2 → APPLY NEW RETURN (FULL)
-====================================== */
-if(newQty > 0){
+        alert("Sales return updated successfully");
+        window.location.href = "sales_return_report.html";
 
-const { error } = await sb.rpc("increase_stock",{
-    p_item_code: code,
-    p_qty: newQty,
-    p_reference_id: currentReturnId,
-    p_txn_type: "SALES RETURN"
-});
-
-if(error) throw error;
-}
-
-/* ======================================
-   STEP 3 → UPDATE RETURN ITEM TABLE
-====================================== */
-
-if(newQty === 0){
-
-const { error } = await sb
-.from("sales_return_item_details")
-.delete()
-.eq("return_id", currentReturnId)
-.eq("item_code", code);
-
-if(error) throw error;
-
-}else{
-
-const { error } = await sb
-.from("sales_return_item_details")
-.upsert([{
-    return_id: currentReturnId,
-    item_code: code,
-    item_name: name,
-    sold_qty: sold,
-    return_qty: newQty,
-    price_gst: price
-}], { onConflict: ['return_id','item_code'] });
-
-if(error) throw error;
-
-}
-
-}
-
-/* ======================================
-   STEP 4 → UPDATE HEADER
-====================================== */
-
-const { error: headError } = await sb
-.from("sales_return_details")
-.update({
-    total_return_amount: total,
-    return_date: document.getElementById("return_date").value
-})
-.eq("id", currentReturnId);
-
-if(headError) throw headError;
-
-alert("Return Updated Successfully!");
-location.reload();
-
-}
-catch(error){
-console.error("Update Error:", error);
-alert("Error updating return!");
-}
-finally{
-isUpdating = false;
-btn.disabled = false;
-btn.innerText = "Update Return";
-}
+    } catch(err){
+        console.error(err);
+        alert("Update failed: " + (err.message || err));
+        btn.disabled = false;
+        btn.innerText = "Update Return";
+    }
 }
 </script>
+
 </body>
 </html>

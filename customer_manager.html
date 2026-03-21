@@ -14,8 +14,8 @@
       --success-dark:#047857;
       --danger:#dc2626;
       --danger-dark:#b91c1c;
-      --bg:#f1f5f9;
-      --card:#ffffff;
+      --warning:#d97706;
+      --warning-dark:#b45309;
       --text:#0f172a;
       --muted:#64748b;
       --border:#cbd5e1;
@@ -23,9 +23,7 @@
       --radius:16px;
     }
 
-    *{
-      box-sizing:border-box;
-    }
+    *{ box-sizing:border-box; }
 
     body{
       margin:0;
@@ -38,7 +36,7 @@
     }
 
     .page{
-      max-width:1400px;
+      max-width:1500px;
       margin:0 auto;
       padding:16px;
     }
@@ -101,51 +99,29 @@
       cursor:pointer;
       transition:0.2s ease;
       min-height:44px;
+      font-size:14px;
     }
 
-    .btn:hover{
-      transform:translateY(-1px);
-    }
+    .btn:hover{ transform:translateY(-1px); }
+    .btn:active{ transform:scale(0.98); }
 
-    .btn:active{
-      transform:scale(0.98);
-    }
+    .btn-primary{ background:var(--primary); color:white; }
+    .btn-primary:hover{ background:var(--primary-dark); }
 
-    .btn-primary{
-      background:var(--primary);
-      color:white;
-    }
+    .btn-success{ background:var(--success); color:white; }
+    .btn-success:hover{ background:var(--success-dark); }
 
-    .btn-primary:hover{
-      background:var(--primary-dark);
-    }
+    .btn-danger{ background:var(--danger); color:white; }
+    .btn-danger:hover{ background:var(--danger-dark); }
 
-    .btn-success{
-      background:var(--success);
-      color:white;
-    }
+    .btn-warning{ background:var(--warning); color:white; }
+    .btn-warning:hover{ background:var(--warning-dark); }
 
-    .btn-success:hover{
-      background:var(--success-dark);
-    }
-
-    .btn-danger{
-      background:var(--danger);
-      color:white;
-    }
-
-    .btn-danger:hover{
-      background:var(--danger-dark);
-    }
-
-    .btn-light{
-      background:#e2e8f0;
-      color:#0f172a;
-    }
+    .btn-light{ background:#e2e8f0; color:#0f172a; }
 
     .stats{
       display:grid;
-      grid-template-columns:repeat(3, 1fr);
+      grid-template-columns:repeat(4, 1fr);
       gap:14px;
       margin-top:16px;
     }
@@ -175,10 +151,15 @@
 
     .layout{
       display:grid;
-      grid-template-columns:400px 1fr;
+      grid-template-columns:430px 1fr;
       gap:16px;
       margin-top:16px;
       align-items:start;
+    }
+
+    .left-stack{
+      display:grid;
+      gap:16px;
     }
 
     .panel{
@@ -210,9 +191,7 @@
       font-size:13px;
     }
 
-    .panel-body{
-      padding:18px;
-    }
+    .panel-body{ padding:18px; }
 
     .mode-badge{
       font-size:12px;
@@ -230,6 +209,7 @@
       border-radius:12px;
       font-size:14px;
       font-weight:700;
+      white-space:pre-line;
     }
 
     .status.success{
@@ -246,6 +226,13 @@
       border:1px solid #fecaca;
     }
 
+    .status.info{
+      display:block;
+      background:#dbeafe;
+      color:#1e40af;
+      border:1px solid #bfdbfe;
+    }
+
     .form-grid{
       display:grid;
       grid-template-columns:1fr 1fr;
@@ -256,11 +243,10 @@
       display:flex;
       flex-direction:column;
       gap:6px;
+      position:relative;
     }
 
-    .field.full{
-      grid-column:1 / -1;
-    }
+    .field.full{ grid-column:1 / -1; }
 
     .field label{
       font-size:13px;
@@ -268,7 +254,8 @@
       color:#334155;
     }
 
-    .field input{
+    .field input,
+    .field textarea{
       width:100%;
       min-height:46px;
       padding:12px 14px;
@@ -278,9 +265,17 @@
       outline:none;
       transition:0.18s ease;
       background:#fff;
+      text-transform:uppercase;
     }
 
-    .field input:focus{
+    .field textarea{
+      min-height:120px;
+      resize:vertical;
+      font-family:inherit;
+    }
+
+    .field input:focus,
+    .field textarea:focus{
       border-color:var(--primary);
       box-shadow:0 0 0 3px rgba(37,99,235,0.14);
     }
@@ -288,6 +283,7 @@
     .helper{
       font-size:12px;
       color:var(--muted);
+      line-height:1.5;
     }
 
     .form-actions{
@@ -299,7 +295,7 @@
 
     .toolbar{
       display:grid;
-      grid-template-columns:1.5fr 1fr 1fr;
+      grid-template-columns:1.4fr 1fr 1fr 1fr;
       gap:12px;
       margin-bottom:14px;
     }
@@ -313,6 +309,7 @@
       font-size:14px;
       outline:none;
       background:white;
+      text-transform:uppercase;
     }
 
     .toolbar input:focus{
@@ -330,7 +327,7 @@
     table{
       width:100%;
       border-collapse:collapse;
-      min-width:900px;
+      min-width:980px;
     }
 
     th, td{
@@ -352,9 +349,7 @@
       z-index:1;
     }
 
-    tbody tr:hover{
-      background:#f8fafc;
-    }
+    tbody tr:hover{ background:#f8fafc; }
 
     .table-actions{
       display:flex;
@@ -389,67 +384,130 @@
       font-weight:600;
     }
 
-    @media (max-width:1100px){
-      .layout{
-        grid-template-columns:1fr;
-      }
+    .upload-box{
+      border:2px dashed #bfdbfe;
+      background:#f8fbff;
+      border-radius:16px;
+      padding:14px;
+    }
+
+    .upload-grid{
+      display:grid;
+      gap:12px;
+    }
+
+    .sample-box{
+      background:#0f172a;
+      color:#e2e8f0;
+      border-radius:14px;
+      padding:12px;
+      font-size:12px;
+      line-height:1.6;
+      overflow:auto;
+      white-space:pre;
+    }
+
+    .file-row{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+
+    .file-row input[type="file"]{
+      width:100%;
+      min-height:46px;
+      padding:10px;
+      border:1px solid var(--border);
+      border-radius:12px;
+      background:#fff;
+      text-transform:none;
+    }
+
+    .note-list{
+      margin:0;
+      padding-left:18px;
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.6;
+    }
+
+    .suggestions{
+      position:absolute;
+      top:100%;
+      left:0;
+      right:0;
+      margin-top:6px;
+      background:#fff;
+      border:1px solid #cbd5e1;
+      border-radius:14px;
+      box-shadow:0 12px 24px rgba(0,0,0,0.12);
+      overflow:hidden;
+      z-index:50;
+      display:none;
+      max-height:240px;
+      overflow-y:auto;
+    }
+
+    .suggestion-item{
+      padding:10px 12px;
+      cursor:pointer;
+      border-bottom:1px solid #e2e8f0;
+      font-size:13px;
+      line-height:1.4;
+      text-transform:none;
+    }
+
+    .suggestion-item:last-child{
+      border-bottom:none;
+    }
+
+    .suggestion-item:hover,
+    .suggestion-item.active{
+      background:#eff6ff;
+    }
+
+    .suggestion-main{
+      font-weight:700;
+      color:#0f172a;
+      text-transform:uppercase;
+    }
+
+    .suggestion-sub{
+      color:#64748b;
+      margin-top:2px;
+      font-size:12px;
+      text-transform:uppercase;
+    }
+
+    @media (max-width:1200px){
+      .layout{ grid-template-columns:1fr; }
+    }
+
+    @media (max-width:900px){
+      .stats{ grid-template-columns:1fr 1fr; }
+      .toolbar{ grid-template-columns:1fr 1fr; }
     }
 
     @media (max-width:768px){
-      .page{
-        padding:12px;
-      }
-
-      .topbar{
-        padding:16px;
-      }
-
-      .title-block h1{
-        font-size:20px;
-      }
-
-      .stats{
-        grid-template-columns:1fr;
-      }
-
-      .form-grid{
-        grid-template-columns:1fr;
-      }
-
-      .toolbar{
-        grid-template-columns:1fr;
-      }
-
-      .topbar-actions{
-        width:100%;
-      }
-
-      .topbar-actions .btn{
-        flex:1;
-      }
-
-      table{
-        min-width:760px;
-      }
-
-      .stat-value{
-        font-size:24px;
-      }
+      .page{ padding:12px; }
+      .topbar{ padding:16px; }
+      .title-block h1{ font-size:20px; }
+      .stats{ grid-template-columns:1fr; }
+      .form-grid{ grid-template-columns:1fr; }
+      .toolbar{ grid-template-columns:1fr; }
+      .topbar-actions{ width:100%; }
+      .topbar-actions .btn{ flex:1; }
+      table{ min-width:820px; }
+      .stat-value{ font-size:24px; }
     }
 
     @media (max-width:480px){
       .panel-header,
-      .panel-body{
-        padding:14px;
-      }
-
-      .btn{
-        width:100%;
-      }
-
-      .form-actions .btn{
-        width:100%;
-      }
+      .panel-body{ padding:14px; }
+      .btn{ width:100%; }
+      .form-actions .btn{ width:100%; }
+      .file-row{ flex-direction:column; align-items:stretch; }
     }
   </style>
 </head>
@@ -460,7 +518,7 @@
         <div class="logo">👥</div>
         <div class="title-block">
           <h1>Customer Manager</h1>
-          <p>Create, edit, search and manage customers in one page</p>
+          <p>Create, edit, search, address suggestion, duplicate-mobile support, and bulk upload</p>
         </div>
       </div>
 
@@ -485,73 +543,130 @@
         <div class="stat-title">Current Mode</div>
         <div class="stat-value" style="font-size:20px" id="currentModeText">Create</div>
       </div>
+
+      <div class="stat-card">
+        <div class="stat-title">Bulk Upload Preview</div>
+        <div class="stat-value" style="font-size:20px" id="bulkPreviewCount">0 Rows</div>
+      </div>
     </div>
 
     <div class="layout">
-      <!-- FORM -->
-      <section class="panel">
-        <div class="panel-header">
-          <div>
-            <h2 id="formTitle">Create Customer</h2>
-            <p id="formSubtitle">Add a new customer record</p>
+      <div class="left-stack">
+        <section class="panel">
+          <div class="panel-header">
+            <div>
+              <h2 id="formTitle">Create Customer</h2>
+              <p id="formSubtitle">Add a new customer record</p>
+            </div>
+            <div class="mode-badge" id="modeBadge">CREATE MODE</div>
           </div>
-          <div class="mode-badge" id="modeBadge">CREATE MODE</div>
-        </div>
 
-        <div class="panel-body">
-          <div id="statusBox" class="status"></div>
+          <div class="panel-body">
+            <div id="statusBox" class="status"></div>
 
-          <form id="customerForm">
-            <div class="form-grid">
-              <div class="field full">
-                <label for="customerName">Customer Name</label>
-                <input type="text" id="customerName" required placeholder="Enter customer name">
+            <form id="customerForm" novalidate>
+              <div class="form-grid">
+                <div class="field full">
+                  <label for="customerName">Customer Name</label>
+                  <input type="text" id="customerName" required placeholder="ENTER CUSTOMER NAME">
+                </div>
+
+                <div class="field">
+                  <label for="customerMobile">Mobile Number</label>
+                  <input type="tel" id="customerMobile" required placeholder="ENTER MOBILE NUMBER">
+                </div>
+
+                <div class="field">
+                  <label for="customerStateCode">State Code</label>
+                  <input type="text" id="customerStateCode" required placeholder="EXAMPLE: 32">
+                </div>
+
+                <div class="field full">
+                  <label for="customerAddress">Address</label>
+                  <input type="text" id="customerAddress" required placeholder="START TYPING PLACE / ADDRESS">
+                  <div id="addressSuggestions" class="suggestions"></div>
+                  <div class="helper">Suggestions come from OpenStreetMap. If nothing is found, continue typing manually.</div>
+                </div>
+
+                <div class="field full">
+                  <label for="customerGST">GST Number</label>
+                  <input type="text" id="customerGST" placeholder="ENTER GST NUMBER">
+                  <div class="helper">All typing is converted to uppercase automatically.</div>
+                </div>
               </div>
 
-              <div class="field">
-                <label for="customerMobile">Mobile Number</label>
-                <input type="tel" id="customerMobile" required placeholder="Enter mobile number">
+              <div class="form-actions">
+                <button type="submit" class="btn btn-success" id="saveBtn">Save Customer</button>
+                <button type="button" class="btn btn-light" id="resetBtn">Reset</button>
               </div>
+            </form>
+          </div>
+        </section>
 
-              <div class="field">
-                <label for="customerStateCode">State Code</label>
-                <input type="text" id="customerStateCode" required placeholder="Example: 32">
-              </div>
+        <section class="panel">
+          <div class="panel-header">
+            <div>
+              <h2>Bulk Upload</h2>
+              <p>Upload customers from old software using CSV</p>
+            </div>
+            <div class="mode-badge" style="background:#fef3c7;color:#92400e;">CSV IMPORT</div>
+          </div>
 
-              <div class="field full">
-                <label for="customerAddress">Address</label>
-                <input type="text" id="customerAddress" required placeholder="Enter address">
-              </div>
+          <div class="panel-body">
+            <div class="upload-box">
+              <div class="upload-grid">
+                <div class="field">
+                  <label for="csvFile">Choose CSV File</label>
+                  <div class="file-row">
+                    <input type="file" id="csvFile" accept=".csv,text/csv">
+                    <button type="button" class="btn btn-warning" id="parseCsvBtn">Preview CSV</button>
+                  </div>
+                </div>
 
-              <div class="field full">
-                <label for="customerGST">GST Number</label>
-                <input type="text" id="customerGST" placeholder="Enter GST number">
-                <div class="helper">Leave blank if customer does not have GST number.</div>
+                <div class="field">
+                  <label for="csvText">Or Paste CSV Data</label>
+                  <textarea id="csvText" placeholder="NAME,MOBILE,ADDRESS,GST_NUMBER,STATE_CODE&#10;ARUN,9999999999,TRIVANDRUM,,32"></textarea>
+                </div>
+
+                <div class="field">
+                  <label>Sample CSV Format</label>
+                  <div class="sample-box">NAME,MOBILE,ADDRESS,GST_NUMBER,STATE_CODE
+ARUN,9999999999,TRIVANDRUM,,32
+RAJESH,9999999999,KATTAKADA,32ABCDE1234F1Z5,32
+MEERA,8888888888,NEDUMANGAD,,32</div>
+                </div>
+
+                <ul class="note-list">
+                  <li>Duplicate mobile numbers are allowed by this page.</li>
+                  <li>CSV header can be: NAME, MOBILE, ADDRESS, GST_NUMBER, STATE_CODE</li>
+                  <li>All uploaded values are automatically converted to uppercase.</li>
+                  <li>If database still blocks duplicate mobile, run the SQL shown above once.</li>
+                </ul>
+
+                <div class="form-actions">
+                  <button type="button" class="btn btn-primary" id="uploadCsvBtn">Upload Previewed Rows</button>
+                  <button type="button" class="btn btn-light" id="clearCsvBtn">Clear CSV</button>
+                </div>
               </div>
             </div>
+          </div>
+        </section>
+      </div>
 
-            <div class="form-actions">
-              <button type="submit" class="btn btn-success" id="saveBtn">Save Customer</button>
-              <button type="button" class="btn btn-light" id="resetBtn">Reset</button>
-            </div>
-          </form>
-        </div>
-      </section>
-
-      <!-- LIST -->
       <section class="panel">
         <div class="panel-header">
           <div>
             <h2>Customer List</h2>
-            <p>Search by name, mobile, GST, or state code</p>
+            <p>Search by name, mobile, GST, state code, or address</p>
           </div>
         </div>
 
         <div class="panel-body">
           <div class="toolbar">
-            <input type="text" id="searchInput" placeholder="Search by name or mobile...">
-            <input type="text" id="gstSearchInput" placeholder="Search GST number...">
-            <input type="text" id="stateSearchInput" placeholder="Search state code...">
+            <input type="text" id="searchInput" placeholder="SEARCH BY NAME OR MOBILE...">
+            <input type="text" id="gstSearchInput" placeholder="SEARCH GST NUMBER...">
+            <input type="text" id="stateSearchInput" placeholder="SEARCH STATE CODE...">
+            <input type="text" id="addressSearchInput" placeholder="SEARCH ADDRESS...">
           </div>
 
           <div class="table-wrap">
@@ -581,13 +696,15 @@
 
   <script>
     const { createClient } = supabase;
-
     const supabaseUrl = "https://gqxczzijntbvtlmmzppt.supabase.co";
     const supabaseKey = "sb_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs";
     const supabaseClient = createClient(supabaseUrl, supabaseKey);
 
     let customers = [];
     let editingCustomerId = null;
+    let bulkPreviewRows = [];
+    let addressDebounceTimer = null;
+    let suggestionIndex = -1;
 
     const form = document.getElementById("customerForm");
     const formTitle = document.getElementById("formTitle");
@@ -605,16 +722,26 @@
     const customerAddress = document.getElementById("customerAddress");
     const customerGST = document.getElementById("customerGST");
     const customerStateCode = document.getElementById("customerStateCode");
+    const addressSuggestions = document.getElementById("addressSuggestions");
 
     const searchInput = document.getElementById("searchInput");
     const gstSearchInput = document.getElementById("gstSearchInput");
     const stateSearchInput = document.getElementById("stateSearchInput");
+    const addressSearchInput = document.getElementById("addressSearchInput");
     const customerTableBody = document.getElementById("customerTableBody");
     const totalCustomers = document.getElementById("totalCustomers");
     const filteredCustomers = document.getElementById("filteredCustomers");
 
+    const csvFile = document.getElementById("csvFile");
+    const csvText = document.getElementById("csvText");
+    const parseCsvBtn = document.getElementById("parseCsvBtn");
+    const uploadCsvBtn = document.getElementById("uploadCsvBtn");
+    const clearCsvBtn = document.getElementById("clearCsvBtn");
+    const bulkPreviewCount = document.getElementById("bulkPreviewCount");
+
     document.addEventListener("DOMContentLoaded", async () => {
       bindEvents();
+      enableUppercaseEverywhere();
       await loadCustomers();
 
       const params = new URLSearchParams(window.location.search);
@@ -624,6 +751,8 @@
       } else {
         resetForm();
       }
+
+      customerName.focus();
     });
 
     function bindEvents() {
@@ -646,6 +775,35 @@
       searchInput.addEventListener("input", renderCustomers);
       gstSearchInput.addEventListener("input", renderCustomers);
       stateSearchInput.addEventListener("input", renderCustomers);
+      addressSearchInput.addEventListener("input", renderCustomers);
+
+      parseCsvBtn.addEventListener("click", handleCsvPreview);
+      uploadCsvBtn.addEventListener("click", uploadCsvRows);
+      clearCsvBtn.addEventListener("click", clearCsvData);
+      csvFile.addEventListener("change", handleFileRead);
+
+      customerAddress.addEventListener("input", handleAddressInput);
+      customerAddress.addEventListener("keydown", handleAddressKeydown);
+      document.addEventListener("click", (e) => {
+        if (!addressSuggestions.contains(e.target) && e.target !== customerAddress) {
+          hideAddressSuggestions();
+        }
+      });
+    }
+
+    function enableUppercaseEverywhere() {
+      const upperInputs = document.querySelectorAll('input[type="text"], input[type="tel"], textarea');
+      upperInputs.forEach(el => {
+        el.setAttribute("autocapitalize", "characters");
+        el.addEventListener("input", () => {
+          const start = el.selectionStart;
+          const end = el.selectionEnd;
+          el.value = el.value.toUpperCase();
+          if (typeof start === "number" && typeof end === "number") {
+            try { el.setSelectionRange(start, end); } catch (_) {}
+          }
+        });
+      });
     }
 
     function showStatus(message, type = "success") {
@@ -660,11 +818,8 @@
 
     function setMode(mode) {
       const isEdit = mode === "edit";
-
       formTitle.textContent = isEdit ? "Edit Customer" : "Create Customer";
-      formSubtitle.textContent = isEdit
-        ? "Update selected customer record"
-        : "Add a new customer record";
+      formSubtitle.textContent = isEdit ? "Update selected customer record" : "Add a new customer record";
       saveBtn.textContent = isEdit ? "Update Customer" : "Save Customer";
       currentModeText.textContent = isEdit ? "Edit" : "Create";
       modeBadge.textContent = isEdit ? "EDIT MODE" : "CREATE MODE";
@@ -677,10 +832,17 @@
       form.reset();
       hideStatus();
       setMode("create");
+      hideAddressSuggestions();
 
       const url = new URL(window.location.href);
       url.searchParams.delete("id");
       window.history.replaceState({}, "", url);
+
+      customerName.focus();
+    }
+
+    function normalizeValue(value) {
+      return String(value || "").trim().toUpperCase();
     }
 
     async function loadCustomerForEdit(customerId) {
@@ -696,11 +858,11 @@
       }
 
       editingCustomerId = data.customer_id;
-      customerName.value = data.name || "";
-      customerMobile.value = data.mobile || "";
-      customerAddress.value = data.address || "";
-      customerGST.value = data.gst_number || "";
-      customerStateCode.value = data.state_code || "";
+      customerName.value = normalizeValue(data.name);
+      customerMobile.value = normalizeValue(data.mobile);
+      customerAddress.value = normalizeValue(data.address);
+      customerGST.value = normalizeValue(data.gst_number);
+      customerStateCode.value = normalizeValue(data.state_code);
 
       setMode("edit");
       showStatus(`Editing customer: ${data.name}`, "success");
@@ -709,9 +871,7 @@
 
     async function loadCustomers() {
       customerTableBody.innerHTML = `
-        <tr>
-          <td colspan="7" class="empty">Loading customers...</td>
-        </tr>
+        <tr><td colspan="7" class="empty">Loading customers...</td></tr>
       `;
 
       const { data, error } = await supabaseClient
@@ -722,9 +882,7 @@
       if (error) {
         showStatus("Error loading customers: " + error.message, "error");
         customerTableBody.innerHTML = `
-          <tr>
-            <td colspan="7" class="empty">Error loading customers</td>
-          </tr>
+          <tr><td colspan="7" class="empty">Error loading customers</td></tr>
         `;
         return;
       }
@@ -735,33 +893,27 @@
     }
 
     function renderCustomers() {
-      const term = (searchInput.value || "").trim().toLowerCase();
-      const gstTerm = (gstSearchInput.value || "").trim().toLowerCase();
-      const stateTerm = (stateSearchInput.value || "").trim().toLowerCase();
+      const term = normalizeValue(searchInput.value);
+      const gstTerm = normalizeValue(gstSearchInput.value);
+      const stateTerm = normalizeValue(stateSearchInput.value);
+      const addressTerm = normalizeValue(addressSearchInput.value);
 
       const filtered = customers.filter(c =>
         (
           !term ||
-          String(c.name || "").toLowerCase().includes(term) ||
-          String(c.mobile || "").toLowerCase().includes(term)
+          normalizeValue(c.name).includes(term) ||
+          normalizeValue(c.mobile).includes(term)
         ) &&
-        (
-          !gstTerm ||
-          String(c.gst_number || "").toLowerCase().includes(gstTerm)
-        ) &&
-        (
-          !stateTerm ||
-          String(c.state_code || "").toLowerCase().includes(stateTerm)
-        )
+        (!gstTerm || normalizeValue(c.gst_number).includes(gstTerm)) &&
+        (!stateTerm || normalizeValue(c.state_code).includes(stateTerm)) &&
+        (!addressTerm || normalizeValue(c.address).includes(addressTerm))
       );
 
       filteredCustomers.textContent = filtered.length;
 
       if (!filtered.length) {
         customerTableBody.innerHTML = `
-          <tr>
-            <td colspan="7" class="empty">No customers found</td>
-          </tr>
+          <tr><td colspan="7" class="empty">No customers found</td></tr>
         `;
         return;
       }
@@ -769,15 +921,15 @@
       customerTableBody.innerHTML = filtered.map(cust => `
         <tr>
           <td>${cust.customer_id ?? ""}</td>
-          <td>${escapeHtml(cust.name || "")}</td>
-          <td>${escapeHtml(cust.mobile || "")}</td>
-          <td>${escapeHtml(cust.address || "")}</td>
-          <td>${escapeHtml(cust.gst_number || "")}</td>
-          <td>${escapeHtml(cust.state_code || "")}</td>
+          <td>${escapeHtml(normalizeValue(cust.name))}</td>
+          <td>${escapeHtml(normalizeValue(cust.mobile))}</td>
+          <td>${escapeHtml(normalizeValue(cust.address))}</td>
+          <td>${escapeHtml(normalizeValue(cust.gst_number))}</td>
+          <td>${escapeHtml(normalizeValue(cust.state_code))}</td>
           <td>
             <div class="table-actions">
               <button class="mini-btn mini-edit" onclick="editCustomer(${cust.customer_id})">Edit</button>
-              <button class="mini-btn mini-delete" onclick="deleteCustomer(${cust.customer_id}, '${escapeJs(cust.name || "")}')">Delete</button>
+              <button class="mini-btn mini-delete" onclick="deleteCustomer(${cust.customer_id}, '${escapeJs(normalizeValue(cust.name))}')">Delete</button>
             </div>
           </td>
         </tr>
@@ -788,11 +940,11 @@
       e.preventDefault();
       hideStatus();
 
-      const name = customerName.value.trim();
-      const mobile = customerMobile.value.trim();
-      const address = customerAddress.value.trim();
-      const gst = customerGST.value.trim();
-      const stateCode = customerStateCode.value.trim();
+      const name = normalizeValue(customerName.value);
+      const mobile = normalizeValue(customerMobile.value);
+      const address = normalizeValue(customerAddress.value);
+      const gst = normalizeValue(customerGST.value);
+      const stateCode = normalizeValue(customerStateCode.value);
 
       if (!name || !mobile || !address || !stateCode) {
         showStatus("Please fill all required fields.", "error");
@@ -807,37 +959,41 @@
           const { error } = await supabaseClient
             .from("customers")
             .update({
-              name,
-              mobile,
-              address,
+              name, mobile, address,
               gst_number: gst,
               state_code: stateCode
             })
             .eq("customer_id", editingCustomerId);
 
           if (error) throw error;
-
           showStatus("Customer updated successfully.", "success");
         } else {
           const { error } = await supabaseClient
             .from("customers")
             .insert([{
-              name,
-              mobile,
-              address,
+              name, mobile, address,
               gst_number: gst,
               state_code: stateCode
             }]);
 
           if (error) throw error;
-
           showStatus("Customer saved successfully.", "success");
         }
 
         await loadCustomers();
         resetForm();
       } catch (error) {
-        showStatus(error.message || "Something went wrong.", "error");
+        if (String(error.message || "").toLowerCase().includes("unique_mobile") ||
+            String(error.message || "").toLowerCase().includes("duplicate key")) {
+          showStatus(
+            "DATABASE STILL HAS UNIQUE MOBILE RESTRICTION.\n\nRUN THIS IN SUPABASE SQL EDITOR:\n" +
+            "alter table customers drop constraint if exists unique_mobile;\n" +
+            "alter table customers drop constraint if exists customers_mobile_key;",
+            "error"
+          );
+        } else {
+          showStatus(error.message || "Something went wrong.", "error");
+        }
       } finally {
         saveBtn.disabled = false;
         saveBtn.textContent = editingCustomerId ? "Update Customer" : "Save Customer";
@@ -852,14 +1008,14 @@
       }
 
       editingCustomerId = customer.customer_id;
-      customerName.value = customer.name || "";
-      customerMobile.value = customer.mobile || "";
-      customerAddress.value = customer.address || "";
-      customerGST.value = customer.gst_number || "";
-      customerStateCode.value = customer.state_code || "";
+      customerName.value = normalizeValue(customer.name);
+      customerMobile.value = normalizeValue(customer.mobile);
+      customerAddress.value = normalizeValue(customer.address);
+      customerGST.value = normalizeValue(customer.gst_number);
+      customerStateCode.value = normalizeValue(customer.state_code);
 
       setMode("edit");
-      showStatus(`Editing customer: ${customer.name}`, "success");
+      showStatus(`Editing customer: ${normalizeValue(customer.name)}`, "success");
 
       const url = new URL(window.location.href);
       url.searchParams.set("id", customer.customer_id);
@@ -884,11 +1040,246 @@
 
       showStatus("Customer deleted successfully.", "success");
 
-      if (Number(editingCustomerId) === Number(customerId)) {
-        resetForm();
+      if (Number(editingCustomerId) === Number(customerId)) resetForm();
+      await loadCustomers();
+    }
+
+    async function handleFileRead() {
+      const file = csvFile.files && csvFile.files[0];
+      if (!file) return;
+
+      const text = await file.text();
+      csvText.value = text.toUpperCase();
+      showStatus("CSV file loaded. Click PREVIEW CSV.", "info");
+    }
+
+    function parseCsvLine(line) {
+      const result = [];
+      let current = "";
+      let inQuotes = false;
+
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        const nextChar = line[i + 1];
+
+        if (char === '"' && inQuotes && nextChar === '"') {
+          current += '"';
+          i++;
+        } else if (char === '"') {
+          inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+          result.push(current.trim());
+          current = "";
+        } else {
+          current += char;
+        }
       }
 
-      await loadCustomers();
+      result.push(current.trim());
+      return result;
+    }
+
+    function handleCsvPreview() {
+      hideStatus();
+      bulkPreviewRows = [];
+
+      const raw = normalizeCsvText(csvText.value);
+      if (!raw) {
+        showStatus("Please choose a CSV file or paste CSV data first.", "error");
+        return;
+      }
+
+      const lines = raw.split(/\r?\n/).map(x => x.trim()).filter(Boolean);
+      if (lines.length < 2) {
+        showStatus("CSV must contain header and at least one data row.", "error");
+        return;
+      }
+
+      const headers = parseCsvLine(lines[0]).map(h => normalizeValue(h));
+      const indexMap = {
+        name: headers.indexOf("NAME"),
+        mobile: headers.indexOf("MOBILE"),
+        address: headers.indexOf("ADDRESS"),
+        gst_number: headers.indexOf("GST_NUMBER"),
+        state_code: headers.indexOf("STATE_CODE")
+      };
+
+      if (indexMap.name === -1 || indexMap.mobile === -1 || indexMap.address === -1 || indexMap.state_code === -1) {
+        showStatus("CSV header must include: NAME, MOBILE, ADDRESS, STATE_CODE. GST_NUMBER is optional.", "error");
+        return;
+      }
+
+      for (let i = 1; i < lines.length; i++) {
+        const cols = parseCsvLine(lines[i]);
+        const row = {
+          name: normalizeValue(cols[indexMap.name]),
+          mobile: normalizeValue(cols[indexMap.mobile]),
+          address: normalizeValue(cols[indexMap.address]),
+          gst_number: indexMap.gst_number >= 0 ? normalizeValue(cols[indexMap.gst_number]) : "",
+          state_code: normalizeValue(cols[indexMap.state_code])
+        };
+
+        if (!row.name && !row.mobile && !row.address && !row.state_code) continue;
+        bulkPreviewRows.push(row);
+      }
+
+      bulkPreviewCount.textContent = `${bulkPreviewRows.length} Rows`;
+      showStatus(`Preview ready: ${bulkPreviewRows.length} rows prepared for upload.`, "info");
+    }
+
+    function normalizeCsvText(text) {
+      return String(text || "").trim().toUpperCase();
+    }
+
+    async function uploadCsvRows() {
+      if (!bulkPreviewRows.length) {
+        showStatus("No preview rows available. Click PREVIEW CSV first.", "error");
+        return;
+      }
+
+      uploadCsvBtn.disabled = true;
+      uploadCsvBtn.textContent = "Uploading...";
+
+      try {
+        const validRows = bulkPreviewRows.filter(row =>
+          row.name && row.mobile && row.address && row.state_code
+        );
+
+        if (!validRows.length) {
+          showStatus("No valid rows found to upload.", "error");
+          return;
+        }
+
+        const { error } = await supabaseClient
+          .from("customers")
+          .insert(validRows);
+
+        if (error) throw error;
+
+        showStatus(`Bulk upload successful. ${validRows.length} customers uploaded.`, "success");
+        clearCsvData();
+        await loadCustomers();
+      } catch (error) {
+        if (String(error.message || "").toLowerCase().includes("unique_mobile") ||
+            String(error.message || "").toLowerCase().includes("duplicate key")) {
+          showStatus(
+            "BULK UPLOAD FAILED BECAUSE DATABASE STILL HAS UNIQUE MOBILE RESTRICTION.\n\nRUN THIS IN SUPABASE SQL EDITOR:\n" +
+            "alter table customers drop constraint if exists unique_mobile;\n" +
+            "alter table customers drop constraint if exists customers_mobile_key;",
+            "error"
+          );
+        } else {
+          showStatus("Bulk upload failed.\n" + (error.message || "Unknown error"), "error");
+        }
+      } finally {
+        uploadCsvBtn.disabled = false;
+        uploadCsvBtn.textContent = "Upload Previewed Rows";
+      }
+    }
+
+    function clearCsvData() {
+      csvFile.value = "";
+      csvText.value = "";
+      bulkPreviewRows = [];
+      bulkPreviewCount.textContent = "0 Rows";
+    }
+
+    async function handleAddressInput() {
+      suggestionIndex = -1;
+      const query = customerAddress.value.trim();
+
+      if (addressDebounceTimer) clearTimeout(addressDebounceTimer);
+
+      if (query.length < 3) {
+        hideAddressSuggestions();
+        return;
+      }
+
+      addressDebounceTimer = setTimeout(async () => {
+        await fetchAddressSuggestions(query);
+      }, 350);
+    }
+
+    async function fetchAddressSuggestions(query) {
+      try {
+        const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=6&countrycodes=in&q=${encodeURIComponent(query)}`;
+        const response = await fetch(url, {
+          headers: { "Accept-Language": "en" }
+        });
+
+        if (!response.ok) {
+          hideAddressSuggestions();
+          return;
+        }
+
+        const data = await response.json();
+        renderAddressSuggestions(data || []);
+      } catch (error) {
+        hideAddressSuggestions();
+      }
+    }
+
+    function renderAddressSuggestions(items) {
+      if (!items.length) {
+        hideAddressSuggestions();
+        return;
+      }
+
+      addressSuggestions.innerHTML = items.map((item, idx) => `
+        <div class="suggestion-item" data-index="${idx}" data-value="${escapeHtml(normalizeValue(item.display_name || ""))}">
+          <div class="suggestion-main">${escapeHtml(normalizeValue(item.name || item.display_name || ""))}</div>
+          <div class="suggestion-sub">${escapeHtml(normalizeValue(item.display_name || ""))}</div>
+        </div>
+      `).join("");
+
+      addressSuggestions.style.display = "block";
+
+      addressSuggestions.querySelectorAll(".suggestion-item").forEach(node => {
+        node.addEventListener("click", () => {
+          customerAddress.value = normalizeValue(node.dataset.value);
+          hideAddressSuggestions();
+          customerGST.focus();
+        });
+      });
+    }
+
+    function handleAddressKeydown(e) {
+      const items = Array.from(addressSuggestions.querySelectorAll(".suggestion-item"));
+      if (!items.length || addressSuggestions.style.display !== "block") return;
+
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        suggestionIndex = Math.min(suggestionIndex + 1, items.length - 1);
+        updateSuggestionHighlight(items);
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        suggestionIndex = Math.max(suggestionIndex - 1, 0);
+        updateSuggestionHighlight(items);
+      } else if (e.key === "Enter") {
+        if (suggestionIndex >= 0 && items[suggestionIndex]) {
+          e.preventDefault();
+          customerAddress.value = normalizeValue(items[suggestionIndex].dataset.value);
+          hideAddressSuggestions();
+          customerGST.focus();
+        }
+      } else if (e.key === "Escape") {
+        hideAddressSuggestions();
+      }
+    }
+
+    function updateSuggestionHighlight(items) {
+      items.forEach((item, idx) => {
+        item.classList.toggle("active", idx === suggestionIndex);
+      });
+      if (suggestionIndex >= 0 && items[suggestionIndex]) {
+        items[suggestionIndex].scrollIntoView({ block: "nearest" });
+      }
+    }
+
+    function hideAddressSuggestions() {
+      addressSuggestions.style.display = "none";
+      addressSuggestions.innerHTML = "";
+      suggestionIndex = -1;
     }
 
     function escapeHtml(value) {

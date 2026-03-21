@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Sales Return Print</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+body{
+font-family:Arial;
+width:900px;
+margin:auto;
+font-size:12px;
+}
+
+/* HEADER */
+
+.header{
+display:flex;
+justify-content:space-between;
+border:1px solid #000;
+padding:10px;
+border-bottom:none;
+}
+
+.header-left h1{
+margin:0;
+}
+
+.header-right{
+text-align:right;
+font-weight:bold;
+}
+
+.invoice-title{
+background:#d9d9d9;
+text-align:center;
+font-weight:bold;
+font-size:18px;
+padding:8px;
+border:1px solid #000;
+border-top:none;
+}
+
+.bill-info{
+display:flex;
+justify-content:space-between;
+border:1px solid #000;
+border-top:none;
+padding:8px;
+}
+
+/* PAGE */
+
+.page{
+display:flex;
+flex-direction:column;
+}
+
+.page-half{ height:520px; }
+
+.page-full{ height:1050px; }
+
+/* TABLE */
+
+table{
+width:100%;
+border-collapse:collapse;
+}
+
+th,td{
+border:1px solid #000;
+padding:4px;
+text-align:center;
+}
+
+th{
+background:#f2f2f2;
+}
+
+.left{text-align:left;}
+.right{text-align:right;}
+
+#itemsBody td{
+border-top:none;
+border-bottom:none;
+}
+
+/* BOTTOM SECTION */
+
+.bottom-section{
+    border:1px solid #000;   /* FULL BORDER */
+    display:flex;
+    align-items:stretch;
+}
+
+.bank{
+    width:68%;
+    padding:6px;
+    font-size:11px;
+    border-right:1px solid #000;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+}
+
+.summary{
+width:32%;
+height:100%;
+}
+
+.summary td{
+border:1px solid #000;
+padding:4px;
+height:22px;
+width:40%;
+}
+
+.summary tr:last-child td{
+font-weight:bold;
+font-size:20px;
+border-top:3px solid #000;
+padding:8px;
+background:#f2f2f2;
+}
+
+/* GST TABLE */
+
+.gst-summary{
+width:100%;
+margin-bottom:5px;
+}
+
+.gst-summary th,
+.gst-summary td{
+border:1px solid #000;
+font-size:10px;
+padding:3px;
+}
+
+/* FOOT NOTE */
+
+.note{
+font-size:10px;
+text-align:center;
+padding:3px;
+}
+
+.summary-box{
+width:32%;
+display:flex;
+flex-direction:column;
+justify-content:space-between;
+}
+
+.summary-note{
+font-size:10px;
+text-align:center;
+padding:5px;
+}
+
+/* PRINT */
+
+@media print{
+body{margin:0;}
+.page{page-break-after:always;}
+thead{display:table-header-group;}
+}
+</style>
+</head>
+
+<body>
+
+<div id="pages"></div>
+
+<script>
+const sb = supabase.createClient(
+"https://gqxczzijntbvtlmmzppt.supabase.co",
+"sb_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs"
+);
+
+const params = new URLSearchParams(window.location.search);
+const id = params.get("id");
+
+async function loadData(){
+
+if(!id){
+    document.body.innerHTML = "<h2>❌ Sales Return ID missing</h2>";
+    return;
+}
+
+/* RETURN HEADER */
+const { data: head, error: headError } = await sb
+.from("sales_return_details")
+.select("*")
+.eq("id", id)
+.maybeSingle();
+
+if(headError || !head){
+    document.body.innerHTML = "<h2>❌ Sales Return not found</h2>";
+    console.error(headError);
+    return;
+}
+
+/* ORIGINAL SALES HEADER */
+let sale = null;
+if(head.original_sales_id){
+    const { data: saleData, error: saleError } = await sb
+    .from("sales_details")
+    .select("*")
+    .eq("id", head.original_sales_id)
+    .maybeSingle();
+
+    if(!saleError && saleData){
+        sale = saleData;
+    }
+}
+
+/* RETURN ITEMS */
+const { data: items, error: itemError } = await sb
+.from("sales_return_item_details")
+.select("*")
+.eq("return_id", id);
+
+if(itemError || !items){
+    document.body.innerHTML = "<h2>❌ Sales Return Items not found</h2>";
+    console.error(itemError);
+    return;
+}
+
+let rowsPerPage = items.length <= 10 ? 10 : 40;
+let pageClass = items.length <= 10 ? "page-half" : "page-full";
+let pages = Math.ceil(items.length / rowsPerPage);
+
+let container = document.getElementById("pages");
+
+/* TOTALS */
+let totalTaxable = 0;
+let totalGst = 0;
+let gstMap = {};
+
+for(let p = 0; p < pages; p++){
+
+    let start = p * rowsPerPage;
+    let pageItems = items.slice(start, start + rowsPerPage);
+
+    let html = `<div class="page ${pageClass}">
+
+    <div class="header">
+
+        <div class="header-left">
+            <h1>VAJRA LIGHTS & ELECTRICALS</h1>
+            (H.O: SN.TRADERS, KATTAKADA, TRIVANDRUM-72)<br>
+            Email: vajralightsandelectricals.sha@gmail.com<br>
+            KAITHAKONAM, KATTAKADA, TRIVANDRUM-72<br>
+            PH: 8606808063,9495160771
+        </div>
+
+        <div class="header-right">
+            STATE: KERALA[32]<br>
+            GSTIN: 32APBPN5593H1ZT
+        </div>
+
+    </div>
+
+    <div class="invoice-title">SALES RETURN</div>
+
+    <div class="bill-info">
+
+        <div>
+            <b>Consignee</b><br>
+            ${(sale?.customer_name || head.customer_name || "")}<br>
+            ${(sale?.customer_address || "")}<br>
+            GSTIN: ${(sale?.customer_gst || "NA")}<br>
+            Mobile: ${(sale?.customer_mobile || head.customer_mobile || "NA")}
+        </div>
+
+        <div class="right">
+            Return No : ${head.return_number || head.id}<br>
+            Returned from : ${(sale?.series_code || "")}${sale?.sales_number ? "-" + sale.sales_number : ""}<br>
+            Date : ${(head.return_date || head.created_at || "").split("T")[0]}<br>
+            S.Man : ${sale?.salesman || head.salesman || ""}<br>
+            Page : ${p+1} / ${pages}
+        </div>
+
+    </div>
+
+    <div class="items-area">
+
+    <table>
+
+    <thead>
+    <tr>
+        <th>No</th>
+        <th>Code</th>
+        <th class="left">Item</th>
+        <th>Sold Qty</th>
+        <th>Return Qty</th>
+        <th>Price</th>
+        <th>GST%</th>
+        <th>Amount</th>
+    </tr>
+    </thead>
+
+    <tbody id="itemsBody">`;
+
+    let row = 1;
+
+    pageItems.forEach(item => {
+
+        let soldQty = parseFloat(item.sold_qty || 0);
+        let qty = parseFloat(item.return_qty || 0);
+        let price = parseFloat(item.price_gst || item.sales_price_gst || 0);
+        let gstPercent = parseFloat(item.gst_percent || 0);
+
+        let amount = qty * price;
+        let taxable = gstPercent > 0 ? amount / (1 + gstPercent / 100) : amount;
+        let gst = amount - taxable;
+
+        totalTaxable += taxable;
+        totalGst += gst;
+
+        if(!gstMap[gstPercent]){
+            gstMap[gstPercent] = { taxable: 0, gst: 0 };
+        }
+
+        gstMap[gstPercent].taxable += taxable;
+        gstMap[gstPercent].gst += gst;
+
+        html += `
+        <tr>
+            <td>${row}</td>
+            <td>${item.item_code || ""}</td>
+            <td class="left">${item.item_name || ""}</td>
+            <td>${soldQty}</td>
+            <td>${qty}</td>
+            <td>${price.toFixed(2)}</td>
+            <td>${gstPercent}%</td>
+            <td>${amount.toFixed(2)}</td>
+        </tr>`;
+
+        row++;
+    });
+
+    for(let i = pageItems.length; i < rowsPerPage; i++){
+        html += `
+        <tr>
+            <td>&nbsp;</td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+        </tr>`;
+    }
+
+    html += `
+    </tbody>
+    </table>
+
+    </div>
+
+    <div class="bottom-section">
+
+        <div class="bank">
+
+            <table class="gst-summary">`;
+
+    if(p === pages - 1){
+
+        html += `
+        <tr>
+            <td>&nbsp;GST%</td>
+            <td>AMOUNT</td>
+            <td>CGST</td>
+            <td>SGST</td>
+            <td>Total</td>
+        </tr>`;
+
+        Object.keys(gstMap).forEach(g => {
+            let taxable = gstMap[g].taxable;
+            let gst = gstMap[g].gst;
+
+            html += `
+            <tr>
+                <td>${g}%</td>
+                <td>${taxable.toFixed(2)}</td>
+                <td>${(gst/2).toFixed(2)}</td>
+                <td>${(gst/2).toFixed(2)}</td>
+                <td>${(taxable + gst).toFixed(2)}</td>
+            </tr>`;
+        });
+
+    }else{
+
+        html += `
+        <tr><td>&nbsp;GST%</td><td>AMOUNT</td><td>CGST</td><td>SGST</td><td>Total</td></tr>
+        <tr><td>&nbsp;</td><td></td><td></td><td></td><td></td></tr>
+        <tr><td>&nbsp;</td><td></td><td></td><td></td><td></td></tr>`;
+    }
+
+    html += `
+            </table>
+
+            <div class="summary-note">
+                Sales return acknowledgement copy.<br>
+                Subject to Trivandrum Jurisdiction.<br>
+                This is a Computer Generated Document and does not require signature.<br>
+                Thank you for your valueable patronage. Visit Again!
+            </div>
+
+        </div>
+
+        <table class="summary">`;
+
+    if(p === pages - 1){
+
+        const grossTotal = totalTaxable + totalGst;
+        const roundOff = Math.round(grossTotal) - grossTotal;
+        const finalTotal = Math.round(grossTotal);
+
+        html += `
+        <tr>
+            <td>Amount</td>
+            <td>${totalTaxable.toFixed(2)}</td>
+        </tr>
+
+        <tr>
+            <td>GST</td>
+            <td>${totalGst.toFixed(2)}</td>
+        </tr>
+
+        <tr>
+            <td>Round Off</td>
+            <td>${roundOff.toFixed(2)}</td>
+        </tr>
+
+        <tr>
+            <td>Total</td>
+            <td>${finalTotal.toFixed(2)}</td>
+        </tr>`;
+    }else{
+        html += `
+        <tr><td>Amount</td><td></td></tr>
+        <tr><td>GST</td><td></td></tr>
+        <tr><td>Round Off</td><td></td></tr>
+        <tr><td>Total</td><td></td></tr>`;
+    }
+
+    html += `
+        </table>
+
+    </div>
+
+    </div>`;
+
+    container.innerHTML += html;
+}
+
+window.print();
+}
+
+loadData();
+</script>
+
+</body>
+</html>

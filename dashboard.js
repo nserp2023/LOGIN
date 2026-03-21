@@ -155,3 +155,10 @@ async function loadTodayDashboardSummary() {
 function formatCurrency(value) {
   return `₹ ${Number(value || 0).toFixed(2)}`;
 }
+
+const username = localStorage.getItem("username") || "User";
+const role = (localStorage.getItem("role") || "staff").toLowerCase();
+
+document.getElementById("welcome").innerText = `Welcome, ${username}`;
+document.getElementById("userRoleBadge").innerText =
+  role.charAt(0).toUpperCase() + role.slice(1);

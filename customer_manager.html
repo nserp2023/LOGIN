@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Customer Manager</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    :root{
+      --primary:#2563eb;
+      --primary-dark:#1d4ed8;
+      --success:#059669;
+      --success-dark:#047857;
+      --danger:#dc2626;
+      --danger-dark:#b91c1c;
+      --bg:#f1f5f9;
+      --card:#ffffff;
+      --text:#0f172a;
+      --muted:#64748b;
+      --border:#cbd5e1;
+      --shadow:0 10px 25px rgba(0,0,0,0.12);
+      --radius:16px;
+    }
+
+    *{
+      box-sizing:border-box;
+    }
+
+    body{
+      margin:0;
+      font-family:'Segoe UI', Roboto, Arial, sans-serif;
+      background:
+        linear-gradient(rgba(15,23,42,0.60), rgba(15,23,42,0.60)),
+        url("background.jpg") center/cover fixed no-repeat;
+      color:var(--text);
+      min-height:100vh;
+    }
+
+    .page{
+      max-width:1400px;
+      margin:0 auto;
+      padding:16px;
+    }
+
+    .topbar{
+      background:rgba(15,23,42,0.85);
+      color:white;
+      border-radius:20px;
+      padding:18px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:14px;
+      flex-wrap:wrap;
+      box-shadow:var(--shadow);
+      backdrop-filter:blur(8px);
+    }
+
+    .topbar-left{
+      display:flex;
+      align-items:center;
+      gap:14px;
+    }
+
+    .logo{
+      width:48px;
+      height:48px;
+      border-radius:14px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:linear-gradient(135deg, var(--primary), #60a5fa);
+      font-size:24px;
+      flex-shrink:0;
+    }
+
+    .title-block h1{
+      margin:0;
+      font-size:24px;
+      line-height:1.1;
+    }
+
+    .title-block p{
+      margin:4px 0 0;
+      color:#cbd5e1;
+      font-size:13px;
+    }
+
+    .topbar-actions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    .btn{
+      border:none;
+      border-radius:12px;
+      padding:11px 16px;
+      font-weight:700;
+      cursor:pointer;
+      transition:0.2s ease;
+      min-height:44px;
+    }
+
+    .btn:hover{
+      transform:translateY(-1px);
+    }
+
+    .btn:active{
+      transform:scale(0.98);
+    }
+
+    .btn-primary{
+      background:var(--primary);
+      color:white;
+    }
+
+    .btn-primary:hover{
+      background:var(--primary-dark);
+    }
+
+    .btn-success{
+      background:var(--success);
+      color:white;
+    }
+
+    .btn-success:hover{
+      background:var(--success-dark);
+    }
+
+    .btn-danger{
+      background:var(--danger);
+      color:white;
+    }
+
+    .btn-danger:hover{
+      background:var(--danger-dark);
+    }
+
+    .btn-light{
+      background:#e2e8f0;
+      color:#0f172a;
+    }
+
+    .stats{
+      display:grid;
+      grid-template-columns:repeat(3, 1fr);
+      gap:14px;
+      margin-top:16px;
+    }
+
+    .stat-card{
+      background:rgba(255,255,255,0.92);
+      border-radius:18px;
+      padding:18px;
+      box-shadow:var(--shadow);
+      text-align:center;
+      backdrop-filter:blur(8px);
+    }
+
+    .stat-title{
+      font-size:12px;
+      font-weight:800;
+      color:var(--muted);
+      text-transform:uppercase;
+      letter-spacing:0.5px;
+    }
+
+    .stat-value{
+      margin-top:8px;
+      font-size:28px;
+      font-weight:800;
+    }
+
+    .layout{
+      display:grid;
+      grid-template-columns:400px 1fr;
+      gap:16px;
+      margin-top:16px;
+      align-items:start;
+    }
+
+    .panel{
+      background:rgba(255,255,255,0.95);
+      border-radius:20px;
+      box-shadow:var(--shadow);
+      overflow:hidden;
+      backdrop-filter:blur(10px);
+    }
+
+    .panel-header{
+      padding:18px;
+      border-bottom:1px solid #e2e8f0;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    .panel-header h2{
+      margin:0;
+      font-size:20px;
+    }
+
+    .panel-header p{
+      margin:4px 0 0;
+      color:var(--muted);
+      font-size:13px;
+    }
+
+    .panel-body{
+      padding:18px;
+    }
+
+    .mode-badge{
+      font-size:12px;
+      font-weight:800;
+      padding:8px 12px;
+      border-radius:999px;
+      background:#dbeafe;
+      color:#1d4ed8;
+    }
+
+    .status{
+      display:none;
+      margin-bottom:14px;
+      padding:12px 14px;
+      border-radius:12px;
+      font-size:14px;
+      font-weight:700;
+    }
+
+    .status.success{
+      display:block;
+      background:#dcfce7;
+      color:#166534;
+      border:1px solid #bbf7d0;
+    }
+
+    .status.error{
+      display:block;
+      background:#fee2e2;
+      color:#991b1b;
+      border:1px solid #fecaca;
+    }
+
+    .form-grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:14px;
+    }
+
+    .field{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+    }
+
+    .field.full{
+      grid-column:1 / -1;
+    }
+
+    .field label{
+      font-size:13px;
+      font-weight:700;
+      color:#334155;
+    }
+
+    .field input{
+      width:100%;
+      min-height:46px;
+      padding:12px 14px;
+      border:1px solid var(--border);
+      border-radius:12px;
+      font-size:14px;
+      outline:none;
+      transition:0.18s ease;
+      background:#fff;
+    }
+
+    .field input:focus{
+      border-color:var(--primary);
+      box-shadow:0 0 0 3px rgba(37,99,235,0.14);
+    }
+
+    .helper{
+      font-size:12px;
+      color:var(--muted);
+    }
+
+    .form-actions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:16px;
+    }
+
+    .toolbar{
+      display:grid;
+      grid-template-columns:1.5fr 1fr 1fr;
+      gap:12px;
+      margin-bottom:14px;
+    }
+
+    .toolbar input{
+      width:100%;
+      min-height:46px;
+      padding:12px 14px;
+      border:1px solid var(--border);
+      border-radius:12px;
+      font-size:14px;
+      outline:none;
+      background:white;
+    }
+
+    .toolbar input:focus{
+      border-color:var(--primary);
+      box-shadow:0 0 0 3px rgba(37,99,235,0.14);
+    }
+
+    .table-wrap{
+      overflow:auto;
+      border:1px solid #e2e8f0;
+      border-radius:16px;
+      background:white;
+    }
+
+    table{
+      width:100%;
+      border-collapse:collapse;
+      min-width:900px;
+    }
+
+    th, td{
+      padding:12px 10px;
+      border-bottom:1px solid #e2e8f0;
+      text-align:left;
+      vertical-align:top;
+      font-size:14px;
+    }
+
+    thead th{
+      background:#eff6ff;
+      color:#1e3a8a;
+      font-size:12px;
+      text-transform:uppercase;
+      letter-spacing:0.4px;
+      position:sticky;
+      top:0;
+      z-index:1;
+    }
+
+    tbody tr:hover{
+      background:#f8fafc;
+    }
+
+    .table-actions{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+
+    .mini-btn{
+      border:none;
+      border-radius:10px;
+      padding:8px 10px;
+      font-size:12px;
+      font-weight:700;
+      cursor:pointer;
+      min-height:36px;
+    }
+
+    .mini-edit{
+      background:#dbeafe;
+      color:#1d4ed8;
+    }
+
+    .mini-delete{
+      background:#fee2e2;
+      color:#b91c1c;
+    }
+
+    .empty{
+      text-align:center;
+      color:var(--muted);
+      padding:28px 10px;
+      font-weight:600;
+    }
+
+    @media (max-width:1100px){
+      .layout{
+        grid-template-columns:1fr;
+      }
+    }
+
+    @media (max-width:768px){
+      .page{
+        padding:12px;
+      }
+
+      .topbar{
+        padding:16px;
+      }
+
+      .title-block h1{
+        font-size:20px;
+      }
+
+      .stats{
+        grid-template-columns:1fr;
+      }
+
+      .form-grid{
+        grid-template-columns:1fr;
+      }
+
+      .toolbar{
+        grid-template-columns:1fr;
+      }
+
+      .topbar-actions{
+        width:100%;
+      }
+
+      .topbar-actions .btn{
+        flex:1;
+      }
+
+      table{
+        min-width:760px;
+      }
+
+      .stat-value{
+        font-size:24px;
+      }
+    }
+
+    @media (max-width:480px){
+      .panel-header,
+      .panel-body{
+        padding:14px;
+      }
+
+      .btn{
+        width:100%;
+      }
+
+      .form-actions .btn{
+        width:100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="topbar">
+      <div class="topbar-left">
+        <div class="logo">👥</div>
+        <div class="title-block">
+          <h1>Customer Manager</h1>
+          <p>Create, edit, search and manage customers in one page</p>
+        </div>
+      </div>
+
+      <div class="topbar-actions">
+        <button class="btn btn-light" id="backBtn">⬅ Back</button>
+        <button class="btn btn-primary" id="newCustomerBtn">＋ New Customer</button>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat-card">
+        <div class="stat-title">Total Customers</div>
+        <div class="stat-value" id="totalCustomers">0</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-title">Filtered Results</div>
+        <div class="stat-value" id="filteredCustomers">0</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-title">Current Mode</div>
+        <div class="stat-value" style="font-size:20px" id="currentModeText">Create</div>
+      </div>
+    </div>
+
+    <div class="layout">
+      <!-- FORM -->
+      <section class="panel">
+        <div class="panel-header">
+          <div>
+            <h2 id="formTitle">Create Customer</h2>
+            <p id="formSubtitle">Add a new customer record</p>
+          </div>
+          <div class="mode-badge" id="modeBadge">CREATE MODE</div>
+        </div>
+
+        <div class="panel-body">
+          <div id="statusBox" class="status"></div>
+
+          <form id="customerForm">
+            <div class="form-grid">
+              <div class="field full">
+                <label for="customerName">Customer Name</label>
+                <input type="text" id="customerName" required placeholder="Enter customer name">
+              </div>
+
+              <div class="field">
+                <label for="customerMobile">Mobile Number</label>
+                <input type="tel" id="customerMobile" required placeholder="Enter mobile number">
+              </div>
+
+              <div class="field">
+                <label for="customerStateCode">State Code</label>
+                <input type="text" id="customerStateCode" required placeholder="Example: 32">
+              </div>
+
+              <div class="field full">
+                <label for="customerAddress">Address</label>
+                <input type="text" id="customerAddress" required placeholder="Enter address">
+              </div>
+
+              <div class="field full">
+                <label for="customerGST">GST Number</label>
+                <input type="text" id="customerGST" placeholder="Enter GST number">
+                <div class="helper">Leave blank if customer does not have GST number.</div>
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="btn btn-success" id="saveBtn">Save Customer</button>
+              <button type="button" class="btn btn-light" id="resetBtn">Reset</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- LIST -->
+      <section class="panel">
+        <div class="panel-header">
+          <div>
+            <h2>Customer List</h2>
+            <p>Search by name, mobile, GST, or state code</p>
+          </div>
+        </div>
+
+        <div class="panel-body">
+          <div class="toolbar">
+            <input type="text" id="searchInput" placeholder="Search by name or mobile...">
+            <input type="text" id="gstSearchInput" placeholder="Search GST number...">
+            <input type="text" id="stateSearchInput" placeholder="Search state code...">
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Name</th>
+                  <th>Mobile</th>
+                  <th>Address</th>
+                  <th>GST Number</th>
+                  <th>State Code</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="customerTableBody">
+                <tr>
+                  <td colspan="7" class="empty">Loading customers...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    const { createClient } = supabase;
+
+    const supabaseUrl = "https://gqxczzijntbvtlmmzppt.supabase.co";
+    const supabaseKey = "sb_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs";
+    const supabaseClient = createClient(supabaseUrl, supabaseKey);
+
+    let customers = [];
+    let editingCustomerId = null;
+
+    const form = document.getElementById("customerForm");
+    const formTitle = document.getElementById("formTitle");
+    const formSubtitle = document.getElementById("formSubtitle");
+    const modeBadge = document.getElementById("modeBadge");
+    const currentModeText = document.getElementById("currentModeText");
+    const saveBtn = document.getElementById("saveBtn");
+    const resetBtn = document.getElementById("resetBtn");
+    const newCustomerBtn = document.getElementById("newCustomerBtn");
+    const backBtn = document.getElementById("backBtn");
+    const statusBox = document.getElementById("statusBox");
+
+    const customerName = document.getElementById("customerName");
+    const customerMobile = document.getElementById("customerMobile");
+    const customerAddress = document.getElementById("customerAddress");
+    const customerGST = document.getElementById("customerGST");
+    const customerStateCode = document.getElementById("customerStateCode");
+
+    const searchInput = document.getElementById("searchInput");
+    const gstSearchInput = document.getElementById("gstSearchInput");
+    const stateSearchInput = document.getElementById("stateSearchInput");
+    const customerTableBody = document.getElementById("customerTableBody");
+    const totalCustomers = document.getElementById("totalCustomers");
+    const filteredCustomers = document.getElementById("filteredCustomers");
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      bindEvents();
+      await loadCustomers();
+
+      const params = new URLSearchParams(window.location.search);
+      const customerIdFromUrl = params.get("id");
+      if (customerIdFromUrl) {
+        await loadCustomerForEdit(customerIdFromUrl);
+      } else {
+        resetForm();
+      }
+    });
+
+    function bindEvents() {
+      form.addEventListener("submit", handleSubmit);
+      resetBtn.addEventListener("click", resetForm);
+
+      newCustomerBtn.addEventListener("click", () => {
+        resetForm();
+        customerName.focus();
+      });
+
+      backBtn.addEventListener("click", () => {
+        if (window.history.length > 1) {
+          window.history.back();
+        } else {
+          window.location.href = "dashboard.html";
+        }
+      });
+
+      searchInput.addEventListener("input", renderCustomers);
+      gstSearchInput.addEventListener("input", renderCustomers);
+      stateSearchInput.addEventListener("input", renderCustomers);
+    }
+
+    function showStatus(message, type = "success") {
+      statusBox.className = `status ${type}`;
+      statusBox.textContent = message;
+    }
+
+    function hideStatus() {
+      statusBox.className = "status";
+      statusBox.textContent = "";
+    }
+
+    function setMode(mode) {
+      const isEdit = mode === "edit";
+
+      formTitle.textContent = isEdit ? "Edit Customer" : "Create Customer";
+      formSubtitle.textContent = isEdit
+        ? "Update selected customer record"
+        : "Add a new customer record";
+      saveBtn.textContent = isEdit ? "Update Customer" : "Save Customer";
+      currentModeText.textContent = isEdit ? "Edit" : "Create";
+      modeBadge.textContent = isEdit ? "EDIT MODE" : "CREATE MODE";
+      modeBadge.style.background = isEdit ? "#fef3c7" : "#dbeafe";
+      modeBadge.style.color = isEdit ? "#92400e" : "#1d4ed8";
+    }
+
+    function resetForm() {
+      editingCustomerId = null;
+      form.reset();
+      hideStatus();
+      setMode("create");
+
+      const url = new URL(window.location.href);
+      url.searchParams.delete("id");
+      window.history.replaceState({}, "", url);
+    }
+
+    async function loadCustomerForEdit(customerId) {
+      const { data, error } = await supabaseClient
+        .from("customers")
+        .select("*")
+        .eq("customer_id", customerId)
+        .single();
+
+      if (error) {
+        showStatus("Error loading customer: " + error.message, "error");
+        return;
+      }
+
+      editingCustomerId = data.customer_id;
+      customerName.value = data.name || "";
+      customerMobile.value = data.mobile || "";
+      customerAddress.value = data.address || "";
+      customerGST.value = data.gst_number || "";
+      customerStateCode.value = data.state_code || "";
+
+      setMode("edit");
+      showStatus(`Editing customer: ${data.name}`, "success");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    async function loadCustomers() {
+      customerTableBody.innerHTML = `
+        <tr>
+          <td colspan="7" class="empty">Loading customers...</td>
+        </tr>
+      `;
+
+      const { data, error } = await supabaseClient
+        .from("customers")
+        .select("*")
+        .order("customer_id", { ascending: false });
+
+      if (error) {
+        showStatus("Error loading customers: " + error.message, "error");
+        customerTableBody.innerHTML = `
+          <tr>
+            <td colspan="7" class="empty">Error loading customers</td>
+          </tr>
+        `;
+        return;
+      }
+
+      customers = data || [];
+      totalCustomers.textContent = customers.length;
+      renderCustomers();
+    }
+
+    function renderCustomers() {
+      const term = (searchInput.value || "").trim().toLowerCase();
+      const gstTerm = (gstSearchInput.value || "").trim().toLowerCase();
+      const stateTerm = (stateSearchInput.value || "").trim().toLowerCase();
+
+      const filtered = customers.filter(c =>
+        (
+          !term ||
+          String(c.name || "").toLowerCase().includes(term) ||
+          String(c.mobile || "").toLowerCase().includes(term)
+        ) &&
+        (
+          !gstTerm ||
+          String(c.gst_number || "").toLowerCase().includes(gstTerm)
+        ) &&
+        (
+          !stateTerm ||
+          String(c.state_code || "").toLowerCase().includes(stateTerm)
+        )
+      );
+
+      filteredCustomers.textContent = filtered.length;
+
+      if (!filtered.length) {
+        customerTableBody.innerHTML = `
+          <tr>
+            <td colspan="7" class="empty">No customers found</td>
+          </tr>
+        `;
+        return;
+      }
+
+      customerTableBody.innerHTML = filtered.map(cust => `
+        <tr>
+          <td>${cust.customer_id ?? ""}</td>
+          <td>${escapeHtml(cust.name || "")}</td>
+          <td>${escapeHtml(cust.mobile || "")}</td>
+          <td>${escapeHtml(cust.address || "")}</td>
+          <td>${escapeHtml(cust.gst_number || "")}</td>
+          <td>${escapeHtml(cust.state_code || "")}</td>
+          <td>
+            <div class="table-actions">
+              <button class="mini-btn mini-edit" onclick="editCustomer(${cust.customer_id})">Edit</button>
+              <button class="mini-btn mini-delete" onclick="deleteCustomer(${cust.customer_id}, '${escapeJs(cust.name || "")}')">Delete</button>
+            </div>
+          </td>
+        </tr>
+      `).join("");
+    }
+
+    async function handleSubmit(e) {
+      e.preventDefault();
+      hideStatus();
+
+      const name = customerName.value.trim();
+      const mobile = customerMobile.value.trim();
+      const address = customerAddress.value.trim();
+      const gst = customerGST.value.trim();
+      const stateCode = customerStateCode.value.trim();
+
+      if (!name || !mobile || !address || !stateCode) {
+        showStatus("Please fill all required fields.", "error");
+        return;
+      }
+
+      saveBtn.disabled = true;
+      saveBtn.textContent = editingCustomerId ? "Updating..." : "Saving...";
+
+      try {
+        if (editingCustomerId) {
+          const { error } = await supabaseClient
+            .from("customers")
+            .update({
+              name,
+              mobile,
+              address,
+              gst_number: gst,
+              state_code: stateCode
+            })
+            .eq("customer_id", editingCustomerId);
+
+          if (error) throw error;
+
+          showStatus("Customer updated successfully.", "success");
+        } else {
+          const { error } = await supabaseClient
+            .from("customers")
+            .insert([{
+              name,
+              mobile,
+              address,
+              gst_number: gst,
+              state_code: stateCode
+            }]);
+
+          if (error) throw error;
+
+          showStatus("Customer saved successfully.", "success");
+        }
+
+        await loadCustomers();
+        resetForm();
+      } catch (error) {
+        showStatus(error.message || "Something went wrong.", "error");
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = editingCustomerId ? "Update Customer" : "Save Customer";
+      }
+    }
+
+    async function editCustomer(customerId) {
+      const customer = customers.find(c => Number(c.customer_id) === Number(customerId));
+      if (!customer) {
+        showStatus("Customer not found.", "error");
+        return;
+      }
+
+      editingCustomerId = customer.customer_id;
+      customerName.value = customer.name || "";
+      customerMobile.value = customer.mobile || "";
+      customerAddress.value = customer.address || "";
+      customerGST.value = customer.gst_number || "";
+      customerStateCode.value = customer.state_code || "";
+
+      setMode("edit");
+      showStatus(`Editing customer: ${customer.name}`, "success");
+
+      const url = new URL(window.location.href);
+      url.searchParams.set("id", customer.customer_id);
+      window.history.replaceState({}, "", url);
+
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    async function deleteCustomer(customerId, customerNameText) {
+      const ok = confirm(`Delete customer "${customerNameText}"?`);
+      if (!ok) return;
+
+      const { error } = await supabaseClient
+        .from("customers")
+        .delete()
+        .eq("customer_id", customerId);
+
+      if (error) {
+        showStatus("Error deleting customer: " + error.message, "error");
+        return;
+      }
+
+      showStatus("Customer deleted successfully.", "success");
+
+      if (Number(editingCustomerId) === Number(customerId)) {
+        resetForm();
+      }
+
+      await loadCustomers();
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function escapeJs(value) {
+      return String(value)
+        .replace(/\\/g, "\\\\")
+        .replace(/'/g, "\\'");
+    }
+
+    window.editCustomer = editCustomer;
+    window.deleteCustomer = deleteCustomer;
+  </script>
+</body>
+</html>

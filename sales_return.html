@@ -3,380 +3,690 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sales Return - VAJRA LIGHTS</title>
+<title>VAJRA LIGHTS - Sales Return</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
-:root{
-    --primary:#2563eb;
-    --accent:#059669;
-    --bg:#f1f5f9;
-    --panel:#ffffff;
-    --border:#cbd5e1;
-    --text:#1e293b;
-}
+    :root {
+        --primary: #2563eb;
+        --accent: #059669;
+        --bg-overlay: rgba(255, 255, 255, 0.98);
+        --border: #cbd5e1;
+        --text: #1e293b;
+        --row-hover: #f1f5f9;
+    }
 
-body{
-    font-family:Segoe UI,Roboto;
-    background:var(--bg);
-    margin:0;
-    padding:20px;
-}
+    body {
+        font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        margin: 0;
+        padding: 10px;
+        background-image: url('background.jpg');
+        background-size: cover;
+        background-attachment: fixed;
+        color: var(--text);
+        height: 100vh;
+        overflow: hidden;
+        font-size: 14px;
+    }
 
-.container{
-    background:var(--panel);
-    padding:20px;
-    border-radius:8px;
-    box-shadow:0 10px 25px rgba(0,0,0,0.1);
-}
+    .container {
+        max-width: 100%;
+        height: 96vh;
+        background: transparent;
+        border-radius: 8px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        display: flex;
+        flex-direction: column;
+    }
 
-h2{
-    margin-top:0;
-}
+    .header-section {
+        padding: 12px 15px;
+        border-bottom: 2px solid var(--border);
+        display: flex;
+        gap: 12px;
+        align-items: flex-end;
+        background: #030303;
+        flex-wrap: wrap;
+    }
 
-.section{
-    margin-bottom:15px;
-    display:flex;
-    flex-wrap:wrap;
-    gap:10px;
-    align-items:center;
-}
+    .form-group {
+        display: flex;
+        flex-direction: column;
+    }
 
-input,select{
-    padding:6px 8px;
-    border:1px solid var(--border);
-    border-radius:4px;
-    font-size:14px;
-}
+    .form-group label {
+        font-size: 11px;
+        font-weight: 700;
+        color: #64748b;
+        margin-bottom: 3px;
+        text-transform: uppercase;
+    }
 
-button{
-    padding:8px 16px;
-    border:none;
-    border-radius:4px;
-    background:var(--primary);
-    color:white;
-    cursor:pointer;
-    font-weight:600;
-}
+    .form-control {
+        padding: 6px 10px;
+        border: 1px solid #cbd5e1;
+        border-radius: 4px;
+        font-size: 14px;
+        transition: all 0.15s;
+        height: 32px;
+        box-sizing: border-box;
+    }
 
-button:hover{
-    background:#1d4ed8;
-}
+    .form-control:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+    }
 
-table{
-    width:100%;
-    border-collapse:collapse;
-    margin-top:15px;
-}
+    .w-xs { width: 70px; }
+    .w-sm { width: 110px; }
+    .w-md { width: 160px; }
+    .w-lg { width: 220px; }
+    .w-xl { width: 280px; }
 
-th,td{
-    border:1px solid #e2e8f0;
-    padding:8px;
-    text-align:center;
-    font-size:14px;
-}
+    .grand-total-box {
+        margin-left: auto;
+        background: var(--text);
+        color: white;
+        padding: 5px 20px;
+        border-radius: 6px;
+        text-align: right;
+        min-width: 170px;
+    }
 
-th{
-    background:#e2e8f0;
-    font-weight:600;
-}
+    .grand-total-box span {
+        font-size: 10px;
+        opacity: 0.8;
+        display: block;
+    }
 
-.total-box{
-    text-align:right;
-    font-size:18px;
-    font-weight:bold;
-    margin-top:10px;
-}
+    .grand-total-box div {
+        font-size: 24px;
+        font-weight: bold;
+        line-height: 1.2;
+    }
+
+    .items-container {
+        flex: 1;
+        overflow-y: auto;
+        scroll-behavior: smooth;
+        position: relative;
+        background: rgba(0,0,0,0.72);
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+    }
+
+    thead {
+        background: #f0e6e2;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+
+    th {
+        padding: 8px;
+        text-align: left;
+        font-size: 11px;
+        color: #694747;
+        font-weight: 700;
+        border-bottom: 1px solid #cbd5e1;
+    }
+
+    td {
+        border-bottom: 1px solid #1e293b;
+        padding: 0;
+    }
+
+    td input, td select {
+        color: white;
+        width: 100%;
+        border: none;
+        padding: 8px 5px;
+        font-size: 13px;
+        background: transparent;
+        font-family: inherit;
+        box-sizing: border-box;
+    }
+
+    td input:focus, td select:focus {
+        color: white;
+        background: transparent;
+        box-shadow: inset 0 0 0 2px var(--primary);
+        outline: none;
+    }
+
+    .readonly-cell {
+        color: #e2e8f0;
+        padding: 8px 5px;
+        font-size: 13px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .readonly-strong {
+        color: #ffffff;
+        font-weight: bold;
+    }
+
+    .col-idx   { width: 40px; text-align: center; }
+    .col-code  { width: 120px; }
+    .col-name  { width: auto; }
+    .col-sold  { width: 90px; }
+    .col-price { width: 110px; }
+    .col-ret   { width: 100px; }
+    .col-tot   { width: 120px; }
+
+    .footer-section {
+        padding: 10px 20px;
+        border-top: 1px solid var(--border);
+        background: #000000;
+        display: flex;
+        justify-content: flex-end;
+        gap: 15px;
+        flex-wrap: wrap;
+    }
+
+    .btn {
+        padding: 10px 25px;
+        border: none;
+        border-radius: 4px;
+        font-weight: 600;
+        cursor: pointer;
+        font-size: 14px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .btn-save {
+        background: var(--accent);
+        color: white;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    .btn-save:hover { background: #047857; }
+    .btn-save:disabled { background: #94a3b8; cursor: not-allowed; }
+
+    .bill-select-box {
+        min-width: 280px;
+    }
+
+    .mini-note {
+        padding: 10px;
+        opacity: 0.7;
+        font-size: 12px;
+        color: #cbd5e1;
+        background: rgba(0,0,0,0.7);
+    }
+
+    @media print {
+        .footer-section, button {
+            display: none !important;
+        }
+
+        .container {
+            box-shadow: none;
+            border: none;
+            height: auto;
+        }
+
+        body {
+            background: white;
+            overflow: auto;
+            padding: 0;
+        }
+
+        input, select {
+            border: none !important;
+            box-shadow: none !important;
+            color: black !important;
+        }
+
+        .readonly-cell {
+            color: black !important;
+        }
+    }
 </style>
 </head>
 <body>
 
 <div class="container">
+    <div class="header-section">
+        <div class="form-group">
+            <label>Type</label>
+            <input type="text" class="form-control w-sm" value="SALES RETURN" readonly>
+        </div>
 
-<h2>Sales Return</h2>
+        <div class="form-group">
+            <label>Series</label>
+            <select id="series" class="form-control w-xs"></select>
+        </div>
 
-<!-- SEARCH -->
-<div class="section">
-    <label>Series</label>
-    <select id="series"></select>
+        <div class="form-group">
+            <label>Bill No</label>
+            <input type="number" id="bill_no" class="form-control w-sm" placeholder="Bill No">
+        </div>
 
-    <label>Bill No</label>
-    <input type="number" id="bill_no">
+        <button id="btn_load_billno"
+                style="height:32px;background:#2563eb;color:white;border:none;border-radius:4px;padding:0 12px;"
+                onclick="loadBillByBillNo()">
+            LOAD BILL
+        </button>
 
-    <span style="font-weight:bold;">OR</span>
+        <div class="form-group">
+            <label>Mobile</label>
+            <input type="text" id="search_mobile" class="form-control w-md" placeholder="Search customer mobile">
+        </div>
 
-    <label>Customer Mobile</label>
-    <input type="text" id="search_mobile" placeholder="Type mobile">
+        <div class="form-group">
+            <label>Customer Bills</label>
+            <select id="customer_bills" class="form-control bill-select-box">
+                <option value="">Select Bill</option>
+            </select>
+        </div>
 
-    <select id="customer_bills" style="min-width:250px;">
-        <option value="">Select Bill</option>
-    </select>
+        <button id="btn_load_dropdown"
+                style="height:32px;background:#2563eb;color:white;border:none;border-radius:4px;padding:0 12px;"
+                onclick="loadBillFromDropdown()">
+            LOAD SELECTED
+        </button>
 
-    <button onclick="loadBill()">Load Bill</button>
-</div>
+        <div class="grand-total-box">
+            <span>TOTAL RETURN</span>
+            <div id="return_total">₹0.00</div>
+        </div>
+    </div>
 
-<!-- CUSTOMER INFO -->
-<div class="section">
-    <label>Customer</label>
-    <input id="cust_name" readonly>
+    <div class="header-section" style="background:#111827; border-bottom:1px solid #334155;">
+        <div class="form-group">
+            <label>Customer Name</label>
+            <input id="cust_name" class="form-control w-lg" readonly>
+        </div>
 
-    <label>Mobile</label>
-    <input id="cust_mobile" readonly>
+        <div class="form-group">
+            <label>Customer Mobile</label>
+            <input id="cust_mobile" class="form-control w-md" readonly>
+        </div>
 
-    <label>Bill Date</label>
-    <input id="bill_date" readonly>
-</div>
+        <div class="form-group">
+            <label>Bill Date</label>
+            <input id="bill_date" class="form-control w-md" readonly>
+        </div>
 
-<!-- ITEMS TABLE -->
-<table>
-<thead>
-<tr>
-<th>Item</th>
-<th>Sold Qty</th>
-<th>Price+GST</th>
-<th>Return Qty</th>
-<th>Return Amount</th>
-</tr>
-</thead>
-<tbody id="items_body"></tbody>
-</table>
+        <div class="form-group">
+            <label>Original Sales ID</label>
+            <input id="sale_ref" class="form-control w-md" readonly>
+        </div>
+    </div>
 
-<div class="total-box">
-Total Return: ₹ <span id="return_total">0.00</span>
-</div>
+    <div class="items-container">
+        <table>
+            <thead>
+                <tr>
+                    <th class="col-idx">#</th>
+                    <th class="col-code">Item Code</th>
+                    <th class="col-name">Item Name</th>
+                    <th class="col-sold">Sold Qty</th>
+                    <th class="col-price">Price+GST</th>
+                    <th class="col-ret">Return Qty</th>
+                    <th class="col-tot">Return Amount</th>
+                </tr>
+            </thead>
+            <tbody id="items_body"></tbody>
+        </table>
 
-<button onclick="saveReturn()">Save Return</button>
+        <div class="mini-note">
+            Tip: Use <b>Enter</b> or <b>Arrow keys</b> to move between return quantity fields.
+        </div>
+    </div>
 
+    <div class="footer-section">
+        <button class="btn" style="color:#64748b; background:transparent;" onclick="location.reload()">Reset</button>
+        <button id="btn_save_return" class="btn btn-save" onclick="saveReturn()">SAVE RETURN</button>
+    </div>
 </div>
 
 <script>
-
-// ================= SUPABASE =================
 const sb = supabase.createClient(
-"https://gqxczzijntbvtlmmzppt.supabase.co",
-"sb_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs"
+    "https://gqxczzijntbvtlmmzppt.supabase.co",
+    "sb_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs"
 );
 
 let currentSaleId = null;
 
 // ================= INIT =================
 window.onload = async () => {
+    await loadSeries();
 
-    const { data } = await sb
-    .from('bill_series')
-    .select('series_code')
-    .order('series_code');
-
-    const sel = document.getElementById('series');
-    data.forEach(s=>{
-        const opt=document.createElement('option');
-        opt.value=s.series_code;
-        opt.textContent=s.series_code;
-        sel.appendChild(opt);
+    document.getElementById("search_mobile").addEventListener("input", handleMobileSearch);
+    document.getElementById("bill_no").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") loadBillByBillNo();
+    });
+    document.getElementById("customer_bills").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") loadBillFromDropdown();
     });
 };
 
+// ================= LOAD SERIES =================
+async function loadSeries() {
+    const { data, error } = await sb
+        .from("bill_series")
+        .select("series_code")
+        .order("series_code");
 
-// ================= SEARCH BY MOBILE =================
-document.getElementById('search_mobile')
-.addEventListener('input', async function(){
+    if (error) {
+        console.error(error);
+        alert("Error loading bill series");
+        return;
+    }
 
-    const mobile=this.value;
-    if(mobile.length<3) return;
+    const sel = document.getElementById("series");
+    sel.innerHTML = "";
 
-    const { data } = await sb
-    .from('sales_details')
-    .select('id,sales_number,bill_date,invoice_amount')
-    .eq('customer_mobile',mobile)
-    .order('sales_number',{ascending:false});
-
-    const dropdown=document.getElementById('customer_bills');
-    dropdown.innerHTML='<option value="">Select Bill</option>';
-
-    data.forEach(b=>{
-        const opt=document.createElement('option');
-        opt.value=b.id;
-        opt.textContent=
-        `Bill#${b.sales_number} | ${b.bill_date} | ₹${b.invoice_amount}`;
-        dropdown.appendChild(opt);
+    (data || []).forEach(s => {
+        const opt = document.createElement("option");
+        opt.value = s.series_code;
+        opt.textContent = s.series_code;
+        sel.appendChild(opt);
     });
-
-});
-
-
-// ================= LOAD BILL =================
-async function loadBill(){
-
-    let saleId;
-
-    const dropdown=document.getElementById('customer_bills');
-
-    if(dropdown.value){
-        saleId=dropdown.value;
-    }
-    else{
-        const series=document.getElementById('series').value;
-        const billNo=document.getElementById('bill_no').value;
-
-        const { data,error } = await sb
-        .from('sales_details')
-        .select('*')
-        .eq('series_code',series)
-        .eq('sales_number',billNo)
-        .single();
-
-        if(error || !data){
-            alert("Bill not found");
-            return;
-        }
-
-        saleId=data.id;
-    }
-
-    currentSaleId=saleId;
-
-    const { data:sale } = await sb
-    .from('sales_details')
-    .select('*')
-    .eq('id',saleId)
-    .single();
-
-    document.getElementById('cust_name').value=sale.customer_name;
-    document.getElementById('cust_mobile').value=sale.customer_mobile;
-    document.getElementById('bill_date').value=sale.bill_date;
-
-    const { data:items } = await sb
-    .from('sales_item_details')
-    .select('*')
-    .eq('sales_id',saleId);
-
-    const tbody=document.getElementById('items_body');
-    tbody.innerHTML='';
-
-items.forEach(item=>{
-
-    const tr=document.createElement('tr');
-    tr.setAttribute("data-item-code", item.item_code);
-
-    tr.innerHTML=`
-        <td>${item.item_name}</td>
-        <td>${item.quantity}</td>
-        <td>${item.sales_price_gst}</td>
-        <td>
-            <input type="number"
-                   min="0"
-                   max="${item.quantity}"
-                   value="0"
-                   onchange="calcReturn(this,${item.quantity},${item.sales_price_gst})">
-        </td>
-        <td class="ret_amt">0.00</td>
-    `;
-
-    tbody.appendChild(tr);
-});
 }
 
+// ================= SEARCH BY MOBILE =================
+async function handleMobileSearch() {
+    const mobile = document.getElementById("search_mobile").value.trim();
+    const dropdown = document.getElementById("customer_bills");
 
-// ================= CALCULATION =================
-function calcReturn(input,soldQty,price){
+    dropdown.innerHTML = '<option value="">Select Bill</option>';
 
-    let qty=parseFloat(input.value)||0;
+    if (mobile.length < 3) return;
 
-    if(qty>soldQty){
-        alert("Return qty cannot exceed sold qty");
-        input.value=0;
-        qty=0;
+    const { data, error } = await sb
+        .from("sales_details")
+        .select("id,sales_number,bill_date,invoice_amount,series_code,customer_name")
+        .eq("customer_mobile", mobile)
+        .order("sales_number", { ascending: false });
+
+    if (error) {
+        console.error(error);
+        return;
     }
 
-    const amt=qty*price;
+    (data || []).forEach(b => {
+        const opt = document.createElement("option");
+        opt.value = b.id;
+        opt.textContent = `${b.series_code}-${b.sales_number} | ${b.bill_date} | ${b.customer_name} | ₹${b.invoice_amount}`;
+        dropdown.appendChild(opt);
+    });
+}
 
-    input.parentElement.nextElementSibling
-    .innerText=amt.toFixed(2);
+// ================= LOAD BILL HELPERS =================
+async function loadBillByBillNo() {
+    const series = document.getElementById("series").value;
+    const billNo = document.getElementById("bill_no").value;
+
+    if (!series || !billNo) {
+        alert("Select series and enter bill number");
+        return;
+    }
+
+    const { data, error } = await sb
+        .from("sales_details")
+        .select("*")
+        .eq("series_code", series)
+        .eq("sales_number", billNo)
+        .maybeSingle();
+
+    if (error || !data) {
+        alert("Bill not found");
+        return;
+    }
+
+    await loadBill(data.id);
+}
+
+async function loadBillFromDropdown() {
+    const saleId = document.getElementById("customer_bills").value;
+    if (!saleId) {
+        alert("Select a bill first");
+        return;
+    }
+    await loadBill(saleId);
+}
+
+// ================= LOAD BILL =================
+async function loadBill(saleId) {
+    currentSaleId = saleId;
+
+    const { data: sale, error: saleError } = await sb
+        .from("sales_details")
+        .select("*")
+        .eq("id", saleId)
+        .maybeSingle();
+
+    if (saleError || !sale) {
+        alert("Sales bill not found");
+        return;
+    }
+
+    document.getElementById("cust_name").value = sale.customer_name || "";
+    document.getElementById("cust_mobile").value = sale.customer_mobile || "";
+    document.getElementById("bill_date").value = sale.bill_date ? sale.bill_date.split("T")[0] : "";
+    document.getElementById("sale_ref").value = sale.id || "";
+
+    const { data: items, error: itemError } = await sb
+        .from("sales_item_details")
+        .select("*")
+        .eq("sales_id", saleId);
+
+    if (itemError) {
+        console.error(itemError);
+        alert("Error loading bill items");
+        return;
+    }
+
+    const tbody = document.getElementById("items_body");
+    tbody.innerHTML = "";
+
+    (items || []).forEach((item, idx) => {
+        const tr = document.createElement("tr");
+        tr.setAttribute("data-item-code", item.item_code || "");
+
+        tr.innerHTML = `
+            <td class="col-idx"><div class="readonly-cell">${idx + 1}</div></td>
+            <td class="col-code"><div class="readonly-cell">${item.item_code || ""}</div></td>
+            <td class="col-name"><div class="readonly-cell readonly-strong">${item.item_name || ""}</div></td>
+            <td class="col-sold"><div class="readonly-cell">${parseFloat(item.quantity || 0).toFixed(2)}</div></td>
+            <td class="col-price"><div class="readonly-cell">${parseFloat(item.sales_price_gst || 0).toFixed(2)}</div></td>
+            <td class="col-ret">
+                <input type="number"
+                       class="ret-qty"
+                       min="0"
+                       max="${parseFloat(item.quantity || 0)}"
+                       step="0.01"
+                       value="0"
+                       data-navcol="0">
+            </td>
+            <td class="col-tot">
+                <input type="text" class="ret-amount" readonly tabindex="-1" value="0.00" style="font-weight:bold;">
+            </td>
+        `;
+
+        tbody.appendChild(tr);
+    });
+
+    bindReturnEvents();
+    calcTotal();
+
+    const firstQty = document.querySelector(".ret-qty");
+    if (firstQty) {
+        firstQty.focus();
+        firstQty.select();
+    }
+}
+
+// ================= EVENTS =================
+function bindReturnEvents() {
+    document.querySelectorAll(".ret-qty").forEach((inp) => {
+        inp.addEventListener("input", () => {
+            calcRow(inp);
+        });
+
+        inp.addEventListener("keydown", (e) => {
+            if (e.key === "-" || e.key === "+" || e.key === "e") {
+                e.preventDefault();
+            }
+            handleQtyNavigation(e);
+        });
+
+        inp.addEventListener("focus", () => {
+            if (typeof inp.select === "function") inp.select();
+        });
+    });
+}
+
+function handleQtyNavigation(e) {
+    const inputs = Array.from(document.querySelectorAll(".ret-qty"));
+    const current = e.target;
+    const idx = inputs.indexOf(current);
+
+    if (idx === -1) return;
+
+    if (e.key === "Enter" || e.key === "ArrowDown") {
+        e.preventDefault();
+        const next = inputs[idx + 1];
+        if (next) {
+            next.focus();
+            next.select();
+        }
+    } else if (e.key === "ArrowUp" || (e.key === "Enter" && e.shiftKey)) {
+        e.preventDefault();
+        const prev = inputs[idx - 1];
+        if (prev) {
+            prev.focus();
+            prev.select();
+        }
+    }
+}
+
+// ================= CALCULATION =================
+function calcRow(input) {
+    const tr = input.closest("tr");
+    if (!tr) return;
+
+    const soldQty = parseFloat(tr.children[3].innerText) || 0;
+    const priceGst = parseFloat(tr.children[4].innerText) || 0;
+
+    let qty = parseFloat(input.value) || 0;
+
+    if (qty > soldQty) {
+        alert("Return qty cannot exceed sold qty");
+        qty = 0;
+        input.value = 0;
+    }
+
+    if (qty < 0) {
+        qty = 0;
+        input.value = 0;
+    }
+
+    const amt = qty * priceGst;
+    tr.querySelector(".ret-amount").value = amt.toFixed(2);
 
     calcTotal();
 }
 
-function calcTotal(){
-
-    let total=0;
-
-    document.querySelectorAll('.ret_amt')
-    .forEach(td=>{
-        total+=parseFloat(td.innerText)||0;
+function calcTotal() {
+    let total = 0;
+    document.querySelectorAll(".ret-amount").forEach(inp => {
+        total += parseFloat(inp.value) || 0;
     });
-
-    document.getElementById('return_total')
-    .innerText=total.toFixed(2);
+    document.getElementById("return_total").innerText = "₹" + total.toFixed(2);
 }
 
-
 // ================= SAVE RETURN =================
-async function saveReturn(){
+async function saveReturn() {
+    const btn = document.getElementById("btn_save_return");
+    if (btn.disabled) return;
 
-    if(!currentSaleId){
+    if (!currentSaleId) {
         alert("Load a bill first");
         return;
     }
 
-    const totalReturn=
-    parseFloat(document.getElementById('return_total').innerText);
+    const totalReturn = parseFloat(
+        document.getElementById("return_total").innerText.replace("₹", "")
+    ) || 0;
 
-    if(totalReturn<=0){
+    if (totalReturn <= 0) {
         alert("No return quantity entered");
         return;
     }
 
-    const { data:retHead,error } = await sb
-    .from('sales_return_details')
-    .insert([{
-        original_sales_id:currentSaleId,
-        return_date:new Date(),
-        total_return_amount:totalReturn
-    }])
-    .select()
-    .single();
+    btn.disabled = true;
+    btn.innerText = "SAVING...";
 
-    if(error){
-        alert("Error saving return");
-        return;
+    try {
+        const { data: retHead, error } = await sb
+            .from("sales_return_details")
+            .insert([{
+                original_sales_id: currentSaleId,
+                return_date: new Date().toISOString(),
+                total_return_amount: totalReturn
+            }])
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        const returnId = retHead.id;
+        const rows = document.querySelectorAll("#items_body tr");
+
+        for (const row of rows) {
+            const retQty = parseFloat(row.querySelector(".ret-qty").value) || 0;
+
+            if (retQty > 0) {
+                const itemCode = row.getAttribute("data-item-code") || "";
+                const itemName = row.children[2].innerText.trim();
+                const soldQty = parseFloat(row.children[3].innerText) || 0;
+                const priceGst = parseFloat(row.children[4].innerText) || 0;
+
+                const { error: itemErr } = await sb
+                    .from("sales_return_item_details")
+                    .insert([{
+                        return_id: returnId,
+                        item_code: itemCode,
+                        item_name: itemName,
+                        sold_qty: soldQty,
+                        return_qty: retQty,
+                        price_gst: priceGst
+                    }]);
+
+                if (itemErr) throw itemErr;
+
+                const { error: stockErr } = await sb.rpc("increase_stock", {
+                    p_item_code: itemCode,
+                    p_qty: retQty,
+                    p_reference_id: returnId
+                });
+
+                if (stockErr) throw stockErr;
+            }
+        }
+
+        alert("Return Saved Successfully!");
+        location.reload();
+
+    } catch (e) {
+        console.error(e);
+        alert("Error: " + (e.message || e));
+        btn.disabled = false;
+        btn.innerText = "SAVE RETURN";
     }
-
-    const returnId=retHead.id;
-
-    const rows=document.querySelectorAll('#items_body tr');
-
-    for(const row of rows){
-
-        const retQty=
-        parseFloat(row.querySelector('input').value)||0;
-
-        if(retQty>0){
-            const itemCode = row.getAttribute("data-item-code");
-            const itemName=row.cells[0].innerText;
-            const soldQty=row.cells[1].innerText;
-            const price=row.cells[2].innerText;
-
-await sb.from('sales_return_item_details')
-.insert([{
-    return_id: returnId,
-    item_code: itemCode,     // ✅ ADD THIS
-    item_name: itemName,
-    sold_qty: soldQty,
-    return_qty: retQty,
-    price_gst: price
-}]);
-            // STOCK INCREASE
-await sb.rpc('increase_stock',{
-    p_item_code:itemCode,
-    p_qty:retQty,
-    p_reference_id:returnId
-});        }
-    }
-
-    alert("Return Saved Successfully!");
-    location.reload();
 }
-
 </script>
 </body>
 </html>

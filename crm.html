@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VAJRA CRM</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root{
+      --primary:#2563eb;
+      --primary-dark:#1d4ed8;
+      --success:#059669;
+      --success-dark:#047857;
+      --danger:#dc2626;
+      --warning:#d97706;
+      --bg:#f1f5f9;
+      --panel:rgba(255,255,255,0.96);
+      --text:#0f172a;
+      --muted:#64748b;
+      --border:#cbd5e1;
+      --shadow:0 12px 28px rgba(0,0,0,0.12);
+      --radius:18px;
+    }
+
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:'Segoe UI',Roboto,Arial,sans-serif;
+      background:
+        linear-gradient(rgba(15,23,42,.68), rgba(15,23,42,.68)),
+        url("background.jpg") center/cover fixed no-repeat;
+      color:var(--text);
+      min-height:100vh;
+    }
+
+    .page{
+      max-width:1600px;
+      margin:0 auto;
+      padding:16px;
+    }
+
+    .topbar{
+      background:rgba(15,23,42,.86);
+      color:#fff;
+      border-radius:22px;
+      padding:18px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:14px;
+      flex-wrap:wrap;
+      box-shadow:var(--shadow);
+      backdrop-filter:blur(8px);
+    }
+
+    .topbar-left{
+      display:flex;
+      align-items:center;
+      gap:14px;
+    }
+
+    .logo{
+      width:52px;
+      height:52px;
+      border-radius:16px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:linear-gradient(135deg,var(--primary),#60a5fa);
+      font-size:26px;
+      flex-shrink:0;
+    }
+
+    .title-wrap h1{
+      margin:0;
+      font-size:26px;
+      line-height:1.1;
+    }
+
+    .title-wrap p{
+      margin:5px 0 0;
+      color:#cbd5e1;
+      font-size:13px;
+    }
+
+    .topbar-actions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    .btn{
+      border:none;
+      border-radius:12px;
+      padding:11px 16px;
+      min-height:44px;
+      font-weight:800;
+      font-size:14px;
+      cursor:pointer;
+      transition:.18s ease;
+    }
+    .btn:hover{transform:translateY(-1px)}
+    .btn:active{transform:scale(.98)}
+    .btn-primary{background:var(--primary);color:#fff}
+    .btn-primary:hover{background:var(--primary-dark)}
+    .btn-success{background:var(--success);color:#fff}
+    .btn-success:hover{background:var(--success-dark)}
+    .btn-light{background:#e2e8f0;color:#0f172a}
+    .btn-danger{background:var(--danger);color:#fff}
+    .btn-warning{background:var(--warning);color:#fff}
+
+    .stats{
+      display:grid;
+      grid-template-columns:repeat(5,1fr);
+      gap:14px;
+      margin-top:16px;
+    }
+
+    .stat{
+      background:var(--panel);
+      border-radius:18px;
+      box-shadow:var(--shadow);
+      padding:16px;
+      text-align:center;
+    }
+
+    .stat .label{
+      font-size:12px;
+      color:var(--muted);
+      text-transform:uppercase;
+      letter-spacing:.5px;
+      font-weight:800;
+    }
+
+    .stat .value{
+      margin-top:8px;
+      font-size:28px;
+      font-weight:900;
+    }
+
+    .layout{
+      margin-top:16px;
+      display:grid;
+      grid-template-columns:460px 1fr;
+      gap:16px;
+      align-items:start;
+    }
+
+    .stack{
+      display:grid;
+      gap:16px;
+    }
+
+    .panel{
+      background:var(--panel);
+      border-radius:22px;
+      box-shadow:var(--shadow);
+      overflow:hidden;
+    }
+
+    .panel-header{
+      padding:18px;
+      border-bottom:1px solid #e2e8f0;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    .panel-header h2{
+      margin:0;
+      font-size:20px;
+    }
+
+    .panel-header p{
+      margin:5px 0 0;
+      color:var(--muted);
+      font-size:13px;
+    }
+
+    .panel-body{
+      padding:18px;
+    }
+
+    .status{
+      display:none;
+      margin-bottom:14px;
+      padding:12px 14px;
+      border-radius:12px;
+      font-size:14px;
+      font-weight:700;
+      white-space:pre-line;
+    }
+    .status.success{display:block;background:#dcfce7;color:#166534}
+    .status.error{display:block;background:#fee2e2;color:#991b1b}
+    .status.info{display:block;background:#dbeafe;color:#1e40af}
+
+    .form-grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:14px;
+    }
+
+    .field{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+    }
+
+    .field.full{grid-column:1/-1}
+
+    .field label{
+      font-size:13px;
+      font-weight:800;
+      color:#334155;
+    }
+
+    .field input,
+    .field select,
+    .field textarea{
+      width:100%;
+      min-height:46px;
+      padding:12px 14px;
+      border:1px solid var(--border);
+      border-radius:12px;
+      background:#fff;
+      font-size:14px;
+      outline:none;
+      transition:.15s ease;
+      text-transform:uppercase;
+      font-family:inherit;
+    }
+
+    .field textarea{
+      min-height:110px;
+      resize:vertical;
+    }
+
+    .field input:focus,
+    .field select:focus,
+    .field textarea:focus{
+      border-color:var(--primary);
+      box-shadow:0 0 0 3px rgba(37,99,235,.14);
+    }
+
+    .helper{
+      font-size:12px;
+      color:var(--muted);
+    }
+
+    .checkbox-grid{
+      display:grid;
+      grid-template-columns:repeat(2,1fr);
+      gap:10px;
+      margin-top:4px;
+    }
+
+    .check-item{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      background:#f8fafc;
+      border:1px solid #e2e8f0;
+      border-radius:12px;
+      padding:10px 12px;
+      min-height:44px;
+    }
+
+    .check-item input{
+      width:auto;
+      min-height:auto;
+      margin:0;
+      transform:scale(1.1);
+    }
+
+    .form-actions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:16px;
+    }
+
+    .toolbar{
+      display:grid;
+      grid-template-columns:1.4fr 1fr 1fr 1fr 1fr;
+      gap:12px;
+      margin-bottom:14px;
+    }
+
+    .toolbar input,
+    .toolbar select{
+      width:100%;
+      min-height:46px;
+      padding:12px 14px;
+      border:1px solid var(--border);
+      border-radius:12px;
+      background:#fff;
+      font-size:14px;
+      outline:none;
+      text-transform:uppercase;
+    }
+
+    .toolbar input:focus,
+    .toolbar select:focus{
+      border-color:var(--primary);
+      box-shadow:0 0 0 3px rgba(37,99,235,.14);
+    }
+
+    .table-wrap{
+      overflow:auto;
+      border:1px solid #e2e8f0;
+      border-radius:16px;
+      background:#fff;
+    }
+
+    table{
+      width:100%;
+      min-width:1300px;
+      border-collapse:collapse;
+    }
+
+    th, td{
+      padding:12px 10px;
+      border-bottom:1px solid #e2e8f0;
+      text-align:left;
+      vertical-align:top;
+      font-size:14px;
+    }
+
+    thead th{
+      position:sticky;
+      top:0;
+      z-index:1;
+      background:#eff6ff;
+      color:#1e3a8a;
+      font-size:12px;
+      font-weight:900;
+      text-transform:uppercase;
+      letter-spacing:.4px;
+    }
+
+    tbody tr:hover{
+      background:#f8fafc;
+    }
+
+    .badge{
+      display:inline-block;
+      padding:5px 10px;
+      border-radius:999px;
+      font-size:11px;
+      font-weight:800;
+      background:#dbeafe;
+      color:#1d4ed8;
+      margin:2px;
+    }
+
+    .priority-high{background:#fee2e2;color:#b91c1c}
+    .priority-medium{background:#fef3c7;color:#92400e}
+    .priority-low{background:#dcfce7;color:#166534}
+
+    .table-actions{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+
+    .mini-btn{
+      border:none;
+      border-radius:10px;
+      padding:8px 10px;
+      min-height:36px;
+      font-size:12px;
+      font-weight:800;
+      cursor:pointer;
+    }
+
+    .mini-edit{background:#dbeafe;color:#1d4ed8}
+    .mini-delete{background:#fee2e2;color:#b91c1c}
+    .mini-note{background:#e0f2fe;color:#0369a1}
+
+    .empty{
+      text-align:center;
+      color:var(--muted);
+      padding:28px 10px;
+      font-weight:700;
+    }
+
+    .followup-list{
+      display:grid;
+      gap:12px;
+    }
+
+    .followup-card{
+      border:1px solid #e2e8f0;
+      border-radius:14px;
+      padding:12px;
+      background:#fff;
+    }
+
+    .followup-head{
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    .followup-name{
+      font-weight:900;
+      font-size:15px;
+    }
+
+    .followup-meta{
+      color:var(--muted);
+      font-size:12px;
+      margin-top:4px;
+    }
+
+    .followup-note{
+      margin-top:10px;
+      line-height:1.5;
+      font-size:13px;
+    }
+
+    @media (max-width:1300px){
+      .layout{grid-template-columns:1fr}
+    }
+
+    @media (max-width:1000px){
+      .stats{grid-template-columns:repeat(2,1fr)}
+      .toolbar{grid-template-columns:1fr 1fr}
+    }
+
+    @media (max-width:768px){
+      .page{padding:12px}
+      .topbar{padding:16px}
+      .title-wrap h1{font-size:21px}
+      .stats{grid-template-columns:1fr}
+      .form-grid{grid-template-columns:1fr}
+      .checkbox-grid{grid-template-columns:1fr}
+      .toolbar{grid-template-columns:1fr}
+      .topbar-actions{width:100%}
+      .topbar-actions .btn{flex:1}
+      table{min-width:1100px}
+    }
+
+    @media (max-width:480px){
+      .panel-header,.panel-body{padding:14px}
+      .btn{width:100%}
+      .form-actions .btn{width:100%}
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="topbar">
+      <div class="topbar-left">
+        <div class="logo">🏬</div>
+        <div class="title-wrap">
+          <h1>VAJRA CRM</h1>
+          <p>Electrical • Switches • Chimney • Hob • Fans • Lights • Plumbing • Sanitary • Interior Decor • Interlock</p>
+        </div>
+      </div>
+
+      <div class="topbar-actions">
+        <button class="btn btn-light" id="backBtn">⬅ Back</button>
+        <button class="btn btn-primary" id="newCustomerBtn">＋ New Customer</button>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="label">Total Customers</div>
+        <div class="value" id="totalCustomers">0</div>
+      </div>
+      <div class="stat">
+        <div class="label">Filtered Results</div>
+        <div class="value" id="filteredCustomers">0</div>
+      </div>
+      <div class="stat">
+        <div class="label">Today Follow-ups</div>
+        <div class="value" id="todayFollowups">0</div>
+      </div>
+      <div class="stat">
+        <div class="label">High Priority</div>
+        <div class="value" id="highPriorityCount">0</div>
+      </div>
+      <div class="stat">
+        <div class="label">Pending Follow-ups</div>
+        <div class="value" id="pendingFollowups">0</div>
+      </div>
+    </div>
+
+    <div class="layout">
+      <div class="stack">
+        <section class="panel">
+          <div class="panel-header">
+            <div>
+              <h2 id="formTitle">Create CRM Customer</h2>
+              <p id="formSubtitle">Add customer, interests, follow-up and notes</p>
+            </div>
+            <div class="badge" id="modeBadge">CREATE MODE</div>
+          </div>
+
+          <div class="panel-body">
+            <div id="statusBox" class="status"></div>
+
+            <form id="customerForm" novalidate>
+              <div class="form-grid">
+                <div class="field full">
+                  <label for="customerName">Customer Name</label>
+                  <input type="text" id="customerName" required placeholder="ENTER CUSTOMER NAME">
+                </div>
+
+                <div class="field">
+                  <label for="customerMobile">Mobile Number</label>
+                  <input type="tel" id="customerMobile" required placeholder="ENTER MOBILE NUMBER">
+                </div>
+
+                <div class="field">
+                  <label for="salesman">Salesman</label>
+                  <input type="text" id="salesman" placeholder="ENTER SALESMAN NAME">
+                </div>
+
+                <div class="field full">
+                  <label for="customerAddress">Address</label>
+                  <textarea id="customerAddress" placeholder="ENTER ADDRESS"></textarea>
+                </div>
+
+                <div class="field">
+                  <label for="gstNumber">GST Number</label>
+                  <input type="text" id="gstNumber" placeholder="ENTER GST NUMBER">
+                </div>
+
+                <div class="field">
+                  <label for="stateCode">State Code</label>
+                  <input type="text" id="stateCode" placeholder="EXAMPLE 32">
+                </div>
+
+                <div class="field">
+                  <label for="priority">Priority</label>
+                  <select id="priority">
+                    <option value="LOW">LOW</option>
+                    <option value="MEDIUM">MEDIUM</option>
+                    <option value="HIGH">HIGH</option>
+                  </select>
+                </div>
+
+                <div class="field">
+                  <label for="nextFollowupDate">Next Follow-up Date</label>
+                  <input type="date" id="nextFollowupDate" style="text-transform:none;">
+                </div>
+
+                <div class="field full">
+                  <label>Customer Interest Categories</label>
+                  <div class="checkbox-grid">
+                    <label class="check-item"><input type="checkbox" value="ELECTRICAL SWITCHES" class="interest-check"> ELECTRICAL SWITCHES</label>
+                    <label class="check-item"><input type="checkbox" value="CHIMNEY" class="interest-check"> CHIMNEY</label>
+                    <label class="check-item"><input type="checkbox" value="HOB" class="interest-check"> HOB</label>
+                    <label class="check-item"><input type="checkbox" value="FANS" class="interest-check"> FANS</label>
+                    <label class="check-item"><input type="checkbox" value="LIGHTS" class="interest-check"> LIGHTS</label>
+                    <label class="check-item"><input type="checkbox" value="PLUMBING" class="interest-check"> PLUMBING</label>
+                    <label class="check-item"><input type="checkbox" value="SANITARY" class="interest-check"> SANITARY</label>
+                    <label class="check-item"><input type="checkbox" value="INTERIOR DECOR" class="interest-check"> INTERIOR DECOR</label>
+                    <label class="check-item"><input type="checkbox" value="INTERLOCK" class="interest-check"> INTERLOCK</label>
+                    <label class="check-item"><input type="checkbox" value="OTHER" class="interest-check"> OTHER</label>
+                  </div>
+                </div>
+
+                <div class="field full">
+                  <label for="customerNotes">Notes / Requirement / Enquiry</label>
+                  <textarea id="customerNotes" placeholder="ENTER CUSTOMER REQUIREMENT, PRODUCT INTEREST, SITE DETAILS, FOLLOW-UP REMARKS"></textarea>
+                </div>
+              </div>
+
+              <div class="form-actions">
+                <button type="submit" class="btn btn-success" id="saveBtn">Save CRM Customer</button>
+                <button type="button" class="btn btn-light" id="resetBtn">Reset</button>
+              </div>
+            </form>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <div>
+              <h2>Today / Pending Follow-ups</h2>
+              <p>Quick view of customer reminders</p>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div id="followupList" class="followup-list">
+              <div class="empty">Loading follow-ups...</div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <section class="panel">
+        <div class="panel-header">
+          <div>
+            <h2>CRM Customer List</h2>
+            <p>Search, filter, edit, delete and review customer interests</p>
+          </div>
+        </div>
+
+        <div class="panel-body">
+          <div class="toolbar">
+            <input type="text" id="searchInput" placeholder="SEARCH NAME OR MOBILE...">
+            <input type="text" id="salesmanFilter" placeholder="SEARCH SALESMAN...">
+            <select id="priorityFilter">
+              <option value="">ALL PRIORITY</option>
+              <option value="LOW">LOW</option>
+              <option value="MEDIUM">MEDIUM</option>
+              <option value="HIGH">HIGH</option>
+            </select>
+            <input type="text" id="interestFilter" placeholder="SEARCH INTEREST...">
+            <input type="text" id="addressFilter" placeholder="SEARCH ADDRESS...">
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Name</th>
+                  <th>Mobile</th>
+                  <th>Salesman</th>
+                  <th>Address</th>
+                  <th>Priority</th>
+                  <th>Next Follow-up</th>
+                  <th>Interest</th>
+                  <th>Notes</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="customerTableBody">
+                <tr><td colspan="10" class="empty">Loading CRM customers...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    const supabaseUrl = "https://gqxczzijntbvtlmmzppt.supabase.co";
+    const supabaseKey = "sb_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs";
+    const sb = supabase.createClient(supabaseUrl, supabaseKey);
+
+    // CHANGE THIS TABLE NAME IF YOU CREATE DIFFERENT TABLE NAME
+    const TABLE_NAME = "crm_customers";
+
+    let customers = [];
+    let editingId = null;
+
+    const form = document.getElementById("customerForm");
+    const statusBox = document.getElementById("statusBox");
+    const saveBtn = document.getElementById("saveBtn");
+    const resetBtn = document.getElementById("resetBtn");
+    const newCustomerBtn = document.getElementById("newCustomerBtn");
+    const backBtn = document.getElementById("backBtn");
+
+    const customerName = document.getElementById("customerName");
+    const customerMobile = document.getElementById("customerMobile");
+    const salesman = document.getElementById("salesman");
+    const customerAddress = document.getElementById("customerAddress");
+    const gstNumber = document.getElementById("gstNumber");
+    const stateCode = document.getElementById("stateCode");
+    const priority = document.getElementById("priority");
+    const nextFollowupDate = document.getElementById("nextFollowupDate");
+    const customerNotes = document.getElementById("customerNotes");
+
+    const searchInput = document.getElementById("searchInput");
+    const salesmanFilter = document.getElementById("salesmanFilter");
+    const priorityFilter = document.getElementById("priorityFilter");
+    const interestFilter = document.getElementById("interestFilter");
+    const addressFilter = document.getElementById("addressFilter");
+
+    const customerTableBody = document.getElementById("customerTableBody");
+    const followupList = document.getElementById("followupList");
+
+    const totalCustomers = document.getElementById("totalCustomers");
+    const filteredCustomers = document.getElementById("filteredCustomers");
+    const todayFollowups = document.getElementById("todayFollowups");
+    const highPriorityCount = document.getElementById("highPriorityCount");
+    const pendingFollowups = document.getElementById("pendingFollowups");
+
+    const formTitle = document.getElementById("formTitle");
+    const formSubtitle = document.getElementById("formSubtitle");
+    const modeBadge = document.getElementById("modeBadge");
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      enableUppercase();
+      bindEvents();
+      await loadCustomers();
+      resetForm();
+    });
+
+    function bindEvents() {
+      form.addEventListener("submit", handleSubmit);
+      resetBtn.addEventListener("click", resetForm);
+      newCustomerBtn.addEventListener("click", () => {
+        resetForm();
+        customerName.focus();
+      });
+
+      backBtn.addEventListener("click", () => {
+        if (window.history.length > 1) window.history.back();
+        else window.location.href = "dashboard.html";
+      });
+
+      searchInput.addEventListener("input", renderCustomers);
+      salesmanFilter.addEventListener("input", renderCustomers);
+      priorityFilter.addEventListener("change", renderCustomers);
+      interestFilter.addEventListener("input", renderCustomers);
+      addressFilter.addEventListener("input", renderCustomers);
+    }
+
+    function enableUppercase() {
+      document.querySelectorAll("input[type='text'], input[type='tel'], textarea").forEach(el => {
+        el.setAttribute("autocapitalize", "characters");
+        el.addEventListener("input", () => {
+          const start = el.selectionStart;
+          const end = el.selectionEnd;
+          el.value = String(el.value || "").toUpperCase();
+          try { el.setSelectionRange(start, end); } catch (_) {}
+        });
+      });
+    }
+
+    function showStatus(message, type="success") {
+      statusBox.className = `status ${type}`;
+      statusBox.textContent = message;
+    }
+
+    function hideStatus() {
+      statusBox.className = "status";
+      statusBox.textContent = "";
+    }
+
+    function normalize(v) {
+      return String(v || "").trim().toUpperCase();
+    }
+
+    function getSelectedInterests() {
+      return Array.from(document.querySelectorAll(".interest-check:checked")).map(x => x.value.toUpperCase());
+    }
+
+    function setSelectedInterests(list) {
+      const values = Array.isArray(list) ? list : [];
+      document.querySelectorAll(".interest-check").forEach(chk => {
+        chk.checked = values.includes(chk.value.toUpperCase());
+      });
+    }
+
+    function setMode(mode) {
+      const isEdit = mode === "edit";
+      formTitle.textContent = isEdit ? "Edit CRM Customer" : "Create CRM Customer";
+      formSubtitle.textContent = isEdit ? "Update customer, interests and follow-up" : "Add customer, interests and follow-up";
+      saveBtn.textContent = isEdit ? "Update CRM Customer" : "Save CRM Customer";
+      modeBadge.textContent = isEdit ? "EDIT MODE" : "CREATE MODE";
+      modeBadge.style.background = isEdit ? "#fef3c7" : "#dbeafe";
+      modeBadge.style.color = isEdit ? "#92400e" : "#1d4ed8";
+    }
+
+    function resetForm() {
+      editingId = null;
+      form.reset();
+      setSelectedInterests([]);
+      setMode("create");
+      hideStatus();
+      customerName.focus();
+    }
+
+    async function loadCustomers() {
+      customerTableBody.innerHTML = `<tr><td colspan="10" class="empty">Loading CRM customers...</td></tr>`;
+
+      const { data, error } = await sb
+        .from(TABLE_NAME)
+        .select("*")
+        .order("id", { ascending: false });
+
+      if (error) {
+        showStatus(
+          "CRM TABLE NOT FOUND OR ERROR.\n\nCREATE THIS TABLE IN SUPABASE:\n" +
+          "crm_customers (id, name, mobile, salesman, address, gst_number, state_code, priority, next_followup_date, interests, notes, created_at)",
+          "error"
+        );
+        customerTableBody.innerHTML = `<tr><td colspan="10" class="empty">Error loading CRM customers</td></tr>`;
+        followupList.innerHTML = `<div class="empty">Error loading follow-ups</div>`;
+        return;
+      }
+
+      customers = data || [];
+      updateStats();
+      renderCustomers();
+      renderFollowups();
+    }
+
+    function updateStats() {
+      totalCustomers.textContent = customers.length;
+      highPriorityCount.textContent = customers.filter(c => normalize(c.priority) === "HIGH").length;
+
+      const today = new Date().toISOString().split("T")[0];
+      todayFollowups.textContent = customers.filter(c => String(c.next_followup_date || "") === today).length;
+      pendingFollowups.textContent = customers.filter(c => !!c.next_followup_date).length;
+    }
+
+    function renderCustomers() {
+      const term = normalize(searchInput.value);
+      const sm = normalize(salesmanFilter.value);
+      const pr = normalize(priorityFilter.value);
+      const interest = normalize(interestFilter.value);
+      const addr = normalize(addressFilter.value);
+
+      const filtered = customers.filter(c => {
+        const interests = Array.isArray(c.interests) ? c.interests.join(" ") : String(c.interests || "");
+        return (
+          (!term || normalize(c.name).includes(term) || normalize(c.mobile).includes(term)) &&
+          (!sm || normalize(c.salesman).includes(sm)) &&
+          (!pr || normalize(c.priority) === pr) &&
+          (!interest || normalize(interests).includes(interest)) &&
+          (!addr || normalize(c.address).includes(addr))
+        );
+      });
+
+      filteredCustomers.textContent = filtered.length;
+
+      if (!filtered.length) {
+        customerTableBody.innerHTML = `<tr><td colspan="10" class="empty">No CRM customers found</td></tr>`;
+        return;
+      }
+
+      customerTableBody.innerHTML = filtered.map(c => {
+        const interests = Array.isArray(c.interests) ? c.interests : [];
+        const pClass = normalize(c.priority) === "HIGH"
+          ? "priority-high"
+          : normalize(c.priority) === "MEDIUM"
+          ? "priority-medium"
+          : "priority-low";
+
+        return `
+          <tr>
+            <td>${c.id ?? ""}</td>
+            <td>${escapeHtml(normalize(c.name))}</td>
+            <td>${escapeHtml(normalize(c.mobile))}</td>
+            <td>${escapeHtml(normalize(c.salesman))}</td>
+            <td>${escapeHtml(normalize(c.address))}</td>
+            <td><span class="badge ${pClass}">${escapeHtml(normalize(c.priority || "LOW"))}</span></td>
+            <td>${escapeHtml(String(c.next_followup_date || ""))}</td>
+            <td>${interests.length ? interests.map(i => `<span class="badge">${escapeHtml(normalize(i))}</span>`).join("") : ""}</td>
+            <td>${escapeHtml(normalize(c.notes)).slice(0, 120)}</td>
+            <td>
+              <div class="table-actions">
+                <button class="mini-btn mini-edit" onclick="editCustomer(${c.id})">Edit</button>
+                <button class="mini-btn mini-delete" onclick="deleteCustomer(${c.id}, '${escapeJs(normalize(c.name))}')">Delete</button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    function renderFollowups() {
+      const today = new Date().toISOString().split("T")[0];
+
+      const list = customers
+        .filter(c => c.next_followup_date)
+        .sort((a, b) => String(a.next_followup_date).localeCompare(String(b.next_followup_date)));
+
+      if (!list.length) {
+        followupList.innerHTML = `<div class="empty">No follow-ups available</div>`;
+        return;
+      }
+
+      followupList.innerHTML = list.slice(0, 15).map(c => {
+        const pClass = normalize(c.priority) === "HIGH"
+          ? "priority-high"
+          : normalize(c.priority) === "MEDIUM"
+          ? "priority-medium"
+          : "priority-low";
+
+        const isToday = String(c.next_followup_date) === today;
+
+        return `
+          <div class="followup-card">
+            <div class="followup-head">
+              <div>
+                <div class="followup-name">${escapeHtml(normalize(c.name))}</div>
+                <div class="followup-meta">
+                  MOBILE: ${escapeHtml(normalize(c.mobile))} |
+                  SALESMAN: ${escapeHtml(normalize(c.salesman))} |
+                  DATE: ${escapeHtml(String(c.next_followup_date || ""))}
+                  ${isToday ? ' | TODAY' : ''}
+                </div>
+              </div>
+              <span class="badge ${pClass}">${escapeHtml(normalize(c.priority || "LOW"))}</span>
+            </div>
+            <div class="followup-note">${escapeHtml(normalize(c.notes)).slice(0, 180) || "NO NOTES"}</div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    async function handleSubmit(e) {
+      e.preventDefault();
+      hideStatus();
+
+      const payload = {
+        name: normalize(customerName.value),
+        mobile: normalize(customerMobile.value),
+        salesman: normalize(salesman.value),
+        address: normalize(customerAddress.value),
+        gst_number: normalize(gstNumber.value),
+        state_code: normalize(stateCode.value),
+        priority: normalize(priority.value || "LOW"),
+        next_followup_date: nextFollowupDate.value || null,
+        interests: getSelectedInterests(),
+        notes: normalize(customerNotes.value)
+      };
+
+      if (!payload.name || !payload.mobile) {
+        showStatus("NAME AND MOBILE ARE REQUIRED.", "error");
+        return;
+      }
+
+      saveBtn.disabled = true;
+      saveBtn.textContent = editingId ? "Updating..." : "Saving...";
+
+      try {
+        if (editingId) {
+          const { error } = await sb
+            .from(TABLE_NAME)
+            .update(payload)
+            .eq("id", editingId);
+
+          if (error) throw error;
+          showStatus("CRM CUSTOMER UPDATED SUCCESSFULLY.", "success");
+        } else {
+          const { error } = await sb
+            .from(TABLE_NAME)
+            .insert([payload]);
+
+          if (error) throw error;
+          showStatus("CRM CUSTOMER SAVED SUCCESSFULLY.", "success");
+        }
+
+        await loadCustomers();
+        resetForm();
+      } catch (error) {
+        showStatus(error.message || "SAVE FAILED.", "error");
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = editingId ? "Update CRM Customer" : "Save CRM Customer";
+      }
+    }
+
+    async function editCustomer(id) {
+      const row = customers.find(x => Number(x.id) === Number(id));
+      if (!row) {
+        showStatus("CUSTOMER NOT FOUND.", "error");
+        return;
+      }
+
+      editingId = row.id;
+      customerName.value = normalize(row.name);
+      customerMobile.value = normalize(row.mobile);
+      salesman.value = normalize(row.salesman);
+      customerAddress.value = normalize(row.address);
+      gstNumber.value = normalize(row.gst_number);
+      stateCode.value = normalize(row.state_code);
+      priority.value = normalize(row.priority || "LOW");
+      nextFollowupDate.value = row.next_followup_date || "";
+      customerNotes.value = normalize(row.notes);
+      setSelectedInterests(Array.isArray(row.interests) ? row.interests.map(normalize) : []);
+
+      setMode("edit");
+      showStatus(`EDITING CRM CUSTOMER: ${normalize(row.name)}`, "info");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    async function deleteCustomer(id, name) {
+      const ok = confirm(`DELETE CUSTOMER "${name}"?`);
+      if (!ok) return;
+
+      const { error } = await sb
+        .from(TABLE_NAME)
+        .delete()
+        .eq("id", id);
+
+      if (error) {
+        showStatus(error.message || "DELETE FAILED.", "error");
+        return;
+      }
+
+      if (Number(editingId) === Number(id)) resetForm();
+
+      showStatus("CRM CUSTOMER DELETED SUCCESSFULLY.", "success");
+      await loadCustomers();
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function escapeJs(value) {
+      return String(value).replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+    }
+
+    window.editCustomer = editCustomer;
+    window.deleteCustomer = deleteCustomer;
+  </script>
+</body>
+</html>

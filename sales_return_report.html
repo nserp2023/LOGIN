@@ -156,6 +156,29 @@ tr:hover{
     .header h2{ font-size:18px; }
     th,td{ font-size:12px; padding:8px 6px; }
 }
+.accept-btn{ background:#16a34a; color:#fff; }
+.accepted-badge{
+    display:inline-block;
+    padding:5px 10px;
+    border-radius:999px;
+    font-size:11px;
+    font-weight:700;
+    background:#dcfce7;
+    color:#166534;
+}
+.pending-badge{
+    display:inline-block;
+    padding:5px 10px;
+    border-radius:999px;
+    font-size:11px;
+    font-weight:700;
+    background:#fef3c7;
+    color:#92400e;
+}
+.disabled-btn{
+    opacity:.55;
+    cursor:not-allowed;
+}
 </style>
 </head>
 <body>
@@ -216,15 +239,16 @@ tr:hover{
         <table>
             <thead>
                 <tr>
-                    <th>#</th>
-                    <th>Return ID</th>
-                    <th>Return Date</th>
-                    <th>Customer Name</th>
-                    <th>Mobile</th>
-                    <th>Original Bill No</th>
-                    <th>Return Amount</th>
-                    <th>Actions</th>
-                </tr>
+    <th>#</th>
+    <th>Return ID</th>
+    <th>Return Date</th>
+    <th>Customer Name</th>
+    <th>Mobile</th>
+    <th>Original Bill No</th>
+    <th>Return Amount</th>
+    <th>Status</th>
+    <th>Actions</th>
+</tr>
             </thead>
             <tbody id="report_body"></tbody>
         </table>
@@ -252,7 +276,7 @@ function setDefaultDates(){
 
 async function loadReport(){
     const tbody = document.getElementById("report_body");
-    tbody.innerHTML = `<tr><td colspan="8">Loading...</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9">Loading...</td></tr>`;
 
     const fromDate = document.getElementById("from_date").value;
     const toDate = document.getElementById("to_date").value;
@@ -260,19 +284,22 @@ async function loadReport(){
     const name = document.getElementById("search_name").value.trim().toLowerCase();
     const billNo = document.getElementById("search_bill").value.trim().toLowerCase();
 
-    let { data: returns, error } = await sb
-        .from("sales_return_details")
-        .select(`
-            id,
-            original_sales_id,
-            return_date,
-            total_return_amount
-        `)
-        .order("id", { ascending:false });
+let { data: returns, error } = await sb
+    .from("sales_return_details")
+    .select(`
+        id,
+        original_sales_id,
+        return_date,
+        total_return_amount,
+        is_accepted,
+        accepted_at,
+        accepted_by
+    `)
+    .order("id", { ascending:false });
 
     if(error){
         console.error(error);
-        tbody.innerHTML = `<tr><td colspan="8">Error loading report</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9">Error loading report</td></tr>`;
         return;
     }
 
@@ -316,7 +343,7 @@ async function loadReport(){
     let totalAmount = 0;
 
     if(!filtered.length){
-        tbody.innerHTML = `<tr><td colspan="8">No sales return records found</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9">No sales return records found</td></tr>`;
     }
 
     filtered.forEach((r, index) => {
@@ -324,22 +351,40 @@ async function loadReport(){
         const amt = parseFloat(r.total_return_amount || 0);
         totalAmount += amt;
 
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-            <td>${index + 1}</td>
-            <td>${r.id}</td>
-            <td>${r.return_date ? r.return_date.split("T")[0] : ""}</td>
-            <td>${sale.customer_name || ""}</td>
-            <td>${sale.customer_mobile || ""}</td>
-            <td>${sale.series_code || ""}-${sale.sales_number || ""}</td>
-            <td>₹${amt.toFixed(2)}</td>
-            <td>
-                <button class="action-btn edit-btn" onclick="modifyReturn(${r.id})">Modify</button>
-                <button class="action-btn print-btn" onclick="printReturn(${r.id})">Print</button>
-            </td>
-        `;
-        tbody.appendChild(tr);
-    });
+const accepted = !!r.is_accepted;
+
+const tr = document.createElement("tr");
+tr.innerHTML = `
+    <td>${index + 1}</td>
+    <td>${r.id}</td>
+    <td>${r.return_date ? r.return_date.split("T")[0] : ""}</td>
+    <td>${sale.customer_name || ""}</td>
+    <td>${sale.customer_mobile || ""}</td>
+    <td>${sale.series_code || ""}-${sale.sales_number || ""}</td>
+    <td>₹${amt.toFixed(2)}</td>
+    <td>
+        ${accepted
+            ? `<span class="accepted-badge">ACCEPTED</span>`
+            : `<span class="pending-badge">PENDING</span>`
+        }
+    </td>
+    <td>
+        <button class="action-btn edit-btn ${accepted ? "disabled-btn" : ""}"
+                onclick="${accepted ? "" : `modifyReturn(${r.id})`}"
+                ${accepted ? "disabled" : ""}>
+            Modify
+        </button>
+
+        ${
+            accepted
+            ? `<button class="action-btn accept-btn disabled-btn" disabled>Accepted</button>`
+            : `<button class="action-btn accept-btn" onclick="acceptReturn(${r.id})">Accept</button>`
+        }
+
+        <button class="action-btn print-btn" onclick="printReturn(${r.id})">Print</button>
+    </td>
+`;
+tbody.appendChild(tr);    });
 
     document.getElementById("total_returns_count").innerText = filtered.length;
     document.getElementById("total_returns_amount").innerText = "₹" + totalAmount.toFixed(2);
@@ -347,6 +392,31 @@ async function loadReport(){
 
 function modifyReturn(id){
     window.location.href = `sales_return_modification.html?id=${id}`;
+}
+async function acceptReturn(id){
+    const ok = confirm("Accept this sales return? After accepting, it will be counted in dashboard balance.");
+    if(!ok) return;
+
+    const acceptedBy = localStorage.getItem("staff_name") || localStorage.getItem("username") || "System";
+
+    const { error } = await sb
+        .from("sales_return_details")
+        .update({
+            is_accepted: true,
+            accepted_at: new Date().toISOString(),
+            accepted_by: acceptedBy
+        })
+        .eq("id", id)
+        .eq("is_accepted", false);
+
+    if(error){
+        console.error(error);
+        alert("Failed to accept return: " + error.message);
+        return;
+    }
+
+    alert("Sales return accepted successfully");
+    await loadReport();
 }
 
 function printReturn(id){

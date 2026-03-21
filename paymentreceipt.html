@@ -259,6 +259,49 @@
             font-size:16px;
         }
     }
+.accept-btn{
+    background:#16a34a;
+    color:#fff;
+    border:none;
+    padding:8px 12px;
+    border-radius:8px;
+    font-size:13px;
+    font-weight:700;
+    cursor:pointer;
+}
+
+.accept-btn:hover{
+    opacity:0.95;
+}
+
+.accept-btn:disabled{
+    background:#94a3b8;
+    cursor:not-allowed;
+}
+
+.status-badge{
+    display:inline-block;
+    padding:6px 10px;
+    border-radius:999px;
+    font-size:12px;
+    font-weight:700;
+}
+
+.status-pending{
+    background:#fef3c7;
+    color:#92400e;
+}
+
+.status-approved{
+    background:#dcfce7;
+    color:#166534;
+}
+
+.status-rejected{
+    background:#fee2e2;
+    color:#991b1b;
+}
+
 </style>
 </head>
 <body>
@@ -358,7 +401,7 @@
                 </thead>
                 <tbody id="resultsBody">
                     <tr>
-                        <td colspan="6" style="text-align:center; color:#64748b;">No transactions found</td>
+                        <td colspan="7" style="text-align:center; color:#64748b;">No transactions found</td>
                     </tr>
                 </tbody>
             </table>
@@ -656,16 +699,17 @@
             const partyId = await ensurePartyExists(party);
 
             const { error } = await sb
-                .from("cash_transactions")
-                .insert([{
-                    voucher_no: voucher,
-                    txn_date: date,
-                    txn_type: type,
-                    party_id: partyId,
-                    party_name: party,
-                    amount: amt,
-                    remarks: note || null
-                }]);
+    .from("cash_transactions")
+    .insert([{
+        voucher_no: voucher,
+        txn_date: date,
+        txn_type: type,
+        party_id: partyId,
+        party_name: party,
+        amount: amt,
+        remarks: note || null,
+        approval_status: type === "receipt" ? "approved" : "pending"
+    }]);
 
             if(error) throw error;
 
@@ -730,7 +774,7 @@
     async function loadTransactions(nameFilter = ""){
         let query = sb
             .from("cash_transactions")
-            .select("id, txn_date, voucher_no, txn_type, party_name, amount, remarks")
+            .select("id, txn_date, voucher_no, txn_type, party_name, amount, remarks, approval_status, approved_by, approved_at")
             .order("txn_date", { ascending: false })
             .order("id", { ascending: false })
             .limit(100);
@@ -766,17 +810,37 @@
         renderTransactions(data || []);
     }
 
-    function renderTransactions(rows){
-        if(!rows.length){
-            resultsBody.innerHTML = `
-                <tr>
-                    <td colspan="6" style="text-align:center; color:#64748b;">No transactions found</td>
-                </tr>
-            `;
-            return;
+function renderTransactions(rows){
+    if(!rows.length){
+        resultsBody.innerHTML = `
+            <tr>
+                <td colspan="7" style="text-align:center; color:#64748b;">No transactions found</td>
+            </tr>
+        `;
+        return;
+    }
+
+    const role = (localStorage.getItem("role") || "staff").toLowerCase();
+    const canApprove = ["manager", "admin", "owner"].includes(role);
+
+    resultsBody.innerHTML = rows.map(row => {
+        let approveCell = "-";
+
+        if(row.txn_type === "payment"){
+            if(row.approval_status === "approved"){
+                approveCell = `<span class="status-badge status-approved">Approved</span>`;
+            } else if(row.approval_status === "rejected"){
+                approveCell = `<span class="status-badge status-rejected">Rejected</span>`;
+            } else if(canApprove){
+                approveCell = `<button class="accept-btn" onclick="approvePayment(${row.id})">Accept</button>`;
+            } else {
+                approveCell = `<span class="status-badge status-pending">Pending</span>`;
+            }
+        } else {
+            approveCell = `<span class="status-badge status-approved">Not Needed</span>`;
         }
 
-        resultsBody.innerHTML = rows.map(row => `
+        return `
             <tr>
                 <td>${formatDate(row.txn_date)}</td>
                 <td>${row.voucher_no}</td>
@@ -784,11 +848,11 @@
                 <td>${escapeHtml(row.party_name || "")}</td>
                 <td class="amount">${Number(row.amount).toFixed(2)}</td>
                 <td>${escapeHtml(row.remarks || "")}</td>
-                <td><button class="accept-btn" onclick="approvePayment(${row.id})">Accept</button></td>
+                <td>${approveCell}</td>
             </tr>
-        `).join("");
-    }
-
+        `;
+    }).join("");
+}
     function formatDate(dateStr){
         if(!dateStr) return "";
         const d = new Date(dateStr);
@@ -805,37 +869,36 @@
             .replaceAll("'", "&#039;");
     }
 
-    async function approvePayment(id) {
-  const role = (localStorage.getItem("role") || "staff").toLowerCase();
-  const username = localStorage.getItem("username") || "Unknown";
+async function approvePayment(id) {
+    const role = (localStorage.getItem("role") || "staff").toLowerCase();
+    const username = localStorage.getItem("username") || "Unknown";
 
-  if (!["admin", "manager", "owner"].includes(role)) {
-    alert("Only admin or manager can approve payment.");
-    return;
-  }
+    if (!["admin", "manager", "owner"].includes(role)) {
+        alert("Only admin or manager can approve payment.");
+        return;
+    }
 
-  const ok = confirm("Do you want to approve this payment?");
-  if (!ok) return;
+    const ok = confirm("Do you want to approve this payment?");
+    if (!ok) return;
 
-  const { error } = await sb
-    .from("cash_transactions")
-    .update({
-      approval_status: "approved",
-      approved_by: username,
-      approved_at: new Date().toISOString()
-    })
-    .eq("id", id)
-    .eq("txn_type", "payment");
+    const { error } = await sb
+        .from("cash_transactions")
+        .update({
+            approval_status: "approved",
+            approved_by: username,
+            approved_at: new Date().toISOString()
+        })
+        .eq("id", id)
+        .eq("txn_type", "payment");
 
-  if (error) {
-    alert("Approval failed: " + error.message);
-    return;
-  }
+    if (error) {
+        alert("Approval failed: " + error.message);
+        return;
+    }
 
-  alert("Payment approved successfully");
-  loadPayments();
+    alert("Payment approved successfully");
+    await loadTransactions(searchParty.value.trim());
 }
-
     // =========================
     // 11. ENTER KEY NAVIGATION
     // =========================
@@ -877,6 +940,8 @@
             });
         });
     }
+
+    
 </script>
 </body>
 </html>

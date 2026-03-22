@@ -5,6 +5,7 @@
 <title>Sales Return Print</title>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabaseClient.js"></script>
 
 <style>
 body{
@@ -175,10 +176,7 @@ thead{display:table-header-group;}
 <div id="pages"></div>
 
 <script>
-const sb = supabase.createClient(
-"https://gqxczzijntbvtlmmzppt.supabase.co",
-"sb_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs"
-);
+    const sb = window.sbcc; // supabase client from supabaseClient.js
 
 const params = new URLSearchParams(window.location.search);
 const id = params.get("id");

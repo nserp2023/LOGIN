@@ -1,0 +1,21 @@
+  <script src="supabaseClient.js"></script>
+  <script src="page_permissions.js"></script>
+
+
+
+    const sb = window.sbcc; // supabase client from supabaseClient.js
+  document.addEventListener("DOMContentLoaded", async () => {
+  const ok = await requirePageAccess("sales");
+  if (!ok) return;
+  });
+
+
+
+
+
+    const supabaseClient = window.sbcc; // supabase client from supabaseClient.js
+  document.addEventListener("DOMContentLoaded", async () => {
+  const ok = await requirePageAccess("sales");
+  if (!ok) return;
+  });
+

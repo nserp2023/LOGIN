@@ -564,10 +564,15 @@
             <label>GST No</label>
             <input type="text" id="cust_gst" class="form-control w-md nav-input" tabindex="6">
         </div>
+        <div class="form-group">
+  <label>Scan Barcode</label>
+  <input type="text" id="barcode_scan" class="form-control w-md" placeholder="Scan here" autocomplete="off">
+</div>
 
         <div class="form-group">
             <label>Salesman</label>
             <select id="salesman" class="form-control w-md">
+                
                 <option value="">Select</option>
                 <option value="RAJU">RAJU</option>
                 <option value="SHAFI">SHAFI</option>
@@ -2308,6 +2313,63 @@ ${data.map((c, idx) => `
         calcTotal();
         alert("Quotation loaded. You can modify items and save as Sales.");
     }
+
+    const barcodeInput = document.getElementById("barcode_scan");
+
+barcodeInput.addEventListener("keydown", async function (e) {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+
+    const code = (barcodeInput.value || "").trim().toUpperCase();
+    if (!code) return;
+
+    // 1. try barcode first, then item_code
+    let { data: item, error } = await sb
+        .from("stock_items")
+        .select("*")
+        .or(`barcode.eq.${code},item_code.eq.${code}`)
+        .maybeSingle();
+
+    if (error || !item) {
+        alert("Item not found for barcode: " + code);
+        barcodeInput.value = "";
+        barcodeInput.focus();
+        return;
+    }
+
+    // 2. check if item already exists in bill
+    const rows = document.querySelectorAll("#bill_body tr");
+    for (const row of rows) {
+        const codeInp = row.querySelector(".code-inp");
+        const qtyInp = row.querySelector(".qty-inp");
+
+        if (codeInp && (codeInp.value || "").trim().toUpperCase() === (item.item_code || "").toUpperCase()) {
+            qtyInp.value = (parseFloat(qtyInp.value) || 0) + 1;
+
+            const rid = codeInp.dataset.rid;
+            calcForward(rid);
+
+            barcodeInput.value = "";
+            barcodeInput.focus();
+            return;
+        }
+    }
+
+    // 3. add new row and fill item
+    addNewRow(false);
+
+    const lastRow = document.querySelector("#bill_body tr:last-child");
+    const rid = lastRow.querySelector(".code-inp").dataset.rid;
+
+    await fillItem(rid, item);
+
+    const qtyInp = lastRow.querySelector(".qty-inp");
+    qtyInp.value = 1;
+    calcForward(rid);
+
+    barcodeInput.value = "";
+    barcodeInput.focus();
+});
 
     async function loadEditDocument(id,type){
         editingId = id;

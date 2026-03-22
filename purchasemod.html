@@ -188,13 +188,17 @@
 
   <!-- Supabase client -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="supabaseClient.js"></script>
+<script src="page_permissions.js"></script>
 <script>
 console.log("Full URL:", window.location.href);
 console.log("Edit param:", new URLSearchParams(window.location.search).get("edit"));
 
-const SUPABASE_URL = "https://gqxczzijntbvtlmmzppt.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs";
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const sb = window.sbcc; // supabase client from supabaseClient.js
+  document.addEventListener("DOMContentLoaded", async () => {
+  const ok = await requirePageAccess("sales");
+  if (!ok) return;
+  });
 
 const fmt2 = v => (isFinite(v) ? Number(v).toFixed(2) : "");
 const num = v => (v === "" || v == null ? 0 : Number(v));

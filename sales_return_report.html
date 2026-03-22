@@ -150,13 +150,8 @@ tr:hover{
 }
 .edit-btn{ background:#2563eb; color:#fff; }
 .print-btn{ background:#059669; color:#fff; }
-
-@media (max-width:768px){
-    body{ padding:8px; }
-    .header h2{ font-size:18px; }
-    th,td{ font-size:12px; padding:8px 6px; }
-}
 .accept-btn{ background:#16a34a; color:#fff; }
+
 .accepted-badge{
     display:inline-block;
     padding:5px 10px;
@@ -178,6 +173,69 @@ tr:hover{
 .disabled-btn{
     opacity:.55;
     cursor:not-allowed;
+}
+
+/* dropdown details */
+.return-row{
+    cursor:pointer;
+}
+.return-row.open{
+    background:#eff6ff;
+}
+.details-row{
+    display:none;
+    background:#fff;
+}
+.details-box{
+    background:#f8fafc;
+    border:1px solid #dbeafe;
+    border-radius:10px;
+    padding:12px;
+    margin:6px 0;
+}
+.details-title{
+    font-size:13px;
+    font-weight:800;
+    color:#1e40af;
+    margin-bottom:10px;
+    text-transform:uppercase;
+}
+.details-table-wrap{
+    overflow:auto;
+}
+.details-table{
+    width:100%;
+    border-collapse:collapse;
+    background:#fff;
+    border:1px solid #cbd5e1;
+}
+.details-table th,
+.details-table td{
+    border:1px solid #cbd5e1;
+    padding:8px;
+    font-size:12px;
+    white-space:nowrap;
+}
+.details-table th{
+    background:#e2e8f0;
+    color:#0f172a;
+    position:static;
+}
+.loading-text{
+    color:#64748b;
+    font-style:italic;
+}
+.expand-hint{
+    font-size:11px;
+    color:#64748b;
+    font-weight:700;
+}
+
+@media (max-width:768px){
+    body{ padding:8px; }
+    .header h2{ font-size:18px; }
+    th,td{ font-size:12px; padding:8px 6px; }
+    .action-btn{ display:block; margin-bottom:6px; width:100%; }
 }
 </style>
 </head>
@@ -239,16 +297,16 @@ tr:hover{
         <table>
             <thead>
                 <tr>
-    <th>#</th>
-    <th>Return ID</th>
-    <th>Return Date</th>
-    <th>Customer Name</th>
-    <th>Mobile</th>
-    <th>Original Bill No</th>
-    <th>Return Amount</th>
-    <th>Status</th>
-    <th>Actions</th>
-</tr>
+                    <th>#</th>
+                    <th>Return ID</th>
+                    <th>Return Date</th>
+                    <th>Customer Name</th>
+                    <th>Mobile</th>
+                    <th>Original Bill No</th>
+                    <th>Return Amount</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
             </thead>
             <tbody id="report_body"></tbody>
         </table>
@@ -284,18 +342,18 @@ async function loadReport(){
     const name = document.getElementById("search_name").value.trim().toLowerCase();
     const billNo = document.getElementById("search_bill").value.trim().toLowerCase();
 
-let { data: returns, error } = await sb
-    .from("sales_return_details")
-    .select(`
-        id,
-        original_sales_id,
-        return_date,
-        total_return_amount,
-        is_accepted,
-        accepted_at,
-        accepted_by
-    `)
-    .order("id", { ascending:false });
+    let { data: returns, error } = await sb
+        .from("sales_return_details")
+        .select(`
+            id,
+            original_sales_id,
+            return_date,
+            total_return_amount,
+            is_accepted,
+            accepted_at,
+            accepted_by
+        `)
+        .order("id", { ascending:false });
 
     if(error){
         console.error(error);
@@ -351,48 +409,161 @@ let { data: returns, error } = await sb
         const amt = parseFloat(r.total_return_amount || 0);
         totalAmount += amt;
 
-const accepted = !!r.is_accepted;
+        const accepted = !!r.is_accepted;
 
-const tr = document.createElement("tr");
-tr.innerHTML = `
-    <td>${index + 1}</td>
-    <td>${r.id}</td>
-    <td>${r.return_date ? r.return_date.split("T")[0] : ""}</td>
-    <td>${sale.customer_name || ""}</td>
-    <td>${sale.customer_mobile || ""}</td>
-    <td>${sale.series_code || ""}-${sale.sales_number || ""}</td>
-    <td>₹${amt.toFixed(2)}</td>
-    <td>
-        ${accepted
-            ? `<span class="accepted-badge">ACCEPTED</span>`
-            : `<span class="pending-badge">PENDING</span>`
-        }
-    </td>
-    <td>
-        <button class="action-btn edit-btn ${accepted ? "disabled-btn" : ""}"
-                onclick="${accepted ? "" : `modifyReturn(${r.id})`}"
-                ${accepted ? "disabled" : ""}>
-            Modify
-        </button>
+        const tr = document.createElement("tr");
+        tr.className = "return-row";
+        tr.id = `row_${r.id}`;
+        tr.innerHTML = `
+            <td onclick="toggleReturnDetails(${r.id})">${index + 1}</td>
+            <td onclick="toggleReturnDetails(${r.id})">
+                ${r.id}
+                <div class="expand-hint">Click to view items</div>
+            </td>
+            <td onclick="toggleReturnDetails(${r.id})">${r.return_date ? r.return_date.split("T")[0] : ""}</td>
+            <td onclick="toggleReturnDetails(${r.id})">${sale.customer_name || ""}</td>
+            <td onclick="toggleReturnDetails(${r.id})">${sale.customer_mobile || ""}</td>
+            <td onclick="toggleReturnDetails(${r.id})">${sale.series_code || ""}-${sale.sales_number || ""}</td>
+            <td onclick="toggleReturnDetails(${r.id})">₹${amt.toFixed(2)}</td>
+            <td onclick="toggleReturnDetails(${r.id})">
+                ${accepted
+                    ? `<span class="accepted-badge">ACCEPTED</span>`
+                    : `<span class="pending-badge">PENDING</span>`
+                }
+            </td>
+            <td onclick="event.stopPropagation()">
+                <button class="action-btn edit-btn ${accepted ? "disabled-btn" : ""}"
+                        onclick="${accepted ? "" : `modifyReturn(${r.id})`}"
+                        ${accepted ? "disabled" : ""}>
+                    Modify
+                </button>
 
-        ${
-            accepted
-            ? `<button class="action-btn accept-btn disabled-btn" disabled>Accepted</button>`
-            : `<button class="action-btn accept-btn" onclick="acceptReturn(${r.id})">Accept</button>`
-        }
+                ${
+                    accepted
+                    ? `<button class="action-btn accept-btn disabled-btn" disabled>Accepted</button>`
+                    : `<button class="action-btn accept-btn" onclick="acceptReturn(${r.id})">Accept</button>`
+                }
 
-        <button class="action-btn print-btn" onclick="printReturn(${r.id})">Print</button>
-    </td>
-`;
-tbody.appendChild(tr);    });
+                <button class="action-btn print-btn" onclick="printReturn(${r.id})">Print</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+
+        const detailsTr = document.createElement("tr");
+        detailsTr.className = "details-row";
+        detailsTr.id = `details_${r.id}`;
+        detailsTr.innerHTML = `
+            <td colspan="9">
+                <div class="details-box">
+                    <div class="details-title">Sales Return Items - Return ID ${r.id}</div>
+                    <div id="details_content_${r.id}" class="loading-text">Click the row to load items...</div>
+                </div>
+            </td>
+        `;
+        tbody.appendChild(detailsTr);
+    });
 
     document.getElementById("total_returns_count").innerText = filtered.length;
     document.getElementById("total_returns_amount").innerText = "₹" + totalAmount.toFixed(2);
 }
 
+async function toggleReturnDetails(returnId){
+    const row = document.getElementById(`row_${returnId}`);
+    const detailsRow = document.getElementById(`details_${returnId}`);
+    const content = document.getElementById(`details_content_${returnId}`);
+
+    if(!detailsRow) return;
+
+    const isOpen = detailsRow.style.display === "table-row";
+
+    document.querySelectorAll(".details-row").forEach(r => r.style.display = "none");
+    document.querySelectorAll(".return-row").forEach(r => r.classList.remove("open"));
+
+    if(isOpen){
+        detailsRow.style.display = "none";
+        row.classList.remove("open");
+        return;
+    }
+
+    detailsRow.style.display = "table-row";
+    row.classList.add("open");
+
+    if(content.dataset.loaded === "true") return;
+
+    content.innerHTML = `<div class="loading-text">Loading items...</div>`;
+
+    const { data, error } = await sb
+        .from("sales_return_item_details")
+        .select("*")
+        .eq("return_id", returnId);
+
+    if(error){
+        console.error(error);
+        content.innerHTML = `<div class="loading-text">Error loading return items</div>`;
+        return;
+    }
+
+    const items = data || [];
+
+    if(!items.length){
+        content.innerHTML = `<div class="loading-text">No items found in this sales return</div>`;
+        content.dataset.loaded = "true";
+        return;
+    }
+
+    let html = `
+        <div class="details-table-wrap">
+            <table class="details-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Item Code</th>
+                        <th>Item Name</th>
+                        <th>Return Qty</th>
+                        <th>Price</th>
+                        <th>Price+GST</th>
+                        <th>GST %</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+
+    items.forEach((item, index) => {
+        const qty = parseFloat(item.quantity || item.return_qty || 0);
+        const price = parseFloat(item.price || 0);
+        const priceGst = parseFloat(item.sales_price_gst || item.price_gst || 0);
+        const gst = parseFloat(item.gst_percent || 0);
+        const total = qty * priceGst;
+
+        html += `
+            <tr>
+                <td>${index + 1}</td>
+                <td>${item.item_code || ""}</td>
+                <td>${item.item_name || ""}</td>
+                <td>${qty.toFixed(2)}</td>
+                <td>₹${price.toFixed(2)}</td>
+                <td>₹${priceGst.toFixed(2)}</td>
+                <td>${gst.toFixed(2)}%</td>
+                <td>₹${total.toFixed(2)}</td>
+            </tr>
+        `;
+    });
+
+    html += `
+                </tbody>
+            </table>
+        </div>
+    `;
+
+    content.innerHTML = html;
+    content.dataset.loaded = "true";
+}
+
 function modifyReturn(id){
     window.location.href = `sales_return_modification.html?id=${id}`;
 }
+
 async function acceptReturn(id){
     const ok = confirm("Accept this sales return? After accepting, it will be counted in dashboard balance.");
     if(!ok) return;

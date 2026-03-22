@@ -2523,7 +2523,7 @@ barcodeInput.addEventListener("keydown", async function (e) {
         }
     }
 
-    let html5QrScanner = null;
+let html5QrScanner = null;
 
 function onBarcodeScanned(decodedText) {
     const barcodeInput = document.getElementById("barcode_scan");
@@ -2545,16 +2545,19 @@ function startBarcodeCamera() {
 
     html5QrScanner = new Html5Qrcode("reader");
 
-    Html5Qrcode.getCameras().then(devices => {
-        if (!devices || !devices.length) {
-            alert("No camera found");
-            return;
-        }
-
-        const cameraId = devices[0].id;
-
+    html5QrScanner.start(
+        { facingMode: { exact: "environment" } },
+        {
+            fps: 10,
+            qrbox: { width: 250, height: 120 }
+        },
+        (decodedText) => {
+            onBarcodeScanned(decodedText);
+        },
+        () => {}
+    ).catch(() => {
         html5QrScanner.start(
-            cameraId,
+            { facingMode: "environment" },
             {
                 fps: 10,
                 qrbox: { width: 250, height: 120 }
@@ -2562,13 +2565,11 @@ function startBarcodeCamera() {
             (decodedText) => {
                 onBarcodeScanned(decodedText);
             },
-            (errorMessage) => {
-                // ignore scan miss
-            }
-        );
-    }).catch(err => {
-        console.error(err);
-        alert("Unable to open camera");
+            () => {}
+        ).catch(err => {
+            console.error(err);
+            alert("Unable to open back camera");
+        });
     });
 }
 
@@ -2577,6 +2578,7 @@ async function handleBarcodeValue(code) {
     if (!code) return;
 
     const item = stockData.find(x =>
+        String(x.barcode || "").trim().toUpperCase() === code ||
         String(x.item_code || "").trim().toUpperCase() === code
     );
 
@@ -2591,7 +2593,10 @@ async function handleBarcodeValue(code) {
         const codeInp = row.querySelector(".code-inp");
         const qtyInp = row.querySelector(".qty-inp");
 
-        if (codeInp && String(codeInp.value || "").trim().toUpperCase() === code) {
+        if (
+            codeInp &&
+            String(codeInp.value || "").trim().toUpperCase() === String(item.item_code || "").trim().toUpperCase()
+        ) {
             qtyInp.value = (parseFloat(qtyInp.value) || 0) + 1;
             calcForward(codeInp.dataset.rid);
             return;
@@ -2608,8 +2613,7 @@ async function handleBarcodeValue(code) {
     const qtyInp = lastRow.querySelector(".qty-inp");
     qtyInp.value = 1;
     calcForward(rid);
-}
-    
+}    
 </script>
 </body>
 </html>

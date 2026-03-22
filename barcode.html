@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Barcode Print - VAJRA LIGHTS</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+
+<style>
+:root{
+    --bg:#f8fafc;
+    --card:#ffffff;
+    --text:#0f172a;
+    --muted:#64748b;
+    --line:#dbe3ef;
+    --primary:#2563eb;
+    --primary-dark:#1d4ed8;
+    --accent:#059669;
+    --danger:#dc2626;
+    --shadow:0 10px 25px rgba(15,23,42,.08);
+}
+
+*{box-sizing:border-box}
+
+body{
+    margin:0;
+    font-family:Segoe UI, Roboto, Arial, sans-serif;
+    background:linear-gradient(180deg,#eef4ff 0%, #f8fafc 100%);
+    color:var(--text);
+}
+
+.page{
+    max-width:1400px;
+    margin:0 auto;
+    padding:18px;
+}
+
+.topbar{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:18px;
+    box-shadow:var(--shadow);
+    padding:16px;
+    margin-bottom:14px;
+}
+
+.title-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:12px;
+    flex-wrap:wrap;
+    margin-bottom:14px;
+}
+
+.title-block h1{
+    margin:0;
+    font-size:24px;
+}
+
+.title-block p{
+    margin:4px 0 0;
+    color:var(--muted);
+    font-size:13px;
+}
+
+.stats{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+}
+
+.stat{
+    background:#eff6ff;
+    border:1px solid #bfdbfe;
+    color:#1e3a8a;
+    padding:8px 12px;
+    border-radius:12px;
+    font-size:13px;
+    font-weight:700;
+}
+
+.toolbar{
+    display:grid;
+    grid-template-columns: 2.2fr .8fr auto 1.5fr auto auto auto;
+    gap:10px;
+    align-items:end;
+}
+
+.field{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    position:relative;
+}
+
+.field label{
+    font-size:12px;
+    font-weight:700;
+    color:var(--muted);
+    text-transform:uppercase;
+    letter-spacing:.04em;
+}
+
+.input, .btn{
+    height:42px;
+    border-radius:12px;
+    border:1px solid var(--line);
+    font-size:14px;
+}
+
+.input{
+    padding:0 12px;
+    background:#fff;
+    color:var(--text);
+    outline:none;
+}
+
+.input:focus{
+    border-color:#93c5fd;
+    box-shadow:0 0 0 3px rgba(37,99,235,.12);
+}
+
+.btn{
+    padding:0 16px;
+    cursor:pointer;
+    font-weight:700;
+    background:#fff;
+}
+
+.btn:hover{transform:translateY(-1px)}
+.btn:active{transform:translateY(0)}
+
+.btn-primary{
+    background:var(--primary);
+    color:#fff;
+    border-color:var(--primary);
+}
+.btn-primary:hover{background:var(--primary-dark)}
+
+.btn-success{
+    background:var(--accent);
+    color:#fff;
+    border-color:var(--accent);
+}
+
+.btn-danger{
+    background:#fff1f2;
+    color:var(--danger);
+    border-color:#fecdd3;
+}
+
+.suggestions{
+    position:absolute;
+    top:100%;
+    left:0;
+    right:0;
+    margin-top:6px;
+    background:#fff;
+    border:1px solid var(--line);
+    border-radius:14px;
+    box-shadow:0 14px 30px rgba(15,23,42,.14);
+    overflow:hidden;
+    display:none;
+    z-index:50;
+    max-height:320px;
+    overflow-y:auto;
+}
+
+.suggestion-item{
+    padding:10px 12px;
+    border-bottom:1px solid #eef2f7;
+    cursor:pointer;
+}
+
+.suggestion-item:last-child{border-bottom:none}
+.suggestion-item:hover,
+.suggestion-item.active{background:#eff6ff}
+
+.s1{
+    font-weight:700;
+    font-size:13px;
+    color:var(--text);
+}
+.s2{
+    color:var(--muted);
+    font-size:12px;
+    margin-top:2px;
+}
+
+.content{
+    display:grid;
+    grid-template-columns: 340px 1fr;
+    gap:14px;
+}
+
+.panel{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:18px;
+    box-shadow:var(--shadow);
+}
+
+.panel-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:14px 16px;
+    border-bottom:1px solid #edf2f7;
+}
+
+.panel-head h2{
+    margin:0;
+    font-size:17px;
+}
+
+.panel-head small{
+    color:var(--muted);
+}
+
+.queue{
+    max-height:calc(100vh - 255px);
+    overflow:auto;
+    padding:10px;
+}
+
+.queue-empty{
+    padding:18px;
+    color:var(--muted);
+    text-align:center;
+    font-size:14px;
+}
+
+.queue-item{
+    border:1px solid #e5edf6;
+    border-radius:14px;
+    padding:10px;
+    margin-bottom:10px;
+    background:#fcfdff;
+}
+
+.queue-top{
+    display:flex;
+    justify-content:space-between;
+    gap:8px;
+    align-items:flex-start;
+}
+
+.queue-name{
+    font-size:13px;
+    font-weight:700;
+    line-height:1.3;
+}
+
+.queue-code{
+    font-size:12px;
+    color:var(--muted);
+    margin-top:4px;
+}
+
+.queue-actions{
+    display:flex;
+    gap:6px;
+    margin-top:10px;
+}
+
+.small-btn{
+    height:30px;
+    min-width:30px;
+    padding:0 10px;
+    border-radius:10px;
+    border:1px solid var(--line);
+    background:#fff;
+    cursor:pointer;
+    font-weight:700;
+}
+
+.small-btn:hover{background:#f8fafc}
+
+.badge{
+    min-width:34px;
+    text-align:center;
+    padding:5px 8px;
+    border-radius:999px;
+    background:#e0f2fe;
+    color:#075985;
+    font-size:12px;
+    font-weight:800;
+}
+
+.labels-wrap{
+    padding:14px;
+}
+
+.sheet{
+    background:#fff;
+    border:1px dashed #cbd5e1;
+    border-radius:16px;
+    padding:8mm 7mm;
+    min-height:calc(100vh - 235px);
+}
+
+#labels{
+    display:grid;
+    grid-template-columns:repeat(5, 1fr);
+    grid-template-rows:repeat(13, 1fr);
+    gap:2mm;
+}
+
+.label{
+    border:1px dashed #d9e1ec;
+    border-radius:2mm;
+    background:#fff;
+    height:22mm;
+    display:flex;
+    flex-direction:column;
+    justify-content:flex-start;
+    align-items:center;
+    overflow:hidden;
+    padding:1.2mm 1.2mm .8mm;
+    text-align:center;
+}
+
+.label-name{
+    font-size:7px;
+    line-height:1.05;
+    font-weight:700;
+    margin-top:1mm;
+    max-height:5mm;
+    overflow:hidden;
+}
+
+.label-code{
+    font-size:7px;
+    line-height:1;
+    margin-top:.8mm;
+    color:#111827;
+    font-weight:600;
+}
+
+.barcode-wrap{
+    width: 100%;
+    height: 11mm;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+}
+
+.barcode-svg{
+    display:block;
+    max-width:100%;
+    max-height:11mm;
+    width:auto !important;
+    height:11mm !important;
+}
+.label-name{
+    font-size:8px;
+    line-height:1.1;
+    font-weight:700;
+    margin-top:1mm;
+    word-break:break-word;
+}
+
+.label-code{
+    font-size:7px;
+    line-height:1;
+    margin-top:.8mm;
+    color:#334155;
+}
+
+.label-empty{
+    opacity:.18;
+}
+
+.footer-note{
+    margin-top:10px;
+    color:var(--muted);
+    font-size:12px;
+}
+
+@media (max-width: 1100px){
+    .content{grid-template-columns:1fr}
+    .queue{max-height:none}
+    .toolbar{grid-template-columns:1fr 120px 120px 1fr 170px 120px 120px}
+}
+
+@media (max-width: 800px){
+    .page{padding:10px}
+    .toolbar{grid-template-columns:1fr 1fr;}
+    .sheet{overflow:auto}
+    #labels{min-width:900px}
+}
+
+@page{
+    size:A4 portrait;
+    margin:6mm;
+}
+
+@media print{
+    body{background:#fff}
+    .page{max-width:none;padding:0}
+    .topbar, .queue-panel, .footer-note{display:none !important}
+    .content{display:block}
+    .panel, .sheet{border:none; box-shadow:none; border-radius:0; padding:0; background:#fff}
+    .labels-wrap{padding:0}
+    #labels{gap:2mm}
+    .label{
+        border:none;
+        border-radius:0;
+        page-break-inside:avoid;
+    }
+}
+</style>
+</head>
+<body>
+<div class="page">
+    <div class="topbar">
+        <div class="title-row">
+            <div class="title-block">
+                <h1>Barcode Sticker Print</h1>
+                <p>Search by item code or item name, add sticker quantity, or load items from purchase bill.</p>
+            </div>
+            <div class="stats">
+                <div class="stat">Sheet: 5 × 13 = 65 labels</div>
+                <div class="stat">Filled: <span id="filled_count">0</span></div>
+            </div>
+        </div>
+
+        <div class="toolbar">
+            <div class="field">
+                <label>Item Code / Item Name</label>
+                <input type="text" id="search" class="input" placeholder="Type item code or item name" autocomplete="off">
+                <div id="suggestions" class="suggestions"></div>
+            </div>
+
+            <div class="field">
+                <label>Qty</label>
+                <input type="number" id="qty" class="input" min="1" step="1" value="1">
+            </div>
+
+            <button class="btn btn-primary" onclick="addSelectedItem()">ADD</button>
+
+            <div class="field">
+                <label>Purchase Bill No</label>
+                <input type="text" id="purchase_no" class="input" placeholder="Enter purchase number">
+            </div>
+
+            <button class="btn btn-success" onclick="loadPurchase()">LOAD PURCHASE</button>
+            <button class="btn" onclick="renderLabels()">REFRESH</button>
+            <button class="btn btn-danger" onclick="clearAllLabels()">CLEAR ALL</button>
+        </div>
+    </div>
+
+    <div class="content">
+        <div class="panel queue-panel">
+            <div class="panel-head">
+                <div>
+                    <h2>Sticker Queue</h2>
+                    <small>Adjust quantities before printing</small>
+                </div>
+                <button class="btn btn-primary" onclick="window.print()">PRINT</button>
+            </div>
+            <div id="queue" class="queue"></div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-head">
+                <div>
+                    <h2>Print Preview</h2>
+                    <small>A4 sheet preview for 65 stickers</small>
+                </div>
+            </div>
+            <div class="labels-wrap">
+                <div class="sheet">
+                    <div id="labels"></div>
+                </div>
+                <div class="footer-note">Tip: first do one sample print on plain A4 paper and place it behind your sticker sheet to check alignment.</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const supabaseUrl = "https://gqxczzijntbvtlmmzppt.supabase.co";
+const supabaseKey = "sb_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs";
+const sb = supabase.createClient(supabaseUrl, supabaseKey);
+
+let stockData = [];
+let suggestionData = [];
+let selectedSuggestionIndex = -1;
+let selectedItem = null;
+let queueItems = [];
+
+const searchInput = document.getElementById('search');
+const qtyInput = document.getElementById('qty');
+const purchaseInput = document.getElementById('purchase_no');
+const suggestionsBox = document.getElementById('suggestions');
+const queueBox = document.getElementById('queue');
+const labelsBox = document.getElementById('labels');
+const filledCount = document.getElementById('filled_count');
+
+window.onload = async () => {
+    await loadStockData();
+    renderQueue();
+    renderLabels();
+    setupSearch();
+    searchInput.focus();
+};
+
+function normalizeText(value){
+    return String(value || '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+async function loadStockData(){
+    const { data, error } = await sb
+        .from('stock_items')
+        .select('item_code, item_name, barcode')
+        .order('item_name');
+
+    if(error){
+        console.error('Stock load error:', error);
+        alert('Unable to load stock items');
+        return;
+    }
+
+    stockData = (data || []).map(item => ({
+        item_code: item.item_code || '',
+        item_name: item.item_name || '',
+        barcode: item.barcode || item.item_code || ''
+    }));
+}
+
+function searchItems(query){
+    const q = normalizeText(query);
+    if(!q) return [];
+
+    const terms = q.split(' ').filter(Boolean);
+
+    const scored = stockData.map(item => {
+        const code = normalizeText(item.item_code);
+        const name = normalizeText(item.item_name);
+        const barcode = normalizeText(item.barcode);
+
+        const hay = `${code} ${name} ${barcode}`;
+        if(!terms.every(t => hay.includes(t))) return null;
+
+        let score = 0;
+        if(code === q) score += 1000;
+        if(name === q) score += 950;
+        if(barcode === q) score += 900;
+        if(code.startsWith(q)) score += 700;
+        if(name.startsWith(q)) score += 650;
+        if(barcode.startsWith(q)) score += 600;
+        terms.forEach(t => {
+            if(code.includes(t)) score += 50;
+            if(name.includes(t)) score += 45;
+            if(barcode.includes(t)) score += 40;
+        });
+        return { item, score };
+    }).filter(Boolean);
+
+    scored.sort((a,b) => b.score - a.score || a.item.item_name.localeCompare(b.item.item_name));
+    return scored.slice(0, 20).map(x => x.item);
+}
+
+function setupSearch(){
+    searchInput.addEventListener('input', () => {
+        const value = searchInput.value.trim();
+        selectedItem = null;
+
+        if(!value){
+            hideSuggestions();
+            return;
+        }
+
+        suggestionData = searchItems(value);
+        renderSuggestions();
+    });
+
+    searchInput.addEventListener('keydown', (e) => {
+        const items = suggestionsBox.querySelectorAll('.suggestion-item');
+
+        if(e.key === 'ArrowDown'){
+            e.preventDefault();
+            if(!items.length) return;
+            selectedSuggestionIndex = Math.min(selectedSuggestionIndex + 1, items.length - 1);
+            updateSuggestionHighlight();
+        }
+        else if(e.key === 'ArrowUp'){
+            e.preventDefault();
+            if(!items.length) return;
+            selectedSuggestionIndex = Math.max(selectedSuggestionIndex - 1, 0);
+            updateSuggestionHighlight();
+        }
+        else if(e.key === 'Enter'){
+            e.preventDefault();
+            if(items.length && selectedSuggestionIndex >= 0 && suggestionData[selectedSuggestionIndex]){
+                chooseSuggestion(suggestionData[selectedSuggestionIndex]);
+            } else {
+                addSelectedItem();
+            }
+        }
+        else if(e.key === 'Escape'){
+            hideSuggestions();
+        }
+    });
+
+    qtyInput.addEventListener('keydown', (e) => {
+        if(e.key === 'Enter'){
+            e.preventDefault();
+            addSelectedItem();
+        }
+    });
+
+    purchaseInput.addEventListener('keydown', (e) => {
+        if(e.key === 'Enter'){
+            e.preventDefault();
+            loadPurchase();
+        }
+    });
+
+    document.addEventListener('click', (e) => {
+        if(!e.target.closest('.field')) hideSuggestions();
+    });
+}
+
+function renderSuggestions(){
+    suggestionsBox.innerHTML = '';
+    selectedSuggestionIndex = suggestionData.length ? 0 : -1;
+
+    if(!suggestionData.length){
+        hideSuggestions();
+        return;
+    }
+
+    suggestionData.forEach((item, idx) => {
+        const div = document.createElement('div');
+        div.className = 'suggestion-item' + (idx === selectedSuggestionIndex ? ' active' : '');
+        div.innerHTML = `
+            <div class="s1">${escapeHtml(item.item_name)}</div>
+            <div class="s2">Code: ${escapeHtml(item.item_code)} &nbsp;|&nbsp; Barcode: ${escapeHtml(item.barcode || item.item_code)}</div>
+        `;
+        div.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            chooseSuggestion(item);
+        });
+        suggestionsBox.appendChild(div);
+    });
+
+    suggestionsBox.style.display = 'block';
+}
+
+function updateSuggestionHighlight(){
+    const items = suggestionsBox.querySelectorAll('.suggestion-item');
+    items.forEach(el => el.classList.remove('active'));
+    if(items[selectedSuggestionIndex]){
+        items[selectedSuggestionIndex].classList.add('active');
+        items[selectedSuggestionIndex].scrollIntoView({ block:'nearest' });
+    }
+}
+
+function chooseSuggestion(item){
+    selectedItem = item;
+    searchInput.value = item.item_name;
+    hideSuggestions();
+    qtyInput.focus();
+    qtyInput.select();
+}
+
+function hideSuggestions(){
+    suggestionsBox.style.display = 'none';
+    suggestionsBox.innerHTML = '';
+    suggestionData = [];
+    selectedSuggestionIndex = -1;
+}
+
+function addSelectedItem(){
+    const qty = Math.max(1, parseInt(qtyInput.value, 10) || 1);
+    const rawSearch = searchInput.value.trim();
+    if(!rawSearch) return;
+
+    let item = selectedItem;
+    if(!item){
+        const matches = searchItems(rawSearch);
+        item = matches[0] || null;
+    }
+
+    if(!item){
+        alert('Item not found');
+        return;
+    }
+
+    const key = String(item.item_code || '').trim().toUpperCase();
+    const existing = queueItems.find(x => x.key === key);
+
+    if(existing){
+        existing.qty += qty;
+    } else {
+        queueItems.push({
+            key,
+            item_code: item.item_code || '',
+            item_name: item.item_name || '',
+            barcode: item.barcode || item.item_code || '',
+            qty
+        });
+    }
+
+    searchInput.value = '';
+    qtyInput.value = 1;
+    selectedItem = null;
+    hideSuggestions();
+    renderQueue();
+    renderLabels();
+    searchInput.focus();
+}
+
+async function loadPurchase(){
+    const bill = purchaseInput.value.trim();
+    if(!bill){
+        alert('Enter purchase bill number');
+        return;
+    }
+
+    let purchaseId = null;
+
+    const headerTryQueries = [
+        () => sb.from('purchase_details').select('id').eq('purchase_number', bill).maybeSingle(),
+        () => sb.from('purchase_details').select('id').eq('bill_number', bill).maybeSingle(),
+        () => sb.from('purchase_details').select('id').eq('invoice_number', bill).maybeSingle()
+    ];
+
+    for(const fn of headerTryQueries){
+        try{
+            const { data } = await fn();
+            if(data?.id){
+                purchaseId = data.id;
+                break;
+            }
+        }catch(err){ }
+    }
+
+    let purchaseItems = [];
+
+    if(purchaseId){
+        const itemIdFields = ['purchase_id', 'header_id', 'bill_id'];
+        for(const field of itemIdFields){
+            try{
+                const { data, error } = await sb
+                    .from('purchase_item_details')
+                    .select('item_code, item_name, quantity')
+                    .eq(field, purchaseId);
+                if(!error && data && data.length){
+                    purchaseItems = data;
+                    break;
+                }
+            }catch(err){ }
+        }
+    }
+
+    if(!purchaseItems.length){
+        const directFields = ['purchase_number', 'bill_number', 'invoice_number'];
+        for(const field of directFields){
+            try{
+                const { data, error } = await sb
+                    .from('purchase_item_details')
+                    .select('item_code, item_name, quantity')
+                    .eq(field, bill);
+                if(!error && data && data.length){
+                    purchaseItems = data;
+                    break;
+                }
+            }catch(err){ }
+        }
+    }
+
+    if(!purchaseItems.length){
+        alert('Purchase items not found. Check purchase table/column names once.');
+        return;
+    }
+
+    for(const pItem of purchaseItems){
+        const code = String(pItem.item_code || '').trim().toUpperCase();
+        const name = String(pItem.item_name || '').trim();
+        const qty = Math.max(1, Math.round(parseFloat(pItem.quantity) || 1));
+
+        let stockItem = stockData.find(x => String(x.item_code || '').trim().toUpperCase() === code);
+        if(!stockItem && name){
+            stockItem = searchItems(name)[0] || null;
+        }
+
+        const finalItem = stockItem || {
+            item_code: pItem.item_code || '',
+            item_name: pItem.item_name || '',
+            barcode: pItem.item_code || ''
+        };
+
+        const key = String(finalItem.item_code || finalItem.item_name).trim().toUpperCase();
+        const existing = queueItems.find(x => x.key === key);
+
+        if(existing){
+            existing.qty += qty;
+        } else {
+            queueItems.push({
+                key,
+                item_code: finalItem.item_code || '',
+                item_name: finalItem.item_name || '',
+                barcode: finalItem.barcode || finalItem.item_code || '',
+                qty
+            });
+        }
+    }
+
+    renderQueue();
+    renderLabels();
+}
+
+function renderQueue(){
+    if(!queueItems.length){
+        queueBox.innerHTML = '<div class="queue-empty">No items added yet</div>';
+        updateFilledCount();
+        return;
+    }
+
+    queueBox.innerHTML = queueItems.map((item, idx) => `
+        <div class="queue-item">
+            <div class="queue-top">
+                <div>
+                    <div class="queue-name">${escapeHtml(item.item_name || '')}</div>
+                    <div class="queue-code">Code: ${escapeHtml(item.item_code || '')}<br>Barcode: ${escapeHtml(item.barcode || item.item_code || '')}</div>
+                </div>
+                <div class="badge">${item.qty}</div>
+            </div>
+            <div class="queue-actions">
+                <button class="small-btn" onclick="changeQty(${idx}, -1)">-</button>
+                <button class="small-btn" onclick="changeQty(${idx}, 1)">+</button>
+                <button class="small-btn" onclick="promptQty(${idx})">Qty</button>
+                <button class="small-btn" onclick="removeItem(${idx})" style="color:#dc2626">Remove</button>
+            </div>
+        </div>
+    `).join('');
+
+    updateFilledCount();
+}
+
+function changeQty(index, delta){
+    if(!queueItems[index]) return;
+    queueItems[index].qty += delta;
+    if(queueItems[index].qty <= 0){
+        queueItems.splice(index,1);
+    }
+    renderQueue();
+    renderLabels();
+}
+
+function promptQty(index){
+    if(!queueItems[index]) return;
+    const val = prompt('Enter sticker quantity', queueItems[index].qty);
+    if(val === null) return;
+    const qty = parseInt(val, 10);
+    if(!qty || qty <= 0){
+        alert('Enter valid quantity');
+        return;
+    }
+    queueItems[index].qty = qty;
+    renderQueue();
+    renderLabels();
+}
+
+function removeItem(index){
+    queueItems.splice(index,1);
+    renderQueue();
+    renderLabels();
+}
+
+function clearAllLabels(){
+    if(!queueItems.length) return;
+    if(!confirm('Clear all sticker items?')) return;
+    queueItems = [];
+    renderQueue();
+    renderLabels();
+    searchInput.focus();
+}
+
+function flattenQueue(){
+    const out = [];
+    queueItems.forEach(item => {
+        for(let i=0; i<item.qty; i++){
+            out.push({
+                item_code: item.item_code || '',
+                item_name: item.item_name || '',
+                barcode: item.barcode || item.item_code || ''
+            });
+        }
+    });
+    return out.slice(0,65);
+}
+
+function renderLabels(){
+    labelsBox.innerHTML = '';
+    const flat = flattenQueue();
+
+    for(let i=0; i<65; i++){
+        const item = flat[i];
+        const div = document.createElement('div');
+        div.className = 'label' + (item ? '' : ' label-empty');
+
+        if(item){
+            const barcodeValue = String(item.barcode || item.item_code || '').trim();
+
+if (barcodeValue) {
+    const wrap = document.createElement('div');
+    wrap.className = 'barcode-wrap';
+
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.classList.add('barcode-svg');
+    wrap.appendChild(svg);
+    div.appendChild(wrap);
+
+    try {
+        JsBarcode(svg, barcodeValue, {
+            format: 'CODE128',
+            width: 1.8,
+            height: 34,
+            margin: 0,
+            displayValue: false,
+            background: '#ffffff',
+            lineColor: '#000000'
+        });
+    } catch (err) {
+        console.error('Barcode render failed for', barcodeValue, err);
+    }
+}
+
+            const name = document.createElement('div');
+            name.className = 'label-name';
+            name.textContent = item.item_name || '';
+            div.appendChild(name);
+
+            const code = document.createElement('div');
+            code.className = 'label-code';
+            code.textContent = barcodeValue;
+            div.appendChild(code);
+        }
+
+        labelsBox.appendChild(div);
+    }
+
+    updateFilledCount();
+}
+
+function updateFilledCount(){
+    const total = queueItems.reduce((sum, item) => sum + (parseInt(item.qty,10) || 0), 0);
+    filledCount.textContent = Math.min(total, 65);
+}
+
+function escapeHtml(str){
+    return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+</script>
+</body>
+</html>

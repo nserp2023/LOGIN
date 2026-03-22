@@ -3,6 +3,9 @@
 <head>
 <title>Purchase Report - VAJRA LIGHTS</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabaseClient.js"></script>
+<script src="page_permissions.js"></script>
+
 
 <style>
 
@@ -123,10 +126,11 @@ Mobile:
 
 <script>
 
-const sb = supabase.createClient(
-"https://gqxczzijntbvtlmmzppt.supabase.co",
-"sb_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs"
-);
+    const sb = window.sbcc; // supabase client from supabaseClient.js
+  document.addEventListener("DOMContentLoaded", async () => {
+  const ok = await requirePageAccess("sales");
+  if (!ok) return;
+  });
 
 
 

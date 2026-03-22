@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>VAJRA CRM</title>
+  <title>VAJRA CRM PRO</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root{
@@ -12,43 +12,46 @@
       --success:#059669;
       --success-dark:#047857;
       --danger:#dc2626;
+      --danger-dark:#b91c1c;
       --warning:#d97706;
-      --bg:#f1f5f9;
-      --panel:rgba(255,255,255,0.96);
+      --warning-dark:#b45309;
+      --purple:#7c3aed;
+      --panel:rgba(255,255,255,.96);
       --text:#0f172a;
       --muted:#64748b;
       --border:#cbd5e1;
-      --shadow:0 12px 28px rgba(0,0,0,0.12);
+      --shadow:0 14px 30px rgba(0,0,0,.14);
       --radius:18px;
+      --bg-soft:#f8fafc;
     }
 
     *{box-sizing:border-box}
+    html,body{margin:0;padding:0}
     body{
-      margin:0;
       font-family:'Segoe UI',Roboto,Arial,sans-serif;
-      background:
-        linear-gradient(rgba(15,23,42,.68), rgba(15,23,42,.68)),
-        url("background.jpg") center/cover fixed no-repeat;
       color:var(--text);
+      background:
+        linear-gradient(rgba(15,23,42,.72), rgba(15,23,42,.72)),
+        url("background.jpg") center/cover fixed no-repeat;
       min-height:100vh;
     }
 
     .page{
-      max-width:1600px;
+      max-width:1720px;
       margin:0 auto;
       padding:16px;
     }
 
     .topbar{
-      background:rgba(15,23,42,.86);
-      color:#fff;
-      border-radius:22px;
-      padding:18px;
       display:flex;
       justify-content:space-between;
       align-items:center;
       gap:14px;
       flex-wrap:wrap;
+      padding:18px;
+      border-radius:24px;
+      background:rgba(15,23,42,.88);
+      color:#fff;
       box-shadow:var(--shadow);
       backdrop-filter:blur(8px);
     }
@@ -57,30 +60,32 @@
       display:flex;
       align-items:center;
       gap:14px;
+      min-width:0;
     }
 
     .logo{
-      width:52px;
-      height:52px;
+      width:54px;
+      height:54px;
       border-radius:16px;
       display:flex;
       align-items:center;
       justify-content:center;
+      font-size:27px;
       background:linear-gradient(135deg,var(--primary),#60a5fa);
-      font-size:26px;
       flex-shrink:0;
     }
 
     .title-wrap h1{
       margin:0;
-      font-size:26px;
+      font-size:28px;
       line-height:1.1;
     }
 
     .title-wrap p{
-      margin:5px 0 0;
+      margin:6px 0 0;
       color:#cbd5e1;
       font-size:13px;
+      line-height:1.45;
     }
 
     .topbar-actions{
@@ -94,8 +99,8 @@
       border-radius:12px;
       padding:11px 16px;
       min-height:44px;
-      font-weight:800;
       font-size:14px;
+      font-weight:800;
       cursor:pointer;
       transition:.18s ease;
     }
@@ -107,13 +112,15 @@
     .btn-success:hover{background:var(--success-dark)}
     .btn-light{background:#e2e8f0;color:#0f172a}
     .btn-danger{background:var(--danger);color:#fff}
+    .btn-danger:hover{background:var(--danger-dark)}
     .btn-warning{background:var(--warning);color:#fff}
+    .btn-warning:hover{background:var(--warning-dark)}
 
     .stats{
-      display:grid;
-      grid-template-columns:repeat(5,1fr);
-      gap:14px;
       margin-top:16px;
+      display:grid;
+      grid-template-columns:repeat(6,1fr);
+      gap:14px;
     }
 
     .stat{
@@ -141,7 +148,7 @@
     .layout{
       margin-top:16px;
       display:grid;
-      grid-template-columns:460px 1fr;
+      grid-template-columns:430px minmax(0, 1fr) 420px;
       gap:16px;
       align-items:start;
     }
@@ -228,8 +235,8 @@
       font-size:14px;
       outline:none;
       transition:.15s ease;
-      text-transform:uppercase;
       font-family:inherit;
+      text-transform:uppercase;
     }
 
     .field textarea{
@@ -247,6 +254,7 @@
     .helper{
       font-size:12px;
       color:var(--muted);
+      line-height:1.45;
     }
 
     .checkbox-grid{
@@ -271,7 +279,7 @@
       width:auto;
       min-height:auto;
       margin:0;
-      transform:scale(1.1);
+      transform:scale(1.08);
     }
 
     .form-actions{
@@ -281,9 +289,32 @@
       margin-top:16px;
     }
 
+    .quick-filters{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-bottom:14px;
+    }
+
+    .chip{
+      padding:10px 12px;
+      border-radius:999px;
+      border:1px solid #cbd5e1;
+      background:#fff;
+      font-size:12px;
+      font-weight:800;
+      cursor:pointer;
+    }
+
+    .chip.active{
+      background:#dbeafe;
+      color:#1d4ed8;
+      border-color:#93c5fd;
+    }
+
     .toolbar{
       display:grid;
-      grid-template-columns:1.4fr 1fr 1fr 1fr 1fr;
+      grid-template-columns:1.5fr 1fr 1fr 1fr 1fr;
       gap:12px;
       margin-bottom:14px;
     }
@@ -316,7 +347,7 @@
 
     table{
       width:100%;
-      min-width:1300px;
+      min-width:1360px;
       border-collapse:collapse;
     }
 
@@ -344,6 +375,10 @@
       background:#f8fafc;
     }
 
+    tbody tr.selected{
+      background:#eff6ff;
+    }
+
     .badge{
       display:inline-block;
       padding:5px 10px;
@@ -358,6 +393,8 @@
     .priority-high{background:#fee2e2;color:#b91c1c}
     .priority-medium{background:#fef3c7;color:#92400e}
     .priority-low{background:#dcfce7;color:#166534}
+    .badge-purple{background:#ede9fe;color:#6d28d9}
+    .badge-soft{background:#e0f2fe;color:#0369a1}
 
     .table-actions{
       display:flex;
@@ -375,9 +412,9 @@
       cursor:pointer;
     }
 
+    .mini-view{background:#ede9fe;color:#6d28d9}
     .mini-edit{background:#dbeafe;color:#1d4ed8}
     .mini-delete{background:#fee2e2;color:#b91c1c}
-    .mini-note{background:#e0f2fe;color:#0369a1}
 
     .empty{
       text-align:center;
@@ -423,12 +460,122 @@
       font-size:13px;
     }
 
-    @media (max-width:1300px){
-      .layout{grid-template-columns:1fr}
+    .profile-empty{
+      text-align:center;
+      color:var(--muted);
+      padding:42px 10px;
+      font-weight:700;
     }
 
-    @media (max-width:1000px){
-      .stats{grid-template-columns:repeat(2,1fr)}
+    .profile-card{
+      display:grid;
+      gap:14px;
+    }
+
+    .profile-top{
+      padding:16px;
+      border-radius:16px;
+      background:linear-gradient(135deg,#eff6ff,#f8fafc);
+      border:1px solid #dbeafe;
+    }
+
+    .profile-name{
+      font-size:22px;
+      font-weight:900;
+      line-height:1.2;
+    }
+
+    .profile-meta{
+      margin-top:8px;
+      display:grid;
+      gap:6px;
+      font-size:13px;
+      color:#334155;
+    }
+
+    .sub-panel{
+      border:1px solid #e2e8f0;
+      border-radius:16px;
+      overflow:hidden;
+      background:#fff;
+    }
+
+    .sub-head{
+      padding:12px 14px;
+      font-size:13px;
+      font-weight:900;
+      color:#1e3a8a;
+      background:#eff6ff;
+      border-bottom:1px solid #dbeafe;
+    }
+
+    .sub-body{
+      padding:14px;
+    }
+
+    .metric-grid{
+      display:grid;
+      grid-template-columns:repeat(2,1fr);
+      gap:10px;
+    }
+
+    .metric{
+      border:1px solid #e2e8f0;
+      border-radius:12px;
+      padding:12px;
+      background:#f8fafc;
+    }
+
+    .metric .m-label{
+      font-size:11px;
+      color:var(--muted);
+      font-weight:800;
+      text-transform:uppercase;
+    }
+
+    .metric .m-value{
+      margin-top:6px;
+      font-size:20px;
+      font-weight:900;
+    }
+
+    .simple-list{
+      display:grid;
+      gap:10px;
+    }
+
+    .simple-item{
+      border:1px solid #e2e8f0;
+      border-radius:12px;
+      padding:10px 12px;
+      background:#fff;
+    }
+
+    .simple-item .line1{
+      font-size:13px;
+      font-weight:800;
+    }
+
+    .simple-item .line2{
+      margin-top:4px;
+      font-size:12px;
+      color:var(--muted);
+    }
+
+    .note-box{
+      white-space:pre-line;
+      line-height:1.55;
+      font-size:13px;
+    }
+
+    @media (max-width:1500px){
+      .layout{grid-template-columns:430px 1fr}
+      .profile-panel-wrap{grid-column:1 / -1}
+    }
+
+    @media (max-width:1100px){
+      .stats{grid-template-columns:repeat(3,1fr)}
+      .layout{grid-template-columns:1fr}
       .toolbar{grid-template-columns:1fr 1fr}
     }
 
@@ -442,13 +589,14 @@
       .toolbar{grid-template-columns:1fr}
       .topbar-actions{width:100%}
       .topbar-actions .btn{flex:1}
-      table{min-width:1100px}
+      table{min-width:1180px}
     }
 
     @media (max-width:480px){
       .panel-header,.panel-body{padding:14px}
       .btn{width:100%}
       .form-actions .btn{width:100%}
+      .metric-grid{grid-template-columns:1fr}
     }
   </style>
 </head>
@@ -458,7 +606,7 @@
       <div class="topbar-left">
         <div class="logo">🏬</div>
         <div class="title-wrap">
-          <h1>VAJRA CRM</h1>
+          <h1>VAJRA CRM PRO</h1>
           <p>Electrical • Switches • Chimney • Hob • Fans • Lights • Plumbing • Sanitary • Interior Decor • Interlock</p>
         </div>
       </div>
@@ -483,6 +631,10 @@
         <div class="value" id="todayFollowups">0</div>
       </div>
       <div class="stat">
+        <div class="label">Overdue</div>
+        <div class="value" id="overdueFollowups">0</div>
+      </div>
+      <div class="stat">
         <div class="label">High Priority</div>
         <div class="value" id="highPriorityCount">0</div>
       </div>
@@ -493,6 +645,7 @@
     </div>
 
     <div class="layout">
+      <!-- LEFT -->
       <div class="stack">
         <section class="panel">
           <div class="panel-header">
@@ -597,6 +750,7 @@
         </section>
       </div>
 
+      <!-- CENTER -->
       <section class="panel">
         <div class="panel-header">
           <div>
@@ -606,6 +760,14 @@
         </div>
 
         <div class="panel-body">
+          <div class="quick-filters">
+            <button class="chip active" data-quick="ALL">ALL</button>
+            <button class="chip" data-quick="TODAY">TODAY FOLLOW-UP</button>
+            <button class="chip" data-quick="OVERDUE">OVERDUE</button>
+            <button class="chip" data-quick="HIGH">HIGH PRIORITY</button>
+            <button class="chip" data-quick="NOFOLLOW">NO FOLLOW-UP DATE</button>
+          </div>
+
           <div class="toolbar">
             <input type="text" id="searchInput" placeholder="SEARCH NAME OR MOBILE...">
             <input type="text" id="salesmanFilter" placeholder="SEARCH SALESMAN...">
@@ -642,6 +804,19 @@
           </div>
         </div>
       </section>
+
+      <!-- RIGHT PROFILE -->
+      <section class="panel profile-panel-wrap">
+        <div class="panel-header">
+          <div>
+            <h2>Customer Profile</h2>
+            <p>CRM details + billing history</p>
+          </div>
+        </div>
+        <div class="panel-body" id="profilePanel">
+          <div class="profile-empty">Select a customer to view full profile and sales history</div>
+        </div>
+      </section>
     </div>
   </div>
 
@@ -650,11 +825,12 @@
     const supabaseKey = "sb_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs";
     const sb = supabase.createClient(supabaseUrl, supabaseKey);
 
-    // CHANGE THIS TABLE NAME IF YOU CREATE DIFFERENT TABLE NAME
     const TABLE_NAME = "crm_customers";
 
     let customers = [];
     let editingId = null;
+    let selectedCustomerId = null;
+    let quickFilter = "ALL";
 
     const form = document.getElementById("customerForm");
     const statusBox = document.getElementById("statusBox");
@@ -681,10 +857,12 @@
 
     const customerTableBody = document.getElementById("customerTableBody");
     const followupList = document.getElementById("followupList");
+    const profilePanel = document.getElementById("profilePanel");
 
     const totalCustomers = document.getElementById("totalCustomers");
     const filteredCustomers = document.getElementById("filteredCustomers");
     const todayFollowups = document.getElementById("todayFollowups");
+    const overdueFollowups = document.getElementById("overdueFollowups");
     const highPriorityCount = document.getElementById("highPriorityCount");
     const pendingFollowups = document.getElementById("pendingFollowups");
 
@@ -717,6 +895,15 @@
       priorityFilter.addEventListener("change", renderCustomers);
       interestFilter.addEventListener("input", renderCustomers);
       addressFilter.addEventListener("input", renderCustomers);
+
+      document.querySelectorAll(".chip").forEach(chip => {
+        chip.addEventListener("click", () => {
+          document.querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
+          chip.classList.add("active");
+          quickFilter = chip.dataset.quick;
+          renderCustomers();
+        });
+      });
     }
 
     function enableUppercase() {
@@ -743,6 +930,10 @@
 
     function normalize(v) {
       return String(v || "").trim().toUpperCase();
+    }
+
+    function todayStr() {
+      return new Date().toISOString().split("T")[0];
     }
 
     function getSelectedInterests() {
@@ -798,15 +989,39 @@
       updateStats();
       renderCustomers();
       renderFollowups();
+
+      if (selectedCustomerId) {
+        const row = customers.find(x => Number(x.id) === Number(selectedCustomerId));
+        if (row) openProfile(row.id);
+      }
     }
 
     function updateStats() {
+      const today = todayStr();
+
       totalCustomers.textContent = customers.length;
       highPriorityCount.textContent = customers.filter(c => normalize(c.priority) === "HIGH").length;
-
-      const today = new Date().toISOString().split("T")[0];
       todayFollowups.textContent = customers.filter(c => String(c.next_followup_date || "") === today).length;
+      overdueFollowups.textContent = customers.filter(c => c.next_followup_date && String(c.next_followup_date) < today).length;
       pendingFollowups.textContent = customers.filter(c => !!c.next_followup_date).length;
+    }
+
+    function applyQuickFilter(list) {
+      const today = todayStr();
+
+      if (quickFilter === "TODAY") {
+        return list.filter(c => String(c.next_followup_date || "") === today);
+      }
+      if (quickFilter === "OVERDUE") {
+        return list.filter(c => c.next_followup_date && String(c.next_followup_date) < today);
+      }
+      if (quickFilter === "HIGH") {
+        return list.filter(c => normalize(c.priority) === "HIGH");
+      }
+      if (quickFilter === "NOFOLLOW") {
+        return list.filter(c => !c.next_followup_date);
+      }
+      return list;
     }
 
     function renderCustomers() {
@@ -816,7 +1031,7 @@
       const interest = normalize(interestFilter.value);
       const addr = normalize(addressFilter.value);
 
-      const filtered = customers.filter(c => {
+      let filtered = customers.filter(c => {
         const interests = Array.isArray(c.interests) ? c.interests.join(" ") : String(c.interests || "");
         return (
           (!term || normalize(c.name).includes(term) || normalize(c.mobile).includes(term)) &&
@@ -826,6 +1041,8 @@
           (!addr || normalize(c.address).includes(addr))
         );
       });
+
+      filtered = applyQuickFilter(filtered);
 
       filteredCustomers.textContent = filtered.length;
 
@@ -842,8 +1059,10 @@
           ? "priority-medium"
           : "priority-low";
 
+        const selectedClass = Number(selectedCustomerId) === Number(c.id) ? "selected" : "";
+
         return `
-          <tr>
+          <tr class="${selectedClass}">
             <td>${c.id ?? ""}</td>
             <td>${escapeHtml(normalize(c.name))}</td>
             <td>${escapeHtml(normalize(c.mobile))}</td>
@@ -855,6 +1074,7 @@
             <td>${escapeHtml(normalize(c.notes)).slice(0, 120)}</td>
             <td>
               <div class="table-actions">
+                <button class="mini-btn mini-view" onclick="openProfile(${c.id})">View</button>
                 <button class="mini-btn mini-edit" onclick="editCustomer(${c.id})">Edit</button>
                 <button class="mini-btn mini-delete" onclick="deleteCustomer(${c.id}, '${escapeJs(normalize(c.name))}')">Delete</button>
               </div>
@@ -865,7 +1085,7 @@
     }
 
     function renderFollowups() {
-      const today = new Date().toISOString().split("T")[0];
+      const today = todayStr();
 
       const list = customers
         .filter(c => c.next_followup_date)
@@ -884,6 +1104,7 @@
           : "priority-low";
 
         const isToday = String(c.next_followup_date) === today;
+        const isOverdue = c.next_followup_date && String(c.next_followup_date) < today;
 
         return `
           <div class="followup-card">
@@ -895,6 +1116,7 @@
                   SALESMAN: ${escapeHtml(normalize(c.salesman))} |
                   DATE: ${escapeHtml(String(c.next_followup_date || ""))}
                   ${isToday ? ' | TODAY' : ''}
+                  ${isOverdue ? ' | OVERDUE' : ''}
                 </div>
               </div>
               <span class="badge ${pClass}">${escapeHtml(normalize(c.priority || "LOW"))}</span>
@@ -997,9 +1219,174 @@
       }
 
       if (Number(editingId) === Number(id)) resetForm();
+      if (Number(selectedCustomerId) === Number(id)) {
+        selectedCustomerId = null;
+        profilePanel.innerHTML = `<div class="profile-empty">Select a customer to view full profile and sales history</div>`;
+      }
 
       showStatus("CRM CUSTOMER DELETED SUCCESSFULLY.", "success");
       await loadCustomers();
+    }
+
+    async function openProfile(id) {
+      const row = customers.find(x => Number(x.id) === Number(id));
+      if (!row) return;
+
+      selectedCustomerId = id;
+      renderCustomers();
+
+      profilePanel.innerHTML = `<div class="profile-empty">Loading customer profile...</div>`;
+
+      const salesSummary = await loadSalesSummaryByMobile(row.mobile);
+      const salesItems = await loadRecentSalesItemsByMobile(row.mobile);
+
+      const interests = Array.isArray(row.interests) ? row.interests : [];
+      const pClass = normalize(row.priority) === "HIGH"
+        ? "priority-high"
+        : normalize(row.priority) === "MEDIUM"
+        ? "priority-medium"
+        : "priority-low";
+
+      profilePanel.innerHTML = `
+        <div class="profile-card">
+          <div class="profile-top">
+            <div class="profile-name">${escapeHtml(normalize(row.name))}</div>
+            <div class="profile-meta">
+              <div><b>MOBILE:</b> ${escapeHtml(normalize(row.mobile))}</div>
+              <div><b>SALESMAN:</b> ${escapeHtml(normalize(row.salesman))}</div>
+              <div><b>ADDRESS:</b> ${escapeHtml(normalize(row.address))}</div>
+              <div><b>GST:</b> ${escapeHtml(normalize(row.gst_number))}</div>
+              <div><b>STATE:</b> ${escapeHtml(normalize(row.state_code))}</div>
+            </div>
+            <div style="margin-top:10px;">
+              <span class="badge ${pClass}">${escapeHtml(normalize(row.priority || "LOW"))}</span>
+              ${row.next_followup_date ? `<span class="badge badge-soft">FOLLOW-UP: ${escapeHtml(String(row.next_followup_date))}</span>` : ""}
+            </div>
+          </div>
+
+          <div class="sub-panel">
+            <div class="sub-head">INTEREST CATEGORIES</div>
+            <div class="sub-body">
+              ${interests.length ? interests.map(i => `<span class="badge badge-purple">${escapeHtml(normalize(i))}</span>`).join("") : `<div class="empty" style="padding:8px 0;">NO INTERESTS SAVED</div>`}
+            </div>
+          </div>
+
+          <div class="sub-panel">
+            <div class="sub-head">CRM NOTES</div>
+            <div class="sub-body">
+              <div class="note-box">${escapeHtml(normalize(row.notes) || "NO NOTES AVAILABLE")}</div>
+            </div>
+          </div>
+
+          <div class="sub-panel">
+            <div class="sub-head">SALES SUMMARY</div>
+            <div class="sub-body">
+              <div class="metric-grid">
+                <div class="metric">
+                  <div class="m-label">TOTAL SALES BILLS</div>
+                  <div class="m-value">${salesSummary.totalBills}</div>
+                </div>
+                <div class="metric">
+                  <div class="m-label">TOTAL SALES AMOUNT</div>
+                  <div class="m-value">₹ ${salesSummary.totalAmount.toFixed(2)}</div>
+                </div>
+                <div class="metric">
+                  <div class="m-label">LAST BILL DATE</div>
+                  <div class="m-value" style="font-size:16px;">${salesSummary.lastBillDate || "-"}</div>
+                </div>
+                <div class="metric">
+                  <div class="m-label">LAST BILL NO</div>
+                  <div class="m-value" style="font-size:16px;">${salesSummary.lastBillNo || "-"}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="sub-panel">
+            <div class="sub-head">RECENT SALES ITEMS</div>
+            <div class="sub-body">
+              ${
+                salesItems.length
+                  ? `<div class="simple-list">
+                      ${salesItems.map(item => `
+                        <div class="simple-item">
+                          <div class="line1">${escapeHtml(normalize(item.item_name || ""))}</div>
+                          <div class="line2">
+                            CODE: ${escapeHtml(normalize(item.item_code || ""))} |
+                            QTY: ${Number(item.quantity || 0).toFixed(2)} |
+                            DATE: ${escapeHtml(item.bill_date || "")} |
+                            BILL: ${escapeHtml(item.bill_no || "")}
+                          </div>
+                        </div>
+                      `).join("")}
+                    </div>`
+                  : `<div class="empty" style="padding:8px 0;">NO SALES HISTORY FOUND FOR THIS MOBILE NUMBER</div>`
+              }
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    async function loadSalesSummaryByMobile(mobile) {
+      try {
+        const { data, error } = await sb
+          .from("sales_details")
+          .select("id, sales_number, series_code, bill_date, invoice_amount, customer_mobile")
+          .eq("customer_mobile", mobile)
+          .order("id", { ascending: false });
+
+        if (error || !data) {
+          return { totalBills: 0, totalAmount: 0, lastBillDate: "", lastBillNo: "" };
+        }
+
+        const totalAmount = (data || []).reduce((sum, row) => sum + Number(row.invoice_amount || 0), 0);
+        const last = data[0];
+
+        return {
+          totalBills: data.length,
+          totalAmount,
+          lastBillDate: last?.bill_date || "",
+          lastBillNo: last ? `${last.series_code || ""}-${last.sales_number || ""}` : ""
+        };
+      } catch (_) {
+        return { totalBills: 0, totalAmount: 0, lastBillDate: "", lastBillNo: "" };
+      }
+    }
+
+    async function loadRecentSalesItemsByMobile(mobile) {
+      try {
+        const { data: headers, error: headerErr } = await sb
+          .from("sales_details")
+          .select("id, sales_number, series_code, bill_date")
+          .eq("customer_mobile", mobile)
+          .order("id", { ascending: false })
+          .limit(10);
+
+        if (headerErr || !headers || !headers.length) return [];
+
+        const salesIds = headers.map(h => h.id);
+        const headerMap = {};
+        headers.forEach(h => {
+          headerMap[h.id] = h;
+        });
+
+        const { data: items, error: itemsErr } = await sb
+          .from("sales_item_details")
+          .select("sales_id, item_code, item_name, quantity")
+          .in("sales_id", salesIds)
+          .limit(30);
+
+        if (itemsErr || !items) return [];
+
+        return items.map(x => ({
+          ...x,
+          bill_date: headerMap[x.sales_id]?.bill_date || "",
+          bill_no: `${headerMap[x.sales_id]?.series_code || ""}-${headerMap[x.sales_id]?.sales_number || ""}`
+        }));
+      } catch (_) {
+        return [];
+      }
     }
 
     function escapeHtml(value) {
@@ -1017,6 +1404,7 @@
 
     window.editCustomer = editCustomer;
     window.deleteCustomer = deleteCustomer;
+    window.openProfile = openProfile;
   </script>
 </body>
 </html>

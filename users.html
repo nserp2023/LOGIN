@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>User Management - Billing Software</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabaseClient.js"></script>
+    <script src="page_permissions.js"></script>
   <style>
     :root {
       --primary: #2563eb;
@@ -205,11 +207,11 @@
   </div>
 
   <script>
-    const { createClient } = supabase;
-
-    const supabaseUrl = "https://gqxczzijntbvtlmmzppt.supabase.co";
-    const supabaseKey = "sb_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs";
-    const supabaseClient = createClient(supabaseUrl, supabaseKey);
+    const supabaseClient = window.sbcc; // supabase client from supabaseClient.js
+  document.addEventListener("DOMContentLoaded", async () => {
+  const ok = await requirePageAccess("sales");
+  if (!ok) return;
+  });
 
     const ROLE_OPTIONS = [
       "OWNER",

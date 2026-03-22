@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>User Management - Billing Software</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --accent: #059669;
+      --bg-overlay: rgba(255, 255, 255, 0.96);
+      --border: #cbd5e1;
+      --text: #1e293b;
+      --row-hover: #f1f5f9;
+      --danger: #dc2626;
+    }
+
+    body {
+      font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-image: url("background.jpg");
+      background-size: cover;
+      background-attachment: fixed;
+      color: var(--text);
+    }
+
+    .page {
+      max-width: 1300px;
+      margin: auto;
+      background: var(--bg-overlay);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.18);
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 28px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 10px 16px;
+      font-size: 14px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-secondary { background: #475569; color: white; }
+    .btn-success { background: var(--accent); color: white; }
+    .btn-danger { background: var(--danger); color: white; }
+
+    .filters {
+      display: grid;
+      grid-template-columns: 1.2fr 220px 220px;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .filters input,
+    .filters select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 14px;
+      background: #fff;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: white;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1100px;
+    }
+
+    th, td {
+      padding: 12px;
+      border-bottom: 1px solid #e2e8f0;
+      text-align: left;
+      vertical-align: middle;
+      font-size: 14px;
+    }
+
+    th {
+      background: #eff6ff;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    tr:hover td {
+      background: var(--row-hover);
+    }
+
+    .role-select {
+      width: 220px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+
+    .approved-yes {
+      color: #15803d;
+      font-weight: 700;
+    }
+
+    .approved-no {
+      color: #b91c1c;
+      font-weight: 700;
+    }
+
+    .status {
+      margin: 0 0 14px 0;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .status.ok { color: #15803d; }
+    .status.err { color: #b91c1c; }
+
+    @media (max-width: 900px) {
+      .filters {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="topbar">
+      <h1>User Management</h1>
+      <div class="actions">
+        <button class="btn-secondary" onclick="window.location.href='dashboard.html'">Back to Dashboard</button>
+        <button class="btn-primary" onclick="loadUsers()">Refresh</button>
+        <button class="btn-danger" onclick="logout()">Logout</button>
+      </div>
+    </div>
+
+    <p id="status" class="status"></p>
+
+    <div class="filters">
+      <input type="text" id="searchInput" placeholder="Search by user id / name / email / role">
+      <select id="roleFilter">
+        <option value="">All Roles</option>
+        <option value="PENDING">PENDING</option>
+        <option value="OWNER">OWNER</option>
+        <option value="ADMIN">ADMIN</option>
+        <option value="MANAGER">MANAGER</option>
+        <option value="SALES BILLER">SALES BILLER</option>
+        <option value="SALES & PURCHASE">SALES & PURCHASE</option>
+        <option value="ROUTE EXECUTIVE">ROUTE EXECUTIVE</option>
+        <option value="SALES MAN">SALES MAN</option>
+      </select>
+      <select id="approvalFilter">
+        <option value="">All Approval</option>
+        <option value="true">Approved</option>
+        <option value="false">Pending</option>
+      </select>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>User ID</th>
+            <th>Full Name</th>
+            <th>Email</th>
+            <th>Current Role</th>
+            <th>Approved</th>
+            <th>Created At</th>
+            <th>Change Role</th>
+            <th>Approve</th>
+            <th>Save</th>
+          </tr>
+        </thead>
+        <tbody id="usersTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    const { createClient } = supabase;
+
+    const supabaseUrl = "https://gqxczzijntbvtlmmzppt.supabase.co";
+    const supabaseKey = "sb_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs";
+    const supabaseClient = createClient(supabaseUrl, supabaseKey);
+
+    const ROLE_OPTIONS = [
+      "OWNER",
+      "ADMIN",
+      "MANAGER",
+      "SALES BILLER",
+      "SALES & PURCHASE",
+      "ROUTE EXECUTIVE",
+      "SALES MAN"
+    ];
+
+    let allUsers = [];
+
+    function setStatus(message, type = "") {
+      const el = document.getElementById("status");
+      el.textContent = message || "";
+      el.className = "status " + type;
+    }
+
+    async function checkAccess() {
+      const { data: authData } = await supabaseClient.auth.getUser();
+      const authUser = authData?.user;
+
+      if (!authUser) {
+        alert("Please login first.");
+        window.location.href = "index.html";
+        return false;
+      }
+
+      const { data: profile, error } = await supabaseClient
+        .from("user_profiles")
+        .select("role, approved")
+        .eq("id", authUser.id)
+        .maybeSingle();
+
+      if (error || !profile) {
+        alert("User profile not found.");
+        window.location.href = "index.html";
+        return false;
+      }
+
+      if (!profile.approved) {
+        alert("Your account is not approved.");
+        window.location.href = "index.html";
+        return false;
+      }
+
+      if (profile.role !== "OWNER" && profile.role !== "ADMIN") {
+        alert("Only OWNER or ADMIN can open this page.");
+        window.location.href = "dashboard.html";
+        return false;
+      }
+
+      return true;
+    }
+
+    async function loadUsers() {
+      setStatus("Loading users...", "");
+
+      const { data, error } = await supabaseClient
+        .from("user_profiles")
+        .select("id, full_name, email, role, approved, created_at")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        setStatus("Failed to load users: " + error.message, "err");
+        return;
+      }
+
+      allUsers = data || [];
+      renderUsers();
+      setStatus("Users loaded successfully.", "ok");
+    }
+
+    function renderUsers() {
+      const tbody = document.getElementById("usersTableBody");
+      const search = document.getElementById("searchInput").value.trim().toLowerCase();
+      const roleFilter = document.getElementById("roleFilter").value;
+      const approvalFilter = document.getElementById("approvalFilter").value;
+
+      const filtered = allUsers.filter(user => {
+        const searchText = `${user.id || ""} ${user.full_name || ""} ${user.email || ""} ${user.role || ""}`.toLowerCase();
+        const matchSearch = !search || searchText.includes(search);
+        const matchRole = !roleFilter || user.role === roleFilter;
+        const matchApproval = approvalFilter === "" || String(user.approved) === approvalFilter;
+        return matchSearch && matchRole && matchApproval;
+      });
+
+      tbody.innerHTML = "";
+
+      if (!filtered.length) {
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;">No users found</td></tr>`;
+        return;
+      }
+
+      filtered.forEach(user => {
+        const tr = document.createElement("tr");
+
+        const roleOptionsHtml = ROLE_OPTIONS.map(role => {
+          return `<option value="${role}" ${user.role === role ? "selected" : ""}>${role}</option>`;
+        }).join("");
+
+        tr.innerHTML = `
+          <td>${user.id || ""}</td>
+          <td>${user.full_name || ""}</td>
+          <td>${user.email || ""}</td>
+          <td>${user.role || ""}</td>
+          <td class="${user.approved ? "approved-yes" : "approved-no"}">${user.approved ? "YES" : "NO"}</td>
+          <td>${user.created_at ? new Date(user.created_at).toLocaleString() : ""}</td>
+          <td>
+            <select class="role-select" id="role_${user.id}">
+              <option value="">Select Role</option>
+              ${roleOptionsHtml}
+            </select>
+          </td>
+          <td style="text-align:center;">
+            <input type="checkbox" id="approved_${user.id}" ${user.approved ? "checked" : ""}>
+          </td>
+          <td>
+            <button class="btn-success" onclick="saveUser('${user.id}')">Save</button>
+          </td>
+        `;
+
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function saveUser(userId) {
+      const role = document.getElementById(`role_${userId}`).value;
+      const approved = document.getElementById(`approved_${userId}`).checked;
+
+      if (!role) {
+        alert("Please select a role.");
+        return;
+      }
+
+      const { error } = await supabaseClient
+        .from("user_profiles")
+        .update({
+          role: role,
+          approved: approved
+        })
+        .eq("id", userId);
+
+      if (error) {
+        alert("Failed to update user: " + error.message);
+        return;
+      }
+
+      alert("User updated successfully.");
+      await loadUsers();
+    }
+
+    async function logout() {
+      await supabaseClient.auth.signOut();
+      localStorage.clear();
+      window.location.href = "index.html";
+    }
+
+    document.getElementById("searchInput").addEventListener("input", renderUsers);
+    document.getElementById("roleFilter").addEventListener("change", renderUsers);
+    document.getElementById("approvalFilter").addEventListener("change", renderUsers);
+
+    (async function init() {
+      const ok = await checkAccess();
+      if (!ok) return;
+      await loadUsers();
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>User Accessibility</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabaseClient.js"></script>
+  <script src="page_permissions.js"></script>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --accent: #059669;
+      --danger: #dc2626;
+      --bg: rgba(255,255,255,0.96);
+      --border: #cbd5e1;
+      --text: #1e293b;
+    }
+
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: url("background.jpg") no-repeat center center fixed;
+      background-size: cover;
+      color: var(--text);
+    }
+
+    .page {
+      max-width: 1100px;
+      margin: auto;
+      background: var(--bg);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.18);
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 28px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 10px 16px;
+      font-size: 14px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-success { background: var(--accent); color: white; }
+    .btn-danger { background: var(--danger); color: white; }
+    .btn-secondary { background: #475569; color: white; }
+
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr 220px 220px;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .controls select, .controls input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 14px;
+      background: white;
+    }
+
+    .user-info {
+      margin-bottom: 20px;
+      padding: 14px;
+      border-radius: 12px;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+    }
+
+    .permission-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+
+    .perm-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .perm-title {
+      font-weight: 600;
+    }
+
+    .status {
+      margin-bottom: 14px;
+      font-weight: 700;
+    }
+
+    .ok { color: #15803d; }
+    .err { color: #b91c1c; }
+
+    @media (max-width: 768px) {
+      .controls, .permission-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="topbar">
+      <h1>User Accessibility</h1>
+      <div class="actions">
+        <button class="btn-secondary" onclick="window.location.href='dashboard.html'">Back</button>
+        <button class="btn-danger" id="logoutBtn">Logout</button>
+      </div>
+    </div>
+
+    <div id="status" class="status"></div>
+
+    <div class="controls">
+      <select id="userSelect">
+        <option value="">Select User</option>
+      </select>
+      <button class="btn-primary" id="loadPermissionsBtn">Load Permissions</button>
+      <button class="btn-success" id="savePermissionsBtn">Save Permissions</button>
+    </div>
+
+    <div id="userInfo" class="user-info">Select a user to view access permissions.</div>
+
+    <div id="permissionGrid" class="permission-grid"></div>
+  </div>
+
+  <script>
+    const accessClient = supabase.createClient(
+      "https://gqxczzijntbvtlmmzppt.supabase.co",
+      "sb_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs"
+    );
+
+    const PAGE_LIST = [
+      { key: "dashboard", label: "Dashboard" },
+      { key: "sales", label: "Sales" },
+      { key: "mobile_sales", label: "Mobile Sales" },
+      { key: "sales_return", label: "Sales Return" },
+      { key: "purchase", label: "Purchase" },
+      { key: "purchase_report", label: "Purchase Report" },
+      { key: "stock_report", label: "Stock Report" },
+      { key: "payment_receipt", label: "Payment / Receipt" },
+      { key: "customer", label: "Customer" },
+      { key: "crm", label: "CRM" },
+      { key: "users", label: "Users" },
+      { key: "user_accessibility", label: "User Accessibility" },
+      { key: "sales_report", label: "Sales Report" },
+      { key: "sales_return_report", label: "Sales Return Report" },
+      { key: "receipt_report", label: "Receipt Report" },
+      { key: "payment_report", label: "Payment Report" },
+      { key: "products", label: "Products" },
+      { key: "supplier", label: "Supplier" },
+      { key: "hsn", label: "HSN" },
+      { key: "customer_list", label: "Customer List" },
+      { key: "supplier_list", label: "Supplier List" }
+    ];
+
+    let selectedUser = null;
+
+    function setStatus(message, type = "") {
+      const el = document.getElementById("status");
+      el.textContent = message || "";
+      el.className = "status " + type;
+    }
+
+    async function checkAdminAccess() {
+      const profile = await getLoggedInProfile();
+      if (!profile) return false;
+
+      const role = (profile.role || "").toUpperCase();
+      if (role !== "OWNER" && role !== "ADMIN") {
+        alert("Only OWNER or ADMIN can open this page.");
+        window.location.href = "dashboard.html";
+        return false;
+      }
+
+      return true;
+    }
+
+    async function loadUsersForSelect() {
+      const { data, error } = await accessClient
+        .from("user_profiles")
+        .select("id, full_name, email, role, approved")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        setStatus("Failed to load users: " + error.message, "err");
+        return;
+      }
+
+      const userSelect = document.getElementById("userSelect");
+      userSelect.innerHTML = `<option value="">Select User</option>`;
+
+      (data || []).forEach(user => {
+        const opt = document.createElement("option");
+        opt.value = user.id;
+        opt.textContent = `${user.full_name || "No Name"} - ${user.email} - ${user.role}`;
+        opt.dataset.name = user.full_name || "";
+        opt.dataset.email = user.email || "";
+        opt.dataset.role = user.role || "";
+        opt.dataset.approved = user.approved ? "true" : "false";
+        userSelect.appendChild(opt);
+      });
+    }
+
+    function renderPermissionGrid(existingPermissions = {}) {
+      const grid = document.getElementById("permissionGrid");
+      grid.innerHTML = "";
+
+      PAGE_LIST.forEach(page => {
+        const checked = !!existingPermissions[page.key];
+
+        const card = document.createElement("div");
+        card.className = "perm-card";
+        card.innerHTML = `
+          <div class="perm-title">${page.label}</div>
+          <input type="checkbox" class="perm-check" data-key="${page.key}" ${checked ? "checked" : ""}>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    async function loadPermissionsForSelectedUser() {
+      const userSelect = document.getElementById("userSelect");
+      const userId = userSelect.value;
+
+      if (!userId) {
+        alert("Please select a user.");
+        return;
+      }
+
+      const selectedOption = userSelect.options[userSelect.selectedIndex];
+      selectedUser = {
+        id: userId,
+        full_name: selectedOption.dataset.name,
+        email: selectedOption.dataset.email,
+        role: selectedOption.dataset.role,
+        approved: selectedOption.dataset.approved === "true"
+      };
+
+      document.getElementById("userInfo").innerHTML = `
+        <strong>Name:</strong> ${selectedUser.full_name || ""}<br>
+        <strong>Email:</strong> ${selectedUser.email || ""}<br>
+        <strong>Role:</strong> ${selectedUser.role || ""}<br>
+        <strong>Approved:</strong> ${selectedUser.approved ? "YES" : "NO"}
+      `;
+
+      const { data, error } = await accessClient
+        .from("user_page_access")
+        .select("page_key, allowed")
+        .eq("user_id", userId);
+
+      if (error) {
+        setStatus("Failed to load permissions: " + error.message, "err");
+        return;
+      }
+
+      const permissionMap = {};
+      (data || []).forEach(row => {
+        permissionMap[row.page_key] = !!row.allowed;
+      });
+
+      renderPermissionGrid(permissionMap);
+      setStatus("Permissions loaded.", "ok");
+    }
+
+    async function savePermissionsForSelectedUser() {
+      if (!selectedUser) {
+        alert("Please load a user first.");
+        return;
+      }
+
+      const checks = [...document.querySelectorAll(".perm-check")];
+      const rows = checks.map(ch => ({
+        user_id: selectedUser.id,
+        page_key: ch.dataset.key,
+        allowed: ch.checked
+      }));
+
+      const { error } = await accessClient
+        .from("user_page_access")
+        .upsert(rows, { onConflict: "user_id,page_key" });
+
+      if (error) {
+        setStatus("Failed to save permissions: " + error.message, "err");
+        return;
+      }
+
+      setStatus("Permissions saved successfully.", "ok");
+    }
+
+    document.getElementById("loadPermissionsBtn").addEventListener("click", loadPermissionsForSelectedUser);
+    document.getElementById("savePermissionsBtn").addEventListener("click", savePermissionsForSelectedUser);
+    document.getElementById("logoutBtn").addEventListener("click", async () => {
+      await logoutPermissionUser();
+    });
+
+    (async function init() {
+      const ok = await checkAdminAccess();
+      if (!ok) return;
+
+      await loadUsersForSelect();
+      renderPermissionGrid({});
+    })();
+  </script>
+</body>
+</html>

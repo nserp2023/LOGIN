@@ -787,14 +787,14 @@
     async function loadStockData() {
         let allItems = [];
         let from = 0;
-        let to = 999;
+        let pageSize = 1000;
         let fetchMore = true;
 
         while (fetchMore) {
             const { data, error } = await sb
                 .from('stock_balance_view')
                 .select('*')
-                .range(from, to);
+                .range(from, from + pageSize - 1);
 
             if (error) {
                 console.error("Error loading stock:", error);
@@ -804,10 +804,9 @@
 
             if (data && data.length > 0) {
                 allItems = allItems.concat(data);
-                from += 1000;
-                to += 1000;
+                from += pageSize;
 
-                if (data.length < 1000) {
+                if (data.length < pageSize) {
                     fetchMore = false;
                 }
             } else {
@@ -819,26 +818,66 @@
         console.log("Total Stock Items Loaded:", stockData.length);
     }
 
+    function normalizeSearchText(value) {
+        return String(value || "")
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, " ")
+            .replace(/\s+/g, " ")
+            .trim();
+    }
+
     function searchStock(query, field) {
         if (!query) return [];
-        const terms = query.toLowerCase().split(' ');
-        
-        const filtered = stockData.filter(item => {
-            const val = (item[field] || '').toLowerCase();
-            return terms.every(t => val.includes(t));
+
+        const normalizedQuery = normalizeSearchText(query);
+        if (!normalizedQuery) return [];
+
+        const terms = normalizedQuery.split(" ").filter(Boolean);
+
+        const scored = stockData.map(item => {
+            const codeRaw = String(item.item_code || "");
+            const nameRaw = String(item.item_name || "");
+
+            const code = normalizeSearchText(codeRaw);
+            const name = normalizeSearchText(nameRaw);
+
+            let searchablePrimary = field === "item_code" ? code : name;
+            let searchableSecondary = field === "item_code" ? name : code;
+
+            const matched =
+                terms.every(t => searchablePrimary.includes(t)) ||
+                terms.every(t => searchableSecondary.includes(t)) ||
+                terms.every(t => (code + " " + name).includes(t));
+
+            if (!matched) return null;
+
+            let score = 0;
+
+            if (searchablePrimary === normalizedQuery) score += 1000;
+            if (searchableSecondary === normalizedQuery) score += 900;
+
+            if (searchablePrimary.startsWith(normalizedQuery)) score += 700;
+            if (searchableSecondary.startsWith(normalizedQuery)) score += 650;
+
+            if (code.startsWith(normalizedQuery)) score += 600;
+            if (name.startsWith(normalizedQuery)) score += 550;
+
+            for (const t of terms) {
+                if (code.includes(t)) score += 40;
+                if (name.includes(t)) score += 40;
+            }
+
+            score -= Math.abs(name.length - normalizedQuery.length) * 0.1;
+
+            return { item, score };
+        }).filter(Boolean);
+
+        scored.sort((a, b) => {
+            if (b.score !== a.score) return b.score - a.score;
+            return String(a.item.item_name || "").localeCompare(String(b.item.item_name || ""));
         });
 
-        filtered.sort((a, b) => {
-            const valA = (a[field] || '').toLowerCase();
-            const valB = (b[field] || '').toLowerCase();
-
-            if(valA === query.toLowerCase()) return -1;
-            if(valB === query.toLowerCase()) return 1;
-
-            return valA.localeCompare(valB);
-        });
-
-        return filtered.slice(0, 15);
+        return scored.slice(0, 40).map(x => x.item);
     }
 
     const mobileInput = document.getElementById('cust_mobile');
@@ -1093,10 +1132,10 @@ ${data.map((c, idx) => `
         attachSearch(codeInp, `list_code_${id}`, 'item_code');
 
         codeInp.addEventListener("change", () => {
-            const code = codeInp.value.trim().toLowerCase();
+            const code = normalizeSearchText(codeInp.value);
 
             const item = stockData.find(
-                i => (i.item_code || "").toLowerCase() === code
+                i => normalizeSearchText(i.item_code || "") === code
             );
 
             if(item){
@@ -1107,12 +1146,12 @@ ${data.map((c, idx) => `
         codeInp.addEventListener("keydown", (e)=>{
             if(e.key !== "Enter") return;
 
-            const code = codeInp.value.trim().toLowerCase();
+            const code = normalizeSearchText(codeInp.value);
             const row = document.getElementById(`row_${id}`);
             const nameInp = row.querySelector('.name-inp');
 
             const item = stockData.find(
-                i => (i.item_code || "").toLowerCase() === code
+                i => normalizeSearchText(i.item_code || "") === code
             );
 
             if(item){
@@ -1154,7 +1193,6 @@ ${data.map((c, idx) => `
     }
 
     async function fillItem(id, item) {
-        const docType = document.getElementById("doc_type").value;
         const row = document.getElementById(`row_${id}`);
 
         row.querySelectorAll('.autocomplete-list').forEach(list => {
@@ -1197,22 +1235,10 @@ ${data.map((c, idx) => `
                 ...freshStock
             });
 
-            const currentQty = freshStock ? freshStock.balance : 0;
             const qtyBox = row.querySelector('.qty-inp');
+            const currentQty = freshStock ? freshStock.balance : 0;
             qtyBox.title = `Available Stock: ${currentQty}`;
-
-            if(docType === "sales"){
-                if (currentQty <= 0) {
-                    qtyBox.style.backgroundColor = "#0000FF";
-                    alert(`⚠️ WARNING: "${item.item_name}" is Out of Stock! (Qty: ${currentQty})`);
-                } else if (currentQty < 5) {
-                    qtyBox.style.backgroundColor = "#90EE90";
-                } else {
-                    qtyBox.style.backgroundColor = "";
-                }
-            } else {
-                qtyBox.style.backgroundColor = "";
-            }
+            qtyBox.style.backgroundColor = "";
         }
     }
 
@@ -1535,8 +1561,9 @@ ${data.map((c, idx) => `
     }, true);
 
     function isValidStockItem(code) {
+        const norm = normalizeSearchText(code);
         return stockData.some(
-            i => (i.item_code || "").toLowerCase() === code.toLowerCase()
+            i => normalizeSearchText(i.item_code || "") === norm
         );
     }
 
@@ -2312,7 +2339,7 @@ ${data.map((c, idx) => `
         let head;
 
         if(type === "sales_pack"){
-            const {data, error} = await sb
+            const {data} = await sb
                 .from("sales_packing_details")
                 .select("*")
                 .eq("id", id)
@@ -2393,7 +2420,7 @@ ${data.map((c, idx) => `
             items = data;
         }
 
-        items.forEach(item=>{
+        (items || []).forEach(item=>{
             addNewRow(false);
 
             const row=document.getElementById(`row_${currentRowId-1}`);

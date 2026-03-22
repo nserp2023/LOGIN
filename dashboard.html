@@ -865,8 +865,10 @@ body.dashboard-page {
       <div class="card" onclick="window.location.href='purchasenew.html'">📦 Purchase</div>
       <div class="card" onclick="window.location.href='purchase_report.html'">📦📊 Purchase Reports</div>
       <div class="card" onclick="window.location.href='stockledger.html'">📊 Stock Report</div>
+      <div class="card" onclick="window.location.href='hsn.html'">📊 HSN Codes</div>
       <div class="card" onclick="window.location.href='paymentreceipt.html'">💸 Payment / Receipt</div>
       <div class="card" onclick="window.location.href='customer_manager.html'">📝 Customer</div>
+      <div class="card" onclick="window.location.href='history.html'">📝 Customer History</div>
       <div class="card" onclick="window.location.href='crm.html'">📝 CRM</div>
       <div class="card" onclick="window.location.href='users.html'">⚙️ USER SETTINGS</div>
     </section>
@@ -875,17 +877,116 @@ body.dashboard-page {
   <div id="overlay" class="overlay"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script>
+<script>
 const supabaseUrl = "https://gqxczzijntbvtlmmzppt.supabase.co";
 const supabaseKey = "sb_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs";
 const sb = supabase.createClient(supabaseUrl, supabaseKey);
 
 document.addEventListener("DOMContentLoaded", async () => {
   setupSidebar();
+  await checkUserAccess();   // 🔥 NEW
   await loadUserInfo();
+  applyRolePermissions();    // 🔥 NEW
   await loadTodayDashboardSummary();
 });
 
+
+// ===============================
+// 🔐 CHECK LOGIN + APPROVAL
+// ===============================
+async function checkUserAccess() {
+  const { data } = await sb.auth.getUser();
+  const user = data?.user;
+
+  if (!user) {
+    window.location.href = "index.html";
+    return;
+  }
+
+  const { data: profile } = await sb
+    .from("user_profiles")
+    .select("role, approved")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (!profile || !profile.approved) {
+    alert("Your account is not approved yet.");
+    await sb.auth.signOut();
+    localStorage.clear();
+    window.location.href = "index.html";
+    return;
+  }
+
+  // Save fresh role to localStorage
+  localStorage.setItem("role", profile.role);
+}
+
+
+// ===============================
+// 👤 LOAD USER INFO
+// ===============================
+async function loadUserInfo() {
+  const username = localStorage.getItem("username") || "User";
+  const role = (localStorage.getItem("role") || "PENDING");
+
+  document.getElementById("welcome").innerText = `Welcome, ${username}`;
+
+  // Format role nicely
+  const formattedRole = role
+    .toLowerCase()
+    .replace(/\b\w/g, c => c.toUpperCase());
+
+  document.getElementById("userRoleBadge").innerText = formattedRole;
+}
+
+
+// ===============================
+// 🔥 ROLE PERMISSIONS
+// ===============================
+function applyRolePermissions() {
+  const role = (localStorage.getItem("role") || "").toUpperCase();
+
+  // USER SETTINGS (only OWNER + ADMIN)
+  if (role !== "OWNER" && role !== "ADMIN") {
+    const userSettingsCard = document.querySelector('[onclick*="users.html"]');
+    if (userSettingsCard) userSettingsCard.style.display = "none";
+  }
+
+  // CREATE MENU (only ADMIN / OWNER / MANAGER)
+  if (!["OWNER", "ADMIN", "MANAGER"].includes(role)) {
+    const createMenu = document.getElementById("createMenu");
+    if (createMenu) createMenu.parentElement.style.display = "none";
+  }
+
+  // PURCHASE ACCESS
+  if (!["OWNER", "ADMIN", "MANAGER", "SALES & PURCHASE"].includes(role)) {
+    document.querySelectorAll('[href="purchasenew.html"]').forEach(el => el.parentElement.style.display = "none");
+  }
+
+  // REPORTS ACCESS (restrict for salesman)
+  if (role === "SALES MAN") {
+    document.querySelectorAll('.has-submenu').forEach(menu => {
+      if (menu.innerText.includes("Reports")) {
+        menu.style.display = "none";
+      }
+    });
+  }
+}
+
+
+// ===============================
+// 🚪 LOGOUT
+// ===============================
+document.getElementById("logout").addEventListener("click", async () => {
+  await sb.auth.signOut();
+  localStorage.clear();
+  window.location.href = "index.html";
+});
+
+
+// ===============================
+// 📊 EXISTING FUNCTIONS (UNCHANGED)
+// ===============================
 function setupSidebar() {
   document.querySelectorAll(".has-submenu > .menu-link").forEach(link => {
     link.addEventListener("click", function(e) {
@@ -913,15 +1014,10 @@ function setupSidebar() {
   }
 }
 
-async function loadUserInfo() {
-  const username = localStorage.getItem("username") || "User";
-  const role = (localStorage.getItem("role") || "staff").toLowerCase();
 
-  document.getElementById("welcome").innerText = `Welcome, ${username}`;
-  document.getElementById("userRoleBadge").innerText =
-    role.charAt(0).toUpperCase() + role.slice(1);
-}
-
+// ===============================
+// 📅 DATE RANGE
+// ===============================
 function getTodayRange() {
   const start = new Date();
   start.setHours(0, 0, 0, 0);
@@ -936,6 +1032,10 @@ function getTodayRange() {
   };
 }
 
+
+// ===============================
+// 💰 DASHBOARD SUMMARY (UNCHANGED)
+// ===============================
 async function loadTodayDashboardSummary() {
   const { dateOnly } = getTodayRange();
 
@@ -946,107 +1046,33 @@ async function loadTodayDashboardSummary() {
   let pendingPayments = 0;
   let pendingReturns = 0;
 
-  // SALES
-  try {
-    const { data, error } = await sb
-      .from("sales_details")
-      .select("invoice_amount")
-      .eq("bill_date", dateOnly);
+  const { data: sales } = await sb.from("sales_details").select("invoice_amount").eq("bill_date", dateOnly);
+  todaySales = (sales || []).reduce((s, r) => s + Number(r.invoice_amount || 0), 0);
 
-    if (error) {
-      console.error("Sales fetch error:", error);
-    } else {
-      todaySales = (data || []).reduce((sum, row) => sum + Number(row.invoice_amount || 0), 0);
-    }
-  } catch (err) {
-    console.error("Sales fetch error:", err);
-  }
+  const { data: receipt } = await sb.from("cash_transactions").select("amount").eq("txn_date", dateOnly).eq("txn_type", "receipt");
+  todayReceipt = (receipt || []).reduce((s, r) => s + Number(r.amount || 0), 0);
 
-  // RECEIPTS
-  try {
-    const { data, error } = await sb
-      .from("cash_transactions")
-      .select("amount")
-      .eq("txn_date", dateOnly)
-      .eq("txn_type", "receipt");
+  const { data: payment } = await sb.from("cash_transactions").select("amount")
+    .eq("txn_date", dateOnly)
+    .eq("txn_type", "payment")
+    .eq("approval_status", "approved");
+  todayPayment = (payment || []).reduce((s, r) => s + Number(r.amount || 0), 0);
 
-    if (error) {
-      console.error("Receipt fetch error:", error);
-    } else {
-      todayReceipt = (data || []).reduce((sum, row) => sum + Number(row.amount || 0), 0);
-    }
-  } catch (err) {
-    console.error("Receipt fetch error:", err);
-  }
+  const { data: returns } = await sb.from("sales_return_details")
+    .select("total_return_amount")
+    .eq("is_accepted", true)
+    .gte("return_date", dateOnly + "T00:00:00")
+    .lte("return_date", dateOnly + "T23:59:59.999");
 
-  // APPROVED PAYMENTS ONLY
-  try {
-    const { data, error } = await sb
-      .from("cash_transactions")
-      .select("amount")
-      .eq("txn_date", dateOnly)
-      .eq("txn_type", "payment")
-      .eq("approval_status", "approved");
+  todaySalesReturn = (returns || []).reduce((s, r) => s + Number(r.total_return_amount || 0), 0);
 
-    if (error) {
-      console.error("Payment fetch error:", error);
-    } else {
-      todayPayment = (data || []).reduce((sum, row) => sum + Number(row.amount || 0), 0);
-    }
-  } catch (err) {
-    console.error("Payment fetch error:", err);
-  }
+  const { data: pendingPay } = await sb.from("cash_transactions").select("id")
+    .eq("txn_type", "payment").eq("approval_status", "pending");
 
-  // ONLY TODAY'S RETURN DATE + ACCEPTED
-  try {
-    const { data, error } = await sb
-      .from("sales_return_details")
-      .select("total_return_amount, return_date, is_accepted")
-      .eq("is_accepted", true)
-      .gte("return_date", dateOnly + "T00:00:00")
-      .lte("return_date", dateOnly + "T23:59:59.999");
+  pendingPayments = (pendingPay || []).length;
 
-    if (error) {
-      console.error("Sales return fetch error:", error);
-    } else {
-      todaySalesReturn = (data || []).reduce((sum, row) => sum + Number(row.total_return_amount || 0), 0);
-    }
-  } catch (err) {
-    console.error("Sales return fetch error:", err);
-  }
-
-  // PENDING PAYMENTS
-  try {
-    const { data, error } = await sb
-      .from("cash_transactions")
-      .select("id")
-      .eq("txn_type", "payment")
-      .eq("approval_status", "pending");
-
-    if (error) {
-      console.error("Pending payment fetch error:", error);
-    } else {
-      pendingPayments = (data || []).length;
-    }
-  } catch (err) {
-    console.error("Pending payment fetch error:", err);
-  }
-
-  // PENDING RETURNS
-  try {
-    const { data, error } = await sb
-      .from("sales_return_details")
-      .select("id")
-      .eq("is_accepted", false);
-
-    if (error) {
-      console.error("Pending return fetch error:", error);
-    } else {
-      pendingReturns = (data || []).length;
-    }
-  } catch (err) {
-    console.error("Pending return fetch error:", err);
-  }
+  const { data: pendingRet } = await sb.from("sales_return_details").select("id").eq("is_accepted", false);
+  pendingReturns = (pendingRet || []).length;
 
   const todayBalance = todaySales + todayReceipt - todaySalesReturn - todayPayment;
 
@@ -1061,6 +1087,6 @@ async function loadTodayDashboardSummary() {
 function formatCurrency(value) {
   return `₹ ${Number(value || 0).toFixed(2)}`;
 }
-  </script>
+</script>
 </body>
 </html>

@@ -7,6 +7,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabaseClient.js"></script>
     <script src="page_permissions.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
     
     <style>
         :root {
@@ -564,10 +565,22 @@
             <label>GST No</label>
             <input type="text" id="cust_gst" class="form-control w-md nav-input" tabindex="6">
         </div>
+
+
         <div class="form-group">
   <label>Scan Barcode</label>
   <input type="text" id="barcode_scan" class="form-control w-md" placeholder="Scan here" autocomplete="off">
 </div>
+
+<div class="form-group">
+  <label>&nbsp;</label>
+  <button type="button" class="btn" onclick="startBarcodeCamera()" style="background:#2563eb;color:white;">
+    SCAN
+  </button>
+</div>
+
+<div id="reader" style="width:300px; max-width:100%; display:none; background:#fff; padding:8px; border-radius:8px;"></div>
+
 
         <div class="form-group">
             <label>Salesman</label>
@@ -2509,6 +2522,94 @@ barcodeInput.addEventListener("keydown", async function (e) {
             document.getElementById("salesman").disabled=true;
         }
     }
+
+    let html5QrScanner = null;
+
+function onBarcodeScanned(decodedText) {
+    const barcodeInput = document.getElementById("barcode_scan");
+    barcodeInput.value = decodedText;
+
+    if (html5QrScanner) {
+        html5QrScanner.stop().then(() => {
+            document.getElementById("reader").style.display = "none";
+        }).catch(err => console.error(err));
+    }
+
+    handleBarcodeValue(decodedText);
+}
+
+function startBarcodeCamera() {
+    const reader = document.getElementById("reader");
+    reader.style.display = "block";
+    reader.innerHTML = "";
+
+    html5QrScanner = new Html5Qrcode("reader");
+
+    Html5Qrcode.getCameras().then(devices => {
+        if (!devices || !devices.length) {
+            alert("No camera found");
+            return;
+        }
+
+        const cameraId = devices[0].id;
+
+        html5QrScanner.start(
+            cameraId,
+            {
+                fps: 10,
+                qrbox: { width: 250, height: 120 }
+            },
+            (decodedText) => {
+                onBarcodeScanned(decodedText);
+            },
+            (errorMessage) => {
+                // ignore scan miss
+            }
+        );
+    }).catch(err => {
+        console.error(err);
+        alert("Unable to open camera");
+    });
+}
+
+async function handleBarcodeValue(code) {
+    code = (code || "").trim().toUpperCase();
+    if (!code) return;
+
+    const item = stockData.find(x =>
+        String(x.item_code || "").trim().toUpperCase() === code
+    );
+
+    if (!item) {
+        alert("Item not found: " + code);
+        return;
+    }
+
+    const rows = document.querySelectorAll("#bill_body tr");
+
+    for (const row of rows) {
+        const codeInp = row.querySelector(".code-inp");
+        const qtyInp = row.querySelector(".qty-inp");
+
+        if (codeInp && String(codeInp.value || "").trim().toUpperCase() === code) {
+            qtyInp.value = (parseFloat(qtyInp.value) || 0) + 1;
+            calcForward(codeInp.dataset.rid);
+            return;
+        }
+    }
+
+    addNewRow(false);
+
+    const lastRow = document.querySelector("#bill_body tr:last-child");
+    const rid = lastRow.querySelector(".code-inp").dataset.rid;
+
+    await fillItem(rid, item);
+
+    const qtyInp = lastRow.querySelector(".qty-inp");
+    qtyInp.value = 1;
+    calcForward(rid);
+}
+    
 </script>
 </body>
 </html>

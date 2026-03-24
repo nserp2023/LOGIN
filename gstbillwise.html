@@ -1,0 +1,1491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VAJRA LIGHTS - GST Final Report</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabaseClient.js"></script>
+    <script src="page_permissions.js"></script>
+  <style>
+    :root{
+      --bg:#f8fafc;
+      --card:#ffffff;
+      --text:#0f172a;
+      --muted:#64748b;
+      --border:#cbd5e1;
+      --head:#e2e8f0;
+      --primary:#0f766e;
+      --primary-dark:#115e59;
+      --blue:#2563eb;
+      --orange:#ea580c;
+      --red:#dc2626;
+      --green:#16a34a;
+      --shadow:0 10px 25px rgba(2,6,23,0.08);
+      --radius:18px;
+    }
+
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      font-family:Segoe UI, Arial, sans-serif;
+      background:linear-gradient(135deg,#ecfeff,#eff6ff,#f8fafc);
+      color:var(--text);
+      padding:14px;
+    }
+
+    .container{ max-width:1800px; margin:0 auto; }
+
+    .topbar, .card{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+    }
+
+    .topbar{
+      padding:16px;
+      margin-bottom:14px;
+    }
+
+    .title{
+      font-size:28px;
+      font-weight:800;
+      color:var(--primary-dark);
+      margin-bottom:8px;
+    }
+
+    .sub{
+      font-size:14px;
+      color:var(--muted);
+      margin-bottom:14px;
+      line-height:1.5;
+    }
+
+    .filters{
+      display:grid;
+      grid-template-columns:180px 180px 1fr auto auto auto auto;
+      gap:10px;
+      align-items:end;
+    }
+
+    .field{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+    }
+
+    .field label{
+      font-size:13px;
+      font-weight:700;
+      color:#334155;
+    }
+
+    input, button{
+      height:42px;
+      border-radius:10px;
+      border:1px solid var(--border);
+      padding:0 12px;
+      font-size:14px;
+      outline:none;
+    }
+
+    input:focus{
+      border-color:var(--blue);
+      box-shadow:0 0 0 3px rgba(37,99,235,.12);
+    }
+
+    button{
+      cursor:pointer;
+      border:none;
+      color:#fff;
+      font-weight:800;
+      background:var(--primary);
+    }
+    button:hover{ background:var(--primary-dark); }
+    .btn-blue{ background:var(--blue); }
+    .btn-blue:hover{ background:#1d4ed8; }
+    .btn-orange{ background:var(--orange); }
+    .btn-orange:hover{ background:#c2410c; }
+    .btn-red{ background:var(--red); }
+    .btn-red:hover{ background:#b91c1c; }
+
+    .stats{
+      display:grid;
+      grid-template-columns:repeat(5,1fr);
+      gap:12px;
+      margin-bottom:14px;
+    }
+
+    .stat{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:16px;
+    }
+    .stat .label{
+      font-size:13px;
+      font-weight:700;
+      color:var(--muted);
+      margin-bottom:8px;
+    }
+    .stat .value{
+      font-size:26px;
+      font-weight:800;
+    }
+
+    .tabs{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      margin-bottom:14px;
+    }
+
+    .tab-btn{
+      border:1px solid var(--border);
+      background:#fff;
+      color:var(--text);
+      border-radius:999px;
+      padding:10px 16px;
+      cursor:pointer;
+      font-weight:800;
+    }
+
+    .tab-btn.active{
+      background:var(--primary);
+      color:#fff;
+      border-color:var(--primary);
+    }
+
+    .section{
+      display:none;
+      margin-bottom:14px;
+      overflow:hidden;
+    }
+    .section.active{ display:block; }
+
+    .section-head{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+      padding:14px 16px;
+      border-bottom:1px solid var(--border);
+      background:linear-gradient(90deg,#f8fafc,#eef2ff);
+    }
+
+    .section-title{
+      font-size:18px;
+      font-weight:800;
+    }
+
+    .section-tools{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+
+    .section-tools button{
+      height:38px;
+      padding:0 14px;
+    }
+
+    .table-wrap{
+      overflow:auto;
+      max-height:70vh;
+    }
+
+    table{
+      width:100%;
+      border-collapse:collapse;
+      min-width:1850px;
+    }
+
+    th, td{
+      border-bottom:1px solid #e2e8f0;
+      padding:9px 8px;
+      font-size:13px;
+      white-space:nowrap;
+      text-align:left;
+    }
+
+    th{
+      position:sticky;
+      top:0;
+      z-index:2;
+      background:var(--head);
+      font-weight:800;
+    }
+
+    tbody tr:hover{
+      background:#f8fafc;
+    }
+
+    .click-row{
+      cursor:pointer;
+    }
+
+    .num{
+      text-align:right;
+      font-variant-numeric:tabular-nums;
+    }
+
+    .pill{
+      display:inline-block;
+      padding:4px 10px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:800;
+    }
+    .sales{ background:#dcfce7; color:#166534; }
+    .purchase{ background:#dbeafe; color:#1d4ed8; }
+    .return{ background:#fee2e2; color:#991b1b; }
+    .b2b{ background:#fef3c7; color:#92400e; }
+    .b2c{ background:#ede9fe; color:#6d28d9; }
+
+    .empty{
+      padding:22px;
+      color:var(--muted);
+      font-weight:700;
+    }
+
+    .details-panel{
+      display:none;
+      margin-top:14px;
+      overflow:hidden;
+    }
+    .details-panel.active{ display:block; }
+
+    .note{
+      padding:12px 16px;
+      border-top:1px solid var(--border);
+      background:#fafafa;
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.6;
+    }
+
+    .summary-grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:14px;
+      margin-bottom:14px;
+    }
+
+    @media (max-width:1200px){
+      .filters{ grid-template-columns:1fr 1fr; }
+      .stats{ grid-template-columns:1fr 1fr; }
+      .summary-grid{ grid-template-columns:1fr; }
+    }
+
+    @media (max-width:700px){
+      body{ padding:10px; }
+      .title{ font-size:22px; }
+      .filters{ grid-template-columns:1fr; }
+      .stats{ grid-template-columns:1fr; }
+      .section-head{ flex-direction:column; align-items:flex-start; }
+      .section-tools{ width:100%; }
+      .section-tools button{ flex:1; }
+    }
+
+    @media print{
+      body{ background:#fff; padding:0; }
+      .topbar, .tabs, .section-tools, .details-panel{ display:none !important; }
+      .section{ display:block !important; box-shadow:none; border:1px solid #ccc; }
+      .table-wrap{ max-height:none; overflow:visible; }
+      th{ position:static; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <div class="topbar">
+    <div class="title">GST FINAL REPORT PAGE</div>
+    <div class="sub">
+      Bill-wise GST filing report with separate rate columns, B2B, B2C, purchase register,
+      accepted sales returns, HSN summary, monthly summary, and click-to-open item details.
+    </div>
+
+    <div class="filters">
+      <div class="field">
+        <label>FROM MONTH</label>
+        <input type="month" id="fromMonth">
+      </div>
+      <div class="field">
+        <label>TO MONTH</label>
+        <input type="month" id="toMonth">
+      </div>
+      <div class="field">
+        <label>SEARCH</label>
+        <input type="text" id="searchBox" placeholder="Search bill / invoice / party / GSTIN">
+      </div>
+      <button id="loadBtn">LOAD REPORT</button>
+      <button id="printBtn" class="btn-blue">PRINT</button>
+      <button id="exportAllBtn" class="btn-orange">EXPORT ALL CSV</button>
+      <button id="clearBtn" class="btn-red">CLEAR</button>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="label">PURCHASE TAXABLE</div>
+      <div class="value" id="statPurchaseTaxable">0.00</div>
+    </div>
+    <div class="stat">
+      <div class="label">SALES TAXABLE</div>
+      <div class="value" id="statSalesTaxable">0.00</div>
+    </div>
+    <div class="stat">
+      <div class="label">SALES RETURN TAXABLE</div>
+      <div class="value" id="statReturnTaxable">0.00</div>
+    </div>
+    <div class="stat">
+      <div class="label">OUTPUT GST</div>
+      <div class="value" id="statOutputGST">0.00</div>
+    </div>
+    <div class="stat">
+      <div class="label">NET GST LIABILITY</div>
+      <div class="value" id="statNetGST">0.00</div>
+    </div>
+  </div>
+
+  <div class="summary-grid">
+    <div class="card">
+      <div class="section-head">
+        <div class="section-title">GST SUMMARY BY RATE</div>
+        <div class="section-tools">
+          <button onclick="exportTableCSV('gstRateSummaryTable','gst_rate_summary.csv')">EXPORT CSV</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table id="gstRateSummaryTable" style="min-width:900px;">
+          <thead>
+            <tr>
+              <th>GST %</th>
+              <th class="num">Purchase Taxable</th>
+              <th class="num">Purchase GST</th>
+              <th class="num">Sales Taxable</th>
+              <th class="num">Sales GST</th>
+              <th class="num">Return Taxable</th>
+              <th class="num">Return GST</th>
+              <th class="num">Net GST</th>
+            </tr>
+          </thead>
+          <tbody id="gstRateSummaryBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-head">
+        <div class="section-title">MONTHLY FINAL TOTAL</div>
+        <div class="section-tools">
+          <button onclick="exportTableCSV('monthlySummaryTable','monthly_summary.csv')">EXPORT CSV</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table id="monthlySummaryTable" style="min-width:700px;">
+          <thead>
+            <tr>
+              <th>TYPE</th>
+              <th class="num">TAXABLE</th>
+              <th class="num">GST</th>
+              <th class="num">TOTAL</th>
+            </tr>
+          </thead>
+          <tbody id="monthlySummaryBody"></tbody>
+        </table>
+      </div>
+      <div class="note">
+        Click any bill row in the main sections to see its item-wise details below.
+      </div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="salesSection">Sales Register</button>
+    <button class="tab-btn" data-tab="b2bSection">B2B Sales</button>
+    <button class="tab-btn" data-tab="b2cSection">B2C Sales</button>
+    <button class="tab-btn" data-tab="purchaseSection">Purchase Register</button>
+    <button class="tab-btn" data-tab="returnSection">Sales Return</button>
+    <button class="tab-btn" data-tab="hsnSection">HSN Summary</button>
+  </div>
+
+  <div id="salesSection" class="section card active">
+    <div class="section-head">
+      <div class="section-title">SALES REGISTER - ONE ROW PER BILL</div>
+      <div class="section-tools">
+        <button onclick="exportTableCSV('salesTable','sales_register_final.csv')">EXPORT CSV</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table id="salesTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Type</th>
+            <th>Bill Date</th>
+            <th>Series</th>
+            <th>Sales No</th>
+            <th>Customer</th>
+            <th>GSTIN</th>
+            <th>Invoice No</th>
+            <th>Invoice Date</th>
+
+            <th class="num">0% Tax</th>
+            <th class="num">0% GST</th>
+
+            <th class="num">5% Tax</th>
+            <th class="num">5% GST</th>
+
+            <th class="num">12% Tax</th>
+            <th class="num">12% GST</th>
+
+            <th class="num">18% Tax</th>
+            <th class="num">18% GST</th>
+
+            <th class="num">28% Tax</th>
+            <th class="num">28% GST</th>
+
+            <th class="num">Other Tax</th>
+            <th class="num">Other GST</th>
+
+            <th class="num">Total Taxable</th>
+            <th class="num">Total GST</th>
+            <th class="num">Grand Total</th>
+          </tr>
+        </thead>
+        <tbody id="salesBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="b2bSection" class="section card">
+    <div class="section-head">
+      <div class="section-title">B2B SALES - ONE ROW PER BILL</div>
+      <div class="section-tools">
+        <button onclick="exportTableCSV('b2bTable','b2b_sales_final.csv')">EXPORT CSV</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table id="b2bTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Type</th>
+            <th>Bill Date</th>
+            <th>Series</th>
+            <th>Sales No</th>
+            <th>Customer</th>
+            <th>GSTIN</th>
+            <th>Invoice No</th>
+            <th>Invoice Date</th>
+            <th class="num">0% Tax</th>
+            <th class="num">5% Tax</th>
+            <th class="num">12% Tax</th>
+            <th class="num">18% Tax</th>
+            <th class="num">28% Tax</th>
+            <th class="num">Total GST</th>
+            <th class="num">Grand Total</th>
+          </tr>
+        </thead>
+        <tbody id="b2bBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="b2cSection" class="section card">
+    <div class="section-head">
+      <div class="section-title">B2C SALES - ONE ROW PER BILL</div>
+      <div class="section-tools">
+        <button onclick="exportTableCSV('b2cTable','b2c_sales_final.csv')">EXPORT CSV</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table id="b2cTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Type</th>
+            <th>Bill Date</th>
+            <th>Series</th>
+            <th>Sales No</th>
+            <th>Customer</th>
+            <th>Invoice No</th>
+            <th>Invoice Date</th>
+            <th class="num">0% Tax</th>
+            <th class="num">5% Tax</th>
+            <th class="num">12% Tax</th>
+            <th class="num">18% Tax</th>
+            <th class="num">28% Tax</th>
+            <th class="num">Total GST</th>
+            <th class="num">Grand Total</th>
+          </tr>
+        </thead>
+        <tbody id="b2cBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="purchaseSection" class="section card">
+    <div class="section-head">
+      <div class="section-title">PURCHASE REGISTER - ONE ROW PER BILL</div>
+      <div class="section-tools">
+        <button onclick="exportTableCSV('purchaseTable','purchase_register_final.csv')">EXPORT CSV</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table id="purchaseTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Type</th>
+            <th>Bill Date</th>
+            <th>Purchase No</th>
+            <th>Supplier</th>
+            <th>GSTIN</th>
+            <th>Invoice No</th>
+            <th>Invoice Date</th>
+
+            <th class="num">0% Tax</th>
+            <th class="num">0% GST</th>
+
+            <th class="num">5% Tax</th>
+            <th class="num">5% GST</th>
+
+            <th class="num">12% Tax</th>
+            <th class="num">12% GST</th>
+
+            <th class="num">18% Tax</th>
+            <th class="num">18% GST</th>
+
+            <th class="num">28% Tax</th>
+            <th class="num">28% GST</th>
+
+            <th class="num">Other Tax</th>
+            <th class="num">Other GST</th>
+
+            <th class="num">Total Taxable</th>
+            <th class="num">Total GST</th>
+            <th class="num">Grand Total</th>
+          </tr>
+        </thead>
+        <tbody id="purchaseBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="returnSection" class="section card">
+    <div class="section-head">
+      <div class="section-title">SALES RETURN REGISTER - ACCEPTED ONLY</div>
+      <div class="section-tools">
+        <button onclick="exportTableCSV('returnTable','sales_return_final.csv')">EXPORT CSV</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table id="returnTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Type</th>
+            <th>Return Date</th>
+            <th>Return No</th>
+            <th>Customer</th>
+            <th>Status</th>
+
+            <th class="num">0% Tax</th>
+            <th class="num">0% GST</th>
+
+            <th class="num">5% Tax</th>
+            <th class="num">5% GST</th>
+
+            <th class="num">12% Tax</th>
+            <th class="num">12% GST</th>
+
+            <th class="num">18% Tax</th>
+            <th class="num">18% GST</th>
+
+            <th class="num">28% Tax</th>
+            <th class="num">28% GST</th>
+
+            <th class="num">Other Tax</th>
+            <th class="num">Other GST</th>
+
+            <th class="num">Total Taxable</th>
+            <th class="num">Total GST</th>
+            <th class="num">Grand Total</th>
+          </tr>
+        </thead>
+        <tbody id="returnBody"></tbody>
+      </table>
+    </div>
+    <div class="note">
+      Returns are shown in negative values, so it becomes easy for accountant adjustment.
+    </div>
+  </div>
+
+  <div id="hsnSection" class="section card">
+    <div class="section-head">
+      <div class="section-title">HSN SUMMARY - OUTWARD SUPPLIES</div>
+      <div class="section-tools">
+        <button onclick="exportTableCSV('hsnTable','hsn_summary_final.csv')">EXPORT CSV</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table id="hsnTable" style="min-width:900px;">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>HSN</th>
+            <th>GST %</th>
+            <th class="num">Quantity</th>
+            <th class="num">Taxable</th>
+            <th class="num">GST</th>
+            <th class="num">Total</th>
+          </tr>
+        </thead>
+        <tbody id="hsnBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="detailsPanel" class="details-panel card">
+    <div class="section-head">
+      <div class="section-title" id="detailsTitle">BILL ITEM DETAILS</div>
+      <div class="section-tools">
+        <button class="btn-red" onclick="closeDetails()">CLOSE</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table id="detailsTable" style="min-width:1200px;">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>HSN</th>
+            <th>Item Code</th>
+            <th>Item Name</th>
+            <th class="num">Qty</th>
+            <th class="num">GST %</th>
+            <th class="num">Taxable</th>
+            <th class="num">GST</th>
+            <th class="num">Total</th>
+          </tr>
+        </thead>
+        <tbody id="detailsBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const sb = window.sbcc; // supabase client from supabaseClient.js
+  document.addEventListener("DOMContentLoaded", async () => {
+  const ok = await requirePageAccess("sales");
+  if (!ok) return;
+  });
+
+  let salesItems = [];
+  let purchaseItems = [];
+  let returnItems = [];
+
+  let salesBills = [];
+  let purchaseBills = [];
+  let returnBills = [];
+  let b2bBills = [];
+  let b2cBills = [];
+  let hsnSummary = [];
+
+  window.addEventListener("load", () => {
+    setDefaultMonths();
+    bindEvents();
+    setupTabs();
+  });
+
+  function bindEvents(){
+    document.getElementById("loadBtn").addEventListener("click", loadGSTReport);
+    document.getElementById("clearBtn").addEventListener("click", clearAll);
+    document.getElementById("printBtn").addEventListener("click", () => window.print());
+    document.getElementById("exportAllBtn").addEventListener("click", exportAllCSVs);
+    document.getElementById("searchBox").addEventListener("input", applySearchFilter);
+  }
+
+  function setupTabs(){
+    document.querySelectorAll(".tab-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+        document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
+        btn.classList.add("active");
+        document.getElementById(btn.dataset.tab).classList.add("active");
+      });
+    });
+  }
+
+  function setDefaultMonths(){
+    const d = new Date();
+    const ym = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+    document.getElementById("fromMonth").value = ym;
+    document.getElementById("toMonth").value = ym;
+  }
+
+  function num(v){ return Number(v || 0); }
+  function round2(v){ return Number(num(v).toFixed(2)); }
+  function fmt(v){
+    return round2(v).toLocaleString("en-IN", { minimumFractionDigits:2, maximumFractionDigits:2 });
+  }
+  function setText(id, val){ document.getElementById(id).textContent = val; }
+  function isValidGSTIN(v){ return String(v || "").trim().length >= 10; }
+  function formatDate(v){
+    if(!v) return "";
+    const d = new Date(v);
+    if(isNaN(d)) return v;
+    return d.toLocaleDateString("en-GB");
+  }
+  function sumBy(arr, key){ return round2(arr.reduce((a,b)=>a+num(b[key]),0)); }
+  function escapeHtml(text){
+    return String(text ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  function deriveGstPercent(excl, incl){
+    excl = num(excl);
+    incl = num(incl);
+    if(!excl || incl <= excl) return 0;
+    return round2(((incl - excl) / excl) * 100);
+  }
+
+  function getDateRange(){
+    const fromMonth = document.getElementById("fromMonth").value;
+    const toMonth = document.getElementById("toMonth").value;
+    if(!fromMonth || !toMonth){
+      alert("Please select month range");
+      return null;
+    }
+    const startDate = `${fromMonth}-01`;
+    const [y,m] = toMonth.split("-").map(Number);
+    const end = new Date(y, m, 0);
+    const endDate = `${end.getFullYear()}-${String(end.getMonth()+1).padStart(2,"0")}-${String(end.getDate()).padStart(2,"0")}`;
+    return { startDate, endDate };
+  }
+
+  function clearAll(){
+    salesItems = [];
+    purchaseItems = [];
+    returnItems = [];
+    salesBills = [];
+    purchaseBills = [];
+    returnBills = [];
+    b2bBills = [];
+    b2cBills = [];
+    hsnSummary = [];
+
+    [
+      "salesBody","b2bBody","b2cBody","purchaseBody","returnBody",
+      "hsnBody","gstRateSummaryBody","monthlySummaryBody","detailsBody"
+    ].forEach(id => document.getElementById(id).innerHTML = "");
+
+    setText("statPurchaseTaxable","0.00");
+    setText("statSalesTaxable","0.00");
+    setText("statReturnTaxable","0.00");
+    setText("statOutputGST","0.00");
+    setText("statNetGST","0.00");
+    closeDetails();
+  }
+
+  async function loadGSTReport(){
+    try{
+      clearAll();
+      const range = getDateRange();
+      if(!range) return;
+
+      await Promise.all([
+        loadSales(range.startDate, range.endDate),
+        loadPurchases(range.startDate, range.endDate),
+        loadReturns(range.startDate, range.endDate)
+      ]);
+
+      salesBills = groupItemsIntoBillRows(salesItems, "sales");
+      purchaseBills = groupItemsIntoBillRows(purchaseItems, "purchase");
+      returnBills = groupItemsIntoBillRows(returnItems, "return");
+      b2bBills = salesBills.filter(r => isValidGSTIN(r.party_gstin));
+      b2cBills = salesBills.filter(r => !isValidGSTIN(r.party_gstin));
+      hsnSummary = generateHSNSummary(salesItems);
+
+      renderAll();
+      applySearchFilter();
+    }catch(err){
+      console.error(err);
+      alert("Error loading GST report: " + err.message);
+    }
+  }
+
+  async function loadSales(startDate, endDate){
+    const { data: heads, error: hErr } = await sb
+      .from("sales_details")
+      .select("id, sales_number, bill_date, gst_number, customer_name, invoice_number, invoice_date, series_code")
+      .gte("bill_date", startDate)
+      .lte("bill_date", endDate)
+      .order("bill_date", { ascending:true });
+
+    if(hErr) throw hErr;
+    const ids = (heads || []).map(x => x.id);
+    if(!ids.length) return;
+
+    const { data: items, error: iErr } = await sb
+      .from("sales_item_details")
+      .select("sales_id, hsn_code, item_code, item_name, quantity, sales_price, sales_price_gst, gst_percent")
+      .in("sales_id", ids)
+      .order("sales_id", { ascending:true });
+
+    if(iErr) throw iErr;
+    const map = new Map((heads || []).map(h => [h.id, h]));
+
+    salesItems = (items || []).map((it, idx) => {
+      const h = map.get(it.sales_id) || {};
+      const qty = num(it.quantity);
+      const taxable = round2(qty * num(it.sales_price));
+      const total = round2(qty * num(it.sales_price_gst));
+      const gst = round2(total - taxable);
+
+      return {
+        rowNo: idx + 1,
+        doc_id: it.sales_id,
+        doc_type: "sales",
+        bill_date: h.bill_date,
+        doc_no: h.sales_number || "",
+        series_code: h.series_code || "",
+        party_name: h.customer_name || "",
+        party_gstin: h.gst_number || "",
+        invoice_number: h.invoice_number || "",
+        invoice_date: h.invoice_date || "",
+        hsn_code: it.hsn_code || "",
+        item_code: it.item_code || "",
+        item_name: it.item_name || "",
+        qty,
+        gst_percent: num(it.gst_percent),
+        taxable,
+        gst,
+        total
+      };
+    });
+  }
+
+  async function loadPurchases(startDate, endDate){
+    const { data: heads, error: hErr } = await sb
+      .from("purchase_details")
+      .select("id, purchase_number, bill_date, gst_number, supplier_name, invoice_number, invoice_date")
+      .gte("bill_date", startDate)
+      .lte("bill_date", endDate)
+      .order("bill_date", { ascending:true });
+
+    if(hErr) throw hErr;
+    const ids = (heads || []).map(x => x.id);
+    if(!ids.length) return;
+
+    const { data: items, error: iErr } = await sb
+      .from("purchase_item_details")
+      .select("purchase_id, hsn_code, item_code, item_name, quantity, purchase_price, purchase_price_gst, gst_percent")
+      .in("purchase_id", ids)
+      .order("purchase_id", { ascending:true });
+
+    if(iErr) throw iErr;
+    const map = new Map((heads || []).map(h => [h.id, h]));
+
+    purchaseItems = (items || []).map((it, idx) => {
+      const h = map.get(it.purchase_id) || {};
+      const qty = num(it.quantity);
+      const rateEx = num(it.purchase_price);
+      const rateIn = num(it.purchase_price_gst);
+      const gstPercent = num(it.gst_percent) || deriveGstPercent(rateEx, rateIn);
+      const taxable = round2(qty * rateEx);
+      const total = round2(qty * rateIn);
+      const gst = round2(total - taxable);
+
+      return {
+        rowNo: idx + 1,
+        doc_id: it.purchase_id,
+        doc_type: "purchase",
+        bill_date: h.bill_date,
+        doc_no: h.purchase_number || "",
+        series_code: "",
+        party_name: h.supplier_name || "",
+        party_gstin: h.gst_number || "",
+        invoice_number: h.invoice_number || "",
+        invoice_date: h.invoice_date || "",
+        hsn_code: it.hsn_code || "",
+        item_code: it.item_code || "",
+        item_name: it.item_name || "",
+        qty,
+        gst_percent: gstPercent,
+        taxable,
+        gst,
+        total
+      };
+    });
+  }
+
+  async function loadReturns(startDate, endDate){
+    const { data: heads, error: hErr } = await sb
+      .from("sales_return_details")
+      .select("id, return_number, return_date, customer_name, approval_status, is_accepted")
+      .gte("return_date", startDate)
+      .lte("return_date", endDate)
+      .eq("is_accepted", true)
+      .order("return_date", { ascending:true });
+
+    if(hErr) throw hErr;
+    const ids = (heads || []).map(x => x.id);
+    if(!ids.length) return;
+
+    const { data: items, error: iErr } = await sb
+      .from("sales_return_item_details")
+      .select("return_id, item_code, item_name, sold_qty, return_qty, price, price_gst, hsn_code, gst_percent")
+      .in("return_id", ids)
+      .order("return_id", { ascending:true });
+
+    if(iErr) throw iErr;
+    const map = new Map((heads || []).map(h => [h.id, h]));
+
+    returnItems = (items || []).map((it, idx) => {
+      const h = map.get(it.return_id) || {};
+      const qty = num(it.return_qty);
+      const rateEx = num(it.price);
+      const rateIn = num(it.price_gst);
+      const gstPercent = num(it.gst_percent) || deriveGstPercent(rateEx, rateIn);
+      const taxable = round2(qty * rateEx);
+      const total = round2(qty * rateIn);
+      const gst = round2(total - taxable);
+
+      return {
+        rowNo: idx + 1,
+        doc_id: it.return_id,
+        doc_type: "return",
+        bill_date: h.return_date,
+        doc_no: h.return_number || "",
+        series_code: "",
+        party_name: h.customer_name || "",
+        party_gstin: "",
+        invoice_number: "",
+        invoice_date: "",
+        status: h.approval_status || "",
+        hsn_code: it.hsn_code || "",
+        item_code: it.item_code || "",
+        item_name: it.item_name || "",
+        qty,
+        gst_percent: gstPercent,
+        taxable: -taxable,
+        gst: -gst,
+        total: -total
+      };
+    });
+  }
+
+  function blankRateObj(){
+    return {
+      tax0:0, gst0:0,
+      tax5:0, gst5:0,
+      tax12:0, gst12:0,
+      tax18:0, gst18:0,
+      tax28:0, gst28:0,
+      otherTax:0, otherGst:0,
+      totalTaxable:0,
+      totalGST:0,
+      grandTotal:0
+    };
+  }
+
+  function addRate(bucket, rate, taxable, gst){
+    const r = round2(rate);
+    if(r === 0){ bucket.tax0 += taxable; bucket.gst0 += gst; }
+    else if(r === 5){ bucket.tax5 += taxable; bucket.gst5 += gst; }
+    else if(r === 12){ bucket.tax12 += taxable; bucket.gst12 += gst; }
+    else if(r === 18){ bucket.tax18 += taxable; bucket.gst18 += gst; }
+    else if(r === 28){ bucket.tax28 += taxable; bucket.gst28 += gst; }
+    else { bucket.otherTax += taxable; bucket.otherGst += gst; }
+
+    bucket.totalTaxable += taxable;
+    bucket.totalGST += gst;
+    bucket.grandTotal += (taxable + gst);
+  }
+
+  function groupItemsIntoBillRows(items, type){
+    const map = new Map();
+
+    items.forEach(it => {
+      const key = `${it.doc_type}_${it.doc_id}`;
+      if(!map.has(key)){
+        map.set(key, {
+          rowNo:0,
+          doc_id: it.doc_id,
+          doc_type: it.doc_type,
+          bill_date: it.bill_date,
+          doc_no: it.doc_no,
+          series_code: it.series_code || "",
+          party_name: it.party_name || "",
+          party_gstin: it.party_gstin || "",
+          invoice_number: it.invoice_number || "",
+          invoice_date: it.invoice_date || "",
+          status: it.status || "",
+          ...blankRateObj()
+        });
+      }
+      const row = map.get(key);
+      addRate(row, it.gst_percent, num(it.taxable), num(it.gst));
+    });
+
+    return Array.from(map.values())
+      .map((r, i) => ({ rowNo:i+1, ...r }))
+      .sort((a,b) => new Date(a.bill_date) - new Date(b.bill_date));
+  }
+
+  function generateHSNSummary(rows){
+    const map = new Map();
+    rows.forEach(r => {
+      const key = `${r.hsn_code}_${r.gst_percent}`;
+      if(!map.has(key)){
+        map.set(key, {
+          rowNo:0,
+          hsn_code: r.hsn_code || "",
+          gst_percent: r.gst_percent,
+          qty:0,
+          taxable:0,
+          gst:0,
+          total:0
+        });
+      }
+      const x = map.get(key);
+      x.qty += num(r.qty);
+      x.taxable += num(r.taxable);
+      x.gst += num(r.gst);
+      x.total += num(r.total);
+    });
+
+    return Array.from(map.values())
+      .map((r,i)=>({ rowNo:i+1, ...r }))
+      .sort((a,b)=> String(a.hsn_code).localeCompare(String(b.hsn_code)) || num(a.gst_percent)-num(b.gst_percent));
+  }
+
+  function renderAll(){
+    renderSalesTable(salesBills);
+    renderB2BTable(b2bBills);
+    renderB2CTable(b2cBills);
+    renderPurchaseTable(purchaseBills);
+    renderReturnTable(returnBills);
+    renderHSNTable(hsnSummary);
+    renderRateSummary();
+    renderMonthlySummary();
+    renderTopStats();
+  }
+
+  function renderSalesTable(rows){
+    const body = document.getElementById("salesBody");
+    if(!rows.length){
+      body.innerHTML = `<tr><td colspan="24" class="empty">No sales records found</td></tr>`;
+      return;
+    }
+
+    body.innerHTML = rows.map(r => rowTemplate(r, "SALES", "sales", "showSalesDetails")).join("");
+  }
+
+  function renderB2BTable(rows){
+    const body = document.getElementById("b2bBody");
+    if(!rows.length){
+      body.innerHTML = `<tr><td colspan="16" class="empty">No B2B sales found</td></tr>`;
+      return;
+    }
+
+    body.innerHTML = rows.map(r => `
+      <tr class="click-row" onclick="showSalesDetails(${r.doc_id}, '${escapeJs(r.doc_no)}', '${escapeJs(r.party_name)}')">
+        <td>${r.rowNo}</td>
+        <td><span class="pill b2b">B2B</span></td>
+        <td>${formatDate(r.bill_date)}</td>
+        <td>${escapeHtml(r.series_code)}</td>
+        <td>${escapeHtml(r.doc_no)}</td>
+        <td>${escapeHtml(r.party_name)}</td>
+        <td>${escapeHtml(r.party_gstin)}</td>
+        <td>${escapeHtml(r.invoice_number)}</td>
+        <td>${formatDate(r.invoice_date)}</td>
+        <td class="num">${fmt(r.tax0)}</td>
+        <td class="num">${fmt(r.tax5)}</td>
+        <td class="num">${fmt(r.tax12)}</td>
+        <td class="num">${fmt(r.tax18)}</td>
+        <td class="num">${fmt(r.tax28)}</td>
+        <td class="num">${fmt(r.totalGST)}</td>
+        <td class="num">${fmt(r.grandTotal)}</td>
+      </tr>
+    `).join("");
+  }
+
+  function renderB2CTable(rows){
+    const body = document.getElementById("b2cBody");
+    if(!rows.length){
+      body.innerHTML = `<tr><td colspan="15" class="empty">No B2C sales found</td></tr>`;
+      return;
+    }
+
+    body.innerHTML = rows.map(r => `
+      <tr class="click-row" onclick="showSalesDetails(${r.doc_id}, '${escapeJs(r.doc_no)}', '${escapeJs(r.party_name)}')">
+        <td>${r.rowNo}</td>
+        <td><span class="pill b2c">B2C</span></td>
+        <td>${formatDate(r.bill_date)}</td>
+        <td>${escapeHtml(r.series_code)}</td>
+        <td>${escapeHtml(r.doc_no)}</td>
+        <td>${escapeHtml(r.party_name)}</td>
+        <td>${escapeHtml(r.invoice_number)}</td>
+        <td>${formatDate(r.invoice_date)}</td>
+        <td class="num">${fmt(r.tax0)}</td>
+        <td class="num">${fmt(r.tax5)}</td>
+        <td class="num">${fmt(r.tax12)}</td>
+        <td class="num">${fmt(r.tax18)}</td>
+        <td class="num">${fmt(r.tax28)}</td>
+        <td class="num">${fmt(r.totalGST)}</td>
+        <td class="num">${fmt(r.grandTotal)}</td>
+      </tr>
+    `).join("");
+  }
+
+  function renderPurchaseTable(rows){
+    const body = document.getElementById("purchaseBody");
+    if(!rows.length){
+      body.innerHTML = `<tr><td colspan="23" class="empty">No purchase records found</td></tr>`;
+      return;
+    }
+
+    body.innerHTML = rows.map(r => rowTemplate(r, "PURCHASE", "purchase", "showPurchaseDetails")).join("");
+  }
+
+  function renderReturnTable(rows){
+    const body = document.getElementById("returnBody");
+    if(!rows.length){
+      body.innerHTML = `<tr><td colspan="21" class="empty">No accepted sales returns found</td></tr>`;
+      return;
+    }
+
+    body.innerHTML = rows.map(r => `
+      <tr class="click-row" onclick="showReturnDetails(${r.doc_id}, '${escapeJs(r.doc_no)}', '${escapeJs(r.party_name)}')">
+        <td>${r.rowNo}</td>
+        <td><span class="pill return">RETURN</span></td>
+        <td>${formatDate(r.bill_date)}</td>
+        <td>${escapeHtml(r.doc_no)}</td>
+        <td>${escapeHtml(r.party_name)}</td>
+        <td>${escapeHtml(r.status)}</td>
+
+        <td class="num">${fmt(r.tax0)}</td>
+        <td class="num">${fmt(r.gst0)}</td>
+
+        <td class="num">${fmt(r.tax5)}</td>
+        <td class="num">${fmt(r.gst5)}</td>
+
+        <td class="num">${fmt(r.tax12)}</td>
+        <td class="num">${fmt(r.gst12)}</td>
+
+        <td class="num">${fmt(r.tax18)}</td>
+        <td class="num">${fmt(r.gst18)}</td>
+
+        <td class="num">${fmt(r.tax28)}</td>
+        <td class="num">${fmt(r.gst28)}</td>
+
+        <td class="num">${fmt(r.otherTax)}</td>
+        <td class="num">${fmt(r.otherGst)}</td>
+
+        <td class="num">${fmt(r.totalTaxable)}</td>
+        <td class="num">${fmt(r.totalGST)}</td>
+        <td class="num">${fmt(r.grandTotal)}</td>
+      </tr>
+    `).join("");
+  }
+
+  function rowTemplate(r, label, pillClass, detailFn){
+    return `
+      <tr class="click-row" onclick="${detailFn}(${r.doc_id}, '${escapeJs(r.doc_no)}', '${escapeJs(r.party_name)}')">
+        <td>${r.rowNo}</td>
+        <td><span class="pill ${pillClass}">${label}</span></td>
+        <td>${formatDate(r.bill_date)}</td>
+        <td>${escapeHtml(r.series_code)}</td>
+        <td>${escapeHtml(r.doc_no)}</td>
+        <td>${escapeHtml(r.party_name)}</td>
+        <td>${escapeHtml(r.party_gstin)}</td>
+        <td>${escapeHtml(r.invoice_number)}</td>
+        <td>${formatDate(r.invoice_date)}</td>
+
+        <td class="num">${fmt(r.tax0)}</td>
+        <td class="num">${fmt(r.gst0)}</td>
+
+        <td class="num">${fmt(r.tax5)}</td>
+        <td class="num">${fmt(r.gst5)}</td>
+
+        <td class="num">${fmt(r.tax12)}</td>
+        <td class="num">${fmt(r.gst12)}</td>
+
+        <td class="num">${fmt(r.tax18)}</td>
+        <td class="num">${fmt(r.gst18)}</td>
+
+        <td class="num">${fmt(r.tax28)}</td>
+        <td class="num">${fmt(r.gst28)}</td>
+
+        <td class="num">${fmt(r.otherTax)}</td>
+        <td class="num">${fmt(r.otherGst)}</td>
+
+        <td class="num">${fmt(r.totalTaxable)}</td>
+        <td class="num">${fmt(r.totalGST)}</td>
+        <td class="num">${fmt(r.grandTotal)}</td>
+      </tr>
+    `;
+  }
+
+  function renderHSNTable(rows){
+    const body = document.getElementById("hsnBody");
+    if(!rows.length){
+      body.innerHTML = `<tr><td colspan="7" class="empty">No HSN summary found</td></tr>`;
+      return;
+    }
+
+    body.innerHTML = rows.map(r => `
+      <tr>
+        <td>${r.rowNo}</td>
+        <td>${escapeHtml(r.hsn_code)}</td>
+        <td class="num">${fmt(r.gst_percent)}</td>
+        <td class="num">${fmt(r.qty)}</td>
+        <td class="num">${fmt(r.taxable)}</td>
+        <td class="num">${fmt(r.gst)}</td>
+        <td class="num">${fmt(r.total)}</td>
+      </tr>
+    `).join("");
+  }
+
+  function renderRateSummary(){
+    const map = new Map();
+
+    function ensure(rate){
+      const k = round2(rate);
+      if(!map.has(k)){
+        map.set(k, {
+          rate:k,
+          purchaseTax:0, purchaseGST:0,
+          salesTax:0, salesGST:0,
+          returnTax:0, returnGST:0
+        });
+      }
+      return map.get(k);
+    }
+
+    purchaseItems.forEach(r => {
+      const x = ensure(r.gst_percent);
+      x.purchaseTax += num(r.taxable);
+      x.purchaseGST += num(r.gst);
+    });
+
+    salesItems.forEach(r => {
+      const x = ensure(r.gst_percent);
+      x.salesTax += num(r.taxable);
+      x.salesGST += num(r.gst);
+    });
+
+    returnItems.forEach(r => {
+      const x = ensure(r.gst_percent);
+      x.returnTax += num(r.taxable);
+      x.returnGST += num(r.gst);
+    });
+
+    const rows = Array.from(map.values()).sort((a,b)=>a.rate-b.rate);
+    const body = document.getElementById("gstRateSummaryBody");
+
+    if(!rows.length){
+      body.innerHTML = `<tr><td colspan="8" class="empty">No summary data found</td></tr>`;
+      return;
+    }
+
+    body.innerHTML = rows.map(r => `
+      <tr>
+        <td class="num">${fmt(r.rate)}</td>
+        <td class="num">${fmt(r.purchaseTax)}</td>
+        <td class="num">${fmt(r.purchaseGST)}</td>
+        <td class="num">${fmt(r.salesTax)}</td>
+        <td class="num">${fmt(r.salesGST)}</td>
+        <td class="num">${fmt(r.returnTax)}</td>
+        <td class="num">${fmt(r.returnGST)}</td>
+        <td class="num">${fmt(r.salesGST - r.purchaseGST + r.returnGST)}</td>
+      </tr>
+    `).join("");
+  }
+
+  function renderMonthlySummary(){
+    const purchaseTaxable = sumBy(purchaseBills, "totalTaxable");
+    const purchaseGST = sumBy(purchaseBills, "totalGST");
+    const purchaseTotal = sumBy(purchaseBills, "grandTotal");
+
+    const salesTaxable = sumBy(salesBills, "totalTaxable");
+    const salesGST = sumBy(salesBills, "totalGST");
+    const salesTotal = sumBy(salesBills, "grandTotal");
+
+    const returnTaxable = sumBy(returnBills, "totalTaxable");
+    const returnGST = sumBy(returnBills, "totalGST");
+    const returnTotal = sumBy(returnBills, "grandTotal");
+
+    const netGST = round2(salesGST - purchaseGST + returnGST);
+
+    document.getElementById("monthlySummaryBody").innerHTML = `
+      <tr>
+        <td>PURCHASE</td>
+        <td class="num">${fmt(purchaseTaxable)}</td>
+        <td class="num">${fmt(purchaseGST)}</td>
+        <td class="num">${fmt(purchaseTotal)}</td>
+      </tr>
+      <tr>
+        <td>SALES</td>
+        <td class="num">${fmt(salesTaxable)}</td>
+        <td class="num">${fmt(salesGST)}</td>
+        <td class="num">${fmt(salesTotal)}</td>
+      </tr>
+      <tr>
+        <td>SALES RETURN</td>
+        <td class="num">${fmt(returnTaxable)}</td>
+        <td class="num">${fmt(returnGST)}</td>
+        <td class="num">${fmt(returnTotal)}</td>
+      </tr>
+      <tr>
+        <td><b>NET GST LIABILITY</b></td>
+        <td class="num"><b>-</b></td>
+        <td class="num"><b>${fmt(netGST)}</b></td>
+        <td class="num"><b>-</b></td>
+      </tr>
+    `;
+  }
+
+  function renderTopStats(){
+    setText("statPurchaseTaxable", fmt(sumBy(purchaseBills, "totalTaxable")));
+    setText("statSalesTaxable", fmt(sumBy(salesBills, "totalTaxable")));
+    setText("statReturnTaxable", fmt(sumBy(returnBills, "totalTaxable")));
+    setText("statOutputGST", fmt(sumBy(salesBills, "totalGST")));
+    setText("statNetGST", fmt(sumBy(salesBills, "totalGST") - sumBy(purchaseBills, "totalGST") + sumBy(returnBills, "totalGST")));
+  }
+
+  function showSalesDetails(docId, billNo, party){
+    showDetailsFromArray(
+      salesItems.filter(x => x.doc_id === docId),
+      `SALES ITEM DETAILS - BILL ${billNo} - ${party}`
+    );
+  }
+
+  function showPurchaseDetails(docId, billNo, party){
+    showDetailsFromArray(
+      purchaseItems.filter(x => x.doc_id === docId),
+      `PURCHASE ITEM DETAILS - BILL ${billNo} - ${party}`
+    );
+  }
+
+  function showReturnDetails(docId, billNo, party){
+    showDetailsFromArray(
+      returnItems.filter(x => x.doc_id === docId),
+      `SALES RETURN ITEM DETAILS - BILL ${billNo} - ${party}`
+    );
+  }
+
+  function showDetailsFromArray(rows, title){
+    const panel = document.getElementById("detailsPanel");
+    const body = document.getElementById("detailsBody");
+    document.getElementById("detailsTitle").textContent = title;
+
+    if(!rows.length){
+      body.innerHTML = `<tr><td colspan="9" class="empty">No item details found</td></tr>`;
+    } else {
+      body.innerHTML = rows.map((r,i) => `
+        <tr>
+          <td>${i+1}</td>
+          <td>${escapeHtml(r.hsn_code)}</td>
+          <td>${escapeHtml(r.item_code)}</td>
+          <td>${escapeHtml(r.item_name)}</td>
+          <td class="num">${fmt(r.qty)}</td>
+          <td class="num">${fmt(r.gst_percent)}</td>
+          <td class="num">${fmt(r.taxable)}</td>
+          <td class="num">${fmt(r.gst)}</td>
+          <td class="num">${fmt(r.total)}</td>
+        </tr>
+      `).join("");
+    }
+
+    panel.classList.add("active");
+    panel.scrollIntoView({ behavior:"smooth", block:"start" });
+  }
+
+  function closeDetails(){
+    document.getElementById("detailsPanel").classList.remove("active");
+    document.getElementById("detailsBody").innerHTML = "";
+  }
+
+  function applySearchFilter(){
+    const q = document.getElementById("searchBox").value.trim().toLowerCase();
+
+    const sales = filterRows(salesBills, q, ["doc_no","party_name","party_gstin","invoice_number","series_code"]);
+    const b2b = filterRows(b2bBills, q, ["doc_no","party_name","party_gstin","invoice_number","series_code"]);
+    const b2c = filterRows(b2cBills, q, ["doc_no","party_name","invoice_number","series_code"]);
+    const purchase = filterRows(purchaseBills, q, ["doc_no","party_name","party_gstin","invoice_number"]);
+    const returns = filterRows(returnBills, q, ["doc_no","party_name","status"]);
+
+    renderSalesTable(sales);
+    renderB2BTable(b2b);
+    renderB2CTable(b2c);
+    renderPurchaseTable(purchase);
+    renderReturnTable(returns);
+  }
+
+  function filterRows(rows, q, keys){
+    if(!q) return rows;
+    return rows.filter(r => keys.some(k => String(r[k] || "").toLowerCase().includes(q)));
+  }
+
+  function exportTableCSV(tableId, filename){
+    const table = document.getElementById(tableId);
+    const rows = [...table.querySelectorAll("tr")];
+    let csv = "";
+
+    rows.forEach(row => {
+      const cols = [...row.querySelectorAll("th,td")];
+      const line = cols.map(col => {
+        let text = col.innerText.replace(/\n/g, " ").trim();
+        text = text.replace(/"/g, '""');
+        return `"${text}"`;
+      }).join(",");
+      csv += line + "\n";
+    });
+
+    const blob = new Blob([csv], { type:"text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function exportAllCSVs(){
+    exportTableCSV("salesTable","sales_register_final.csv");
+    setTimeout(() => exportTableCSV("b2bTable","b2b_sales_final.csv"), 100);
+    setTimeout(() => exportTableCSV("b2cTable","b2c_sales_final.csv"), 200);
+    setTimeout(() => exportTableCSV("purchaseTable","purchase_register_final.csv"), 300);
+    setTimeout(() => exportTableCSV("returnTable","sales_return_final.csv"), 400);
+    setTimeout(() => exportTableCSV("hsnTable","hsn_summary_final.csv"), 500);
+    setTimeout(() => exportTableCSV("gstRateSummaryTable","gst_rate_summary_final.csv"), 600);
+    setTimeout(() => exportTableCSV("monthlySummaryTable","monthly_summary_final.csv"), 700);
+  }
+
+  function escapeJs(str){
+    return String(str ?? "")
+      .replace(/\\/g, "\\\\")
+      .replace(/'/g, "\\'")
+      .replace(/"/g, '\\"')
+      .replace(/\n/g, " ")
+      .replace(/\r/g, " ");
+  }
+</script>
+</body>
+</html>

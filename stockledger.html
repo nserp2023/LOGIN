@@ -1,214 +1,869 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>VAJRA LIGHTS - Stock Ledger</title>
-
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stock Report - VAJRA LIGHTS</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabaseClient.js"></script>
     <script src="page_permissions.js"></script>
+  <style>
+    :root{
+      --bg:#0b1020;
+      --bg-soft:#11182c;
+      --panel:#131c31;
+      --panel-2:#18233b;
+      --panel-3:#0f1728;
+      --text:#e8eefc;
+      --text-soft:#b9c5dd;
+      --muted:#8fa1bf;
+      --border:#263552;
+      --border-soft:#1e2b45;
+      --accent:#60a5fa;
+      --accent-2:#38bdf8;
+      --ok:#22c55e;
+      --warn:#f59e0b;
+      --err:#f43f5e;
+      --info:#06b6d4;
+      --shadow:0 12px 30px rgba(0,0,0,.28);
+      --radius:16px;
+      --radius-sm:12px;
+    }
 
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f4f6f9;
-            margin: 0;
-            padding: 20px;
-        }
+    *{box-sizing:border-box}
 
-        h1 {
-            text-align: center;
-            color: #1f2937;
-        }
+    html,body{
+      margin:0;
+      min-height:100%;
+      background:
+        radial-gradient(circle at top left, rgba(56,189,248,.08), transparent 28%),
+        radial-gradient(circle at top right, rgba(96,165,250,.08), transparent 24%),
+        linear-gradient(180deg, #09101d 0%, #0b1020 100%);
+      color:var(--text);
+      font:14px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    }
 
-        .container {
-            background: white;
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 6px 18px rgba(0,0,0,0.1);
-            max-width: 1100px;
-            margin: auto;
-        }
+    body{padding:20px 0 40px;}
 
-        .filters {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin-bottom: 20px;
-        }
+    .wrap{
+      max-width:1700px;
+      margin:0 auto;
+      padding:0 16px;
+    }
 
-        .filters input {
-            padding: 8px;
-            border-radius: 6px;
-            border: 1px solid #ccc;
-        }
+    .topbar{
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap:16px;
+      margin-bottom:16px;
+      flex-wrap:wrap;
+    }
 
-        .filters button {
-            padding: 8px 15px;
-            border-radius: 6px;
-            border: none;
-            background: #2563eb;
-            color: white;
-            cursor: pointer;
-        }
+    .title h1{
+      margin:0;
+      font-size:28px;
+      letter-spacing:.2px;
+    }
 
-        .filters button:hover {
-            background: #1e40af;
-        }
+    .title p{
+      margin:6px 0 0;
+      color:var(--text-soft);
+      font-size:13px;
+    }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
+    .chip-row{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+    }
 
-        th {
-            background: #e5e7eb;
-        }
+    .chip{
+      padding:8px 12px;
+      border:1px solid var(--border);
+      border-radius:999px;
+      background:rgba(19,28,49,.92);
+      color:var(--text-soft);
+      font-size:12px;
+      box-shadow:var(--shadow);
+    }
 
-        th, td {
-            padding: 8px;
-            border: 1px solid #ddd;
-            text-align: center;
-        }
+    .panel{
+      background:linear-gradient(180deg, rgba(19,28,49,.98), rgba(14,22,39,.98));
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:14px;
+      backdrop-filter: blur(6px);
+      margin-bottom:14px;
+    }
 
-        tr:nth-child(even) {
-            background: #f9fafb;
-        }
+    .filters{
+      display:grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr 1fr auto auto;
+      gap:10px;
+      align-items:end;
+    }
 
-        .in {
-            color: green;
-            font-weight: bold;
-        }
+    .field{display:flex;flex-direction:column;gap:6px;position:relative;}
+    .field label{font-size:12px;color:var(--muted);font-weight:600;}
 
-        .out {
-            color: red;
-            font-weight: bold;
-        }
-    </style>
+    .input, .select, .btn{
+      height:44px;
+      border-radius:12px;
+      border:1px solid var(--border);
+      background:linear-gradient(180deg, #0f1728, #0c1424);
+      color:var(--text);
+      padding:0 12px;
+      outline:none;
+      transition:border-color .15s, box-shadow .15s, background .15s, opacity .15s;
+    }
+
+    .input:focus, .select:focus{
+      border-color:#5ea0ff;
+      box-shadow:0 0 0 3px rgba(96,165,250,.18);
+      background:#101a2d;
+    }
+
+    .btn{
+      cursor:pointer;
+      font-weight:700;
+      box-shadow:0 8px 18px rgba(0,0,0,.18);
+      padding:0 18px;
+    }
+
+    .btn.primary{background:linear-gradient(180deg,#3b82f6,#2563eb);}
+    .btn.secondary{background:linear-gradient(180deg,#1b2944,#13203a);}
+    .btn:hover{filter:brightness(1.06)}
+
+    .stats{
+      display:grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap:12px;
+    }
+
+    .card{
+      background:linear-gradient(180deg, rgba(17,24,41,.82), rgba(11,17,31,.82));
+      border:1px solid rgba(38,53,82,.85);
+      border-radius:14px;
+      padding:14px;
+    }
+
+    .card .label{color:var(--muted);font-size:12px;margin-bottom:6px;}
+    .card .value{font-size:24px;font-weight:800;letter-spacing:.2px;}
+    .card .sub{margin-top:4px;color:var(--text-soft);font-size:12px;}
+
+    .table-wrap{
+      overflow:auto;
+      border:1px solid var(--border-soft);
+      border-radius:14px;
+      background:rgba(9,15,28,.45);
+    }
+
+    table{
+      width:100%;
+      border-collapse:separate;
+      border-spacing:0;
+      min-width:1450px;
+    }
+
+    thead th{
+      position:sticky;
+      top:0;
+      z-index:5;
+      background:linear-gradient(180deg, rgba(16,24,42,.98), rgba(16,24,42,.95));
+      color:#9eb0cf;
+      font-size:12px;
+      text-transform:uppercase;
+      letter-spacing:.04em;
+      border-bottom:1px solid var(--border);
+      padding:12px 10px;
+      text-align:left;
+      white-space:nowrap;
+    }
+
+    tbody td{
+      padding:12px 10px;
+      border-bottom:1px solid rgba(38,53,82,.65);
+      vertical-align:middle;
+    }
+
+    tbody tr.data-row:nth-child(4n+1),
+    tbody tr.data-row:nth-child(4n+2){
+      background:linear-gradient(180deg, rgba(17,24,41,.78), rgba(11,17,31,.78));
+    }
+
+    tbody tr.data-row:nth-child(4n+3),
+    tbody tr.data-row:nth-child(4n+4){
+      background:linear-gradient(180deg, rgba(21,30,49,.78), rgba(12,20,36,.78));
+    }
+
+    tbody tr.data-row:hover{
+      background:linear-gradient(180deg, rgba(22,34,58,.95), rgba(14,24,42,.95));
+    }
+
+    .num{text-align:right;white-space:nowrap;}
+    .mono{font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;}
+    .name-cell{font-weight:700;}
+    .code-cell{color:var(--text-soft);font-size:12px;}
+
+    .status-pill{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-width:92px;
+      padding:6px 10px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:700;
+      border:1px solid transparent;
+    }
+
+    .pill-ok{background:rgba(34,197,94,.14); color:#86efac; border-color:rgba(34,197,94,.32);}
+    .pill-low{background:rgba(245,158,11,.14); color:#fcd34d; border-color:rgba(245,158,11,.32);}
+    .pill-zero{background:rgba(244,63,94,.14); color:#fda4af; border-color:rgba(244,63,94,.32);}
+
+    .expand-btn{
+      min-width:82px;
+      height:34px;
+      border-radius:10px;
+      border:1px solid var(--border);
+      background:linear-gradient(180deg,#1b2944,#13203a);
+      color:var(--text);
+      cursor:pointer;
+      font-weight:700;
+      padding:0 10px;
+    }
+
+    .details-row{display:none;background:#0c1424;}
+    .details-row.open{display:table-row;}
+    .details-cell{padding:0;border-bottom:1px solid rgba(38,53,82,.65);}
+
+    .details-box{padding:14px;display:grid;grid-template-columns:1fr;gap:14px;}
+    .subpanel{
+      background:linear-gradient(180deg, rgba(17,24,41,.82), rgba(11,17,31,.82));
+      border:1px solid rgba(38,53,82,.85);
+      border-radius:14px;
+      padding:12px;
+    }
+
+    .subpanel h3{margin:0 0 10px;font-size:14px;color:#dce7ff;}
+    .mini-table-wrap{max-height:420px;overflow:auto;border:1px solid var(--border-soft);border-radius:12px;}
+    .mini-table{width:100%;min-width:1100px;border-collapse:separate;border-spacing:0;}
+    .mini-table th, .mini-table td{padding:10px 8px;border-bottom:1px solid rgba(38,53,82,.65);font-size:12px;}
+    .mini-table th{position:sticky;top:0;background:#0f1728;color:#9eb0cf;text-align:left;}
+
+    .empty, .loading{
+      padding:18px;
+      text-align:center;
+      color:var(--text-soft);
+    }
+
+    .legend{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;}
+    .footer-note{margin-top:10px;color:var(--muted);font-size:12px;}
+
+    @media (max-width: 1300px){
+      .filters{grid-template-columns: repeat(3, 1fr);}
+      .stats{grid-template-columns: repeat(3, 1fr);}
+    }
+
+    @media (max-width: 760px){
+      .wrap{padding:0 10px;}
+      .filters{grid-template-columns:1fr;}
+      .stats{grid-template-columns: repeat(2, 1fr);}
+      .title h1{font-size:22px;}
+    }
+  </style>
 </head>
-
 <body>
-
-<h1>📊 VAJRA LIGHTS - Stock Ledger</h1>
-
-<div class="container">
-
-    <div class="filters">
-        <input type="text" id="itemCode" placeholder="Item Code">
-        <input type="date" id="fromDate">
-        <input type="date" id="toDate">
-        <button onclick="clearFilters()">Clear</button>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="title">
+        <h1>Super Stock Report</h1>
+        <p>Live stock from <span class="mono">stock_balance_view</span> and grouped document movement from <span class="mono">stock_transaction_final</span>.</p>
+      </div>
+      <div class="chip-row">
+        <div class="chip">Live Search</div>
+        <div class="chip">Grouped Movement</div>
+        <div class="chip">Sales / Purchase / Return Details</div>
+      </div>
     </div>
 
-    <table>
-        <thead>
+    <div class="panel">
+      <div class="filters">
+        <div class="field">
+          <label>Search Item</label>
+          <input id="searchInput" class="input" placeholder="Type item name / code / barcode" />
+        </div>
+        <div class="field">
+          <label>Status</label>
+          <select id="statusFilter" class="select">
+            <option value="all">All</option>
+            <option value="positive">In Stock</option>
+            <option value="low">Low Stock</option>
+            <option value="zero">Zero Stock</option>
+            <option value="negative">Negative Stock</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Sort By</label>
+          <select id="sortBy" class="select">
+            <option value="name_asc">Name A-Z</option>
+            <option value="name_desc">Name Z-A</option>
+            <option value="stock_desc">Stock High-Low</option>
+            <option value="stock_asc">Stock Low-High</option>
+            <option value="value_desc">Value High-Low</option>
+            <option value="value_asc">Value Low-High</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Low Stock Limit</label>
+          <input id="lowStockLimit" class="input" type="number" min="0" step="1" value="5" />
+        </div>
+        <div class="field">
+          <label>Rows</label>
+          <select id="pageSize" class="select">
+            <option value="50">50</option>
+            <option value="100" selected>100</option>
+            <option value="200">200</option>
+            <option value="500">500</option>
+          </select>
+        </div>
+        <button class="btn secondary" id="refreshBtn">Refresh</button>
+        <button class="btn primary" id="exportBtn">Export CSV</button>
+      </div>
+      <div class="legend">
+        <span class="status-pill pill-ok">Normal</span>
+        <span class="status-pill pill-low">Low Stock</span>
+        <span class="status-pill pill-zero">Zero / Negative</span>
+      </div>
+    </div>
+
+    <div class="stats" id="statsCards">
+      <div class="card"><div class="label">Total Items</div><div class="value" id="statItems">0</div><div class="sub">All visible items</div></div>
+      <div class="card"><div class="label">Total Stock Qty</div><div class="value" id="statQty">0</div><div class="sub">Sum of visible balances</div></div>
+      <div class="card"><div class="label">Zero Stock</div><div class="value" id="statZero">0</div><div class="sub">Items with zero balance</div></div>
+      <div class="card"><div class="label">Low Stock</div><div class="value" id="statLow">0</div><div class="sub">Based on low stock limit</div></div>
+      <div class="card"><div class="label">Negative Stock</div><div class="value" id="statNegative">0</div><div class="sub">Items below zero</div></div>
+      <div class="card"><div class="label">Stock Value</div><div class="value" id="statValue">0</div><div class="sub">Balance × landing</div></div>
+    </div>
+
+    <div class="panel">
+      <div class="table-wrap">
+        <table>
+          <thead>
             <tr>
-                <th>Date</th>
-                <th>Item Code</th>
-                <th>Type</th>
-                <th>Qty In</th>
-                <th>Qty Out</th>
-                <th>Balance</th>
-                <th>Reference ID</th>
+              <th style="width:90px">Action</th>
+              <th style="width:120px">Item Code</th>
+              <th>Item Name</th>
+              <th style="width:140px">Barcode</th>
+              <th style="width:90px">HSN</th>
+              <th class="num" style="width:120px">Stock</th>
+              <th class="num" style="width:130px">Purchase</th>
+              <th class="num" style="width:130px">Purchase+GST</th>
+              <th class="num" style="width:120px">Landing</th>
+              <th class="num" style="width:120px">P1</th>
+              <th class="num" style="width:120px">P2</th>
+              <th class="num" style="width:120px">P3</th>
+              <th class="num" style="width:130px">Stock Value</th>
+              <th style="width:120px">Status</th>
             </tr>
-        </thead>
-        <tbody id="ledgerBody"></tbody>
-    </table>
+          </thead>
+          <tbody id="reportBody">
+            <tr><td colspan="14" class="loading">Loading stock report...</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="footer-note">Tip: click <b>Details</b> to see grouped movement with date filter, bill number, invoice number, customer mobile, and supplier name.</div>
+    </div>
+  </div>
 
-</div>
-
-<script>
+  <script>
     const sb = window.sbcc; // supabase client from supabaseClient.js
   document.addEventListener("DOMContentLoaded", async () => {
   const ok = await requirePageAccess("sales");
   if (!ok) return;
   });
 
-// ------------------ AUTO LOAD WITH DEBOUNCE ------------------
-let debounceTimer;
+    let stockRows = [];
+    let filteredRows = [];
+    let detailsCache = {};
+    let sortState = {};
 
-function autoLoad() {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => {
-        loadLedger();
-    }, 400); // 400ms delay (prevents too many queries)
-}
+    const els = {
+      searchInput: document.getElementById('searchInput'),
+      statusFilter: document.getElementById('statusFilter'),
+      sortBy: document.getElementById('sortBy'),
+      lowStockLimit: document.getElementById('lowStockLimit'),
+      pageSize: document.getElementById('pageSize'),
+      refreshBtn: document.getElementById('refreshBtn'),
+      exportBtn: document.getElementById('exportBtn'),
+      reportBody: document.getElementById('reportBody'),
+      statItems: document.getElementById('statItems'),
+      statQty: document.getElementById('statQty'),
+      statZero: document.getElementById('statZero'),
+      statLow: document.getElementById('statLow'),
+      statNegative: document.getElementById('statNegative'),
+      statValue: document.getElementById('statValue')
+    };
 
-// ------------------ LOAD LEDGER ------------------
-async function loadLedger() {
+    function toNum(v){ return Number(v || 0); }
+    function money(v){ return toNum(v).toFixed(2); }
+    function qtyFmt(v){ return Number(toNum(v).toFixed(2)).toString(); }
+    function esc(s){ return String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+    function normalize(s){ return String(s || '').toLowerCase().trim(); }
 
-    const itemCode = document.getElementById("itemCode").value.trim();
-    const fromDate = document.getElementById("fromDate").value;
-    const toDate = document.getElementById("toDate").value;
-
-    let query = sb.from("stock_ledger")
-                  .select("*")
-                  .order("created_at", { ascending: true });
-
-    if (itemCode) {
-        query = query.ilike("item_code", `%${itemCode}%`);
+    function fmtDate(dt){
+      if(!dt) return '';
+      const d = new Date(dt);
+      if(Number.isNaN(d.getTime())) return String(dt);
+      return d.toLocaleString('en-IN', {
+        year:'numeric',
+        month:'short',
+        day:'2-digit',
+        hour:'2-digit',
+        minute:'2-digit'
+      });
     }
 
-    if (fromDate) {
-        query = query.gte("created_at", fromDate + " 00:00:00");
+    function getStatus(balance, lowLimit){
+      const qty = toNum(balance);
+      if(qty < 0) return { text:'Negative', cls:'pill-zero' };
+      if(qty === 0) return { text:'Zero', cls:'pill-zero' };
+      if(qty <= lowLimit) return { text:'Low', cls:'pill-low' };
+      return { text:'Normal', cls:'pill-ok' };
     }
 
-    if (toDate) {
-        query = query.lte("created_at", toDate + " 23:59:59");
-    }
+    async function loadStockReport(){
+      els.reportBody.innerHTML = `<tr><td colspan="14" class="loading">Loading stock report...</td></tr>`;
+      stockRows = [];
+      filteredRows = [];
+      detailsCache = {};
+      sortState = {};
 
-    const { data, error } = await query;
+      let from = 0;
+      const size = 1000;
 
-    if (error) {
-        alert(error.message);
-        return;
-    }
+      while(true){
+        const { data, error } = await sb
+          .from('stock_balance_view')
+          .select('*')
+          .range(from, from + size - 1);
 
-    const tbody = document.getElementById("ledgerBody");
-    tbody.innerHTML = "";
-
-    let balanceMap = {};
-
-    data.forEach(row => {
-
-        if (!balanceMap[row.item_code]) {
-            balanceMap[row.item_code] = 0;
+        if(error){
+          console.error(error);
+          els.reportBody.innerHTML = `<tr><td colspan="14" class="empty">Failed to load stock report: ${esc(error.message)}</td></tr>`;
+          return;
         }
 
-        balanceMap[row.item_code] += Number(row.qty_in) - Number(row.qty_out);
+        if(!data || !data.length) break;
+        stockRows = stockRows.concat(data);
+        if(data.length < size) break;
+        from += size;
+      }
 
-        const tr = document.createElement("tr");
+      applyFilters();
+    }
 
-        tr.innerHTML = `
-            <td>${new Date(row.created_at).toLocaleString()}</td>
-            <td>${row.item_code}</td>
-            <td>${row.txn_type}</td>
-            <td class="in">${row.qty_in || 0}</td>
-            <td class="out">${row.qty_out || 0}</td>
-            <td>${balanceMap[row.item_code]}</td>
-            <td>${row.reference_id || ''}</td>
+function applyFilters(){
+  const q = normalize(els.searchInput.value);
+  const status = els.statusFilter.value;
+  const sortBy = els.sortBy.value;
+  const lowLimit = toNum(els.lowStockLimit.value);
+  const pageSize = toNum(els.pageSize.value) || 100;
+
+  const terms = q ? q.split(/\s+/).filter(Boolean) : [];
+
+  filteredRows = stockRows.filter(row => {
+    const balance = toNum(row.balance);
+
+    const searchFields = [
+      normalize(row.item_code),
+      normalize(row.item_name),
+      normalize(row.barcode),
+      normalize(row.hsn_code)
+    ];
+
+    const matchText =
+      !terms.length ||
+      terms.every(term => searchFields.some(field => field.includes(term)));
+
+    let matchStatus = true;
+    if(status === 'positive') matchStatus = balance > 0;
+    else if(status === 'low') matchStatus = balance > 0 && balance <= lowLimit;
+    else if(status === 'zero') matchStatus = balance === 0;
+    else if(status === 'negative') matchStatus = balance < 0;
+
+    return matchText && matchStatus;
+  });
+
+  filteredRows.sort((a,b) => {
+    const av = toNum(a.balance) * toNum(a.landing);
+    const bv = toNum(b.balance) * toNum(b.landing);
+
+    switch(sortBy){
+      case 'name_desc': return String(b.item_name || '').localeCompare(String(a.item_name || ''));
+      case 'stock_desc': return toNum(b.balance) - toNum(a.balance);
+      case 'stock_asc': return toNum(a.balance) - toNum(b.balance);
+      case 'value_desc': return bv - av;
+      case 'value_asc': return av - bv;
+      default: return String(a.item_name || '').localeCompare(String(b.item_name || ''));
+    }
+  });
+
+  updateStats(filteredRows, lowLimit);
+  renderTable(filteredRows.slice(0, pageSize), lowLimit);
+}
+    function updateStats(rows, lowLimit){
+      const totalItems = rows.length;
+      const totalQty = rows.reduce((s,r)=>s + toNum(r.balance), 0);
+      const zero = rows.filter(r => toNum(r.balance) === 0).length;
+      const low = rows.filter(r => toNum(r.balance) > 0 && toNum(r.balance) <= lowLimit).length;
+      const negative = rows.filter(r => toNum(r.balance) < 0).length;
+      const value = rows.reduce((s,r)=>s + (toNum(r.balance) * toNum(r.landing)), 0);
+
+      els.statItems.textContent = totalItems;
+      els.statQty.textContent = qtyFmt(totalQty);
+      els.statZero.textContent = zero;
+      els.statLow.textContent = low;
+      els.statNegative.textContent = negative;
+      els.statValue.textContent = money(value);
+    }
+
+    function renderTable(rows, lowLimit){
+      if(!rows.length){
+        els.reportBody.innerHTML = `<tr><td colspan="14" class="empty">No stock items found.</td></tr>`;
+        return;
+      }
+
+      els.reportBody.innerHTML = rows.map((row, idx) => {
+        const status = getStatus(row.balance, lowLimit);
+        const stockValue = toNum(row.balance) * toNum(row.landing);
+        const rawKey = row.item_code || `row_${idx}`;
+        const key = String(rawKey).replace(/'/g, "\\'");
+
+        return `
+          <tr class="data-row" data-code="${esc(rawKey)}">
+            <td><button class="expand-btn" onclick="toggleDetails('${key}')">Details</button></td>
+            <td>
+              <div class="mono">${esc(row.item_code)}</div>
+            </td>
+            <td>
+              <div class="name-cell">${esc(row.item_name)}</div>
+              <div class="code-cell">GST ${money(row.gst_percent)}%</div>
+            </td>
+            <td class="mono">${esc(row.barcode)}</td>
+            <td class="mono">${esc(row.hsn_code)}</td>
+            <td class="num"><b>${qtyFmt(row.balance)}</b></td>
+            <td class="num">${money(row.purchase_price)}</td>
+            <td class="num">${money(row.purchase_price_gst)}</td>
+            <td class="num">${money(row.landing)}</td>
+            <td class="num">${money(row.price1)}</td>
+            <td class="num">${money(row.price2)}</td>
+            <td class="num">${money(row.price3)}</td>
+            <td class="num"><b>${money(stockValue)}</b></td>
+            <td><span class="status-pill ${status.cls}">${status.text}</span></td>
+          </tr>
+
+          <tr class="details-row" id="details_${esc(rawKey)}">
+            <td colspan="14" class="details-cell">
+              <div class="details-box">
+                <div class="subpanel" style="grid-column:1 / -1;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
+                    <h3 style="margin:0;">Grouped Movement by Reference</h3>
+                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                      <input type="date" id="detailFrom_${esc(rawKey)}" class="input" style="height:36px;width:160px;padding:0 10px;" />
+                      <input type="date" id="detailTo_${esc(rawKey)}" class="input" style="height:36px;width:160px;padding:0 10px;" />
+                      <button class="expand-btn" onclick="applyDetailDateFilter('${key}')">Filter</button>
+                      <button class="expand-btn" onclick="toggleSort('${key}')">Asc / Desc</button>
+                    </div>
+                  </div>
+                  <div class="mini-table-wrap" id="groupWrap_${esc(rawKey)}">
+                    <div class="loading">Loading grouped movement...</div>
+                  </div>
+                </div>
+              </div>
+            </td>
+          </tr>
         `;
+      }).join('');
+    }
 
-        tbody.appendChild(tr);
+    async function fetchDetails(itemCode){
+      if(detailsCache[itemCode]) return detailsCache[itemCode];
+
+      const groupedRes = await sb
+        .from('stock_transaction_final')
+        .select('*')
+        .eq('item_code', itemCode)
+        .order('last_updated', { ascending: false })
+        .limit(300);
+
+      const grouped = groupedRes.data || [];
+      const referenceIds = [...new Set(
+        grouped
+          .map(r => r.reference_id)
+          .filter(v => v !== null && v !== undefined && v !== '')
+      )];
+
+      let salesMap = {};
+      let purchaseMap = {};
+      let salesReturnMap = {};
+
+      if(referenceIds.length){
+        const [salesRes, purchaseRes, salesReturnRes] = await Promise.all([
+          sb
+            .from('sales_details')
+            .select('id, sales_number, series_code, customer_name, customer_mobile, bill_date, invoice_number')
+            .in('id', referenceIds),
+
+          sb
+            .from('purchase_details')
+            .select('id, purchase_number, supplier_name, invoice_number, bill_date')
+            .in('id', referenceIds),
+
+          sb
+            .from('sales_return_details')
+            .select('id, return_number, customer_name, customer_mobile, return_date, original_sales_id')
+            .in('id', referenceIds)
+        ]);
+
+        (salesRes.data || []).forEach(r => {
+          salesMap[String(r.id)] = r;
+        });
+
+        (purchaseRes.data || []).forEach(r => {
+          purchaseMap[String(r.id)] = r;
+        });
+
+        (salesReturnRes.data || []).forEach(r => {
+          salesReturnMap[String(r.id)] = r;
+        });
+      }
+
+      detailsCache[itemCode] = {
+        grouped,
+        groupedError: groupedRes.error,
+        salesMap,
+        purchaseMap,
+        salesReturnMap
+      };
+
+      return detailsCache[itemCode];
+    }
+
+    function renderGroupedTable(rows, itemCode, extra = {}){
+      if(!rows.length) return `<div class="empty">No movement found.</div>`;
+
+      const isAsc = sortState[itemCode] === 'asc';
+
+      const salesMap = extra.salesMap || {};
+      const purchaseMap = extra.purchaseMap || {};
+      const salesReturnMap = extra.salesReturnMap || {};
+
+      const fromEl = document.getElementById(`detailFrom_${itemCode}`);
+      const toEl = document.getElementById(`detailTo_${itemCode}`);
+
+      const fromVal = fromEl?.value ? new Date(fromEl.value + 'T00:00:00') : null;
+      const toVal = toEl?.value ? new Date(toEl.value + 'T23:59:59') : null;
+
+      let filtered = [...rows].filter(r => {
+        const d = new Date(r.last_updated);
+        if(fromVal && d < fromVal) return false;
+        if(toVal && d > toVal) return false;
+        return true;
+      });
+
+      filtered.sort((a, b) => {
+        return isAsc
+          ? new Date(a.last_updated) - new Date(b.last_updated)
+          : new Date(b.last_updated) - new Date(a.last_updated);
+      });
+
+      let running = 0;
+      const withBalance = filtered.map(r => {
+        const eff = Number(r.final_effect || 0);
+        running += eff;
+        return { ...r, running_balance: running };
+      });
+
+      return `
+        <table class="mini-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Type</th>
+              <th>Reference ID</th>
+              <th>Bill No</th>
+              <th>Invoice No</th>
+              <th>Customer / Supplier</th>
+              <th>Mobile</th>
+              <th class="num">Effect</th>
+              <th class="num">Running Balance</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${withBalance.map(r => {
+              const refId = String(r.reference_id ?? '');
+              const eff = Number(r.final_effect || 0);
+              const txnType = String(r.txn_type || '').toUpperCase();
+
+              const sales = salesMap[refId];
+              const purchase = purchaseMap[refId];
+              const salesReturn = salesReturnMap[refId];
+
+              let type = "UNKNOWN";
+              let billNo = "";
+              let invoiceNo = "";
+              let partyName = "";
+              let mobile = "";
+
+              if (txnType.includes('RETURN')) {
+                type = "SALES RETURN";
+              } else if (txnType.includes('PURCHASE')) {
+                type = "PURCHASE";
+              } else if (txnType.includes('SALE')) {
+                type = "SALES";
+              } else {
+                if (salesReturn) type = "SALES RETURN";
+                else if (purchase) type = "PURCHASE";
+                else if (sales) type = "SALES";
+                else if (eff > 0) type = "IN";
+                else if (eff < 0) type = "OUT";
+              }
+
+              if(type === "SALES" && sales){
+                billNo = sales.series_code
+                  ? `${sales.series_code}-${sales.sales_number ?? ''}`
+                  : `${sales.sales_number ?? ''}`;
+                invoiceNo = sales.invoice_number || "";
+                partyName = sales.customer_name || "";
+                mobile = sales.customer_mobile || "";
+              }
+              else if(type === "PURCHASE" && purchase){
+                billNo = purchase.purchase_number || "";
+                invoiceNo = purchase.invoice_number || "";
+                partyName = purchase.supplier_name || "";
+                mobile = "";
+              }
+              else if(type === "SALES RETURN" && salesReturn){
+                billNo = `${salesReturn.return_number || ''}`;
+                invoiceNo = "";
+                partyName = salesReturn.customer_name || "";
+                mobile = salesReturn.customer_mobile || "";
+              }
+
+              return `
+                <tr>
+                  <td>${esc(fmtDate(r.last_updated))}</td>
+                  <td>${esc(type)}</td>
+                  <td class="mono">${esc(refId)}</td>
+                  <td class="mono">${esc(billNo)}</td>
+                  <td class="mono">${esc(invoiceNo)}</td>
+                  <td>${esc(partyName)}</td>
+                  <td class="mono">${esc(mobile)}</td>
+                  <td class="num"><b>${qtyFmt(r.final_effect)}</b></td>
+                  <td class="num">${qtyFmt(r.running_balance)}</td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+
+    function applyDetailDateFilter(itemCode){
+      const groupedWrap = document.getElementById(`groupWrap_${itemCode}`);
+      const data = detailsCache[itemCode];
+      if(!groupedWrap || !data) return;
+
+      groupedWrap.innerHTML = renderGroupedTable(data.grouped, itemCode, {
+        salesMap: data.salesMap,
+        purchaseMap: data.purchaseMap,
+        salesReturnMap: data.salesReturnMap
+      });
+    }
+    window.applyDetailDateFilter = applyDetailDateFilter;
+
+    function toggleSort(itemCode){
+      sortState[itemCode] = sortState[itemCode] === 'asc' ? 'desc' : 'asc';
+      applyDetailDateFilter(itemCode);
+    }
+    window.toggleSort = toggleSort;
+
+    async function toggleDetails(itemCode){
+      const safeId = `details_${itemCode}`;
+      const row = document.getElementById(safeId);
+      if(!row) return;
+
+      const isOpen = row.classList.contains('open');
+      document.querySelectorAll('.details-row.open').forEach(r => r.classList.remove('open'));
+      if(isOpen) return;
+
+      row.classList.add('open');
+
+      const groupedWrap = document.getElementById(`groupWrap_${itemCode}`);
+      groupedWrap.innerHTML = `<div class="loading">Loading grouped movement...</div>`;
+
+      const data = await fetchDetails(itemCode);
+
+      if(data.groupedError){
+        groupedWrap.innerHTML = `<div class="empty">Failed: ${esc(data.groupedError.message)}</div>`;
+      } else {
+        groupedWrap.innerHTML = renderGroupedTable(data.grouped, itemCode, {
+          salesMap: data.salesMap,
+          purchaseMap: data.purchaseMap,
+          salesReturnMap: data.salesReturnMap
+        });
+      }
+
+      setTimeout(() => row.scrollIntoView({ behavior:'smooth', block:'nearest' }), 50);
+    }
+    window.toggleDetails = toggleDetails;
+
+    function exportCSV(){
+      if(!filteredRows.length) return;
+
+      const lowLimit = toNum(els.lowStockLimit.value);
+      const header = ['Item Code','Item Name','Barcode','HSN','Stock','Purchase','Purchase+GST','Landing','P1','P2','P3','Stock Value','Status'];
+
+      const lines = filteredRows.map(r => {
+        const status = getStatus(r.balance, lowLimit).text;
+        const stockValue = toNum(r.balance) * toNum(r.landing);
+
+        return [
+          r.item_code, r.item_name, r.barcode, r.hsn_code,
+          qtyFmt(r.balance), money(r.purchase_price), money(r.purchase_price_gst), money(r.landing),
+          money(r.price1), money(r.price2), money(r.price3), money(stockValue), status
+        ].map(v => `"${String(v ?? '').replace(/"/g,'""')}"`).join(',');
+      });
+
+      const csv = [header.join(','), ...lines].join('\n');
+      const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `stock_report_${new Date().toISOString().slice(0,10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    let searchTimer;
+    els.searchInput.addEventListener('input', () => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(applyFilters, 180);
     });
-}
 
-// ------------------ CLEAR ------------------
-function clearFilters() {
-    document.getElementById("itemCode").value = "";
-    document.getElementById("fromDate").value = "";
-    document.getElementById("toDate").value = "";
-    loadLedger();
-}
+    els.statusFilter.addEventListener('change', applyFilters);
+    els.sortBy.addEventListener('change', applyFilters);
+    els.lowStockLimit.addEventListener('input', applyFilters);
+    els.pageSize.addEventListener('change', applyFilters);
+    els.refreshBtn.addEventListener('click', loadStockReport);
+    els.exportBtn.addEventListener('click', exportCSV);
 
-// ------------------ EVENT LISTENERS ------------------
-document.getElementById("itemCode").addEventListener("input", autoLoad);
-document.getElementById("fromDate").addEventListener("change", loadLedger);
-document.getElementById("toDate").addEventListener("change", loadLedger);
-
-// Initial Load
-window.onload = loadLedger;
-
-</script>
+    loadStockReport();
+  </script>
 </body>
 </html>

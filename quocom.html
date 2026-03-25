@@ -1,0 +1,1372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VAJRA LIGHTS - Compare Quotation</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabaseClient.js"></script>
+    <script src="page_permissions.js"></script>
+  <style>
+    :root{
+      --primary:#1d4ed8;
+      --primary-2:#2563eb;
+      --accent:#059669;
+      --danger:#dc2626;
+      --warn:#d97706;
+      --bg:#f8fafc;
+      --card:#ffffff;
+      --text:#0f172a;
+      --muted:#64748b;
+      --border:#cbd5e1;
+      --soft:#e2e8f0;
+      --row:#f8fafc;
+      --row2:#eff6ff;
+      --good:#ecfdf5;
+      --good-b:#86efac;
+      --shadow:0 10px 25px rgba(15,23,42,.08);
+      --radius:16px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:Segoe UI, Roboto, Arial, sans-serif;
+      color:var(--text);
+      background:linear-gradient(rgba(255,255,255,.93), rgba(255,255,255,.95)), url('background.jpg') center/cover fixed;
+      min-height:100vh;
+    }
+    .page{
+      max-width:1700px;
+      margin:0 auto;
+      padding:14px;
+    }
+    .topbar{
+      display:flex;
+      gap:12px;
+      align-items:center;
+      justify-content:space-between;
+      flex-wrap:wrap;
+      margin-bottom:12px;
+    }
+    .title-wrap h1{
+      margin:0;
+      font-size:28px;
+      letter-spacing:.3px;
+    }
+    .title-wrap p{
+      margin:4px 0 0;
+      color:var(--muted);
+      font-size:13px;
+    }
+    .actions{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+    .card{
+      background:var(--card);
+      border:1px solid var(--soft);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      overflow:hidden;
+      margin-bottom:12px;
+    }
+    .card-head{
+      padding:12px 14px;
+      border-bottom:1px solid var(--soft);
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+      background:linear-gradient(180deg,#fff,#f8fbff);
+    }
+    .card-head h2{
+      margin:0;
+      font-size:18px;
+    }
+    .card-body{padding:14px}
+    .grid{
+      display:grid;
+      grid-template-columns:repeat(6, minmax(0, 1fr));
+      gap:10px;
+    }
+    .field{display:flex;flex-direction:column;gap:6px; position:relative}
+    .field label{
+      font-size:12px;
+      font-weight:700;
+      color:#334155;
+      text-transform:uppercase;
+      letter-spacing:.4px;
+    }
+    .field input, .field select, .field textarea{
+      width:100%;
+      min-height:42px;
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:10px 12px;
+      outline:none;
+      font-size:14px;
+      background:#fff;
+    }
+    .field textarea{min-height:90px; resize:vertical}
+    .field input:focus, .field select:focus, .field textarea:focus{
+      border-color:var(--primary);
+      box-shadow:0 0 0 3px rgba(37,99,235,.12);
+    }
+    .span-2{grid-column:span 2}
+    .span-3{grid-column:span 3}
+    .span-6{grid-column:span 6}
+    button{
+      border:none;
+      border-radius:12px;
+      padding:10px 14px;
+      font-size:14px;
+      font-weight:700;
+      cursor:pointer;
+      transition:.15s ease;
+    }
+    button:hover{transform:translateY(-1px)}
+    .btn-primary{background:var(--primary);color:#fff}
+    .btn-accent{background:var(--accent);color:#fff}
+    .btn-soft{background:#eff6ff;color:var(--primary)}
+    .btn-warn{background:#fff7ed;color:var(--warn)}
+    .btn-danger{background:#fef2f2;color:var(--danger)}
+    .btn-dark{background:#0f172a;color:#fff}
+    .btn-outline{background:#fff;border:1px solid var(--border);color:#0f172a}
+    .toolbar{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-bottom:10px;
+    }
+    .toolbar-left,.toolbar-right{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .toolbar input,.toolbar select{
+      min-height:40px;
+      border:1px solid var(--border);
+      border-radius:10px;
+      padding:8px 10px;
+      font-size:14px;
+      background:#fff;
+    }
+    .table-wrap{overflow:auto; border:1px solid var(--soft); border-radius:16px}
+    table{
+      width:100%;
+      min-width:1900px;
+      border-collapse:separate;
+      border-spacing:0;
+      background:#fff;
+    }
+    thead th{
+      position:sticky;
+      top:0;
+      z-index:5;
+      background:#eaf2ff;
+      color:#0f172a;
+      text-align:left;
+      font-size:12px;
+      text-transform:uppercase;
+      letter-spacing:.35px;
+      padding:10px 8px;
+      border-bottom:1px solid var(--soft);
+      white-space:nowrap;
+    }
+    tbody td{
+      padding:6px;
+      border-bottom:1px solid #eef2f7;
+      vertical-align:top;
+      background:#fff;
+    }
+    tbody tr:nth-child(even) td{background:#fcfdff}
+    tbody tr.selected-row td{background:var(--good)}
+    .slno{width:54px; text-align:center; font-weight:700}
+    .cell-input,.cell-select{
+      width:100%;
+      min-height:38px;
+      border:1px solid var(--border);
+      border-radius:10px;
+      padding:8px 10px;
+      font-size:14px;
+      background:#fff;
+      text-transform:uppercase;
+    }
+    .num{text-align:right}
+    .readonly{background:#f8fafc}
+    .small{font-size:12px;color:var(--muted)}
+    .suggestions{
+      position:absolute;
+      top:100%;
+      left:0;
+      width:min(980px, 94vw);
+      max-height:330px;
+      overflow:auto;
+      background:#fff;
+      border:1px solid var(--soft);
+      border-radius:14px;
+      box-shadow:0 16px 38px rgba(2,6,23,.16);
+      z-index:30;
+      display:none;
+      margin-top:4px;
+    }
+    .suggestion-row{
+      display:grid;
+      grid-template-columns:150px 1.4fr 110px 110px 110px 110px 90px 100px;
+      gap:8px;
+      padding:10px 12px;
+      border-bottom:1px solid #eef2f7;
+      cursor:pointer;
+      align-items:center;
+      font-size:13px;
+    }
+    .suggestion-row:hover,.suggestion-row.active{background:#eff6ff}
+    .suggestion-head{
+      position:sticky;
+      top:0;
+      background:#dbeafe;
+      font-weight:700;
+      z-index:2;
+    }
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      padding:4px 8px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:700;
+    }
+    .b-blue{background:#dbeafe;color:#1d4ed8}
+    .b-green{background:#dcfce7;color:#166534}
+    .b-amber{background:#fef3c7;color:#92400e}
+    .summary{
+      display:grid;
+      grid-template-columns:repeat(5, minmax(0, 1fr));
+      gap:10px;
+    }
+    .sum-card{
+      padding:14px;
+      border:1px solid var(--soft);
+      border-radius:16px;
+      background:linear-gradient(180deg,#fff,#f8fbff);
+    }
+    .sum-card .k{font-size:12px;color:var(--muted);text-transform:uppercase;font-weight:700;letter-spacing:.4px}
+    .sum-card .v{margin-top:6px;font-size:24px;font-weight:800}
+    .help{
+      padding:12px 14px;
+      border-radius:14px;
+      background:#eff6ff;
+      border:1px solid #bfdbfe;
+      color:#1e3a8a;
+      font-size:13px;
+    }
+    .footer-note{font-size:12px;color:var(--muted);margin-top:8px}
+    .pill-toggle{
+      display:flex; gap:6px; flex-wrap:wrap;
+    }
+    .pill-toggle button.active{background:var(--primary); color:#fff}
+    @media (max-width: 1200px){
+      .grid{grid-template-columns:repeat(3, minmax(0, 1fr))}
+      .span-6{grid-column:span 3}
+      .summary{grid-template-columns:repeat(2, minmax(0,1fr))}
+    }
+    @media (max-width: 768px){
+      .page{padding:10px}
+      .topbar{align-items:flex-start}
+      .grid{grid-template-columns:repeat(1, minmax(0, 1fr))}
+      .span-2,.span-3,.span-6{grid-column:span 1}
+      .summary{grid-template-columns:1fr}
+      .actions, .toolbar-left, .toolbar-right{width:100%}
+      .actions button, .toolbar-left > *, .toolbar-right > *{flex:1 1 auto}
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="topbar">
+      <div class="title-wrap">
+        <h1>COMPARE QUOTATION</h1>
+        <p>Create comparison sheets, choose best prices, and convert them into quotation bills.</p>
+      </div>
+      <div class="actions">
+        <button class="btn-soft" id="btn_new">NEW</button>
+        <button class="btn-primary" id="btn_save_compare">SAVE COMPARE</button>
+        <button class="btn-accent" id="btn_create_selected">CREATE QUOTATION FROM SELECTED</button>
+        <button class="btn-outline" id="btn_load_compare">LOAD COMPARE</button>
+        <button class="btn-dark" id="btn_print">PRINT</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <h2>Comparison Header</h2>
+        <span class="badge b-blue">ITEM CODE = EXACT ID</span>
+      </div>
+      <div class="card-body">
+        <div class="grid">
+          <div class="field">
+            <label for="compare_date">Compare Date</label>
+            <input id="compare_date" type="date" />
+          </div>
+          <div class="field">
+            <label for="compare_no">Compare No</label>
+            <input id="compare_no" type="text" readonly class="readonly" />
+          </div>
+          <div class="field">
+            <label for="series_code">Series Code</label>
+            <select id="series_code"></select>
+          </div>
+          <div class="field">
+            <label for="quotation_series_code">Quotation Series</label>
+            <select id="quotation_series_code"></select>
+          </div>
+          <div class="field span-2">
+            <label for="cust_name">Customer Name</label>
+            <input id="cust_name" type="text" autocomplete="off" />
+          </div>
+          <div class="field">
+            <label for="cust_mobile">Customer Mobile</label>
+            <input id="cust_mobile" type="text" autocomplete="off" />
+            <div class="suggestions" id="mobile_suggestions"></div>
+          </div>
+          <div class="field">
+            <label for="cust_gst">GST Number</label>
+            <input id="cust_gst" type="text" autocomplete="off" />
+          </div>
+          <div class="field span-2">
+            <label for="cust_address">Address</label>
+            <input id="cust_address" type="text" autocomplete="off" />
+          </div>
+          <div class="field">
+            <label for="salesman">Salesman</label>
+            <select id="salesman">
+              <option value="">SELECT</option>
+              <option>RAJU</option>
+              <option>SHAFI</option>
+              <option>VAJRA</option>
+            </select>
+          </div>
+          <div class="field span-6">
+            <label for="remarks">Remarks</label>
+            <textarea id="remarks" placeholder="Comparison notes, vendor names, customer priorities, etc."></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <h2>Item Comparison Grid</h2>
+        <div class="pill-toggle" id="quick_filter_wrap">
+          <button class="btn-outline active" data-filter="ALL">ALL</button>
+          <button class="btn-outline" data-filter="MOBILE">MOBILE</button>
+          <button class="btn-outline" data-filter="CHARGER">CHARGER</button>
+          <button class="btn-outline" data-filter="CABLE">CABLE</button>
+          <button class="btn-outline" data-filter="ACCESSORY">ACCESSORY</button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="help">
+          For similar items like <b>SAMSUNG MOBILE PHONE</b>, <b>SAMSUNG A3 MOBILE PHONE</b>, <b>SAMSUNG A5 MOBILE PHONE</b>, search by <b>item code</b> whenever possible. Search also works by item name with word matching, but item code is always the safest final identity.
+        </div>
+        <div class="toolbar" style="margin-top:10px;">
+          <div class="toolbar-left">
+            <button class="btn-soft" id="btn_add_row">+ ADD ROW</button>
+            <button class="btn-warn" id="btn_auto_best">AUTO SELECT BEST PRICE</button>
+          </div>
+          <div class="toolbar-right">
+            <input type="text" id="global_search" placeholder="Filter grid by code / name" />
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th class="slno">#</th>
+                <th style="width:150px;">Item Code</th>
+                <th style="width:280px;">Item Name</th>
+                <th style="width:110px;">Brand</th>
+                <th style="width:120px;">Category</th>
+                <th style="width:110px;">Model</th>
+                <th style="width:90px;">Qty</th>
+                <th style="width:90px;">Type</th>
+                <th style="width:110px;">GST %</th>
+                <th style="width:130px;">HSN</th>
+                <th style="width:130px;">Price 1</th>
+                <th style="width:130px;">Price 2</th>
+                <th style="width:130px;">Price 3</th>
+                <th style="width:150px;">Selected</th>
+                <th style="width:150px;">Final Price</th>
+                <th style="width:150px;">Price + GST</th>
+                <th style="width:150px;">Line Total</th>
+                <th style="width:90px;">Stock</th>
+                <th style="width:110px;">Action</th>
+              </tr>
+            </thead>
+            <tbody id="compare_body"></tbody>
+          </table>
+        </div>
+        <div class="footer-note">Enter moves forward. Shift+Enter moves backward. On Final Price Enter, next row opens automatically.</div>
+      </div>
+    </div>
+
+    <div class="summary">
+      <div class="sum-card"><div class="k">Rows</div><div class="v" id="sum_rows">0</div></div>
+      <div class="sum-card"><div class="k">Items Qty</div><div class="v" id="sum_qty">0</div></div>
+      <div class="sum-card"><div class="k">Sub Total</div><div class="v" id="sum_sub">0.00</div></div>
+      <div class="sum-card"><div class="k">GST Total</div><div class="v" id="sum_gst">0.00</div></div>
+      <div class="sum-card"><div class="k">Grand Total</div><div class="v" id="sum_total">0.00</div></div>
+    </div>
+  </div>
+
+  <script>
+    // ================================
+    // 1) SUPABASE
+    // ================================
+        const sb = window.sbcc; // supabase client from supabaseClient.js
+  document.addEventListener("DOMContentLoaded", async () => {
+  const ok = await requirePageAccess("sales");
+  if (!ok) return;
+  });
+
+
+    // ================================
+    // 2) APP STATE
+    // ================================
+    let stockData = [];
+    let customerSuggestions = [];
+    let currentRowId = 0;
+    let compareEditingId = null;
+    let activeQuickFilter = "ALL";
+    let compareSeriesRows = [];
+    let quotationSeriesRows = [];
+    let mobileTimer = null;
+
+    // ================================
+    // 3) INIT
+    // ================================
+    window.addEventListener("load", async () => {
+      document.getElementById("compare_date").value = new Date().toISOString().split("T")[0];
+      await ensureCompareTables();
+      await Promise.all([
+        loadSeriesDropdowns(),
+        loadStockData()
+      ]);
+      await fetchNextCompareNumber();
+      addNewRow(true);
+      bindHeaderEvents();
+      bindToolbarEvents();
+      setupKeyboardNavigation();
+    });
+
+    // ================================
+    // 4) TABLE SETUP HELPER
+    // ================================
+    async function ensureCompareTables(){
+      // Only checks table existence by reading 1 row; this page still needs SQL creation done once in Supabase.
+      try {
+        await sb.from("quotation_compare_details").select("id").limit(1);
+        await sb.from("quotation_compare_item_details").select("id").limit(1);
+      } catch (e) {
+        console.warn("Compare tables may not exist yet:", e);
+      }
+    }
+
+    // ================================
+    // 5) LOAD SERIES
+    // ================================
+    async function loadSeriesDropdowns() {
+      const compareSel = document.getElementById("series_code");
+      const quoteSel = document.getElementById("quotation_series_code");
+      compareSel.innerHTML = `<option value="CMP">CMP</option>`;
+      quoteSel.innerHTML = `<option value="">SELECT QUOTATION SERIES</option>`;
+
+      const { data, error } = await sb
+        .from("bill_series")
+        .select("id, series_code, bill_number")
+        .order("series_code", { ascending: true });
+
+      if (error) {
+        console.error(error);
+        alert("Error loading bill series");
+        return;
+      }
+
+      compareSeriesRows = [{ series_code: "CMP", bill_number: 0 }];
+      quotationSeriesRows = [];
+
+      (data || []).forEach(r => {
+        const code = String(r.series_code || "").toUpperCase();
+        if (!code) return;
+        const opt = `<option value="${escapeHtml(code)}">${escapeHtml(code)}</option>`;
+
+        if (code.includes("QUO") || code.includes("QT") || code.includes("QUOT")) {
+          quoteSel.insertAdjacentHTML("beforeend", opt);
+          quotationSeriesRows.push(r);
+        }
+      });
+
+      if (quoteSel.options.length === 1 && data?.length) {
+        data.forEach(r => {
+          const code = String(r.series_code || "").toUpperCase();
+          quoteSel.insertAdjacentHTML("beforeend", `<option value="${escapeHtml(code)}">${escapeHtml(code)}</option>`);
+          quotationSeriesRows.push(r);
+        });
+      }
+
+      compareSel.value = "CMP";
+      if (quoteSel.options.length > 1) quoteSel.selectedIndex = 1;
+    }
+
+    async function fetchNextCompareNumber() {
+      const seriesCode = String(document.getElementById("series_code").value || "CMP").toUpperCase();
+      const { data, error } = await sb
+        .from("quotation_compare_details")
+        .select("compare_number")
+        .eq("series_code", seriesCode)
+        .order("compare_number", { ascending:false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error && error.code !== "PGRST116") {
+        console.warn(error);
+      }
+
+      const nextNo = data?.compare_number ? Number(data.compare_number) + 1 : 1;
+      document.getElementById("compare_no").value = nextNo;
+    }
+
+    // ================================
+    // 6) STOCK SEARCH
+    // ================================
+    async function loadStockData() {
+      let allItems = [];
+      let from = 0;
+      const pageSize = 1000;
+      let keepGoing = true;
+
+      while (keepGoing) {
+        const { data, error } = await sb
+          .from("stock_balance_view")
+          .select("*")
+          .range(from, from + pageSize - 1);
+
+        if (error) {
+          console.error(error);
+          alert("Error loading stock items");
+          return;
+        }
+
+        if (data?.length) {
+          allItems = allItems.concat(data);
+          from += pageSize;
+          if (data.length < pageSize) keepGoing = false;
+        } else {
+          keepGoing = false;
+        }
+      }
+
+      stockData = allItems.map(item => ({
+        ...item,
+        brand: extractBrand(item),
+        category: extractCategory(item),
+        model_no: extractModel(item)
+      }));
+      console.log("Loaded stock items:", stockData.length);
+    }
+
+    function normalizeSearchText(value) {
+      return String(value || "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function extractBrand(item) {
+      return String(item.brand || item.company || item.make || item.item_name || "").split(" ")[0]?.toUpperCase() || "";
+    }
+
+    function extractCategory(item) {
+      const raw = String(item.category || item.group_name || item.item_name || "").toUpperCase();
+      if (raw.includes("MOBILE")) return "MOBILE";
+      if (raw.includes("CHARGER")) return "CHARGER";
+      if (raw.includes("CABLE")) return "CABLE";
+      if (raw.includes("ACCESSORY")) return "ACCESSORY";
+      if (raw.includes("LIGHT")) return "LIGHT";
+      if (raw.includes("FAN")) return "FAN";
+      return raw.split(" ")[0] || "";
+    }
+
+    function extractModel(item) {
+      const name = String(item.model_no || item.model || item.item_name || "").toUpperCase();
+      const parts = name.split(/\s+/);
+      const model = parts.find(p => /[A-Z]+\d+|\d+[A-Z]+/.test(p));
+      return model || "";
+    }
+
+    function searchStock(query, field = "item_name") {
+      if (!query) return [];
+      const normalizedQuery = normalizeSearchText(query);
+      if (!normalizedQuery) return [];
+      const terms = normalizedQuery.split(" ").filter(Boolean);
+
+      const filtered = stockData.filter(item => {
+        if (activeQuickFilter === "ALL") return true;
+        const text = `${item.category || ""} ${item.item_name || ""}`.toUpperCase();
+        return text.includes(activeQuickFilter);
+      });
+
+      const scored = filtered.map(item => {
+        const codeRaw = String(item.item_code || "");
+        const nameRaw = String(item.item_name || "");
+        const brandRaw = String(item.brand || "");
+        const categoryRaw = String(item.category || "");
+        const modelRaw = String(item.model_no || "");
+
+        const code = normalizeSearchText(codeRaw);
+        const name = normalizeSearchText(nameRaw);
+        const brand = normalizeSearchText(brandRaw);
+        const category = normalizeSearchText(categoryRaw);
+        const model = normalizeSearchText(modelRaw);
+
+        const primary = field === "item_code" ? code : name;
+        const secondary = field === "item_code" ? name : code;
+        const combined = `${code} ${name} ${brand} ${category} ${model}`;
+
+        const matched =
+          terms.every(t => primary.includes(t)) ||
+          terms.every(t => secondary.includes(t)) ||
+          terms.every(t => combined.includes(t));
+
+        if (!matched) return null;
+
+        let score = 0;
+        if (primary === normalizedQuery) score += 1200;
+        if (secondary === normalizedQuery) score += 1000;
+        if (code === normalizedQuery) score += 950;
+        if (name === normalizedQuery) score += 900;
+        if (primary.startsWith(normalizedQuery)) score += 800;
+        if (secondary.startsWith(normalizedQuery)) score += 700;
+        if (name.startsWith(normalizedQuery)) score += 650;
+        if (code.startsWith(normalizedQuery)) score += 620;
+        terms.forEach(t => {
+          if (code.includes(t)) score += 70;
+          if (name.includes(t)) score += 65;
+          if (brand.includes(t)) score += 25;
+          if (category.includes(t)) score += 20;
+          if (model.includes(t)) score += 35;
+        });
+        score -= Math.abs(name.length - normalizedQuery.length) * 0.1;
+
+        return { item, score };
+      }).filter(Boolean);
+
+      scored.sort((a,b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        return String(a.item.item_name || "").localeCompare(String(b.item.item_name || ""));
+      });
+
+      return scored.slice(0, 40).map(x => x.item);
+    }
+
+    // ================================
+    // 7) CUSTOMER SEARCH
+    // ================================
+    function bindHeaderEvents(){
+      const mobileInput = document.getElementById("cust_mobile");
+      mobileInput.addEventListener("input", () => {
+        clearTimeout(mobileTimer);
+        mobileTimer = setTimeout(loadCustomerSuggestions, 250);
+      });
+
+      document.getElementById("series_code").addEventListener("change", fetchNextCompareNumber);
+    }
+
+    async function loadCustomerSuggestions(){
+      const q = String(document.getElementById("cust_mobile").value || "").trim();
+      const box = document.getElementById("mobile_suggestions");
+      if (!q) {
+        box.style.display = "none";
+        return;
+      }
+
+      const { data, error } = await sb
+        .from("customers")
+        .select("customer_name, mobile, gst_number, address")
+        .or(`mobile.ilike.%${q}%,customer_name.ilike.%${q}%`)
+        .limit(10);
+
+      if (error) {
+        console.warn(error);
+        return;
+      }
+
+      customerSuggestions = data || [];
+      if (!customerSuggestions.length) {
+        box.style.display = "none";
+        return;
+      }
+
+      box.innerHTML = customerSuggestions.map((c, i) => `
+        <div class="suggestion-row ${i===0?"active":""}" data-cidx="${i}" style="grid-template-columns:1.2fr 1fr 1fr 1.5fr;">
+          <div><b>${escapeHtml(c.customer_name || "")}</b></div>
+          <div>${escapeHtml(c.mobile || "")}</div>
+          <div>${escapeHtml(c.gst_number || "")}</div>
+          <div>${escapeHtml(c.address || "")}</div>
+        </div>
+      `).join("");
+      box.style.display = "block";
+
+      Array.from(box.querySelectorAll(".suggestion-row")).forEach(el => {
+        el.addEventListener("mousedown", (e) => {
+          e.preventDefault();
+          const idx = Number(el.dataset.cidx);
+          applyCustomer(customerSuggestions[idx]);
+        });
+      });
+    }
+
+    function applyCustomer(c){
+      if (!c) return;
+      document.getElementById("cust_name").value = (c.customer_name || "").toUpperCase();
+      document.getElementById("cust_mobile").value = c.mobile || "";
+      document.getElementById("cust_gst").value = (c.gst_number || "").toUpperCase();
+      document.getElementById("cust_address").value = (c.address || "").toUpperCase();
+      document.getElementById("mobile_suggestions").style.display = "none";
+    }
+
+    // ================================
+    // 8) GRID
+    // ================================
+    function bindToolbarEvents(){
+      document.getElementById("btn_add_row").addEventListener("click", () => addNewRow(true));
+      document.getElementById("btn_auto_best").addEventListener("click", autoSelectBestPrices);
+      document.getElementById("btn_save_compare").addEventListener("click", saveCompareSheet);
+      document.getElementById("btn_create_selected").addEventListener("click", createQuotationFromSelected);
+      document.getElementById("btn_new").addEventListener("click", resetPage);
+      document.getElementById("btn_print").addEventListener("click", () => window.print());
+      document.getElementById("btn_load_compare").addEventListener("click", loadComparePrompt);
+      document.getElementById("global_search").addEventListener("input", filterGridRows);
+
+      document.querySelectorAll("#quick_filter_wrap button").forEach(btn => {
+        btn.addEventListener("click", () => {
+          document.querySelectorAll("#quick_filter_wrap button").forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
+          activeQuickFilter = btn.dataset.filter;
+        });
+      });
+    }
+
+    function addNewRow(focusCode = false, payload = null){
+      const rid = currentRowId++;
+      const tr = document.createElement("tr");
+      tr.id = `row_${rid}`;
+      tr.innerHTML = `
+        <td class="slno">${rid + 1}</td>
+        <td>
+          <div class="field" style="min-width:140px;">
+            <input class="cell-input code-inp" data-rid="${rid}" />
+            <div class="suggestions stock-suggestions"></div>
+          </div>
+        </td>
+        <td><input class="cell-input name-inp" data-rid="${rid}" /></td>
+        <td><input class="cell-input brand-inp readonly" data-rid="${rid}" readonly /></td>
+        <td><input class="cell-input category-inp readonly" data-rid="${rid}" readonly /></td>
+        <td><input class="cell-input model-inp readonly" data-rid="${rid}" readonly /></td>
+        <td><input class="cell-input qty-inp num" data-rid="${rid}" type="number" step="0.01" value="1" /></td>
+        <td>
+          <select class="cell-select type-inp" data-rid="${rid}">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+          </select>
+        </td>
+        <td><input class="cell-input gst-inp num readonly" data-rid="${rid}" readonly /></td>
+        <td><input class="cell-input hsn-inp readonly" data-rid="${rid}" readonly /></td>
+        <td><input class="cell-input p1-inp num" data-rid="${rid}" type="number" step="0.01" /></td>
+        <td><input class="cell-input p2-inp num" data-rid="${rid}" type="number" step="0.01" /></td>
+        <td><input class="cell-input p3-inp num" data-rid="${rid}" type="number" step="0.01" /></td>
+        <td>
+          <select class="cell-select selected-inp" data-rid="${rid}">
+            <option value="">SELECT</option>
+            <option value="1">PRICE 1</option>
+            <option value="2">PRICE 2</option>
+            <option value="3">PRICE 3</option>
+            <option value="C">CUSTOM</option>
+          </select>
+        </td>
+        <td><input class="cell-input final-inp num" data-rid="${rid}" type="number" step="0.01" /></td>
+        <td><input class="cell-input finalgst-inp num readonly" data-rid="${rid}" readonly /></td>
+        <td><input class="cell-input total-inp num readonly" data-rid="${rid}" readonly /></td>
+        <td><input class="cell-input stock-inp num readonly" data-rid="${rid}" readonly /></td>
+        <td>
+          <button class="btn-danger del-btn" data-rid="${rid}" type="button">DELETE</button>
+        </td>
+      `;
+
+      document.getElementById("compare_body").appendChild(tr);
+      bindRowEvents(rid);
+
+      if (payload) fillRowFromPayload(rid, payload);
+      if (focusCode) tr.querySelector(".code-inp").focus();
+      updateSummary();
+    }
+
+    function bindRowEvents(rid){
+      const row = document.getElementById(`row_${rid}`);
+      const codeInp = row.querySelector(".code-inp");
+      const nameInp = row.querySelector(".name-inp");
+      const delBtn = row.querySelector(".del-btn");
+      const qtyInp = row.querySelector(".qty-inp");
+      const typeInp = row.querySelector(".type-inp");
+      const p1Inp = row.querySelector(".p1-inp");
+      const p2Inp = row.querySelector(".p2-inp");
+      const p3Inp = row.querySelector(".p3-inp");
+      const selectedInp = row.querySelector(".selected-inp");
+      const finalInp = row.querySelector(".final-inp");
+
+      uppercaseInput(codeInp);
+      uppercaseInput(nameInp);
+
+      codeInp.addEventListener("input", () => showStockSuggestions(rid, codeInp.value, "item_code"));
+      nameInp.addEventListener("input", () => showStockSuggestions(rid, nameInp.value, "item_name"));
+      codeInp.addEventListener("focus", () => showStockSuggestions(rid, codeInp.value, "item_code"));
+      nameInp.addEventListener("focus", () => showStockSuggestions(rid, nameInp.value, "item_name"));
+
+      [qtyInp, p1Inp, p2Inp, p3Inp, finalInp].forEach(inp => {
+        inp.addEventListener("input", () => calcRow(rid));
+      });
+      typeInp.addEventListener("change", () => applyTypePrice(rid));
+      selectedInp.addEventListener("change", () => applySelectedOption(rid));
+
+      delBtn.addEventListener("click", () => {
+        row.remove();
+        refreshSerials();
+        updateSummary();
+      });
+    }
+
+    function showStockSuggestions(rid, query, field){
+      const row = document.getElementById(`row_${rid}`);
+      const box = row.querySelector(".stock-suggestions");
+      const results = searchStock(query, field);
+
+      if (!query || !results.length) {
+        box.style.display = "none";
+        return;
+      }
+
+      box.innerHTML = `
+        <div class="suggestion-row suggestion-head">
+          <div>CODE</div>
+          <div>NAME</div>
+          <div>BRAND</div>
+          <div>CATEGORY</div>
+          <div>MODEL</div>
+          <div>P1</div>
+          <div>GST</div>
+          <div>STOCK</div>
+        </div>
+        ${results.map((item, idx) => `
+          <div class="suggestion-row ${idx===0?"active":""}" data-rid="${rid}" data-code="${escapeHtml(item.item_code || "")}">
+            <div><b>${escapeHtml(item.item_code || "")}</b></div>
+            <div>${escapeHtml(item.item_name || "")}</div>
+            <div>${escapeHtml(item.brand || "")}</div>
+            <div>${escapeHtml(item.category || "")}</div>
+            <div>${escapeHtml(item.model_no || "")}</div>
+            <div class="num">${fmt(item.price1 ?? item.price ?? 0)}</div>
+            <div class="num">${fmt(item.gst_percent ?? item.gst ?? 0)}</div>
+            <div class="num">${fmt(item.available_stock ?? item.stock ?? 0)}</div>
+          </div>
+        `).join("")}
+      `;
+      box.style.display = "block";
+
+      Array.from(box.querySelectorAll(".suggestion-row[data-code]")).forEach(el => {
+        el.addEventListener("mousedown", (e) => {
+          e.preventDefault();
+          const item = results.find(x => String(x.item_code || "") === String(el.dataset.code || ""));
+          fillItem(rid, item);
+          box.style.display = "none";
+        });
+      });
+    }
+
+    function fillItem(rid, item){
+      if (!item) return;
+      const row = document.getElementById(`row_${rid}`);
+      row.querySelector(".code-inp").value = String(item.item_code || "").toUpperCase();
+      row.querySelector(".name-inp").value = String(item.item_name || "").toUpperCase();
+      row.querySelector(".brand-inp").value = String(item.brand || "").toUpperCase();
+      row.querySelector(".category-inp").value = String(item.category || "").toUpperCase();
+      row.querySelector(".model-inp").value = String(item.model_no || "").toUpperCase();
+      row.querySelector(".gst-inp").value = num(item.gst_percent ?? item.gst ?? 0);
+      row.querySelector(".hsn-inp").value = String(item.hsn_code || item.hsn || "").toUpperCase();
+      row.querySelector(".stock-inp").value = num(item.available_stock ?? item.stock ?? 0);
+
+      const p1 = num(item.price1 ?? item.price ?? 0);
+      const p2 = num(item.price2 ?? item.price1 ?? item.price ?? 0);
+      const p3 = num(item.price3 ?? item.price2 ?? item.price1 ?? item.price ?? 0);
+
+      row.querySelector(".p1-inp").value = p1;
+      row.querySelector(".p2-inp").value = p2;
+      row.querySelector(".p3-inp").value = p3;
+      row.querySelector(".selected-inp").value = "1";
+      row.classList.add("selected-row");
+      applySelectedOption(rid);
+      row.querySelector(".qty-inp").focus();
+    }
+
+    function fillRowFromPayload(rid, item){
+      const row = document.getElementById(`row_${rid}`);
+      row.querySelector(".code-inp").value = String(item.item_code || "").toUpperCase();
+      row.querySelector(".name-inp").value = String(item.item_name || "").toUpperCase();
+      row.querySelector(".brand-inp").value = String(item.brand || "").toUpperCase();
+      row.querySelector(".category-inp").value = String(item.category || "").toUpperCase();
+      row.querySelector(".model-inp").value = String(item.model_no || "").toUpperCase();
+      row.querySelector(".qty-inp").value = num(item.quantity || 1);
+      row.querySelector(".type-inp").value = String(item.price_type || 1);
+      row.querySelector(".gst-inp").value = num(item.gst_percent || 0);
+      row.querySelector(".hsn-inp").value = String(item.hsn_code || "").toUpperCase();
+      row.querySelector(".p1-inp").value = num(item.price1 || 0);
+      row.querySelector(".p2-inp").value = num(item.price2 || 0);
+      row.querySelector(".p3-inp").value = num(item.price3 || 0);
+      row.querySelector(".selected-inp").value = String(item.selected_option || "");
+      row.querySelector(".final-inp").value = num(item.final_price || 0);
+      row.querySelector(".stock-inp").value = num(item.stock_balance || 0);
+      calcRow(rid);
+    }
+
+    function applyTypePrice(rid){
+      const row = document.getElementById(`row_${rid}`);
+      const type = row.querySelector(".type-inp").value;
+      row.querySelector(".selected-inp").value = type;
+      applySelectedOption(rid);
+    }
+
+    function applySelectedOption(rid){
+      const row = document.getElementById(`row_${rid}`);
+      const selected = row.querySelector(".selected-inp").value;
+      const p1 = num(row.querySelector(".p1-inp").value);
+      const p2 = num(row.querySelector(".p2-inp").value);
+      const p3 = num(row.querySelector(".p3-inp").value);
+      let final = num(row.querySelector(".final-inp").value);
+
+      if (selected === "1") final = p1;
+      else if (selected === "2") final = p2;
+      else if (selected === "3") final = p3;
+
+      row.querySelector(".final-inp").value = final || "";
+      row.classList.toggle("selected-row", !!selected);
+      calcRow(rid);
+    }
+
+    function calcRow(rid){
+      const row = document.getElementById(`row_${rid}`);
+      if (!row) return;
+      const qty = num(row.querySelector(".qty-inp").value);
+      const gst = num(row.querySelector(".gst-inp").value);
+      const final = num(row.querySelector(".final-inp").value);
+
+      const finalGst = final + (final * gst / 100);
+      const total = qty * finalGst;
+
+      row.querySelector(".finalgst-inp").value = fmt(finalGst);
+      row.querySelector(".total-inp").value = fmt(total);
+      updateSummary();
+    }
+
+    function autoSelectBestPrices(){
+      document.querySelectorAll("#compare_body tr").forEach(row => {
+        const rid = row.id.replace("row_", "");
+        const prices = [
+          { key:"1", val:num(row.querySelector(".p1-inp").value) },
+          { key:"2", val:num(row.querySelector(".p2-inp").value) },
+          { key:"3", val:num(row.querySelector(".p3-inp").value) }
+        ].filter(x => x.val > 0);
+
+        if (!prices.length) return;
+        prices.sort((a,b) => a.val - b.val);
+        row.querySelector(".selected-inp").value = prices[0].key;
+        applySelectedOption(rid);
+      });
+    }
+
+    function filterGridRows(){
+      const q = normalizeSearchText(document.getElementById("global_search").value || "");
+      document.querySelectorAll("#compare_body tr").forEach(row => {
+        const code = normalizeSearchText(row.querySelector(".code-inp")?.value || "");
+        const name = normalizeSearchText(row.querySelector(".name-inp")?.value || "");
+        row.style.display = !q || code.includes(q) || name.includes(q) ? "" : "none";
+      });
+    }
+
+    function refreshSerials(){
+      Array.from(document.querySelectorAll("#compare_body tr")).forEach((tr, idx) => {
+        tr.querySelector(".slno").textContent = idx + 1;
+      });
+    }
+
+    function updateSummary(){
+      const rows = Array.from(document.querySelectorAll("#compare_body tr"));
+      let qty = 0, sub = 0, gst = 0, total = 0;
+      rows.forEach(row => {
+        const q = num(row.querySelector(".qty-inp")?.value);
+        const fp = num(row.querySelector(".final-inp")?.value);
+        const gp = num(row.querySelector(".gst-inp")?.value);
+        qty += q;
+        sub += q * fp;
+        gst += q * fp * gp / 100;
+        total += num(row.querySelector(".total-inp")?.value);
+      });
+      document.getElementById("sum_rows").textContent = rows.length;
+      document.getElementById("sum_qty").textContent = fmt(qty);
+      document.getElementById("sum_sub").textContent = fmt(sub);
+      document.getElementById("sum_gst").textContent = fmt(gst);
+      document.getElementById("sum_total").textContent = fmt(total);
+    }
+
+    // ================================
+    // 9) SAVE / LOAD COMPARE
+    // ================================
+    function collectHeader(){
+      return {
+        compare_date: document.getElementById("compare_date").value || null,
+        compare_number: Number(document.getElementById("compare_no").value || 0),
+        series_code: String(document.getElementById("series_code").value || "CMP").toUpperCase(),
+        quotation_series_code: String(document.getElementById("quotation_series_code").value || "").toUpperCase(),
+        customer_name: String(document.getElementById("cust_name").value || "").toUpperCase(),
+        customer_mobile: String(document.getElementById("cust_mobile").value || ""),
+        gst_number: String(document.getElementById("cust_gst").value || "").toUpperCase(),
+        address: String(document.getElementById("cust_address").value || "").toUpperCase(),
+        salesman: String(document.getElementById("salesman").value || "").toUpperCase(),
+        remarks: String(document.getElementById("remarks").value || "").trim(),
+        total_amount: num(document.getElementById("sum_total").textContent),
+        item_count: document.querySelectorAll("#compare_body tr").length
+      };
+    }
+
+    function collectItems(){
+      const items = [];
+      document.querySelectorAll("#compare_body tr").forEach(row => {
+        const itemCode = String(row.querySelector(".code-inp")?.value || "").trim().toUpperCase();
+        const itemName = String(row.querySelector(".name-inp")?.value || "").trim().toUpperCase();
+        if (!itemCode && !itemName) return;
+        items.push({
+          item_code: itemCode,
+          item_name: itemName,
+          brand: String(row.querySelector(".brand-inp")?.value || "").trim().toUpperCase(),
+          category: String(row.querySelector(".category-inp")?.value || "").trim().toUpperCase(),
+          model_no: String(row.querySelector(".model-inp")?.value || "").trim().toUpperCase(),
+          quantity: num(row.querySelector(".qty-inp")?.value),
+          price_type: String(row.querySelector(".type-inp")?.value || "1"),
+          gst_percent: num(row.querySelector(".gst-inp")?.value),
+          hsn_code: String(row.querySelector(".hsn-inp")?.value || "").trim().toUpperCase(),
+          price1: num(row.querySelector(".p1-inp")?.value),
+          price2: num(row.querySelector(".p2-inp")?.value),
+          price3: num(row.querySelector(".p3-inp")?.value),
+          selected_option: String(row.querySelector(".selected-inp")?.value || ""),
+          final_price: num(row.querySelector(".final-inp")?.value),
+          final_price_gst: num(row.querySelector(".finalgst-inp")?.value),
+          line_total: num(row.querySelector(".total-inp")?.value),
+          stock_balance: num(row.querySelector(".stock-inp")?.value)
+        });
+      });
+      return items;
+    }
+
+    async function saveCompareSheet(){
+      try {
+        const head = collectHeader();
+        const items = collectItems();
+
+        if (!head.customer_name) throw new Error("Customer name is required");
+        if (!items.length) throw new Error("Add at least one item");
+
+        let compareId;
+        if (compareEditingId) {
+          const { data, error } = await sb
+            .from("quotation_compare_details")
+            .update(head)
+            .eq("id", compareEditingId)
+            .select()
+            .single();
+          if (error) throw error;
+          compareId = data.id;
+          const del = await sb.from("quotation_compare_item_details").delete().eq("compare_id", compareId);
+          if (del.error) throw del.error;
+        } else {
+          const { data, error } = await sb
+            .from("quotation_compare_details")
+            .insert([head])
+            .select()
+            .single();
+          if (error) throw error;
+          compareId = data.id;
+          compareEditingId = compareId;
+        }
+
+        const payload = items.map((it, idx) => ({ ...it, compare_id: compareId, row_no: idx + 1 }));
+        const ins = await sb.from("quotation_compare_item_details").insert(payload);
+        if (ins.error) throw ins.error;
+
+        alert(`Compare sheet saved successfully. Compare ID: ${compareId}`);
+        await fetchNextCompareNumber();
+      } catch (err) {
+        console.error(err);
+        alert(err.message || "Save failed");
+      }
+    }
+
+    async function loadComparePrompt(){
+      const compareNo = prompt("Enter compare number to load:");
+      if (!compareNo) return;
+      await loadCompareByNumber(compareNo);
+    }
+
+    async function loadCompareByNumber(compareNo){
+      try {
+        const { data: head, error } = await sb
+          .from("quotation_compare_details")
+          .select("*")
+          .eq("compare_number", Number(compareNo))
+          .order("id", { ascending:false })
+          .limit(1)
+          .maybeSingle();
+        if (error) throw error;
+        if (!head) throw new Error("Compare sheet not found");
+
+        const { data: items, error: itemErr } = await sb
+          .from("quotation_compare_item_details")
+          .select("*")
+          .eq("compare_id", head.id)
+          .order("row_no", { ascending:true });
+        if (itemErr) throw itemErr;
+
+        resetPage(false);
+        compareEditingId = head.id;
+        document.getElementById("compare_date").value = head.compare_date || "";
+        document.getElementById("compare_no").value = head.compare_number || "";
+        document.getElementById("series_code").value = head.series_code || "CMP";
+        document.getElementById("quotation_series_code").value = head.quotation_series_code || "";
+        document.getElementById("cust_name").value = head.customer_name || "";
+        document.getElementById("cust_mobile").value = head.customer_mobile || "";
+        document.getElementById("cust_gst").value = head.gst_number || "";
+        document.getElementById("cust_address").value = head.address || "";
+        document.getElementById("salesman").value = head.salesman || "";
+        document.getElementById("remarks").value = head.remarks || "";
+
+        (items || []).forEach((it, idx) => addNewRow(idx === 0, it));
+        refreshSerials();
+        updateSummary();
+      } catch (err) {
+        console.error(err);
+        alert(err.message || "Load failed");
+      }
+    }
+
+    // ================================
+    // 10) CREATE QUOTATION
+    // ================================
+    async function createQuotationFromSelected(){
+      try {
+        const head = collectHeader();
+        const allItems = collectItems();
+        const items = allItems.filter(it => it.item_code && it.final_price > 0);
+
+        if (!head.customer_name) throw new Error("Customer name is required");
+        if (!items.length) throw new Error("No selected/finalized items found");
+
+        const quotationSeries = String(document.getElementById("quotation_series_code").value || "").toUpperCase();
+        if (!quotationSeries) throw new Error("Select quotation series");
+
+        const nextQuotationNo = await fetchNextQuotationNumber(quotationSeries);
+        const insertHead = {
+          quotation_number: nextQuotationNo,
+          quotation_date: head.compare_date,
+          customer_name: head.customer_name,
+          customer_mobile: head.customer_mobile,
+          gst_number: head.gst_number,
+          address: head.address,
+          quotation_amount: items.reduce((s, x) => s + num(x.line_total), 0),
+          total_amount: items.reduce((s, x) => s + num(x.line_total), 0),
+          series_code: quotationSeries,
+          salesman: head.salesman,
+          remarks: `CREATED FROM COMPARE NO ${head.compare_number}${head.remarks ? ' - ' + head.remarks : ''}`
+        };
+
+        const { data: quotation, error } = await sb
+          .from("quotation_details")
+          .insert([insertHead])
+          .select()
+          .single();
+        if (error) throw error;
+
+        const itemPayload = items.map(it => ({
+          quotation_id: quotation.id,
+          item_code: it.item_code,
+          item_name: it.item_name,
+          quantity: it.quantity,
+          price: it.final_price,
+          sales_price_gst: it.final_price_gst,
+          gst_percent: it.gst_percent,
+          hsn_code: it.hsn_code,
+          total: it.line_total,
+          price_type: it.price_type
+        }));
+
+        const ins = await sb.from("quotation_item_details").insert(itemPayload);
+        if (ins.error) throw ins.error;
+
+        const updSeries = await updateBillSeriesNumber(quotationSeries, nextQuotationNo);
+        if (updSeries?.error) throw updSeries.error;
+
+        alert(`Quotation created successfully. Quotation No: ${nextQuotationNo}`);
+      } catch (err) {
+        console.error(err);
+        alert(err.message || "Quotation creation failed");
+      }
+    }
+
+    async function fetchNextQuotationNumber(seriesCode){
+      const { data, error } = await sb
+        .from("bill_series")
+        .select("bill_number")
+        .eq("series_code", seriesCode)
+        .maybeSingle();
+      if (error) throw error;
+      return Number(data?.bill_number || 0) + 1;
+    }
+
+    async function updateBillSeriesNumber(seriesCode, billNo){
+      return await sb
+        .from("bill_series")
+        .update({ bill_number: billNo })
+        .eq("series_code", seriesCode);
+    }
+
+    // ================================
+    // 11) KEYBOARD NAVIGATION
+    // ================================
+    function setupKeyboardNavigation(){
+      document.addEventListener("keydown", function(e){
+        const active = document.activeElement;
+        if (!active) return;
+        if (!(active.matches("input, select, textarea"))) return;
+        const row = active.closest("tr");
+        if (!row) return;
+
+        const openBox = row.querySelector(".stock-suggestions");
+        if (openBox && openBox.style.display === "block" && (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "Enter")) {
+          const rows = Array.from(openBox.querySelectorAll(".suggestion-row[data-code]"));
+          if (!rows.length) return;
+          let idx = rows.findIndex(r => r.classList.contains("active"));
+          if (idx < 0) idx = 0;
+
+          if (e.key === "ArrowDown") {
+            e.preventDefault();
+            idx = Math.min(rows.length - 1, idx + 1);
+            rows.forEach(r => r.classList.remove("active"));
+            rows[idx].classList.add("active");
+            rows[idx].scrollIntoView({ block:"nearest" });
+            return;
+          }
+          if (e.key === "ArrowUp") {
+            e.preventDefault();
+            idx = Math.max(0, idx - 1);
+            rows.forEach(r => r.classList.remove("active"));
+            rows[idx].classList.add("active");
+            rows[idx].scrollIntoView({ block:"nearest" });
+            return;
+          }
+          if (e.key === "Enter") {
+            e.preventDefault();
+            rows[idx].dispatchEvent(new MouseEvent("mousedown", { bubbles:true }));
+            return;
+          }
+        }
+
+        if (e.key === "Enter") {
+          e.preventDefault();
+          moveFocus(row, active, e.shiftKey ? -1 : 1);
+        }
+      });
+    }
+
+    function moveFocus(row, active, direction){
+      const fields = getRowInputs(row);
+      const idx = fields.indexOf(active);
+      if (idx === -1) return;
+      const target = fields[idx + direction];
+      if (target) {
+        target.focus();
+        target.select?.();
+        return;
+      }
+
+      const allRows = Array.from(document.querySelectorAll("#compare_body tr"));
+      const rowIdx = allRows.indexOf(row);
+      const nextRow = allRows[rowIdx + (direction > 0 ? 1 : -1)];
+      if (nextRow) {
+        const nextFields = getRowInputs(nextRow);
+        const fallback = nextFields[Math.max(0, Math.min(idx, nextFields.length - 1))] || nextFields[0];
+        fallback?.focus();
+        fallback?.select?.();
+      } else if (direction > 0) {
+        addNewRow(true);
+      }
+    }
+
+    function getRowInputs(row){
+      return Array.from(row.querySelectorAll(".code-inp,.name-inp,.qty-inp,.type-inp,.p1-inp,.p2-inp,.p3-inp,.selected-inp,.final-inp"));
+    }
+
+    // ================================
+    // 12) RESET / UTILS
+    // ================================
+    function resetPage(fetchNo = true){
+      compareEditingId = null;
+      currentRowId = 0;
+      document.getElementById("compare_body").innerHTML = "";
+      document.getElementById("cust_name").value = "";
+      document.getElementById("cust_mobile").value = "";
+      document.getElementById("cust_gst").value = "";
+      document.getElementById("cust_address").value = "";
+      document.getElementById("salesman").value = "";
+      document.getElementById("remarks").value = "";
+      document.getElementById("compare_date").value = new Date().toISOString().split("T")[0];
+      addNewRow(true);
+      updateSummary();
+      if (fetchNo) fetchNextCompareNumber();
+    }
+
+    function uppercaseInput(el){
+      el.addEventListener("input", () => {
+        const start = el.selectionStart;
+        const end = el.selectionEnd;
+        el.value = String(el.value || "").toUpperCase();
+        if (typeof start === "number" && typeof end === "number") el.setSelectionRange(start, end);
+      });
+    }
+
+    function num(v){
+      const n = parseFloat(v);
+      return Number.isFinite(n) ? n : 0;
+    }
+
+    function fmt(v){
+      return num(v).toFixed(2).replace(/\.00$/, ".00");
+    }
+
+    function escapeHtml(value){
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+  </script>
+</body>
+</html>

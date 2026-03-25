@@ -879,7 +879,7 @@ body.dashboard-page {
 
   <div id="overlay" class="overlay"></div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const supabaseUrl = "https://gqxczzijntbvtlmmzppt.supabase.co";
 const supabaseKey = "sb_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs";
@@ -887,61 +887,85 @@ const sb = supabase.createClient(supabaseUrl, supabaseKey);
 
 document.addEventListener("DOMContentLoaded", async () => {
   setupSidebar();
-  await checkUserAccess();   // 🔥 NEW
+  await checkUserAccess();
   await loadUserInfo();
-  applyRolePermissions();    // 🔥 NEW
+  applyRolePermissions();
   await loadTodayDashboardSummary();
 });
-
 
 // ===============================
 // 🔐 CHECK LOGIN + APPROVAL
 // ===============================
 async function checkUserAccess() {
-  const { data } = await sb.auth.getUser();
-  const user = data?.user;
+  try {
+    const { data, error } = await sb.auth.getUser();
 
-  if (!user) {
+    if (error) {
+      console.error("Auth error:", error);
+      window.location.href = "index.html";
+      return;
+    }
+
+    const user = data?.user;
+
+    if (!user) {
+      window.location.href = "index.html";
+      return;
+    }
+
+    const { data: profile, error: profileError } = await sb
+      .from("user_profiles")
+      .select("role, approved, full_name, email")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (profileError) {
+      console.error("Profile error:", profileError);
+      alert("Failed to load user profile.");
+      await sb.auth.signOut();
+      localStorage.clear();
+      window.location.href = "index.html";
+      return;
+    }
+
+    if (!profile || !profile.approved) {
+      alert("Your account is not approved yet.");
+      await sb.auth.signOut();
+      localStorage.clear();
+      window.location.href = "index.html";
+      return;
+    }
+
+    localStorage.setItem("role", profile.role || "");
+    localStorage.setItem("username", profile.full_name || profile.email || "User");
+  } catch (err) {
+    console.error("checkUserAccess error:", err);
     window.location.href = "index.html";
-    return;
   }
-
-  const { data: profile } = await sb
-    .from("user_profiles")
-    .select("role, approved")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (!profile || !profile.approved) {
-    alert("Your account is not approved yet.");
-    await sb.auth.signOut();
-    localStorage.clear();
-    window.location.href = "index.html";
-    return;
-  }
-
-  // Save fresh role to localStorage
-  localStorage.setItem("role", profile.role);
 }
-
 
 // ===============================
 // 👤 LOAD USER INFO
 // ===============================
 async function loadUserInfo() {
   const username = localStorage.getItem("username") || "User";
-  const role = (localStorage.getItem("role") || "PENDING");
+  const role = localStorage.getItem("role") || "PENDING";
 
-  document.getElementById("welcome").innerText = `Welcome, ${username}`;
+  const welcomeEl = document.getElementById("welcome");
+  const roleBadgeEl = document.getElementById("userRoleBadge");
 
-  // Format role nicely
+  if (welcomeEl) {
+    welcomeEl.innerText = `Welcome, ${username}`;
+  }
+
   const formattedRole = role
     .toLowerCase()
     .replace(/\b\w/g, c => c.toUpperCase());
 
-  document.getElementById("userRoleBadge").innerText = formattedRole;
+  if (roleBadgeEl) {
+    roleBadgeEl.innerText = formattedRole;
+  }
 }
-
 
 // ===============================
 // 🔥 ROLE PERMISSIONS
@@ -949,26 +973,26 @@ async function loadUserInfo() {
 function applyRolePermissions() {
   const role = (localStorage.getItem("role") || "").toUpperCase();
 
-  // USER SETTINGS (only OWNER + ADMIN)
   if (role !== "OWNER" && role !== "ADMIN") {
     const userSettingsCard = document.querySelector('[onclick*="users.html"]');
     if (userSettingsCard) userSettingsCard.style.display = "none";
   }
 
-  // CREATE MENU (only ADMIN / OWNER / MANAGER)
   if (!["OWNER", "ADMIN", "MANAGER"].includes(role)) {
     const createMenu = document.getElementById("createMenu");
-    if (createMenu) createMenu.parentElement.style.display = "none";
+    if (createMenu && createMenu.parentElement) {
+      createMenu.parentElement.style.display = "none";
+    }
   }
 
-  // PURCHASE ACCESS
   if (!["OWNER", "ADMIN", "MANAGER", "SALES & PURCHASE"].includes(role)) {
-    document.querySelectorAll('[href="purchasenew.html"]').forEach(el => el.parentElement.style.display = "none");
+    document.querySelectorAll('[href="purchasenew.html"]').forEach(el => {
+      if (el.parentElement) el.parentElement.style.display = "none";
+    });
   }
 
-  // REPORTS ACCESS (restrict for salesman)
   if (role === "SALES MAN") {
-    document.querySelectorAll('.has-submenu').forEach(menu => {
+    document.querySelectorAll(".has-submenu").forEach(menu => {
       if (menu.innerText.includes("Reports")) {
         menu.style.display = "none";
       }
@@ -976,19 +1000,18 @@ function applyRolePermissions() {
   }
 }
 
-
 // ===============================
 // 🚪 LOGOUT
 // ===============================
-document.getElementById("logout").addEventListener("click", async () => {
+document.getElementById("logout")?.addEventListener("click", async (e) => {
+  e.preventDefault();
   await sb.auth.signOut();
   localStorage.clear();
   window.location.href = "index.html";
 });
 
-
 // ===============================
-// 📊 EXISTING FUNCTIONS (UNCHANGED)
+// 📂 SIDEBAR
 // ===============================
 function setupSidebar() {
   document.querySelectorAll(".has-submenu > .menu-link").forEach(link => {
@@ -1002,89 +1025,58 @@ function setupSidebar() {
   const sidebar = document.getElementById("sidebar");
   const overlay = document.getElementById("overlay");
 
-  if (mobileMenuBtn) {
-    mobileMenuBtn.addEventListener("click", () => {
-      sidebar.classList.toggle("mobile-open");
-      overlay.classList.toggle("show");
-    });
-  }
+  mobileMenuBtn?.addEventListener("click", () => {
+    sidebar?.classList.toggle("mobile-open");
+    overlay?.classList.toggle("show");
+  });
 
-  if (overlay) {
-    overlay.addEventListener("click", () => {
-      sidebar.classList.remove("mobile-open");
-      overlay.classList.remove("show");
-    });
-  }
+  overlay?.addEventListener("click", () => {
+    sidebar?.classList.remove("mobile-open");
+    overlay?.classList.remove("show");
+  });
 }
 
-
 // ===============================
-// 📅 DATE RANGE
-// ===============================
-function getTodayRange() {
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-
-  const end = new Date();
-  end.setHours(23, 59, 59, 999);
-
-  return {
-    startIso: start.toISOString(),
-    endIso: end.toISOString(),
-    dateOnly: start.toISOString().split("T")[0]
-  };
-}
-
-
-// ===============================
-// 💰 DASHBOARD SUMMARY (UNCHANGED)
+// 💰 DASHBOARD SUMMARY (RPC BASED)
 // ===============================
 async function loadTodayDashboardSummary() {
-  const { dateOnly } = getTodayRange();
+  try {
+    const { data, error } = await sb.rpc("get_today_dashboard_summary");
 
-  let todaySales = 0;
-  let todayReceipt = 0;
-  let todaySalesReturn = 0;
-  let todayPayment = 0;
-  let pendingPayments = 0;
-  let pendingReturns = 0;
+    if (error) {
+      console.error("Dashboard summary RPC error:", error);
+      alert("Failed to load today's dashboard summary.");
+      return;
+    }
 
-  const { data: sales } = await sb.from("sales_details").select("invoice_amount").eq("bill_date", dateOnly);
-  todaySales = (sales || []).reduce((s, r) => s + Number(r.invoice_amount || 0), 0);
+    const row = Array.isArray(data) ? data[0] : data;
 
-  const { data: receipt } = await sb.from("cash_transactions").select("amount").eq("txn_date", dateOnly).eq("txn_type", "receipt");
-  todayReceipt = (receipt || []).reduce((s, r) => s + Number(r.amount || 0), 0);
+    const todaySales = Number(row?.today_sales || 0);
+    const todayReceipt = Number(row?.today_receipt || 0);
+    const todaySalesReturn = Number(row?.today_sales_return || 0);
+    const todayPayment = Number(row?.today_payment || 0);
+    const pendingPayments = Number(row?.pending_payments || 0);
+    const pendingReturns = Number(row?.pending_returns || 0);
+    const todayBalance = Number(row?.today_balance || 0);
 
-  const { data: payment } = await sb.from("cash_transactions").select("amount")
-    .eq("txn_date", dateOnly)
-    .eq("txn_type", "payment")
-    .eq("approval_status", "approved");
-  todayPayment = (payment || []).reduce((s, r) => s + Number(r.amount || 0), 0);
+    setText("todaySales", formatCurrency(todaySales));
+    setText("todayReceipt", formatCurrency(todayReceipt));
+    setText("todaySalesReturn", formatCurrency(todaySalesReturn));
+    setText("todayPayment", formatCurrency(todayPayment));
+    setText("todayBalance", formatCurrency(todayBalance));
+    setText("pendingApprovals", pendingPayments + pendingReturns);
+  } catch (err) {
+    console.error("loadTodayDashboardSummary error:", err);
+    alert("Unexpected error while loading dashboard.");
+  }
+}
 
-  const { data: returns } = await sb.from("sales_return_details")
-    .select("total_return_amount")
-    .eq("is_accepted", true)
-    .gte("return_date", dateOnly + "T00:00:00")
-    .lte("return_date", dateOnly + "T23:59:59.999");
-
-  todaySalesReturn = (returns || []).reduce((s, r) => s + Number(r.total_return_amount || 0), 0);
-
-  const { data: pendingPay } = await sb.from("cash_transactions").select("id")
-    .eq("txn_type", "payment").eq("approval_status", "pending");
-
-  pendingPayments = (pendingPay || []).length;
-
-  const { data: pendingRet } = await sb.from("sales_return_details").select("id").eq("is_accepted", false);
-  pendingReturns = (pendingRet || []).length;
-
-  const todayBalance = todaySales + todayReceipt - todaySalesReturn - todayPayment;
-
-  document.getElementById("todaySales").innerText = formatCurrency(todaySales);
-  document.getElementById("todayReceipt").innerText = formatCurrency(todayReceipt);
-  document.getElementById("todaySalesReturn").innerText = formatCurrency(todaySalesReturn);
-  document.getElementById("todayPayment").innerText = formatCurrency(todayPayment);
-  document.getElementById("todayBalance").innerText = formatCurrency(todayBalance);
-  document.getElementById("pendingApprovals").innerText = pendingPayments + pendingReturns;
+// ===============================
+// 🧰 HELPERS
+// ===============================
+function setText(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.innerText = value;
 }
 
 function formatCurrency(value) {

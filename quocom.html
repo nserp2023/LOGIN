@@ -5,279 +5,114 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>VAJRA LIGHTS - Compare Quotation</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabaseClient.js"></script>
-    <script src="page_permissions.js"></script>
+  <script src="supabaseClient.js"></script>
+  <script src="page_permissions.js"></script>
   <style>
     :root{
-      --primary:#1d4ed8;
-      --primary-2:#2563eb;
-      --accent:#059669;
-      --danger:#dc2626;
-      --warn:#d97706;
-      --bg:#f8fafc;
-      --card:#ffffff;
-      --text:#0f172a;
-      --muted:#64748b;
-      --border:#cbd5e1;
-      --soft:#e2e8f0;
-      --row:#f8fafc;
-      --row2:#eff6ff;
-      --good:#ecfdf5;
-      --good-b:#86efac;
-      --shadow:0 10px 25px rgba(15,23,42,.08);
+      --primary:#60a5fa;
+      --primary-soft:#0f1b2d;
+      --accent:#34d399;
+      --danger:#f87171;
+      --card:#0f172a;
+      --card-2:#111827;
+      --text:#e5eefc;
+      --muted:#93a4bf;
+      --border:#23324a;
+      --soft:#1a2740;
+      --shadow:0 12px 32px rgba(0,0,0,.35);
       --radius:16px;
+      --brand1:#0f213d;
+      --brand2:#10281e;
+      --brand3:#2b1d10;
+      --header-h:210px;
     }
     *{box-sizing:border-box}
-    body{
+    html,body{
       margin:0;
-      font-family:Segoe UI, Roboto, Arial, sans-serif;
+      font-family:Segoe UI,Roboto,Arial,sans-serif;
       color:var(--text);
-      background:linear-gradient(rgba(255,255,255,.93), rgba(255,255,255,.95)), url('background.jpg') center/cover fixed;
+      background:
+        radial-gradient(circle at top left, rgba(37,99,235,.12), transparent 28%),
+        radial-gradient(circle at top right, rgba(16,185,129,.10), transparent 24%),
+        linear-gradient(180deg, #020617 0%, #0b1120 45%, #111827 100%);
       min-height:100vh;
+      text-transform:uppercase;
     }
-    .page{
-      max-width:1700px;
-      margin:0 auto;
-      padding:14px;
-    }
+    input,select,textarea,button{font-family:inherit}
+    .page{max-width:1880px;margin:0 auto;padding:10px 12px 16px;}
     .topbar{
-      display:flex;
-      gap:12px;
-      align-items:center;
-      justify-content:space-between;
-      flex-wrap:wrap;
-      margin-bottom:12px;
+      display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;
+      padding:10px 12px;margin-bottom:10px;background:rgba(15,23,42,.92);backdrop-filter:blur(8px);
+      border:1px solid var(--soft);border-radius:18px;box-shadow:var(--shadow);
+      position:sticky;top:8px;z-index:50;
     }
-    .title-wrap h1{
-      margin:0;
-      font-size:28px;
-      letter-spacing:.3px;
-    }
-    .title-wrap p{
-      margin:4px 0 0;
-      color:var(--muted);
-      font-size:13px;
-    }
-    .actions{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-    }
-    .card{
-      background:var(--card);
-      border:1px solid var(--soft);
-      border-radius:var(--radius);
-      box-shadow:var(--shadow);
-      overflow:hidden;
-      margin-bottom:12px;
-    }
+    .title-wrap h1{margin:0;font-size:24px;letter-spacing:.5px;line-height:1.1}
+    .title-wrap p{margin:3px 0 0;color:var(--muted);font-size:12px;text-transform:none}
+    .actions{display:flex;gap:8px;flex-wrap:wrap}
+    .card{background:linear-gradient(180deg,var(--card),var(--card-2));border:1px solid var(--soft);border-radius:18px;box-shadow:var(--shadow);overflow:hidden;margin-bottom:10px;}
     .card-head{
-      padding:12px 14px;
-      border-bottom:1px solid var(--soft);
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap:10px;
-      flex-wrap:wrap;
-      background:linear-gradient(180deg,#fff,#f8fbff);
+      padding:10px 12px;border-bottom:1px solid var(--soft);display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;
+      background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.01));
     }
-    .card-head h2{
-      margin:0;
-      font-size:18px;
+    .card-head h2{margin:0;font-size:16px;letter-spacing:.4px}
+    .card-body{padding:10px 12px}
+    .compact-grid{display:grid;grid-template-columns:130px 130px 130px 130px 1.2fr 140px 140px 1.1fr 130px;gap:8px;align-items:end}
+    .field{display:flex;flex-direction:column;gap:5px;position:relative}
+    .field label{font-size:11px;font-weight:800;color:#b7c6dc;letter-spacing:.45px}
+    .field input,.field select,.field textarea{
+      width:100%;min-height:38px;border:1px solid var(--border);border-radius:11px;padding:8px 10px;outline:none;font-size:13px;background:#0b1220;color:var(--text);
     }
-    .card-body{padding:14px}
-    .grid{
-      display:grid;
-      grid-template-columns:repeat(6, minmax(0, 1fr));
-      gap:10px;
-    }
-    .field{display:flex;flex-direction:column;gap:6px; position:relative}
-    .field label{
-      font-size:12px;
-      font-weight:700;
-      color:#334155;
-      text-transform:uppercase;
-      letter-spacing:.4px;
-    }
-    .field input, .field select, .field textarea{
-      width:100%;
-      min-height:42px;
-      border:1px solid var(--border);
-      border-radius:12px;
-      padding:10px 12px;
-      outline:none;
-      font-size:14px;
-      background:#fff;
-    }
-    .field textarea{min-height:90px; resize:vertical}
-    .field input:focus, .field select:focus, .field textarea:focus{
-      border-color:var(--primary);
-      box-shadow:0 0 0 3px rgba(37,99,235,.12);
-    }
-    .span-2{grid-column:span 2}
-    .span-3{grid-column:span 3}
-    .span-6{grid-column:span 6}
-    button{
-      border:none;
-      border-radius:12px;
-      padding:10px 14px;
-      font-size:14px;
-      font-weight:700;
-      cursor:pointer;
-      transition:.15s ease;
-    }
+    .field textarea{min-height:54px;resize:vertical}
+    .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(96,165,250,.14)}
+    .readonly{background:#0a1020;color:#c6d3e6}
+    .brands-grid{display:grid;grid-template-columns:repeat(3, minmax(0,1fr));gap:8px;margin-top:8px}
+    .brand-card{border:1px solid var(--soft);border-radius:14px;padding:10px}
+    .brand-card.brand-1{background:var(--brand1)} .brand-card.brand-2{background:var(--brand2)} .brand-card.brand-3{background:var(--brand3)}
+    .brand-title{font-size:12px;font-weight:900;letter-spacing:.5px;margin-bottom:8px}
+    .brand-head-row{display:grid;grid-template-columns:1.2fr .95fr;gap:8px}
+    .select-all-wrap{display:flex;gap:7px;align-items:center;margin-top:8px;font-size:11px;font-weight:800;color:#334155}
+    button{border:none;border-radius:11px;padding:9px 13px;font-size:13px;font-weight:800;cursor:pointer;transition:.15s ease;letter-spacing:.3px}
     button:hover{transform:translateY(-1px)}
-    .btn-primary{background:var(--primary);color:#fff}
-    .btn-accent{background:var(--accent);color:#fff}
-    .btn-soft{background:#eff6ff;color:var(--primary)}
-    .btn-warn{background:#fff7ed;color:var(--warn)}
-    .btn-danger{background:#fef2f2;color:var(--danger)}
-    .btn-dark{background:#0f172a;color:#fff}
-    .btn-outline{background:#fff;border:1px solid var(--border);color:#0f172a}
-    .toolbar{
-      display:flex;
-      justify-content:space-between;
-      gap:10px;
-      flex-wrap:wrap;
-      margin-bottom:10px;
-    }
-    .toolbar-left,.toolbar-right{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-    .toolbar input,.toolbar select{
-      min-height:40px;
-      border:1px solid var(--border);
-      border-radius:10px;
-      padding:8px 10px;
-      font-size:14px;
-      background:#fff;
-    }
-    .table-wrap{overflow:auto; border:1px solid var(--soft); border-radius:16px}
-    table{
-      width:100%;
-      min-width:1900px;
-      border-collapse:separate;
-      border-spacing:0;
-      background:#fff;
-    }
-    thead th{
-      position:sticky;
-      top:0;
-      z-index:5;
-      background:#eaf2ff;
-      color:#0f172a;
-      text-align:left;
-      font-size:12px;
-      text-transform:uppercase;
-      letter-spacing:.35px;
-      padding:10px 8px;
-      border-bottom:1px solid var(--soft);
-      white-space:nowrap;
-    }
-    tbody td{
-      padding:6px;
-      border-bottom:1px solid #eef2f7;
-      vertical-align:top;
-      background:#fff;
-    }
-    tbody tr:nth-child(even) td{background:#fcfdff}
-    tbody tr.selected-row td{background:var(--good)}
-    .slno{width:54px; text-align:center; font-weight:700}
-    .cell-input,.cell-select{
-      width:100%;
-      min-height:38px;
-      border:1px solid var(--border);
-      border-radius:10px;
-      padding:8px 10px;
-      font-size:14px;
-      background:#fff;
-      text-transform:uppercase;
-    }
-    .num{text-align:right}
-    .readonly{background:#f8fafc}
-    .small{font-size:12px;color:var(--muted)}
-    .suggestions{
-      position:absolute;
-      top:100%;
-      left:0;
-      width:min(980px, 94vw);
-      max-height:330px;
-      overflow:auto;
-      background:#fff;
-      border:1px solid var(--soft);
-      border-radius:14px;
-      box-shadow:0 16px 38px rgba(2,6,23,.16);
-      z-index:30;
-      display:none;
-      margin-top:4px;
-    }
-    .suggestion-row{
-      display:grid;
-      grid-template-columns:150px 1.4fr 110px 110px 110px 110px 90px 100px;
-      gap:8px;
-      padding:10px 12px;
-      border-bottom:1px solid #eef2f7;
-      cursor:pointer;
-      align-items:center;
-      font-size:13px;
-    }
-    .suggestion-row:hover,.suggestion-row.active{background:#eff6ff}
-    .suggestion-head{
-      position:sticky;
-      top:0;
-      background:#dbeafe;
-      font-weight:700;
-      z-index:2;
-    }
-    .badge{
-      display:inline-flex;
-      align-items:center;
-      padding:4px 8px;
-      border-radius:999px;
-      font-size:12px;
-      font-weight:700;
-    }
-    .b-blue{background:#dbeafe;color:#1d4ed8}
-    .b-green{background:#dcfce7;color:#166534}
-    .b-amber{background:#fef3c7;color:#92400e}
-    .summary{
-      display:grid;
-      grid-template-columns:repeat(5, minmax(0, 1fr));
-      gap:10px;
-    }
-    .sum-card{
-      padding:14px;
-      border:1px solid var(--soft);
-      border-radius:16px;
-      background:linear-gradient(180deg,#fff,#f8fbff);
-    }
-    .sum-card .k{font-size:12px;color:var(--muted);text-transform:uppercase;font-weight:700;letter-spacing:.4px}
-    .sum-card .v{margin-top:6px;font-size:24px;font-weight:800}
+    .btn-primary{background:linear-gradient(180deg,#3b82f6,#2563eb);color:#fff}
+    .btn-accent{background:linear-gradient(180deg,#10b981,#059669);color:#fff}
+    .btn-soft{background:#13233d;color:#bfdbfe}
+    .btn-danger{background:#34131a;color:#fecaca}
+    .btn-dark{background:#020617;color:#fff;border:1px solid #1e293b}
+    .btn-outline{background:#0b1220;border:1px solid var(--border);color:#dbe7fb}
     .help{
-      padding:12px 14px;
-      border-radius:14px;
-      background:#eff6ff;
-      border:1px solid #bfdbfe;
-      color:#1e3a8a;
-      font-size:13px;
+      padding:10px 12px;border-radius:13px;background:#0d223f;border:1px solid #1d4f91;color:#cfe3ff;font-size:12px;
+      text-transform:none;
     }
-    .footer-note{font-size:12px;color:var(--muted);margin-top:8px}
-    .pill-toggle{
-      display:flex; gap:6px; flex-wrap:wrap;
+    .toolbar{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:10px 0 8px}
+    .toolbar-left,.toolbar-right{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .toolbar input{min-height:38px;border:1px solid var(--border);border-radius:10px;padding:8px 10px;font-size:13px;background:#0b1220;color:var(--text);min-width:280px}
+    .table-shell{border:1px solid var(--soft);border-radius:18px;overflow:visible;background:#0b1220}
+    .table-wrap{overflow:auto;max-height:calc(100vh - var(--header-h));padding-bottom:130px;scroll-padding-bottom:140px;scroll-padding-top:70px;position:relative}
+    table{width:100%;min-width:2620px;border-collapse:separate;border-spacing:0;background:#0b1220}
+    thead th{
+      position:sticky;top:0;z-index:5;background:#10213b;color:#dbeafe;text-align:left;font-size:11px;
+      letter-spacing:.4px;padding:10px 8px;border-bottom:1px solid var(--soft);white-space:nowrap
     }
-    .pill-toggle button.active{background:var(--primary); color:#fff}
-    @media (max-width: 1200px){
-      .grid{grid-template-columns:repeat(3, minmax(0, 1fr))}
-      .span-6{grid-column:span 3}
-      .summary{grid-template-columns:repeat(2, minmax(0,1fr))}
-    }
-    @media (max-width: 768px){
-      .page{padding:10px}
-      .topbar{align-items:flex-start}
-      .grid{grid-template-columns:repeat(1, minmax(0, 1fr))}
-      .span-2,.span-3,.span-6{grid-column:span 1}
-      .summary{grid-template-columns:1fr}
-      .actions, .toolbar-left, .toolbar-right{width:100%}
-      .actions button, .toolbar-left > *, .toolbar-right > *{flex:1 1 auto}
-    }
+    tbody td{padding:5px;border-bottom:1px solid #162238;vertical-align:top;background:#0b1220}
+    tbody tr:nth-child(even) td{background:#0d1526}
+    tbody tr:hover td{background:#12203a}
+    .slno{width:50px;text-align:center;font-weight:800}
+    .cell-input,.cell-select{width:100%;min-height:36px;border:1px solid var(--border);border-radius:10px;padding:7px 9px;font-size:13px;background:#0a1220;color:var(--text)}
+    .num{text-align:right}
+    .brand-col-1{background:rgba(219,234,254,.16)} .brand-col-2{background:rgba(220,252,231,.16)} .brand-col-3{background:rgba(255,237,213,.20)} .final-col{background:#f8fafc}
+    .summary{display:grid;grid-template-columns:repeat(5, minmax(0,1fr));gap:10px;position:sticky;bottom:0;z-index:20;margin-top:10px;background:linear-gradient(180deg, rgba(2,6,23,0), rgba(2,6,23,.8) 35%, rgba(2,6,23,.95));padding-top:8px;padding-bottom:6px}
+    .sum-card,.brand-total-card{padding:12px 14px;border:1px solid var(--soft);border-radius:16px;box-shadow:var(--shadow);background:linear-gradient(180deg,#0f172a,#111827)}
+    .brand-total-card.brand-1{background:linear-gradient(180deg,#0f213d,#102742)} .brand-total-card.brand-2{background:linear-gradient(180deg,#10281e,#143222)} .brand-total-card.brand-3{background:linear-gradient(180deg,#2b1d10,#352312)}
+    .sum-card .k,.brand-total-card .k{font-size:11px;color:#9db0cc;font-weight:800;letter-spacing:.45px}
+    .sum-card .v,.brand-total-card .v{margin-top:5px;font-size:24px;font-weight:900;line-height:1}
+    .footer-note{font-size:11px;color:var(--muted);margin-top:8px;text-transform:none}
+    .suggestions{position:absolute;top:100%;left:0;width:min(1200px,96vw);max-height:330px;overflow:auto;background:#0b1220;border:1px solid var(--soft);border-radius:14px;box-shadow:0 16px 38px rgba(0,0,0,.45);z-index:200;display:none;margin-top:4px}
+    .suggestion-row{display:grid;gap:8px;padding:10px 12px;border-bottom:1px solid #eef2f7;cursor:pointer;align-items:center;font-size:12px}
+    .suggestion-row:hover,.suggestion-row.active{background:#11233f}.suggestion-head{position:sticky;top:0;background:#10213b;font-weight:800;z-index:2;color:#dbeafe}
+    .badge{display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:800}.b-blue{background:#11284c;color:#93c5fd}.b-green{background:#123624;color:#86efac}
+    .mini-note{font-size:11px;color:var(--muted);margin-top:6px;text-transform:none}
+    @media (max-width:1500px){.compact-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.summary{grid-template-columns:repeat(2,minmax(0,1fr))}.table-wrap{max-height:calc(100vh - 310px)}}
+    @media (max-width:900px){.brands-grid,.summary{grid-template-columns:1fr}.compact-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.toolbar input{min-width:unset;width:100%}.actions,.toolbar-left,.toolbar-right{width:100%}.actions button,.toolbar-left > *,.toolbar-right > *{flex:1 1 auto}.table-wrap{max-height:calc(100vh - 360px)}}
   </style>
 </head>
 <body>
@@ -285,185 +120,151 @@
     <div class="topbar">
       <div class="title-wrap">
         <h1>COMPARE QUOTATION</h1>
-        <p>Create comparison sheets, choose best prices, and convert them into quotation bills.</p>
+        <p>Compare 2 brands or 3 brands, save the compare sheet, and create separate normal quotation bills without changing your normal quotation page code.</p>
       </div>
       <div class="actions">
         <button class="btn-soft" id="btn_new">NEW</button>
         <button class="btn-primary" id="btn_save_compare">SAVE COMPARE</button>
-        <button class="btn-accent" id="btn_create_selected">CREATE QUOTATION FROM SELECTED</button>
+        <button class="btn-accent" id="btn_create_all_quotes">CREATE QUOTATIONS</button>
         <button class="btn-outline" id="btn_load_compare">LOAD COMPARE</button>
         <button class="btn-dark" id="btn_print">PRINT</button>
       </div>
     </div>
 
-    <div class="card">
+    <div class="card compact-header-card">
       <div class="card-head">
-        <h2>Comparison Header</h2>
-        <span class="badge b-blue">ITEM CODE = EXACT ID</span>
+        <h2>HEADER & BRANDS</h2>
+        <span class="badge b-blue">COMPACT VIEW</span>
       </div>
       <div class="card-body">
-        <div class="grid">
-          <div class="field">
-            <label for="compare_date">Compare Date</label>
-            <input id="compare_date" type="date" />
+        <div class="compact-grid">
+          <div class="field"><label for="compare_date">Compare Date</label><input id="compare_date" type="date" /></div>
+          <div class="field"><label for="compare_no">Compare No</label><input id="compare_no" type="text" readonly class="readonly" /></div>
+          <div class="field"><label for="series_code">Series Code</label><select id="series_code"></select></div>
+          <div class="field"><label for="quotation_series_code">Quotation Series</label><select id="quotation_series_code"></select></div>
+          <div class="field"><label for="cust_name">Customer Name</label><input id="cust_name" type="text" autocomplete="off" /></div>
+          <div class="field"><label for="cust_mobile">Mobile</label><input id="cust_mobile" type="text" autocomplete="off" /><div class="suggestions" id="mobile_suggestions"></div></div>
+          <div class="field"><label for="cust_gst">GST Number</label><input id="cust_gst" type="text" autocomplete="off" /></div>
+          <div class="field"><label for="cust_address">Address</label><input id="cust_address" type="text" autocomplete="off" /></div>
+          <div class="field"><label for="salesman">Salesman</label><select id="salesman"><option value="">SELECT</option><option>RAJU</option><option>SHAFI</option><option>VAJRA</option></select></div>
+        </div>
+        <div class="brands-grid">
+          <div class="brand-card brand-1">
+            <div class="brand-title">BRAND / QUOTE 1</div>
+            <div class="brand-head-row">
+              <div class="field"><input id="brand1_name" type="text" placeholder="TYPE BRAND NAME" /></div>
+              <div class="field"><select id="brand1_type"><option value="1">PRICE TYPE 1</option><option value="2">PRICE TYPE 2</option><option value="3">PRICE TYPE 3</option></select></div>
+            </div>
+            <label class="select-all-wrap"><input type="checkbox" id="brand1_select_all" /> SELECT ALL BRAND 1</label>
           </div>
-          <div class="field">
-            <label for="compare_no">Compare No</label>
-            <input id="compare_no" type="text" readonly class="readonly" />
+          <div class="brand-card brand-2">
+            <div class="brand-title">BRAND / QUOTE 2</div>
+            <div class="brand-head-row">
+              <div class="field"><input id="brand2_name" type="text" placeholder="TYPE BRAND NAME" /></div>
+              <div class="field"><select id="brand2_type"><option value="1">PRICE TYPE 1</option><option value="2">PRICE TYPE 2</option><option value="3">PRICE TYPE 3</option></select></div>
+            </div>
+            <label class="select-all-wrap"><input type="checkbox" id="brand2_select_all" /> SELECT ALL BRAND 2</label>
           </div>
-          <div class="field">
-            <label for="series_code">Series Code</label>
-            <select id="series_code"></select>
-          </div>
-          <div class="field">
-            <label for="quotation_series_code">Quotation Series</label>
-            <select id="quotation_series_code"></select>
-          </div>
-          <div class="field span-2">
-            <label for="cust_name">Customer Name</label>
-            <input id="cust_name" type="text" autocomplete="off" />
-          </div>
-          <div class="field">
-            <label for="cust_mobile">Customer Mobile</label>
-            <input id="cust_mobile" type="text" autocomplete="off" />
-            <div class="suggestions" id="mobile_suggestions"></div>
-          </div>
-          <div class="field">
-            <label for="cust_gst">GST Number</label>
-            <input id="cust_gst" type="text" autocomplete="off" />
-          </div>
-          <div class="field span-2">
-            <label for="cust_address">Address</label>
-            <input id="cust_address" type="text" autocomplete="off" />
-          </div>
-          <div class="field">
-            <label for="salesman">Salesman</label>
-            <select id="salesman">
-              <option value="">SELECT</option>
-              <option>RAJU</option>
-              <option>SHAFI</option>
-              <option>VAJRA</option>
-            </select>
-          </div>
-          <div class="field span-6">
-            <label for="remarks">Remarks</label>
-            <textarea id="remarks" placeholder="Comparison notes, vendor names, customer priorities, etc."></textarea>
+          <div class="brand-card brand-3">
+            <div class="brand-title">BRAND / QUOTE 3</div>
+            <div class="brand-head-row">
+              <div class="field"><input id="brand3_name" type="text" placeholder="TYPE BRAND NAME" /></div>
+              <div class="field"><select id="brand3_type"><option value="1">PRICE TYPE 1</option><option value="2">PRICE TYPE 2</option><option value="3">PRICE TYPE 3</option></select></div>
+            </div>
+            <label class="select-all-wrap"><input type="checkbox" id="brand3_select_all" /> SELECT ALL BRAND 3</label>
           </div>
         </div>
+        <div class="field" style="margin-top:8px"><label for="remarks">Remarks</label><textarea id="remarks" placeholder="NOTES"></textarea></div>
+        <div class="mini-note">UNUSED BRAND COLUMN CAN BE LEFT EMPTY. ALL INPUTS ON THIS PAGE STAY IN CAPITAL LETTER.</div>
       </div>
     </div>
 
     <div class="card">
       <div class="card-head">
-        <h2>Item Comparison Grid</h2>
-        <div class="pill-toggle" id="quick_filter_wrap">
-          <button class="btn-outline active" data-filter="ALL">ALL</button>
-          <button class="btn-outline" data-filter="MOBILE">MOBILE</button>
-          <button class="btn-outline" data-filter="CHARGER">CHARGER</button>
-          <button class="btn-outline" data-filter="CABLE">CABLE</button>
-          <button class="btn-outline" data-filter="ACCESSORY">ACCESSORY</button>
-        </div>
+        <h2>ITEM COMPARISON GRID</h2>
+        <span class="badge b-green">3 BRAND QUOTATIONS</span>
       </div>
       <div class="card-body">
-        <div class="help">
-          For similar items like <b>SAMSUNG MOBILE PHONE</b>, <b>SAMSUNG A3 MOBILE PHONE</b>, <b>SAMSUNG A5 MOBILE PHONE</b>, search by <b>item code</b> whenever possible. Search also works by item name with word matching, but item code is always the safest final identity.
-        </div>
+        <div class="help">THIS GRID IS THE MAIN WORK AREA. HEADER IS KEPT COMPACT SO USERS CAN SEE MORE ITEM ROWS. BRAND TOTALS AND SELECTED TOTAL STAY VISIBLE AND EASY TO READ.</div>
         <div class="toolbar" style="margin-top:10px;">
-          <div class="toolbar-left">
-            <button class="btn-soft" id="btn_add_row">+ ADD ROW</button>
-            <button class="btn-warn" id="btn_auto_best">AUTO SELECT BEST PRICE</button>
-          </div>
-          <div class="toolbar-right">
-            <input type="text" id="global_search" placeholder="Filter grid by code / name" />
-          </div>
+          <div class="toolbar-left"><button class="btn-soft" id="btn_add_row">+ ADD ROW</button></div>
+          <div class="toolbar-right"><input type="text" id="global_search" placeholder="Filter grid by base item / brand item / code" /></div>
         </div>
-
-        <div class="table-wrap">
+        <div class="table-shell"><div class="table-wrap">
           <table>
             <thead>
               <tr>
                 <th class="slno">#</th>
-                <th style="width:150px;">Item Code</th>
-                <th style="width:280px;">Item Name</th>
-                <th style="width:110px;">Brand</th>
-                <th style="width:120px;">Category</th>
-                <th style="width:110px;">Model</th>
+                <th style="width:240px;">Base Item</th>
                 <th style="width:90px;">Qty</th>
-                <th style="width:90px;">Type</th>
-                <th style="width:110px;">GST %</th>
-                <th style="width:130px;">HSN</th>
-                <th style="width:130px;">Price 1</th>
-                <th style="width:130px;">Price 2</th>
-                <th style="width:130px;">Price 3</th>
-                <th style="width:150px;">Selected</th>
-                <th style="width:150px;">Final Price</th>
-                <th style="width:150px;">Price + GST</th>
-                <th style="width:150px;">Line Total</th>
-                <th style="width:90px;">Stock</th>
+                <th class="brand-col-1" style="width:150px;">Brand 1 Code</th>
+                <th class="brand-col-1" style="width:260px;">Brand 1 Item</th>
+                <th class="brand-col-1" style="width:90px;">Type</th>
+                <th class="brand-col-1" style="width:130px;">Rate</th>
+                <th class="brand-col-1" style="width:150px;">Amount</th>
+                <th class="brand-col-1" style="width:110px;">Select</th>
+                <th class="brand-col-2" style="width:150px;">Brand 2 Code</th>
+                <th class="brand-col-2" style="width:260px;">Brand 2 Item</th>
+                <th class="brand-col-2" style="width:90px;">Type</th>
+                <th class="brand-col-2" style="width:130px;">Rate</th>
+                <th class="brand-col-2" style="width:150px;">Amount</th>
+                <th class="brand-col-2" style="width:110px;">Select</th>
+                <th class="brand-col-3" style="width:150px;">Brand 3 Code</th>
+                <th class="brand-col-3" style="width:260px;">Brand 3 Item</th>
+                <th class="brand-col-3" style="width:90px;">Type</th>
+                <th class="brand-col-3" style="width:130px;">Rate</th>
+                <th class="brand-col-3" style="width:150px;">Amount</th>
+                <th class="brand-col-3" style="width:110px;">Select</th>
+                <th class="final-col" style="width:130px;">Selected Brand</th>
+                <th class="final-col" style="width:160px;">Final Code</th>
+                <th class="final-col" style="width:260px;">Final Item</th>
+                <th class="final-col" style="width:100px;">Final Type</th>
+                <th class="final-col" style="width:140px;">Final Rate</th>
+                <th class="final-col" style="width:150px;">Line Total</th>
                 <th style="width:110px;">Action</th>
               </tr>
             </thead>
             <tbody id="compare_body"></tbody>
-          </table>
-        </div>
-        <div class="footer-note">Enter moves forward. Shift+Enter moves backward. On Final Price Enter, next row opens automatically.</div>
+          </table></div></div><div class="footer-note">Enter moves forward. Shift+Enter moves backward. Search suggestions use typed brand name + item name.</div>
       </div>
     </div>
 
     <div class="summary">
+      <div class="brand-total-card brand-1"><div class="k">Brand 1 Grand Total</div><div class="v" id="sum_brand1">0.00</div></div>
+      <div class="brand-total-card brand-2"><div class="k">Brand 2 Grand Total</div><div class="v" id="sum_brand2">0.00</div></div>
+      <div class="brand-total-card brand-3"><div class="k">Brand 3 Grand Total</div><div class="v" id="sum_brand3">0.00</div></div>
+      <div class="sum-card"><div class="k">Selected Grand Total</div><div class="v" id="sum_total">0.00</div></div>
       <div class="sum-card"><div class="k">Rows</div><div class="v" id="sum_rows">0</div></div>
-      <div class="sum-card"><div class="k">Items Qty</div><div class="v" id="sum_qty">0</div></div>
-      <div class="sum-card"><div class="k">Sub Total</div><div class="v" id="sum_sub">0.00</div></div>
-      <div class="sum-card"><div class="k">GST Total</div><div class="v" id="sum_gst">0.00</div></div>
-      <div class="sum-card"><div class="k">Grand Total</div><div class="v" id="sum_total">0.00</div></div>
     </div>
   </div>
 
   <script>
-    // ================================
-    // 1) SUPABASE
-    // ================================
-        const sb = window.sbcc; // supabase client from supabaseClient.js
-  document.addEventListener("DOMContentLoaded", async () => {
-  const ok = await requirePageAccess("sales");
-  if (!ok) return;
-  });
+    const sb = window.sbcc;
+    document.addEventListener("DOMContentLoaded", async () => {
+      const ok = await requirePageAccess("sales");
+      if (!ok) return;
+    });
 
-
-    // ================================
-    // 2) APP STATE
-    // ================================
     let stockData = [];
     let customerSuggestions = [];
     let currentRowId = 0;
     let compareEditingId = null;
-    let activeQuickFilter = "ALL";
-    let compareSeriesRows = [];
-    let quotationSeriesRows = [];
     let mobileTimer = null;
+    const BRAND_KEYS = [1,2,3];
 
-    // ================================
-    // 3) INIT
-    // ================================
     window.addEventListener("load", async () => {
+      document.querySelectorAll('input[type="text"], textarea').forEach(uppercaseInput);
       document.getElementById("compare_date").value = new Date().toISOString().split("T")[0];
       await ensureCompareTables();
-      await Promise.all([
-        loadSeriesDropdowns(),
-        loadStockData()
-      ]);
+      await Promise.all([loadSeriesDropdowns(), loadStockData()]);
       await fetchNextCompareNumber();
-      addNewRow(true);
       bindHeaderEvents();
       bindToolbarEvents();
       setupKeyboardNavigation();
+      addNewRow(true);
     });
 
-    // ================================
-    // 4) TABLE SETUP HELPER
-    // ================================
     async function ensureCompareTables(){
-      // Only checks table existence by reading 1 row; this page still needs SQL creation done once in Supabase.
       try {
         await sb.from("quotation_compare_details").select("id").limit(1);
         await sb.from("quotation_compare_item_details").select("id").limit(1);
@@ -472,564 +273,351 @@
       }
     }
 
-    // ================================
-    // 5) LOAD SERIES
-    // ================================
     async function loadSeriesDropdowns() {
       const compareSel = document.getElementById("series_code");
       const quoteSel = document.getElementById("quotation_series_code");
       compareSel.innerHTML = `<option value="CMP">CMP</option>`;
       quoteSel.innerHTML = `<option value="">SELECT QUOTATION SERIES</option>`;
-
-      const { data, error } = await sb
-        .from("bill_series")
-        .select("id, series_code, bill_number")
-        .order("series_code", { ascending: true });
-
-      if (error) {
-        console.error(error);
-        alert("Error loading bill series");
-        return;
-      }
-
-      compareSeriesRows = [{ series_code: "CMP", bill_number: 0 }];
-      quotationSeriesRows = [];
-
+      const { data, error } = await sb.from("bill_series").select("id, series_code, bill_number").order("series_code", { ascending:true });
+      if (error) return alert("Error loading bill series");
       (data || []).forEach(r => {
         const code = String(r.series_code || "").toUpperCase();
         if (!code) return;
         const opt = `<option value="${escapeHtml(code)}">${escapeHtml(code)}</option>`;
-
-        if (code.includes("QUO") || code.includes("QT") || code.includes("QUOT")) {
-          quoteSel.insertAdjacentHTML("beforeend", opt);
-          quotationSeriesRows.push(r);
-        }
+        if (code.includes("QUO") || code.includes("QT") || code.includes("QUOT")) quoteSel.insertAdjacentHTML("beforeend", opt);
       });
-
       if (quoteSel.options.length === 1 && data?.length) {
-        data.forEach(r => {
-          const code = String(r.series_code || "").toUpperCase();
-          quoteSel.insertAdjacentHTML("beforeend", `<option value="${escapeHtml(code)}">${escapeHtml(code)}</option>`);
-          quotationSeriesRows.push(r);
-        });
+        data.forEach(r => quoteSel.insertAdjacentHTML("beforeend", `<option value="${escapeHtml(String(r.series_code || '').toUpperCase())}">${escapeHtml(String(r.series_code || '').toUpperCase())}</option>`));
       }
-
       compareSel.value = "CMP";
       if (quoteSel.options.length > 1) quoteSel.selectedIndex = 1;
     }
 
     async function fetchNextCompareNumber() {
       const seriesCode = String(document.getElementById("series_code").value || "CMP").toUpperCase();
-      const { data, error } = await sb
-        .from("quotation_compare_details")
-        .select("compare_number")
-        .eq("series_code", seriesCode)
-        .order("compare_number", { ascending:false })
-        .limit(1)
-        .maybeSingle();
-
-      if (error && error.code !== "PGRST116") {
-        console.warn(error);
-      }
-
-      const nextNo = data?.compare_number ? Number(data.compare_number) + 1 : 1;
-      document.getElementById("compare_no").value = nextNo;
+      const { data } = await sb.from("quotation_compare_details").select("compare_number").eq("series_code", seriesCode).order("compare_number", { ascending:false }).limit(1).maybeSingle();
+      document.getElementById("compare_no").value = data?.compare_number ? Number(data.compare_number) + 1 : 1;
     }
 
-    // ================================
-    // 6) STOCK SEARCH
-    // ================================
     async function loadStockData() {
       let allItems = [];
       let from = 0;
       const pageSize = 1000;
-      let keepGoing = true;
-
-      while (keepGoing) {
-        const { data, error } = await sb
-          .from("stock_balance_view")
-          .select("*")
-          .range(from, from + pageSize - 1);
-
-        if (error) {
-          console.error(error);
-          alert("Error loading stock items");
-          return;
-        }
-
-        if (data?.length) {
-          allItems = allItems.concat(data);
-          from += pageSize;
-          if (data.length < pageSize) keepGoing = false;
-        } else {
-          keepGoing = false;
-        }
+      while (true) {
+        const { data, error } = await sb.from("stock_balance_view").select("*").range(from, from + pageSize - 1);
+        if (error) return alert("Error loading stock items");
+        if (!data?.length) break;
+        allItems = allItems.concat(data.map(item => ({
+          ...item,
+          brand: deriveBrand(item),
+          brand_text: normalizeSearchText(item.brand || item.company || item.make || deriveBrand(item) || ""),
+          item_text: normalizeSearchText(item.item_name || ""),
+          code_text: normalizeSearchText(item.item_code || "")
+        })));
+        if (data.length < pageSize) break;
+        from += pageSize;
       }
-
-      stockData = allItems.map(item => ({
-        ...item,
-        brand: extractBrand(item),
-        category: extractCategory(item),
-        model_no: extractModel(item)
-      }));
-      console.log("Loaded stock items:", stockData.length);
+      stockData = allItems;
     }
 
-    function normalizeSearchText(value) {
-      return String(value || "")
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, " ")
-        .replace(/\s+/g, " ")
-        .trim();
-    }
-
-    function extractBrand(item) {
-      return String(item.brand || item.company || item.make || item.item_name || "").split(" ")[0]?.toUpperCase() || "";
-    }
-
-    function extractCategory(item) {
-      const raw = String(item.category || item.group_name || item.item_name || "").toUpperCase();
-      if (raw.includes("MOBILE")) return "MOBILE";
-      if (raw.includes("CHARGER")) return "CHARGER";
-      if (raw.includes("CABLE")) return "CABLE";
-      if (raw.includes("ACCESSORY")) return "ACCESSORY";
-      if (raw.includes("LIGHT")) return "LIGHT";
-      if (raw.includes("FAN")) return "FAN";
-      return raw.split(" ")[0] || "";
-    }
-
-    function extractModel(item) {
-      const name = String(item.model_no || item.model || item.item_name || "").toUpperCase();
-      const parts = name.split(/\s+/);
-      const model = parts.find(p => /[A-Z]+\d+|\d+[A-Z]+/.test(p));
-      return model || "";
-    }
-
-    function searchStock(query, field = "item_name") {
-      if (!query) return [];
-      const normalizedQuery = normalizeSearchText(query);
-      if (!normalizedQuery) return [];
-      const terms = normalizedQuery.split(" ").filter(Boolean);
-
-      const filtered = stockData.filter(item => {
-        if (activeQuickFilter === "ALL") return true;
-        const text = `${item.category || ""} ${item.item_name || ""}`.toUpperCase();
-        return text.includes(activeQuickFilter);
-      });
-
-      const scored = filtered.map(item => {
-        const codeRaw = String(item.item_code || "");
-        const nameRaw = String(item.item_name || "");
-        const brandRaw = String(item.brand || "");
-        const categoryRaw = String(item.category || "");
-        const modelRaw = String(item.model_no || "");
-
-        const code = normalizeSearchText(codeRaw);
-        const name = normalizeSearchText(nameRaw);
-        const brand = normalizeSearchText(brandRaw);
-        const category = normalizeSearchText(categoryRaw);
-        const model = normalizeSearchText(modelRaw);
-
-        const primary = field === "item_code" ? code : name;
-        const secondary = field === "item_code" ? name : code;
-        const combined = `${code} ${name} ${brand} ${category} ${model}`;
-
-        const matched =
-          terms.every(t => primary.includes(t)) ||
-          terms.every(t => secondary.includes(t)) ||
-          terms.every(t => combined.includes(t));
-
-        if (!matched) return null;
-
-        let score = 0;
-        if (primary === normalizedQuery) score += 1200;
-        if (secondary === normalizedQuery) score += 1000;
-        if (code === normalizedQuery) score += 950;
-        if (name === normalizedQuery) score += 900;
-        if (primary.startsWith(normalizedQuery)) score += 800;
-        if (secondary.startsWith(normalizedQuery)) score += 700;
-        if (name.startsWith(normalizedQuery)) score += 650;
-        if (code.startsWith(normalizedQuery)) score += 620;
-        terms.forEach(t => {
-          if (code.includes(t)) score += 70;
-          if (name.includes(t)) score += 65;
-          if (brand.includes(t)) score += 25;
-          if (category.includes(t)) score += 20;
-          if (model.includes(t)) score += 35;
-        });
-        score -= Math.abs(name.length - normalizedQuery.length) * 0.1;
-
-        return { item, score };
-      }).filter(Boolean);
-
-      scored.sort((a,b) => {
-        if (b.score !== a.score) return b.score - a.score;
-        return String(a.item.item_name || "").localeCompare(String(b.item.item_name || ""));
-      });
-
-      return scored.slice(0, 40).map(x => x.item);
-    }
-
-    // ================================
-    // 7) CUSTOMER SEARCH
-    // ================================
     function bindHeaderEvents(){
       const mobileInput = document.getElementById("cust_mobile");
       mobileInput.addEventListener("input", () => {
         clearTimeout(mobileTimer);
         mobileTimer = setTimeout(loadCustomerSuggestions, 250);
       });
-
       document.getElementById("series_code").addEventListener("change", fetchNextCompareNumber);
+      BRAND_KEYS.forEach(k => {
+        uppercaseInput(document.getElementById(`brand${k}_name`));
+        document.getElementById(`brand${k}_type`).addEventListener("change", () => applyPriceTypeToBrand(k));
+        document.getElementById(`brand${k}_select_all`).addEventListener("change", (e) => selectAllBrandRows(k, e.target.checked));
+      });
     }
 
     async function loadCustomerSuggestions(){
       const q = String(document.getElementById("cust_mobile").value || "").trim();
       const box = document.getElementById("mobile_suggestions");
-      if (!q) {
-        box.style.display = "none";
-        return;
-      }
-
-      const { data, error } = await sb
-        .from("customers")
-        .select("customer_name, mobile, gst_number, address")
-        .or(`mobile.ilike.%${q}%,customer_name.ilike.%${q}%`)
-        .limit(10);
-
-      if (error) {
-        console.warn(error);
-        return;
-      }
-
+      if (!q) { box.style.display = "none"; return; }
+      const { data, error } = await sb.from("customers").select("customer_name, mobile, gst_number, address").or(`mobile.ilike.%${q}%,customer_name.ilike.%${q}%`).limit(10);
+      if (error) return;
       customerSuggestions = data || [];
-      if (!customerSuggestions.length) {
-        box.style.display = "none";
-        return;
-      }
-
+      if (!customerSuggestions.length) { box.style.display = "none"; return; }
       box.innerHTML = customerSuggestions.map((c, i) => `
         <div class="suggestion-row ${i===0?"active":""}" data-cidx="${i}" style="grid-template-columns:1.2fr 1fr 1fr 1.5fr;">
-          <div><b>${escapeHtml(c.customer_name || "")}</b></div>
-          <div>${escapeHtml(c.mobile || "")}</div>
-          <div>${escapeHtml(c.gst_number || "")}</div>
-          <div>${escapeHtml(c.address || "")}</div>
-        </div>
-      `).join("");
+          <div><b>${escapeHtml(c.customer_name || "")}</b></div><div>${escapeHtml(c.mobile || "")}</div><div>${escapeHtml(c.gst_number || "")}</div><div>${escapeHtml(c.address || "")}</div>
+        </div>`).join("");
       box.style.display = "block";
-
       Array.from(box.querySelectorAll(".suggestion-row")).forEach(el => {
         el.addEventListener("mousedown", (e) => {
           e.preventDefault();
-          const idx = Number(el.dataset.cidx);
-          applyCustomer(customerSuggestions[idx]);
-        });
-      });
-    }
-
-    function applyCustomer(c){
-      if (!c) return;
-      document.getElementById("cust_name").value = (c.customer_name || "").toUpperCase();
-      document.getElementById("cust_mobile").value = c.mobile || "";
-      document.getElementById("cust_gst").value = (c.gst_number || "").toUpperCase();
-      document.getElementById("cust_address").value = (c.address || "").toUpperCase();
-      document.getElementById("mobile_suggestions").style.display = "none";
-    }
-
-    // ================================
-    // 8) GRID
-    // ================================
-    function bindToolbarEvents(){
-      document.getElementById("btn_add_row").addEventListener("click", () => addNewRow(true));
-      document.getElementById("btn_auto_best").addEventListener("click", autoSelectBestPrices);
-      document.getElementById("btn_save_compare").addEventListener("click", saveCompareSheet);
-      document.getElementById("btn_create_selected").addEventListener("click", createQuotationFromSelected);
-      document.getElementById("btn_new").addEventListener("click", resetPage);
-      document.getElementById("btn_print").addEventListener("click", () => window.print());
-      document.getElementById("btn_load_compare").addEventListener("click", loadComparePrompt);
-      document.getElementById("global_search").addEventListener("input", filterGridRows);
-
-      document.querySelectorAll("#quick_filter_wrap button").forEach(btn => {
-        btn.addEventListener("click", () => {
-          document.querySelectorAll("#quick_filter_wrap button").forEach(b => b.classList.remove("active"));
-          btn.classList.add("active");
-          activeQuickFilter = btn.dataset.filter;
-        });
-      });
-    }
-
-    function addNewRow(focusCode = false, payload = null){
-      const rid = currentRowId++;
-      const tr = document.createElement("tr");
-      tr.id = `row_${rid}`;
-      tr.innerHTML = `
-        <td class="slno">${rid + 1}</td>
-        <td>
-          <div class="field" style="min-width:140px;">
-            <input class="cell-input code-inp" data-rid="${rid}" />
-            <div class="suggestions stock-suggestions"></div>
-          </div>
-        </td>
-        <td><input class="cell-input name-inp" data-rid="${rid}" /></td>
-        <td><input class="cell-input brand-inp readonly" data-rid="${rid}" readonly /></td>
-        <td><input class="cell-input category-inp readonly" data-rid="${rid}" readonly /></td>
-        <td><input class="cell-input model-inp readonly" data-rid="${rid}" readonly /></td>
-        <td><input class="cell-input qty-inp num" data-rid="${rid}" type="number" step="0.01" value="1" /></td>
-        <td>
-          <select class="cell-select type-inp" data-rid="${rid}">
-            <option value="1">1</option>
-            <option value="2">2</option>
-            <option value="3">3</option>
-          </select>
-        </td>
-        <td><input class="cell-input gst-inp num readonly" data-rid="${rid}" readonly /></td>
-        <td><input class="cell-input hsn-inp readonly" data-rid="${rid}" readonly /></td>
-        <td><input class="cell-input p1-inp num" data-rid="${rid}" type="number" step="0.01" /></td>
-        <td><input class="cell-input p2-inp num" data-rid="${rid}" type="number" step="0.01" /></td>
-        <td><input class="cell-input p3-inp num" data-rid="${rid}" type="number" step="0.01" /></td>
-        <td>
-          <select class="cell-select selected-inp" data-rid="${rid}">
-            <option value="">SELECT</option>
-            <option value="1">PRICE 1</option>
-            <option value="2">PRICE 2</option>
-            <option value="3">PRICE 3</option>
-            <option value="C">CUSTOM</option>
-          </select>
-        </td>
-        <td><input class="cell-input final-inp num" data-rid="${rid}" type="number" step="0.01" /></td>
-        <td><input class="cell-input finalgst-inp num readonly" data-rid="${rid}" readonly /></td>
-        <td><input class="cell-input total-inp num readonly" data-rid="${rid}" readonly /></td>
-        <td><input class="cell-input stock-inp num readonly" data-rid="${rid}" readonly /></td>
-        <td>
-          <button class="btn-danger del-btn" data-rid="${rid}" type="button">DELETE</button>
-        </td>
-      `;
-
-      document.getElementById("compare_body").appendChild(tr);
-      bindRowEvents(rid);
-
-      if (payload) fillRowFromPayload(rid, payload);
-      if (focusCode) tr.querySelector(".code-inp").focus();
-      updateSummary();
-    }
-
-    function bindRowEvents(rid){
-      const row = document.getElementById(`row_${rid}`);
-      const codeInp = row.querySelector(".code-inp");
-      const nameInp = row.querySelector(".name-inp");
-      const delBtn = row.querySelector(".del-btn");
-      const qtyInp = row.querySelector(".qty-inp");
-      const typeInp = row.querySelector(".type-inp");
-      const p1Inp = row.querySelector(".p1-inp");
-      const p2Inp = row.querySelector(".p2-inp");
-      const p3Inp = row.querySelector(".p3-inp");
-      const selectedInp = row.querySelector(".selected-inp");
-      const finalInp = row.querySelector(".final-inp");
-
-      uppercaseInput(codeInp);
-      uppercaseInput(nameInp);
-
-      codeInp.addEventListener("input", () => showStockSuggestions(rid, codeInp.value, "item_code"));
-      nameInp.addEventListener("input", () => showStockSuggestions(rid, nameInp.value, "item_name"));
-      codeInp.addEventListener("focus", () => showStockSuggestions(rid, codeInp.value, "item_code"));
-      nameInp.addEventListener("focus", () => showStockSuggestions(rid, nameInp.value, "item_name"));
-
-      [qtyInp, p1Inp, p2Inp, p3Inp, finalInp].forEach(inp => {
-        inp.addEventListener("input", () => calcRow(rid));
-      });
-      typeInp.addEventListener("change", () => applyTypePrice(rid));
-      selectedInp.addEventListener("change", () => applySelectedOption(rid));
-
-      delBtn.addEventListener("click", () => {
-        row.remove();
-        refreshSerials();
-        updateSummary();
-      });
-    }
-
-    function showStockSuggestions(rid, query, field){
-      const row = document.getElementById(`row_${rid}`);
-      const box = row.querySelector(".stock-suggestions");
-      const results = searchStock(query, field);
-
-      if (!query || !results.length) {
-        box.style.display = "none";
-        return;
-      }
-
-      box.innerHTML = `
-        <div class="suggestion-row suggestion-head">
-          <div>CODE</div>
-          <div>NAME</div>
-          <div>BRAND</div>
-          <div>CATEGORY</div>
-          <div>MODEL</div>
-          <div>P1</div>
-          <div>GST</div>
-          <div>STOCK</div>
-        </div>
-        ${results.map((item, idx) => `
-          <div class="suggestion-row ${idx===0?"active":""}" data-rid="${rid}" data-code="${escapeHtml(item.item_code || "")}">
-            <div><b>${escapeHtml(item.item_code || "")}</b></div>
-            <div>${escapeHtml(item.item_name || "")}</div>
-            <div>${escapeHtml(item.brand || "")}</div>
-            <div>${escapeHtml(item.category || "")}</div>
-            <div>${escapeHtml(item.model_no || "")}</div>
-            <div class="num">${fmt(item.price1 ?? item.price ?? 0)}</div>
-            <div class="num">${fmt(item.gst_percent ?? item.gst ?? 0)}</div>
-            <div class="num">${fmt(item.available_stock ?? item.stock ?? 0)}</div>
-          </div>
-        `).join("")}
-      `;
-      box.style.display = "block";
-
-      Array.from(box.querySelectorAll(".suggestion-row[data-code]")).forEach(el => {
-        el.addEventListener("mousedown", (e) => {
-          e.preventDefault();
-          const item = results.find(x => String(x.item_code || "") === String(el.dataset.code || ""));
-          fillItem(rid, item);
+          const c = customerSuggestions[Number(el.dataset.cidx)];
+          document.getElementById("cust_name").value = (c.customer_name || "").toUpperCase();
+          document.getElementById("cust_mobile").value = c.mobile || "";
+          document.getElementById("cust_gst").value = (c.gst_number || "").toUpperCase();
+          document.getElementById("cust_address").value = (c.address || "").toUpperCase();
           box.style.display = "none";
         });
       });
     }
 
-    function fillItem(rid, item){
-      if (!item) return;
-      const row = document.getElementById(`row_${rid}`);
-      row.querySelector(".code-inp").value = String(item.item_code || "").toUpperCase();
-      row.querySelector(".name-inp").value = String(item.item_name || "").toUpperCase();
-      row.querySelector(".brand-inp").value = String(item.brand || "").toUpperCase();
-      row.querySelector(".category-inp").value = String(item.category || "").toUpperCase();
-      row.querySelector(".model-inp").value = String(item.model_no || "").toUpperCase();
-      row.querySelector(".gst-inp").value = num(item.gst_percent ?? item.gst ?? 0);
-      row.querySelector(".hsn-inp").value = String(item.hsn_code || item.hsn || "").toUpperCase();
-      row.querySelector(".stock-inp").value = num(item.available_stock ?? item.stock ?? 0);
-
-      const p1 = num(item.price1 ?? item.price ?? 0);
-      const p2 = num(item.price2 ?? item.price1 ?? item.price ?? 0);
-      const p3 = num(item.price3 ?? item.price2 ?? item.price1 ?? item.price ?? 0);
-
-      row.querySelector(".p1-inp").value = p1;
-      row.querySelector(".p2-inp").value = p2;
-      row.querySelector(".p3-inp").value = p3;
-      row.querySelector(".selected-inp").value = "1";
-      row.classList.add("selected-row");
-      applySelectedOption(rid);
-      row.querySelector(".qty-inp").focus();
+    function bindToolbarEvents(){
+      document.getElementById("btn_add_row").addEventListener("click", () => addNewRow(true));
+      document.getElementById("btn_save_compare").addEventListener("click", saveCompareSheet);
+      document.getElementById("btn_create_all_quotes").addEventListener("click", createThreeSeparateQuotations);
+      document.getElementById("btn_new").addEventListener("click", resetPage);
+      document.getElementById("btn_print").addEventListener("click", () => window.print());
+      document.getElementById("btn_load_compare").addEventListener("click", loadComparePrompt);
+      document.getElementById("global_search").addEventListener("input", filterGridRows);
     }
 
-    function fillRowFromPayload(rid, item){
-      const row = document.getElementById(`row_${rid}`);
-      row.querySelector(".code-inp").value = String(item.item_code || "").toUpperCase();
-      row.querySelector(".name-inp").value = String(item.item_name || "").toUpperCase();
-      row.querySelector(".brand-inp").value = String(item.brand || "").toUpperCase();
-      row.querySelector(".category-inp").value = String(item.category || "").toUpperCase();
-      row.querySelector(".model-inp").value = String(item.model_no || "").toUpperCase();
-      row.querySelector(".qty-inp").value = num(item.quantity || 1);
-      row.querySelector(".type-inp").value = String(item.price_type || 1);
-      row.querySelector(".gst-inp").value = num(item.gst_percent || 0);
-      row.querySelector(".hsn-inp").value = String(item.hsn_code || "").toUpperCase();
-      row.querySelector(".p1-inp").value = num(item.price1 || 0);
-      row.querySelector(".p2-inp").value = num(item.price2 || 0);
-      row.querySelector(".p3-inp").value = num(item.price3 || 0);
-      row.querySelector(".selected-inp").value = String(item.selected_option || "");
-      row.querySelector(".final-inp").value = num(item.final_price || 0);
-      row.querySelector(".stock-inp").value = num(item.stock_balance || 0);
-      calcRow(rid);
-    }
-
-    function applyTypePrice(rid){
-      const row = document.getElementById(`row_${rid}`);
-      const type = row.querySelector(".type-inp").value;
-      row.querySelector(".selected-inp").value = type;
-      applySelectedOption(rid);
-    }
-
-    function applySelectedOption(rid){
-      const row = document.getElementById(`row_${rid}`);
-      const selected = row.querySelector(".selected-inp").value;
-      const p1 = num(row.querySelector(".p1-inp").value);
-      const p2 = num(row.querySelector(".p2-inp").value);
-      const p3 = num(row.querySelector(".p3-inp").value);
-      let final = num(row.querySelector(".final-inp").value);
-
-      if (selected === "1") final = p1;
-      else if (selected === "2") final = p2;
-      else if (selected === "3") final = p3;
-
-      row.querySelector(".final-inp").value = final || "";
-      row.classList.toggle("selected-row", !!selected);
-      calcRow(rid);
-    }
-
-    function calcRow(rid){
-      const row = document.getElementById(`row_${rid}`);
-      if (!row) return;
-      const qty = num(row.querySelector(".qty-inp").value);
-      const gst = num(row.querySelector(".gst-inp").value);
-      const final = num(row.querySelector(".final-inp").value);
-
-      const finalGst = final + (final * gst / 100);
-      const total = qty * finalGst;
-
-      row.querySelector(".finalgst-inp").value = fmt(finalGst);
-      row.querySelector(".total-inp").value = fmt(total);
+    function addNewRow(focusBase = false, payload = null){
+      const rid = currentRowId++;
+      const tr = document.createElement("tr");
+      tr.id = `row_${rid}`;
+      tr.innerHTML = `
+        <td class="slno">${rid + 1}</td>
+        <td><div class="field" style="min-width:220px;"><input class="cell-input base-item-inp" data-rid="${rid}" placeholder="TYPE COMMON ITEM NAME" /></div></td>
+        <td><input class="cell-input qty-inp num" data-rid="${rid}" type="number" step="0.01" value="1" /></td>
+        ${buildBrandCellsHtml(rid,1)}
+        ${buildBrandCellsHtml(rid,2)}
+        ${buildBrandCellsHtml(rid,3)}
+        <td><input class="cell-input selected-brand-inp readonly" data-rid="${rid}" readonly /></td>
+        <td><input class="cell-input final-code-inp readonly" data-rid="${rid}" readonly /></td>
+        <td><input class="cell-input final-item-inp readonly" data-rid="${rid}" readonly /></td>
+        <td><input class="cell-input final-type-inp readonly" data-rid="${rid}" readonly /></td>
+        <td><input class="cell-input final-rate-inp num readonly" data-rid="${rid}" readonly /></td>
+        <td><input class="cell-input total-inp num readonly" data-rid="${rid}" readonly /></td>
+        <td><button class="btn-danger del-btn" data-rid="${rid}" type="button">DELETE</button></td>`;
+      document.getElementById("compare_body").appendChild(tr);
+      bindRowEvents(rid);
+      if (payload) fillRowFromPayload(rid, payload);
+      if (focusBase) tr.querySelector(".base-item-inp").focus();
       updateSummary();
     }
 
-    function autoSelectBestPrices(){
-      document.querySelectorAll("#compare_body tr").forEach(row => {
-        const rid = row.id.replace("row_", "");
-        const prices = [
-          { key:"1", val:num(row.querySelector(".p1-inp").value) },
-          { key:"2", val:num(row.querySelector(".p2-inp").value) },
-          { key:"3", val:num(row.querySelector(".p3-inp").value) }
-        ].filter(x => x.val > 0);
+    function buildBrandCellsHtml(rid, k){
+      return `
+        <td><div class="field" style="min-width:140px;"><input class="cell-input b${k}-code-inp readonly" data-rid="${rid}" readonly /></div></td>
+        <td><div class="field" style="min-width:230px;"><input class="cell-input b${k}-item-inp" data-rid="${rid}" placeholder="SEARCH ${k}" /><div class="suggestions b${k}-suggestions"></div></div></td>
+        <td><select class="cell-select b${k}-type-inp" data-rid="${rid}"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></td>
+        <td><input class="cell-input b${k}-rate-inp num readonly" data-rid="${rid}" readonly /></td>
+        <td><input class="cell-input b${k}-amount-inp num readonly" data-rid="${rid}" readonly /></td>
+        <td><select class="cell-select b${k}-select-inp" data-rid="${rid}"><option value="">NO</option><option value="Y">YES</option></select></td>`;
+    }
 
-        if (!prices.length) return;
-        prices.sort((a,b) => a.val - b.val);
-        row.querySelector(".selected-inp").value = prices[0].key;
-        applySelectedOption(rid);
+    function bindRowEvents(rid){
+      const row = document.getElementById(`row_${rid}`);
+      uppercaseInput(row.querySelector(".base-item-inp"));
+      row.querySelector(".qty-inp").addEventListener("input", () => refreshAllRowAmounts(rid));
+      row.querySelector(".del-btn").addEventListener("click", () => { row.remove(); refreshSerials(); updateSummary(); });
+      BRAND_KEYS.forEach(k => {
+        const itemInp = row.querySelector(`.b${k}-item-inp`);
+        const typeInp = row.querySelector(`.b${k}-type-inp`);
+        const selectInp = row.querySelector(`.b${k}-select-inp`);
+        uppercaseInput(itemInp);
+        typeInp.value = document.getElementById(`brand${k}_type`).value;
+        itemInp.addEventListener("focus", () => seedBrandSearchText(rid, k));
+        itemInp.addEventListener("input", () => showBrandSuggestions(rid, k, itemInp.value));
+        typeInp.addEventListener("change", () => applyBrandTypePrice(rid, k));
+        selectInp.addEventListener("change", () => onRowBrandSelect(rid, k));
+      });
+    }
+
+    function seedBrandSearchText(rid, k){
+      const row = document.getElementById(`row_${rid}`);
+      const inp = row.querySelector(`.b${k}-item-inp`);
+      const base = row.querySelector(".base-item-inp").value.trim();
+      const brand = document.getElementById(`brand${k}_name`).value.trim();
+      if (!inp.value.trim() && (base || brand)) inp.value = `${brand} ${base}`.trim().toUpperCase();
+      showBrandSuggestions(rid, k, inp.value);
+    }
+
+    function showBrandSuggestions(rid, k, query){
+      const row = document.getElementById(`row_${rid}`);
+      const box = row.querySelector(`.b${k}-suggestions`);
+      const baseItem = row.querySelector(".base-item-inp").value;
+      const brandName = document.getElementById(`brand${k}_name`).value;
+      const type = row.querySelector(`.b${k}-type-inp`).value || document.getElementById(`brand${k}_type`).value;
+      const results = searchStockForBrand({ query, baseItem, brandName });
+      if (!query || !results.length) { box.style.display = "none"; return; }
+      box.innerHTML = `
+        <div class="suggestion-row suggestion-head" style="grid-template-columns:140px 1.7fr 1fr 100px 100px 100px;">
+          <div>CODE</div><div>NAME</div><div>BRAND</div><div>P1</div><div>P2</div><div>P3</div>
+        </div>
+        ${results.map((item, idx) => `
+          <div class="suggestion-row ${idx===0?"active":""}" data-code="${escapeHtml(item.item_code || "")}" style="grid-template-columns:140px 1.7fr 1fr 100px 100px 100px;">
+            <div><b>${escapeHtml(item.item_code || "")}</b></div><div>${escapeHtml(item.item_name || "")}</div><div>${escapeHtml(item.brand || "")}</div><div class="num">${fmt(item.price1 ?? item.price ?? 0)}</div><div class="num">${fmt(item.price2 ?? item.price1 ?? item.price ?? 0)}</div><div class="num">${fmt(item.price3 ?? item.price2 ?? item.price1 ?? item.price ?? 0)}</div>
+          </div>`).join("")}`;
+      box.style.display = "block";
+      box.scrollTop = 0;
+      box.closest('.table-wrap')?.scrollBy({ top: 0, left: 0 });
+      const inputRect = row.querySelector(`.b${k}-item-inp`).getBoundingClientRect();
+      const boxRect = box.getBoundingClientRect();
+      const viewportBottom = window.innerHeight - 140;
+      if (boxRect.bottom > viewportBottom) {
+        const overlap = boxRect.bottom - viewportBottom + 12;
+        box.closest('.table-wrap')?.scrollBy({ top: overlap, behavior: 'smooth' });
+      }
+      Array.from(box.querySelectorAll(".suggestion-row[data-code]")).forEach(el => {
+        el.addEventListener("mousedown", (e) => {
+          e.preventDefault();
+          const item = results.find(x => String(x.item_code || "") === String(el.dataset.code || ""));
+          fillBrandItem(rid, k, item, type);
+          box.style.display = "none";
+        });
+      });
+    }
+
+    function searchStockForBrand({ query, baseItem, brandName }){
+      const q = normalizeSearchText(query || "");
+      const base = normalizeSearchText(baseItem || "");
+      const brand = normalizeSearchText(brandName || "");
+      if (!q && !base) return [];
+      const qTerms = (q || base).split(" ").filter(Boolean);
+      const baseTerms = base.split(" ").filter(Boolean);
+      const brandTerms = brand.split(" ").filter(Boolean);
+      const scored = stockData.map(item => {
+        const code = item.code_text || normalizeSearchText(item.item_code || "");
+        const name = item.item_text || normalizeSearchText(item.item_name || "");
+        const ib = item.brand_text || normalizeSearchText(item.brand || "");
+        const combined = `${code} ${name} ${ib}`;
+        let match = qTerms.every(t => combined.includes(t));
+        if (!match && baseTerms.length) match = baseTerms.every(t => name.includes(t));
+        if (!match) return null;
+        let score = 0;
+        if (brandTerms.length) {
+          const brandOk = brandTerms.every(t => combined.includes(t));
+          if (brandOk) score += 500; else score -= 250;
+        }
+        if (baseTerms.length && baseTerms.every(t => name.includes(t))) score += 450;
+        if (q && name === q) score += 700;
+        if (q && name.startsWith(q)) score += 550;
+        if (q && code.startsWith(q)) score += 450;
+        qTerms.forEach(t => { if (name.includes(t)) score += 60; if (code.includes(t)) score += 40; if (ib.includes(t)) score += 35; });
+        if (brand && ib === brand) score += 320;
+        return { item, score };
+      }).filter(Boolean);
+      scored.sort((a,b) => b.score - a.score || String(a.item.item_name || "").localeCompare(String(b.item.item_name || "")));
+      return scored.slice(0, 30).map(x => x.item);
+    }
+
+    function fillBrandItem(rid, k, item, type){
+      if (!item) return;
+      const row = document.getElementById(`row_${rid}`);
+      const itemInp = row.querySelector(`.b${k}-item-inp`);
+      row.querySelector(`.b${k}-code-inp`).value = String(item.item_code || "").toUpperCase();
+      itemInp.value = String(item.item_name || "").toUpperCase();
+      itemInp.dataset.gst = num(item.gst_percent ?? item.gst ?? 0);
+      itemInp.dataset.hsn = String(item.hsn_code || item.hsn || "").toUpperCase();
+      itemInp.dataset.stock = num(item.available_stock ?? item.stock ?? 0);
+      itemInp.dataset.price1 = num(item.price1 ?? item.price ?? 0);
+      itemInp.dataset.price2 = num(item.price2 ?? item.price1 ?? item.price ?? 0);
+      itemInp.dataset.price3 = num(item.price3 ?? item.price2 ?? item.price1 ?? item.price ?? 0);
+      row.querySelector(`.b${k}-type-inp`).value = type || row.querySelector(`.b${k}-type-inp`).value || "1";
+      applyBrandTypePrice(rid, k);
+    }
+
+    function applyBrandTypePrice(rid, k){
+      const row = document.getElementById(`row_${rid}`);
+      const itemInp = row.querySelector(`.b${k}-item-inp`);
+      const type = row.querySelector(`.b${k}-type-inp`).value;
+      const rate = num(itemInp.dataset[`price${type}`]);
+      const qty = num(row.querySelector(".qty-inp").value);
+      row.querySelector(`.b${k}-rate-inp`).value = fmt(rate);
+      row.querySelector(`.b${k}-amount-inp`).value = fmt(qty * rate);
+      refreshFinalSelection(rid);
+      updateSummary();
+    }
+
+    function refreshAllRowAmounts(rid){
+      BRAND_KEYS.forEach(k => applyBrandTypePrice(rid, k));
+      refreshFinalSelection(rid);
+    }
+
+    function onRowBrandSelect(rid, picked){
+      const row = document.getElementById(`row_${rid}`);
+      BRAND_KEYS.forEach(k => row.querySelector(`.b${k}-select-inp`).value = k === picked ? "Y" : "");
+      refreshFinalSelection(rid);
+    }
+
+    function refreshFinalSelection(rid){
+      const row = document.getElementById(`row_${rid}`);
+      const qty = num(row.querySelector(".qty-inp").value);
+      const selected = BRAND_KEYS.find(k => row.querySelector(`.b${k}-select-inp`).value === "Y");
+      if (!selected) return clearFinalRow(rid), updateSummary();
+      const code = row.querySelector(`.b${selected}-code-inp`).value;
+      const item = row.querySelector(`.b${selected}-item-inp`).value;
+      const type = row.querySelector(`.b${selected}-type-inp`).value;
+      const rate = num(row.querySelector(`.b${selected}-rate-inp`).value);
+      row.querySelector(".selected-brand-inp").value = document.getElementById(`brand${selected}_name`).value || `BRAND ${selected}`;
+      row.querySelector(".final-code-inp").value = code;
+      row.querySelector(".final-item-inp").value = item;
+      row.querySelector(".final-type-inp").value = type;
+      row.querySelector(".final-rate-inp").value = fmt(rate);
+      row.querySelector(".total-inp").value = fmt(qty * rate);
+      updateSummary();
+    }
+
+    function clearFinalRow(rid){
+      const row = document.getElementById(`row_${rid}`);
+      ["selected-brand-inp","final-code-inp","final-item-inp","final-type-inp","final-rate-inp","total-inp"].forEach(cls => row.querySelector(`.${cls}`).value = "");
+    }
+
+    function applyPriceTypeToBrand(k){
+      const type = document.getElementById(`brand${k}_type`).value;
+      document.querySelectorAll(`#compare_body tr`).forEach(row => {
+        row.querySelector(`.b${k}-type-inp`).value = type;
+        applyBrandTypePrice(row.id.replace("row_",""), k);
+      });
+    }
+
+    function selectAllBrandRows(k, checked){
+      if (!checked) {
+        document.querySelectorAll(`#compare_body tr`).forEach(row => {
+          row.querySelector(`.b${k}-select-inp`).value = "";
+          refreshFinalSelection(row.id.replace("row_",""));
+        });
+        return;
+      }
+      BRAND_KEYS.filter(x => x !== k).forEach(other => document.getElementById(`brand${other}_select_all`).checked = false);
+      document.querySelectorAll(`#compare_body tr`).forEach(row => {
+        BRAND_KEYS.forEach(x => row.querySelector(`.b${x}-select-inp`).value = x === k ? "Y" : "");
+        refreshFinalSelection(row.id.replace("row_",""));
       });
     }
 
     function filterGridRows(){
       const q = normalizeSearchText(document.getElementById("global_search").value || "");
       document.querySelectorAll("#compare_body tr").forEach(row => {
-        const code = normalizeSearchText(row.querySelector(".code-inp")?.value || "");
-        const name = normalizeSearchText(row.querySelector(".name-inp")?.value || "");
-        row.style.display = !q || code.includes(q) || name.includes(q) ? "" : "none";
+        const txt = normalizeSearchText([
+          row.querySelector(".base-item-inp")?.value,
+          row.querySelector(".b1-code-inp")?.value,row.querySelector(".b1-item-inp")?.value,
+          row.querySelector(".b2-code-inp")?.value,row.querySelector(".b2-item-inp")?.value,
+          row.querySelector(".b3-code-inp")?.value,row.querySelector(".b3-item-inp")?.value,
+          row.querySelector(".final-code-inp")?.value,row.querySelector(".final-item-inp")?.value
+        ].join(" "));
+        row.style.display = !q || txt.includes(q) ? "" : "none";
       });
     }
 
-    function refreshSerials(){
-      Array.from(document.querySelectorAll("#compare_body tr")).forEach((tr, idx) => {
-        tr.querySelector(".slno").textContent = idx + 1;
-      });
-    }
+    function refreshSerials(){ Array.from(document.querySelectorAll("#compare_body tr")).forEach((tr, idx) => tr.querySelector(".slno").textContent = idx + 1); }
 
     function updateSummary(){
       const rows = Array.from(document.querySelectorAll("#compare_body tr"));
-      let qty = 0, sub = 0, gst = 0, total = 0;
+      let brand1 = 0, brand2 = 0, brand3 = 0, selectedTotal = 0;
       rows.forEach(row => {
-        const q = num(row.querySelector(".qty-inp")?.value);
-        const fp = num(row.querySelector(".final-inp")?.value);
-        const gp = num(row.querySelector(".gst-inp")?.value);
-        qty += q;
-        sub += q * fp;
-        gst += q * fp * gp / 100;
-        total += num(row.querySelector(".total-inp")?.value);
+        brand1 += num(row.querySelector(".b1-amount-inp")?.value);
+        brand2 += num(row.querySelector(".b2-amount-inp")?.value);
+        brand3 += num(row.querySelector(".b3-amount-inp")?.value);
+        selectedTotal += num(row.querySelector(".total-inp")?.value);
       });
+      document.getElementById("sum_brand1").textContent = fmt(brand1);
+      document.getElementById("sum_brand2").textContent = fmt(brand2);
+      document.getElementById("sum_brand3").textContent = fmt(brand3);
+      document.getElementById("sum_total").textContent = fmt(selectedTotal);
       document.getElementById("sum_rows").textContent = rows.length;
-      document.getElementById("sum_qty").textContent = fmt(qty);
-      document.getElementById("sum_sub").textContent = fmt(sub);
-      document.getElementById("sum_gst").textContent = fmt(gst);
-      document.getElementById("sum_total").textContent = fmt(total);
     }
 
-    // ================================
-    // 9) SAVE / LOAD COMPARE
-    // ================================
     function collectHeader(){
       return {
         compare_date: document.getElementById("compare_date").value || null,
@@ -1042,36 +630,52 @@
         address: String(document.getElementById("cust_address").value || "").toUpperCase(),
         salesman: String(document.getElementById("salesman").value || "").toUpperCase(),
         remarks: String(document.getElementById("remarks").value || "").trim(),
-        total_amount: num(document.getElementById("sum_total").textContent),
+        brand1_name: String(document.getElementById("brand1_name").value || "").toUpperCase(),
+        brand1_price_type: String(document.getElementById("brand1_type").value || "1"),
+        brand1_select_all: document.getElementById("brand1_select_all").checked,
+        brand2_name: String(document.getElementById("brand2_name").value || "").toUpperCase(),
+        brand2_price_type: String(document.getElementById("brand2_type").value || "1"),
+        brand2_select_all: document.getElementById("brand2_select_all").checked,
+        brand3_name: String(document.getElementById("brand3_name").value || "").toUpperCase(),
+        brand3_price_type: String(document.getElementById("brand3_type").value || "1"),
+        brand3_select_all: document.getElementById("brand3_select_all").checked,
+        brand1_total: num(document.getElementById("sum_brand1").textContent),
+        brand2_total: num(document.getElementById("sum_brand2").textContent),
+        brand3_total: num(document.getElementById("sum_brand3").textContent),
+        selected_total: num(document.getElementById("sum_total").textContent),
         item_count: document.querySelectorAll("#compare_body tr").length
       };
     }
 
     function collectItems(){
       const items = [];
-      document.querySelectorAll("#compare_body tr").forEach(row => {
-        const itemCode = String(row.querySelector(".code-inp")?.value || "").trim().toUpperCase();
-        const itemName = String(row.querySelector(".name-inp")?.value || "").trim().toUpperCase();
-        if (!itemCode && !itemName) return;
-        items.push({
-          item_code: itemCode,
-          item_name: itemName,
-          brand: String(row.querySelector(".brand-inp")?.value || "").trim().toUpperCase(),
-          category: String(row.querySelector(".category-inp")?.value || "").trim().toUpperCase(),
-          model_no: String(row.querySelector(".model-inp")?.value || "").trim().toUpperCase(),
+      document.querySelectorAll("#compare_body tr").forEach((row, idx) => {
+        const baseItem = String(row.querySelector(".base-item-inp")?.value || "").trim().toUpperCase();
+        if (!baseItem) return;
+        const obj = {
+          row_no: idx + 1,
+          base_item_name: baseItem,
           quantity: num(row.querySelector(".qty-inp")?.value),
-          price_type: String(row.querySelector(".type-inp")?.value || "1"),
-          gst_percent: num(row.querySelector(".gst-inp")?.value),
-          hsn_code: String(row.querySelector(".hsn-inp")?.value || "").trim().toUpperCase(),
-          price1: num(row.querySelector(".p1-inp")?.value),
-          price2: num(row.querySelector(".p2-inp")?.value),
-          price3: num(row.querySelector(".p3-inp")?.value),
-          selected_option: String(row.querySelector(".selected-inp")?.value || ""),
-          final_price: num(row.querySelector(".final-inp")?.value),
-          final_price_gst: num(row.querySelector(".finalgst-inp")?.value),
-          line_total: num(row.querySelector(".total-inp")?.value),
-          stock_balance: num(row.querySelector(".stock-inp")?.value)
+          selected_brand_no: row.querySelector(".selected-brand-inp")?.value ? BRAND_KEYS.find(k => (document.getElementById(`brand${k}_name`).value || `BRAND ${k}`) === row.querySelector(".selected-brand-inp").value) || null : null,
+          final_item_code: String(row.querySelector(".final-code-inp")?.value || "").toUpperCase(),
+          final_item_name: String(row.querySelector(".final-item-inp")?.value || "").toUpperCase(),
+          final_price_type: String(row.querySelector(".final-type-inp")?.value || ""),
+          final_rate: num(row.querySelector(".final-rate-inp")?.value),
+          line_total: num(row.querySelector(".total-inp")?.value)
+        };
+        BRAND_KEYS.forEach(k => {
+          const itemInp = row.querySelector(`.b${k}-item-inp`);
+          obj[`brand${k}_item_code`] = String(row.querySelector(`.b${k}-code-inp`)?.value || "").toUpperCase();
+          obj[`brand${k}_item_name`] = String(itemInp?.value || "").toUpperCase();
+          obj[`brand${k}_price_type`] = String(row.querySelector(`.b${k}-type-inp`)?.value || document.getElementById(`brand${k}_type`).value || "1");
+          obj[`brand${k}_gst_percent`] = num(itemInp?.dataset.gst);
+          obj[`brand${k}_hsn_code`] = String(itemInp?.dataset.hsn || "").toUpperCase();
+          obj[`brand${k}_stock`] = num(itemInp?.dataset.stock);
+          obj[`brand${k}_rate`] = num(row.querySelector(`.b${k}-rate-inp`)?.value);
+          obj[`brand${k}_amount`] = num(row.querySelector(`.b${k}-amount-inp`)?.value);
+          obj[`brand${k}_selected`] = row.querySelector(`.b${k}-select-inp`)?.value === "Y";
         });
+        items.push(obj);
       });
       return items;
     }
@@ -1080,70 +684,35 @@
       try {
         const head = collectHeader();
         const items = collectItems();
-
         if (!head.customer_name) throw new Error("Customer name is required");
-        if (!items.length) throw new Error("Add at least one item");
-
+        if (!items.length) throw new Error("Add at least one item row");
         let compareId;
         if (compareEditingId) {
-          const { data, error } = await sb
-            .from("quotation_compare_details")
-            .update(head)
-            .eq("id", compareEditingId)
-            .select()
-            .single();
+          const { data, error } = await sb.from("quotation_compare_details").update(head).eq("id", compareEditingId).select().single();
           if (error) throw error;
           compareId = data.id;
           const del = await sb.from("quotation_compare_item_details").delete().eq("compare_id", compareId);
           if (del.error) throw del.error;
         } else {
-          const { data, error } = await sb
-            .from("quotation_compare_details")
-            .insert([head])
-            .select()
-            .single();
+          const { data, error } = await sb.from("quotation_compare_details").insert([head]).select().single();
           if (error) throw error;
           compareId = data.id;
           compareEditingId = compareId;
         }
-
-        const payload = items.map((it, idx) => ({ ...it, compare_id: compareId, row_no: idx + 1 }));
-        const ins = await sb.from("quotation_compare_item_details").insert(payload);
+        const ins = await sb.from("quotation_compare_item_details").insert(collectItems().map(it => ({ ...it, compare_id: compareId })));
         if (ins.error) throw ins.error;
-
         alert(`Compare sheet saved successfully. Compare ID: ${compareId}`);
-        await fetchNextCompareNumber();
-      } catch (err) {
-        console.error(err);
-        alert(err.message || "Save failed");
-      }
+      } catch (err) { alert(err.message || "Save failed"); }
     }
 
-    async function loadComparePrompt(){
-      const compareNo = prompt("Enter compare number to load:");
-      if (!compareNo) return;
-      await loadCompareByNumber(compareNo);
-    }
+    async function loadComparePrompt(){ const compareNo = prompt("Enter compare number to load:"); if (!compareNo) return; await loadCompareByNumber(compareNo); }
 
     async function loadCompareByNumber(compareNo){
       try {
-        const { data: head, error } = await sb
-          .from("quotation_compare_details")
-          .select("*")
-          .eq("compare_number", Number(compareNo))
-          .order("id", { ascending:false })
-          .limit(1)
-          .maybeSingle();
-        if (error) throw error;
-        if (!head) throw new Error("Compare sheet not found");
-
-        const { data: items, error: itemErr } = await sb
-          .from("quotation_compare_item_details")
-          .select("*")
-          .eq("compare_id", head.id)
-          .order("row_no", { ascending:true });
+        const { data: head, error } = await sb.from("quotation_compare_details").select("*").eq("compare_number", Number(compareNo)).order("id", { ascending:false }).limit(1).maybeSingle();
+        if (error || !head) throw new Error("Compare sheet not found");
+        const { data: items, error: itemErr } = await sb.from("quotation_compare_item_details").select("*").eq("compare_id", head.id).order("row_no", { ascending:true });
         if (itemErr) throw itemErr;
-
         resetPage(false);
         compareEditingId = head.id;
         document.getElementById("compare_date").value = head.compare_date || "";
@@ -1156,141 +725,194 @@
         document.getElementById("cust_address").value = head.address || "";
         document.getElementById("salesman").value = head.salesman || "";
         document.getElementById("remarks").value = head.remarks || "";
-
+        document.getElementById("brand1_name").value = head.brand1_name || "";
+        document.getElementById("brand1_type").value = head.brand1_price_type || "1";
+        document.getElementById("brand1_select_all").checked = !!head.brand1_select_all;
+        document.getElementById("brand2_name").value = head.brand2_name || "";
+        document.getElementById("brand2_type").value = head.brand2_price_type || "1";
+        document.getElementById("brand2_select_all").checked = !!head.brand2_select_all;
+        document.getElementById("brand3_name").value = head.brand3_name || "";
+        document.getElementById("brand3_type").value = head.brand3_price_type || "1";
+        document.getElementById("brand3_select_all").checked = !!head.brand3_select_all;
         (items || []).forEach((it, idx) => addNewRow(idx === 0, it));
-        refreshSerials();
         updateSummary();
-      } catch (err) {
-        console.error(err);
-        alert(err.message || "Load failed");
-      }
+      } catch (err) { alert(err.message || "Load failed"); }
     }
 
-    // ================================
-    // 10) CREATE QUOTATION
-    // ================================
-    async function createQuotationFromSelected(){
+    function fillRowFromPayload(rid, it){
+      const row = document.getElementById(`row_${rid}`);
+      row.querySelector(".base-item-inp").value = it.base_item_name || "";
+      row.querySelector(".qty-inp").value = num(it.quantity || 1);
+      BRAND_KEYS.forEach(k => {
+        const itemInp = row.querySelector(`.b${k}-item-inp`);
+        row.querySelector(`.b${k}-code-inp`).value = it[`brand${k}_item_code`] || "";
+        itemInp.value = it[`brand${k}_item_name`] || "";
+        itemInp.dataset.gst = num(it[`brand${k}_gst_percent`] || 0);
+        itemInp.dataset.hsn = it[`brand${k}_hsn_code`] || "";
+        itemInp.dataset.stock = num(it[`brand${k}_stock`] || 0);
+        row.querySelector(`.b${k}-type-inp`).value = it[`brand${k}_price_type`] || document.getElementById(`brand${k}_type`).value || "1";
+        row.querySelector(`.b${k}-rate-inp`).value = fmt(it[`brand${k}_rate`] || 0);
+        row.querySelector(`.b${k}-amount-inp`).value = fmt(it[`brand${k}_amount`] || 0);
+        row.querySelector(`.b${k}-select-inp`).value = it[`brand${k}_selected`] ? "Y" : "";
+      });
+      row.querySelector(".selected-brand-inp").value = it.selected_brand_no ? (document.getElementById(`brand${it.selected_brand_no}_name`).value || `BRAND ${it.selected_brand_no}`) : "";
+      row.querySelector(".final-code-inp").value = it.final_item_code || "";
+      row.querySelector(".final-item-inp").value = it.final_item_name || "";
+      row.querySelector(".final-type-inp").value = it.final_price_type || "";
+      row.querySelector(".final-rate-inp").value = fmt(it.final_rate || 0);
+      row.querySelector(".total-inp").value = fmt(it.line_total || 0);
+    }
+
+    async function createThreeSeparateQuotations(){
       try {
         const head = collectHeader();
-        const allItems = collectItems();
-        const items = allItems.filter(it => it.item_code && it.final_price > 0);
-
         if (!head.customer_name) throw new Error("Customer name is required");
-        if (!items.length) throw new Error("No selected/finalized items found");
 
         const quotationSeries = String(document.getElementById("quotation_series_code").value || "").toUpperCase();
         if (!quotationSeries) throw new Error("Select quotation series");
 
-        const nextQuotationNo = await fetchNextQuotationNumber(quotationSeries);
-        const insertHead = {
-          quotation_number: nextQuotationNo,
-          quotation_date: head.compare_date,
-          customer_name: head.customer_name,
-          customer_mobile: head.customer_mobile,
-          gst_number: head.gst_number,
-          address: head.address,
-          quotation_amount: items.reduce((s, x) => s + num(x.line_total), 0),
-          total_amount: items.reduce((s, x) => s + num(x.line_total), 0),
-          series_code: quotationSeries,
-          salesman: head.salesman,
-          remarks: `CREATED FROM COMPARE NO ${head.compare_number}${head.remarks ? ' - ' + head.remarks : ''}`
-        };
+        const allItems = collectItems();
+        const created = [];
+        const activeBrands = BRAND_KEYS.filter(k => {
+          const brandName = String(document.getElementById(`brand${k}_name`).value || "").trim();
+          const hasItems = allItems.some(it => it[`brand${k}_item_code`] && it[`brand${k}_rate`] > 0);
+          return !!brandName && hasItems;
+        });
 
-        const { data: quotation, error } = await sb
-          .from("quotation_details")
-          .insert([insertHead])
-          .select()
-          .single();
-        if (error) throw error;
+        if (!activeBrands.length) {
+          throw new Error("Type at least 1 brand name and add items for that brand");
+        }
 
-        const itemPayload = items.map(it => ({
-          quotation_id: quotation.id,
-          item_code: it.item_code,
-          item_name: it.item_name,
-          quantity: it.quantity,
-          price: it.final_price,
-          sales_price_gst: it.final_price_gst,
-          gst_percent: it.gst_percent,
-          hsn_code: it.hsn_code,
-          total: it.line_total,
-          price_type: it.price_type
-        }));
+        const createdBy = localStorage.getItem("user_id") || null;
+        await upsertCompareCustomer(head);
 
-        const ins = await sb.from("quotation_item_details").insert(itemPayload);
-        if (ins.error) throw ins.error;
+        for (const k of activeBrands) {
+          const brandName = String(document.getElementById(`brand${k}_name`).value || `BRAND ${k}`).toUpperCase();
+          const brandItems = allItems
+            .filter(it => it[`brand${k}_item_code`] && it[`brand${k}_rate`] > 0)
+            .map(it => ({
+              item_code: it[`brand${k}_item_code`],
+              item_name: it[`brand${k}_item_name`],
+              quantity: it.quantity,
+              price: it[`brand${k}_rate`],
+              sales_price_gst: it[`brand${k}_rate`],
+              gst_percent: it[`brand${k}_gst_percent`] || 0,
+              hsn_code: it[`brand${k}_hsn_code`] || "",
+            }));
 
-        const updSeries = await updateBillSeriesNumber(quotationSeries, nextQuotationNo);
-        if (updSeries?.error) throw updSeries.error;
+          if (!brandItems.length) continue;
 
-        alert(`Quotation created successfully. Quotation No: ${nextQuotationNo}`);
+          const nextQuotationNo = await fetchNextQuotationNumber(quotationSeries);
+          const insertData = {
+            series_code: quotationSeries,
+            quotation_number: nextQuotationNo,
+            quotation_date: head.compare_date,
+            customer_name: head.customer_name,
+            customer_mobile: head.customer_mobile,
+            gst_number: head.gst_number,
+            total_amount: brandItems.reduce((sum, it) => sum + (it.price * it.quantity), 0),
+            created_by: createdBy
+          };
+
+          const { data: quotation, error } = await sb
+            .from("quotation_details")
+            .insert([insertData])
+            .select()
+            .maybeSingle();
+
+          if (error) throw error;
+          if (!quotation || !quotation.id) throw new Error("Quotation ID not generated properly");
+
+          const itemPayload = brandItems.map(it => ({
+            quotation_id: quotation.id,
+            item_code: it.item_code,
+            item_name: it.item_name,
+            quantity: it.quantity,
+            price: it.price,
+            sales_price_gst: it.sales_price_gst,
+            gst_percent: it.gst_percent,
+            hsn_code: it.hsn_code,
+          }));
+
+          const ins = await sb.from("quotation_item_details").insert(itemPayload);
+          if (ins.error) throw ins.error;
+
+          created.push(`${brandName}: ${nextQuotationNo}`);
+        }
+
+        if (!created.length) throw new Error("No filled brand quotations found to save");
+        if (!created.length) throw new Error("No filled brand quotations found to save");
+alert(`Created quotations successfully\n${created.join("\n")}`);
       } catch (err) {
         console.error(err);
         alert(err.message || "Quotation creation failed");
       }
     }
 
-    async function fetchNextQuotationNumber(seriesCode){
-      const { data, error } = await sb
-        .from("bill_series")
-        .select("bill_number")
-        .eq("series_code", seriesCode)
+    async function upsertCompareCustomer(head){
+      const mob = String(head.customer_mobile || "").trim();
+      if (!mob) return null;
+
+      const { data: existC } = await sb
+        .from("customers")
+        .select("customer_id")
+        .eq("mobile", mob)
         .maybeSingle();
+
+      if (existC?.customer_id) {
+        await sb
+          .from("customers")
+          .update({
+            name: head.customer_name,
+            address: head.address,
+            gst_number: head.gst_number
+          })
+          .eq("customer_id", existC.customer_id);
+        return existC.customer_id;
+      }
+
+      const { data: newC, error: cErr } = await sb
+        .from("customers")
+        .insert([{
+          mobile: mob,
+          name: head.customer_name,
+          address: head.address,
+          gst_number: head.gst_number
+        }])
+        .select()
+        .single();
+
+      if (cErr) throw cErr;
+      return newC?.customer_id || null;
+    }
+
+    async function fetchNextQuotationNumber(seriesCode){
+      const { data, error } = await sb.rpc("get_next_quotation_number", { p_series: seriesCode });
       if (error) throw error;
-      return Number(data?.bill_number || 0) + 1;
+      return data;
     }
 
     async function updateBillSeriesNumber(seriesCode, billNo){
-      return await sb
-        .from("bill_series")
-        .update({ bill_number: billNo })
-        .eq("series_code", seriesCode);
+      return { data: billNo, error: null };
     }
 
-    // ================================
-    // 11) KEYBOARD NAVIGATION
-    // ================================
     function setupKeyboardNavigation(){
       document.addEventListener("keydown", function(e){
         const active = document.activeElement;
-        if (!active) return;
-        if (!(active.matches("input, select, textarea"))) return;
+        if (!active || !(active.matches("input, select, textarea"))) return;
         const row = active.closest("tr");
         if (!row) return;
-
-        const openBox = row.querySelector(".stock-suggestions");
-        if (openBox && openBox.style.display === "block" && (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "Enter")) {
-          const rows = Array.from(openBox.querySelectorAll(".suggestion-row[data-code]"));
+        const suggestionBox = active.parentElement?.querySelector(".suggestions") || row.querySelector(".suggestions[style*='block']");
+        if (suggestionBox && suggestionBox.style.display === "block" && (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "Enter")) {
+          const rows = Array.from(suggestionBox.querySelectorAll(".suggestion-row[data-code]"));
           if (!rows.length) return;
           let idx = rows.findIndex(r => r.classList.contains("active"));
           if (idx < 0) idx = 0;
-
-          if (e.key === "ArrowDown") {
-            e.preventDefault();
-            idx = Math.min(rows.length - 1, idx + 1);
-            rows.forEach(r => r.classList.remove("active"));
-            rows[idx].classList.add("active");
-            rows[idx].scrollIntoView({ block:"nearest" });
-            return;
-          }
-          if (e.key === "ArrowUp") {
-            e.preventDefault();
-            idx = Math.max(0, idx - 1);
-            rows.forEach(r => r.classList.remove("active"));
-            rows[idx].classList.add("active");
-            rows[idx].scrollIntoView({ block:"nearest" });
-            return;
-          }
-          if (e.key === "Enter") {
-            e.preventDefault();
-            rows[idx].dispatchEvent(new MouseEvent("mousedown", { bubbles:true }));
-            return;
-          }
+          if (e.key === "ArrowDown") { e.preventDefault(); idx = Math.min(rows.length - 1, idx + 1); rows.forEach(r => r.classList.remove("active")); rows[idx].classList.add("active"); rows[idx].scrollIntoView({ block:"nearest" }); return; }
+          if (e.key === "ArrowUp") { e.preventDefault(); idx = Math.max(0, idx - 1); rows.forEach(r => r.classList.remove("active")); rows[idx].classList.add("active"); rows[idx].scrollIntoView({ block:"nearest" }); return; }
+          if (e.key === "Enter") { e.preventDefault(); rows[idx].dispatchEvent(new MouseEvent("mousedown", { bubbles:true })); return; }
         }
-
-        if (e.key === "Enter") {
-          e.preventDefault();
-          moveFocus(row, active, e.shiftKey ? -1 : 1);
-        }
+        if (e.key === "Enter") { e.preventDefault(); moveFocus(row, active, e.shiftKey ? -1 : 1); }
       });
     }
 
@@ -1302,9 +924,9 @@
       if (target) {
         target.focus();
         target.select?.();
+        target.scrollIntoView({ block:'center', inline:'nearest' });
         return;
       }
-
       const allRows = Array.from(document.querySelectorAll("#compare_body tr"));
       const rowIdx = allRows.indexOf(row);
       const nextRow = allRows[rowIdx + (direction > 0 ? 1 : -1)];
@@ -1313,60 +935,37 @@
         const fallback = nextFields[Math.max(0, Math.min(idx, nextFields.length - 1))] || nextFields[0];
         fallback?.focus();
         fallback?.select?.();
+        fallback?.scrollIntoView({ block:'center', inline:'nearest' });
       } else if (direction > 0) {
         addNewRow(true);
+        const last = document.querySelector('#compare_body tr:last-child .base-item-inp');
+        last?.scrollIntoView({ block:'center', inline:'nearest' });
       }
     }
 
     function getRowInputs(row){
-      return Array.from(row.querySelectorAll(".code-inp,.name-inp,.qty-inp,.type-inp,.p1-inp,.p2-inp,.p3-inp,.selected-inp,.final-inp"));
+      return Array.from(row.querySelectorAll(".base-item-inp,.qty-inp,.b1-item-inp,.b1-type-inp,.b1-select-inp,.b2-item-inp,.b2-type-inp,.b2-select-inp,.b3-item-inp,.b3-type-inp,.b3-select-inp"));
     }
 
-    // ================================
-    // 12) RESET / UTILS
-    // ================================
     function resetPage(fetchNo = true){
       compareEditingId = null;
       currentRowId = 0;
       document.getElementById("compare_body").innerHTML = "";
-      document.getElementById("cust_name").value = "";
-      document.getElementById("cust_mobile").value = "";
-      document.getElementById("cust_gst").value = "";
-      document.getElementById("cust_address").value = "";
-      document.getElementById("salesman").value = "";
-      document.getElementById("remarks").value = "";
+      ["cust_name","cust_mobile","cust_gst","cust_address","salesman","remarks","brand1_name","brand2_name","brand3_name"].forEach(id => document.getElementById(id).value = "");
+      ["brand1_type","brand2_type","brand3_type"].forEach(id => document.getElementById(id).value = "1");
+      ["brand1_select_all","brand2_select_all","brand3_select_all"].forEach(id => document.getElementById(id).checked = false);
       document.getElementById("compare_date").value = new Date().toISOString().split("T")[0];
       addNewRow(true);
       updateSummary();
       if (fetchNo) fetchNextCompareNumber();
     }
 
-    function uppercaseInput(el){
-      el.addEventListener("input", () => {
-        const start = el.selectionStart;
-        const end = el.selectionEnd;
-        el.value = String(el.value || "").toUpperCase();
-        if (typeof start === "number" && typeof end === "number") el.setSelectionRange(start, end);
-      });
-    }
-
-    function num(v){
-      const n = parseFloat(v);
-      return Number.isFinite(n) ? n : 0;
-    }
-
-    function fmt(v){
-      return num(v).toFixed(2).replace(/\.00$/, ".00");
-    }
-
-    function escapeHtml(value){
-      return String(value ?? "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/\"/g, "&quot;")
-        .replace(/'/g, "&#39;");
-    }
+    function deriveBrand(item){ return String(item.brand || item.company || item.make || item.item_name || "").split(" ")[0]?.toUpperCase() || ""; }
+    function normalizeSearchText(value){ return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " ").trim(); }
+    function uppercaseInput(el){ if (!el) return; const force = () => { const s = el.selectionStart, e = el.selectionEnd; el.value = String(el.value || "").toUpperCase(); if (typeof s === "number" && typeof e === "number") el.setSelectionRange(s,e); }; el.addEventListener("input", force); el.addEventListener("change", force); el.addEventListener("blur", force); }
+    function num(v){ const n = parseFloat(v); return Number.isFinite(n) ? n : 0; }
+    function fmt(v){ return num(v).toFixed(2); }
+    function escapeHtml(value){ return String(value ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\"/g,"&quot;").replace(/'/g,"&#39;"); }
   </script>
 </body>
 </html>

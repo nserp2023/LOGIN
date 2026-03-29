@@ -323,7 +323,10 @@ async function loadSavedReturn(returnId){
 
     (salesItems || []).forEach((item, idx) => {
         const oldRet = oldMap[item.item_code]?.return_qty || 0;
+        const price = parseFloat(item.sales_price || 0);
         const priceGst = parseFloat(item.sales_price_gst || 0);
+        const gstPercent = parseFloat(item.gst_percent || 0);
+        const hsnCode = item.hsn_code || "";
         const amount = parseFloat(oldRet || 0) * priceGst;
 
         const tr = document.createElement("tr");
@@ -344,6 +347,9 @@ async function loadSavedReturn(returnId){
             </td>
             <td><div class="readonly-cell price-gst">${priceGst.toFixed(2)}</div></td>
             <td><input type="text" class="ret-amount" readonly value="${amount.toFixed(2)}"></td>
+            <td style="display:none"><div class="price">${price.toFixed(2)}</div></td>
+            <td style="display:none"><div class="gst-percent">${gstPercent.toFixed(2)}</div></td>
+            <td style="display:none"><div class="hsn-code">${hsnCode}</div></td>
         `;
         tbody.appendChild(tr);
     });
@@ -474,7 +480,10 @@ async function updateReturn(){
             const itemName = row.children[2].innerText.trim();
             const soldQty = parseFloat(row.querySelector(".sold-qty").innerText) || 0;
             const returnQty = parseFloat(row.querySelector(".new-ret-qty").value) || 0;
+            const price = parseFloat(row.querySelector(".price")?.innerText) || 0;
             const priceGst = parseFloat(row.querySelector(".price-gst").innerText) || 0;
+            const gstPercent = parseFloat(row.querySelector(".gst-percent")?.innerText) || 0;
+            const hsnCode = row.querySelector(".hsn-code")?.innerText || "";
 
             if(returnQty > 0){
                 const { error: insertErr } = await sb
@@ -485,7 +494,10 @@ async function updateReturn(){
                         item_name: itemName,
                         sold_qty: soldQty,
                         return_qty: returnQty,
-                        price_gst: priceGst
+                        price: price,
+                        price_gst: priceGst,
+                        hsn_code: hsnCode,
+                        gst_percent: gstPercent
                     }]);
 
                 if(insertErr) throw insertErr;

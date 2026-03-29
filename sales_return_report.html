@@ -514,6 +514,24 @@ async function toggleReturnDetails(returnId){
         return;
     }
 
+    const { data: returnHead } = await sb
+        .from("sales_return_details")
+        .select("original_sales_id")
+        .eq("id", returnId)
+        .maybeSingle();
+
+    let originalItemMap = {};
+    if(returnHead?.original_sales_id){
+        const { data: salesItems } = await sb
+            .from("sales_item_details")
+            .select("item_code, sales_price, sales_price_gst, gst_percent, hsn_code")
+            .eq("sales_id", returnHead.original_sales_id);
+
+        (salesItems || []).forEach(si => {
+            originalItemMap[si.item_code] = si;
+        });
+    }
+
     let html = `
         <div class="details-table-wrap">
             <table class="details-table">
@@ -533,10 +551,16 @@ async function toggleReturnDetails(returnId){
     `;
 
     items.forEach((item, index) => {
+        const src = originalItemMap[item.item_code] || {};
         const qty = parseFloat(item.quantity || item.return_qty || 0);
-        const price = parseFloat(item.price || 0);
-        const priceGst = parseFloat(item.sales_price_gst || item.price_gst || 0);
-        const gst = parseFloat(item.gst_percent || 0);
+        const gst = parseFloat(item.gst_percent ?? src.gst_percent ?? 0) || 0;
+        const priceGst = parseFloat(item.sales_price_gst || item.price_gst || src.sales_price_gst || 0) || 0;
+
+        let price = parseFloat(item.price ?? src.sales_price ?? 0) || 0;
+        if(!price && priceGst && gst){
+            price = priceGst / (1 + (gst / 100));
+        }
+
         const total = qty * priceGst;
 
         html += `

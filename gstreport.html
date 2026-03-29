@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>VAJRA LIGHTS - GST Report</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="supabaseClient.js"></script>
     <script src="page_permissions.js"></script>
 
@@ -343,6 +344,7 @@
         <button id="loadBtn">LOAD REPORT</button>
         <button id="printBtn" class="btn-blue">PRINT</button>
         <button id="exportAllBtn" class="btn-orange">EXPORT ALL CSV</button>
+        <button id="exportAllExcelBtn" class="btn-blue">EXPORT ALL EXCEL</button>
         <button id="clearBtn" class="btn-red">CLEAR</button>
       </div>
     </div>
@@ -375,7 +377,8 @@
         <div class="section-head">
           <div class="section-title">GST SUMMARY BY RATE</div>
           <div class="section-tools">
-            <button onclick="exportTableCSV('gstRateSummaryTable','gst_rate_summary.csv')">EXPORT CSV</button>
+            <button onclick="exportReport('gstRateSummary','csv')">EXPORT CSV</button>
+            <button onclick="exportReport('gstRateSummary','excel')">EXPORT EXCEL</button>
           </div>
         </div>
         <div class="table-wrap">
@@ -401,7 +404,8 @@
         <div class="section-head">
           <div class="section-title">MONTHLY FINAL TOTAL</div>
           <div class="section-tools">
-            <button onclick="exportTableCSV('monthlySummaryTable','monthly_summary.csv')">EXPORT CSV</button>
+            <button onclick="exportReport('monthlySummary','csv')">EXPORT CSV</button>
+            <button onclick="exportReport('monthlySummary','excel')">EXPORT EXCEL</button>
           </div>
         </div>
         <div class="table-wrap">
@@ -437,7 +441,8 @@
       <div class="section-head">
         <div class="section-title">SALES REGISTER - BILL WISE GST RATE WISE</div>
         <div class="section-tools">
-          <button onclick="exportTableCSV('salesTable','sales_register.csv')">EXPORT CSV</button>
+          <button onclick="exportReport('sales','csv')">EXPORT CSV</button>
+          <button onclick="exportReport('sales','excel')">EXPORT EXCEL</button>
         </div>
       </div>
       <div class="table-wrap">
@@ -468,7 +473,8 @@
       <div class="section-head">
         <div class="section-title">B2B SALES - GSTIN + HSN</div>
         <div class="section-tools">
-          <button onclick="exportTableCSV('b2bTable','b2b_sales.csv')">EXPORT CSV</button>
+          <button onclick="exportReport('b2b','csv')">EXPORT CSV</button>
+          <button onclick="exportReport('b2b','excel')">EXPORT EXCEL</button>
         </div>
       </div>
       <div class="table-wrap">
@@ -500,7 +506,8 @@
       <div class="section-head">
         <div class="section-title">B2C SALES - BILL WISE GST RATE WISE</div>
         <div class="section-tools">
-          <button onclick="exportTableCSV('b2cTable','b2c_sales.csv')">EXPORT CSV</button>
+          <button onclick="exportReport('b2c','csv')">EXPORT CSV</button>
+          <button onclick="exportReport('b2c','excel')">EXPORT EXCEL</button>
         </div>
       </div>
       <div class="table-wrap">
@@ -530,7 +537,8 @@
       <div class="section-head">
         <div class="section-title">PURCHASE REGISTER - BILL WISE GST RATE WISE</div>
         <div class="section-tools">
-          <button onclick="exportTableCSV('purchaseTable','purchase_register.csv')">EXPORT CSV</button>
+          <button onclick="exportReport('purchase','csv')">EXPORT CSV</button>
+          <button onclick="exportReport('purchase','excel')">EXPORT EXCEL</button>
         </div>
       </div>
       <div class="table-wrap">
@@ -558,9 +566,10 @@
 
     <div id="returnSection" class="section">
       <div class="section-head">
-        <div class="section-title">SALES RETURN REGISTER - ACCEPTED ONLY</div>
+        <div class="section-title">SALES RETURN REGISTER - ALL RETURNS</div>
         <div class="section-tools">
-          <button onclick="exportTableCSV('returnTable','sales_return_register.csv')">EXPORT CSV</button>
+          <button onclick="exportReport('return','csv')">EXPORT CSV</button>
+          <button onclick="exportReport('return','excel')">EXPORT EXCEL</button>
         </div>
       </div>
       <div class="table-wrap">
@@ -583,15 +592,16 @@
         </table>
       </div>
       <div class="note">
-        Sales returns are shown as negative values so your accountant can directly use them as adjustment / credit note style data.
-      </div>
+  All sales returns are shown here, including accepted and not accepted returns. Sales returns are shown as negative values so your accountant can directly use them as adjustment / credit note style data.
+</div>
     </div>
 
     <div id="hsnSection" class="section">
       <div class="section-head">
         <div class="section-title">HSN SUMMARY - OUTWARD SUPPLIES</div>
         <div class="section-tools">
-          <button onclick="exportTableCSV('hsnTable','hsn_summary.csv')">EXPORT CSV</button>
+          <button onclick="exportReport('hsn','csv')">EXPORT CSV</button>
+          <button onclick="exportReport('hsn','excel')">EXPORT EXCEL</button>
         </div>
       </div>
       <div class="table-wrap">
@@ -655,7 +665,8 @@
       document.getElementById("loadBtn").addEventListener("click", loadGSTReport);
       document.getElementById("clearBtn").addEventListener("click", clearAll);
       document.getElementById("printBtn").addEventListener("click", () => window.print());
-      document.getElementById("exportAllBtn").addEventListener("click", exportAllCSVs);
+      document.getElementById("exportAllBtn").addEventListener("click", () => exportAllReports("csv"));
+      document.getElementById("exportAllExcelBtn").addEventListener("click", () => exportAllReports("excel"));
       document.getElementById("searchBox").addEventListener("input", applySearchFilter);
     }
 
@@ -954,7 +965,7 @@
           return_date: h.return_date,
           return_number: h.return_number || "",
           customer_name: h.customer_name || "",
-          status: h.approval_status || "",
+          status: h.approval_status || (h.is_accepted ? "ACCEPTED" : "PENDING"),
           hsn_code: it.hsn_code || "",
           item_code: it.item_code || "",
           item_name: it.item_name || "",
@@ -1253,7 +1264,7 @@
     function renderReturnTable(rows){
       const body = document.getElementById("returnBody");
       if(!rows.length){
-        body.innerHTML = `<tr><td colspan="10" class="empty">No accepted sales returns found</td></tr>`;
+        body.innerHTML = `<tr><td colspan="10" class="empty">No sales returns found</td></tr>`;
         return;
       }
 
@@ -1451,44 +1462,233 @@
     // =========================
     // EXPORT
     // =========================
-    function exportTableCSV(tableId, filename){
-      const table = document.getElementById(tableId);
-      const rows = [...table.querySelectorAll("tr")];
-      let csv = "";
+    function makeInvoiceNumber(seriesCode, invoiceNumber, salesNumber){
+      const numVal = invoiceNumber ?? salesNumber ?? "";
+      const series = String(seriesCode || "").trim();
+      const numText = String(numVal || "").trim();
+      if(series && numText) return `${series}-${numText}`;
+      return numText || series || "";
+    }
 
-      rows.forEach(row => {
-        const cols = [...row.querySelectorAll("th,td")];
-        const line = cols.map(col => {
-          let text = col.innerText.replace(/\n/g, " ").trim();
-          text = text.replace(/"/g, '""');
-          return `"${text}"`;
-        }).join(",");
-        csv += line + "\n";
+    function makeRowsExportable(rows){
+      return rows.map(r => {
+        const obj = {};
+        Object.keys(r || {}).forEach(k => {
+          const v = r[k];
+          obj[k] = typeof v === "number" ? round2(v) : (v ?? "");
+        });
+        return obj;
       });
-
-      downloadCSV(csv, filename);
     }
 
-    function exportAllCSVs(){
-      exportTableCSV("salesTable", "sales_register.csv");
-      setTimeout(() => exportTableCSV("b2bTable", "b2b_sales.csv"), 100);
-      setTimeout(() => exportTableCSV("b2cTable", "b2c_sales.csv"), 200);
-      setTimeout(() => exportTableCSV("purchaseTable", "purchase_register.csv"), 300);
-      setTimeout(() => exportTableCSV("returnTable", "sales_return_register.csv"), 400);
-      setTimeout(() => exportTableCSV("hsnTable", "hsn_summary.csv"), 500);
-      setTimeout(() => exportTableCSV("gstRateSummaryTable", "gst_rate_summary.csv"), 600);
-      setTimeout(() => exportTableCSV("monthlySummaryTable", "monthly_summary.csv"), 700);
+    function getExportConfig(reportKey){
+      switch(reportKey){
+        case "sales":
+          return {
+            filename: "sales_register",
+            rows: makeRowsExportable(salesSummaryRows).map(r => ({
+              TYPE: r.type,
+              INVOICE_DATE: formatDate(r.invoice_date || r.bill_date),
+              INVOICE_NUMBER: makeInvoiceNumber(r.series_code, r.invoice_number, r.sales_number),
+              CUSTOMER: r.customer_name,
+              CUSTOMER_GSTIN: r.customer_gst,
+              GST_PERCENT: r.gst_percent,
+              TAXABLE_VALUE: r.taxable_value,
+              GST_VALUE: r.gst_value,
+              TOTAL_VALUE: r.total_value
+            }))
+          };
+        case "b2b":
+          return {
+            filename: "b2b_sales",
+            rows: makeRowsExportable(b2bRows).map(r => ({
+              TYPE: r.type,
+              INVOICE_DATE: formatDate(r.invoice_date || r.bill_date),
+              INVOICE_NUMBER: makeInvoiceNumber(r.series_code, r.invoice_number, r.sales_number),
+              CUSTOMER: r.customer_name,
+              GSTIN: r.customer_gst,
+              GST_PERCENT: r.gst_percent,
+              TAXABLE_VALUE: r.taxable_value,
+              GST_VALUE: r.gst_value,
+              TOTAL_VALUE: r.total_value
+            }))
+          };
+        case "b2c":
+          return {
+            filename: "b2c_sales",
+            rows: makeRowsExportable(b2cRows).map(r => ({
+              TYPE: r.type,
+              INVOICE_DATE: formatDate(r.invoice_date || r.bill_date),
+              INVOICE_NUMBER: makeInvoiceNumber(r.series_code, r.invoice_number, r.sales_number),
+              CUSTOMER: r.customer_name,
+              GST_PERCENT: r.gst_percent,
+              TAXABLE_VALUE: r.taxable_value,
+              GST_VALUE: r.gst_value,
+              TOTAL_VALUE: r.total_value
+            }))
+          };
+        case "purchase":
+          return {
+            filename: "purchase_register",
+            rows: makeRowsExportable(purchaseSummaryRows).map(r => ({
+              TYPE: r.type,
+              INVOICE_DATE: formatDate(r.invoice_date || r.bill_date),
+              PURCHASE_NUMBER: r.purchase_number,
+              SUPPLIER: r.supplier_name,
+              SUPPLIER_GSTIN: r.supplier_gst,
+              GST_PERCENT: r.gst_percent,
+              TAXABLE_VALUE: r.taxable_value,
+              GST_VALUE: r.gst_value,
+              TOTAL_VALUE: r.total_value
+            }))
+          };
+        case "return":
+          return {
+            filename: "sales_return_register",
+            rows: makeRowsExportable(returnSummaryRows).map(r => ({
+              TYPE: r.type,
+              INVOICE_DATE: formatDate(r.return_date),
+              INVOICE_NUMBER: r.return_number,
+              CUSTOMER: r.customer_name,
+              STATUS: r.status,
+              GST_PERCENT: r.gst_percent,
+              TAXABLE_VALUE: r.taxable_value,
+              GST_VALUE: r.gst_value,
+              TOTAL_VALUE: r.total_value
+            }))
+          };
+        case "hsn":
+          return {
+            filename: "hsn_summary",
+            rows: makeRowsExportable(hsnSummaryRows).map(r => ({
+              HSN: r.hsn_code,
+              GST_PERCENT: r.gst_percent,
+              QUANTITY: r.qty,
+              TAXABLE_VALUE: r.taxable_value,
+              GST_VALUE: r.gst_value,
+              TOTAL_VALUE: r.total_value
+            }))
+          };
+        case "gstRateSummary":
+          return {
+            filename: "gst_rate_summary",
+            rows: buildGstRateSummaryExportRows()
+          };
+        case "monthlySummary":
+          return {
+            filename: "monthly_summary",
+            rows: buildMonthlySummaryExportRows()
+          };
+        default:
+          return { filename: reportKey || "report", rows: [] };
+      }
     }
 
-    function downloadCSV(csv, filename){
-      const blob = new Blob([csv], { type:"text/csv;charset=utf-8;" });
+    function buildGstRateSummaryExportRows(){
+      const map = new Map();
+      const upsert = (gst, key, taxable, gstValue) => {
+        const rateKey = String(gst ?? 0);
+        if(!map.has(rateKey)){
+          map.set(rateKey, {
+            GST_PERCENT: num(gst),
+            PURCHASE_TAXABLE: 0,
+            PURCHASE_GST: 0,
+            SALES_TAXABLE: 0,
+            SALES_GST: 0,
+            SALES_RETURN_TAXABLE: 0,
+            SALES_RETURN_GST: 0,
+            NET_GST: 0
+          });
+        }
+        const row = map.get(rateKey);
+        row[key + '_TAXABLE'] += num(taxable);
+        row[key + '_GST'] += num(gstValue);
+      };
+      purchaseSummaryRows.forEach(r => upsert(r.gst_percent, 'PURCHASE', r.taxable_value, r.gst_value));
+      salesSummaryRows.forEach(r => upsert(r.gst_percent, 'SALES', r.taxable_value, r.gst_value));
+      returnSummaryRows.forEach(r => upsert(r.gst_percent, 'SALES_RETURN', r.taxable_value, r.gst_value));
+      return Array.from(map.values()).sort((a,b) => num(a.GST_PERCENT)-num(b.GST_PERCENT)).map(r => ({
+        GST_PERCENT: round2(r.GST_PERCENT),
+        PURCHASE_TAXABLE: round2(r.PURCHASE_TAXABLE),
+        PURCHASE_GST: round2(r.PURCHASE_GST),
+        SALES_TAXABLE: round2(r.SALES_TAXABLE),
+        SALES_GST: round2(r.SALES_GST),
+        SALES_RETURN_TAXABLE: round2(r.SALES_RETURN_TAXABLE),
+        SALES_RETURN_GST: round2(r.SALES_RETURN_GST),
+        NET_GST: round2(r.SALES_GST - r.PURCHASE_GST + r.SALES_RETURN_GST)
+      }));
+    }
+
+    function buildMonthlySummaryExportRows(){
+      const purchaseTaxable = sumBy(purchaseSummaryRows, "taxable_value");
+      const purchaseGST = sumBy(purchaseSummaryRows, "gst_value");
+      const purchaseTotal = sumBy(purchaseSummaryRows, "total_value");
+      const salesTaxable = sumBy(salesSummaryRows, "taxable_value");
+      const salesGST = sumBy(salesSummaryRows, "gst_value");
+      const salesTotal = sumBy(salesSummaryRows, "total_value");
+      const returnTaxable = sumBy(returnSummaryRows, "taxable_value");
+      const returnGST = sumBy(returnSummaryRows, "gst_value");
+      const returnTotal = sumBy(returnSummaryRows, "total_value");
+      const netGST = round2(salesGST - purchaseGST + returnGST);
+
+      return [
+        { TYPE: "PURCHASE", TAXABLE_VALUE: purchaseTaxable, GST_VALUE: purchaseGST, TOTAL_VALUE: purchaseTotal },
+        { TYPE: "SALES", TAXABLE_VALUE: salesTaxable, GST_VALUE: salesGST, TOTAL_VALUE: salesTotal },
+        { TYPE: "SALES RETURN", TAXABLE_VALUE: returnTaxable, GST_VALUE: returnGST, TOTAL_VALUE: returnTotal },
+        { TYPE: "NET GST LIABILITY", TAXABLE_VALUE: "-", GST_VALUE: netGST, TOTAL_VALUE: "-" }
+      ];
+    }
+
+    function exportReport(reportKey, format){
+      const cfg = getExportConfig(reportKey);
+      if(!cfg.rows || !cfg.rows.length){
+        alert("No data to export.");
+        return;
+      }
+      if(format === "excel"){
+        downloadExcel(cfg.rows, `${cfg.filename}.xlsx`, reportKey);
+      }else{
+        downloadCSVFromObjects(cfg.rows, `${cfg.filename}.csv`);
+      }
+    }
+
+    function exportAllReports(format){
+      ["sales","b2b","b2c","purchase","return","hsn","gstRateSummary","monthlySummary"].forEach((key, idx) => {
+        setTimeout(() => exportReport(key, format), idx * 120);
+      });
+    }
+
+    function downloadCSVFromObjects(rows, filename){
+      if(!rows.length){
+        alert("No data to export.");
+        return;
+      }
+      const headers = Object.keys(rows[0]);
+      const csv = [headers.join(",")].concat(rows.map(row => headers.map(h => {
+        const val = row[h] ?? "";
+        return `"${String(val).replace(/"/g, '""')}"`;
+      }).join(","))).join("\n");
+      downloadBlob(csv, filename, "text/csv;charset=utf-8;");
+    }
+
+    function downloadExcel(rows, filename, sheetName){
+      if(!rows.length){
+        alert("No data to export.");
+        return;
+      }
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, String(sheetName || "Report").slice(0, 31));
+      XLSX.writeFile(wb, filename);
+    }
+
+    function downloadBlob(content, filename, mimeType){
+      const blob = new Blob([content], { type: mimeType });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
       a.download = filename;
-      document.body.appendChild(a);
       a.click();
-      a.remove();
       URL.revokeObjectURL(url);
     }
   </script>

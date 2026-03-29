@@ -596,7 +596,7 @@
         <div class="form-group">
             <label>Department</label>
             <select id="department_filter" class="form-control w-md">
-                <option value="ALL" selected>ALL ITEMS</option>
+                <option value="" selected>ALL ITEMS</option>
                 <option value="ELECTRICAL">ELECTRICAL</option>
                 <option value="PLUMBING">PLUMBING</option>
                 <option value="INTERLOCK">INTERLOCK</option>
@@ -875,7 +875,7 @@
     }
 
     function getSelectedDepartment() {
-        return (document.getElementById("department_filter")?.value || "ALL").toUpperCase();
+        return String(document.getElementById("department_filter")?.value || "").trim().toUpperCase();
     }
 
     function normalizeDepartment(value) {
@@ -884,7 +884,7 @@
 
     function itemMatchesDepartment(item) {
         const selectedDept = getSelectedDepartment();
-        if (selectedDept === "ALL") return true;
+        if (!selectedDept || selectedDept === "ALL") return true;
 
         const itemDept = normalizeDepartment(item.department);
         return itemDept === selectedDept;
@@ -1642,9 +1642,7 @@ ${data.map((c, idx) => `
     function isValidStockItem(code) {
         const norm = normalizeSearchText(code);
         return stockData.some(
-            i =>
-                normalizeSearchText(i.item_code || "") === norm &&
-                itemMatchesDepartment(i)
+            i => normalizeSearchText(i.item_code || "") === norm
         );
     }
 
@@ -2333,7 +2331,7 @@ ${data.map((c, idx) => `
 
         if(!nameInp || !codeInp) return;
 
-        if(selectedDept === "ALL"){
+        if(!selectedDept || selectedDept === "ALL"){
             nameInp.style.backgroundColor = "";
             codeInp.style.backgroundColor = "";
             nameInp.title = "ALL ITEMS";
@@ -2654,12 +2652,14 @@ async function handleBarcodeValue(code) {
     if (!code) return;
 
     const item = stockData.find(x =>
-        String(x.barcode || "").trim().toUpperCase() === code ||
-        String(x.item_code || "").trim().toUpperCase() === code
+        (
+            String(x.barcode || "").trim().toUpperCase() === code ||
+            String(x.item_code || "").trim().toUpperCase() === code
+        ) && itemMatchesDepartment(x)
     );
 
     if (!item) {
-        alert("Item not found: " + code);
+        alert("Item not found in selected department: " + code);
         return;
     }
 

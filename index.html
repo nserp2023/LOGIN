@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Billing Software Login</title>
   <style>
     * {
@@ -126,6 +126,11 @@
       box-shadow: 0 0 0 3px rgba(0, 120, 215, 0.4);
     }
 
+    /* Uppercase visual effect for name field */
+    .uppercase-input {
+      text-transform: uppercase;
+    }
+
     button {
       width: 100%;
       padding: 14px;
@@ -142,6 +147,13 @@
     button:hover {
       transform: translateY(-2px);
       box-shadow: 0 6px 20px rgba(0, 120, 215, 0.5);
+    }
+
+    button:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
     }
 
     #error-message {
@@ -189,15 +201,29 @@
   <div class="login-container">
     <h2>Login to Billing Software</h2>
 
-    <form id="loginForm">
+    <form id="loginForm" autocomplete="off">
       <div class="input-group">
-        <label for="email">Email</label>
-        <input type="email" id="email" name="email" placeholder="Enter email" required>
+        <label for="full_name">Full Name</label>
+        <input
+          type="text"
+          id="full_name"
+          name="full_name"
+          class="uppercase-input"
+          placeholder="Enter full name"
+          required
+          autofocus
+        />
       </div>
 
       <div class="input-group">
         <label for="password">Password</label>
-        <input type="password" id="password" name="password" placeholder="Enter password" required>
+        <input
+          type="password"
+          id="password"
+          name="password"
+          placeholder="Enter password"
+          required
+        />
       </div>
 
       <button type="submit" id="loginBtn">Login</button>
@@ -213,20 +239,40 @@
     const loginClient = window.sbcc;
     let isLoggingIn = false;
 
+    const fullNameInput = document.getElementById("full_name");
+    const passwordInput = document.getElementById("password");
+    const errorEl = document.getElementById("error-message");
+    const loginBtn = document.getElementById("loginBtn");
+
+    // Fake caps lock behavior for name field
+    function forceUppercase(el) {
+      el.addEventListener("input", () => {
+        const start = el.selectionStart;
+        const end = el.selectionEnd;
+        el.value = el.value.toUpperCase();
+        try {
+          el.setSelectionRange(start, end);
+        } catch (_) {}
+      });
+    }
+
+    forceUppercase(fullNameInput);
+
+    window.addEventListener("load", () => {
+      fullNameInput.focus();
+    });
+
     document.getElementById("loginForm").addEventListener("submit", async function (e) {
       e.preventDefault();
       if (isLoggingIn) return;
 
-      const errorEl = document.getElementById("error-message");
-      const loginBtn = document.getElementById("loginBtn");
-
       errorEl.textContent = "";
 
-      const email = document.getElementById("email").value.trim().toLowerCase();
-      const password = document.getElementById("password").value;
+      const full_name = fullNameInput.value.trim().toUpperCase();
+      const password = passwordInput.value;
 
-      if (!email || !password) {
-        errorEl.textContent = "Please enter email and password.";
+      if (!full_name || !password) {
+        errorEl.textContent = "Please enter full name and password.";
         return;
       }
 
@@ -235,14 +281,39 @@
         loginBtn.disabled = true;
         loginBtn.textContent = "Logging in...";
 
+        // Step 1: Find email by full name from user_profiles
+        const { data: profileByName, error: nameLookupError } = await loginClient
+          .from("user_profiles")
+          .select("id, email, full_name, role, approved")
+          .eq("full_name", full_name)
+          .maybeSingle();
+
+        if (nameLookupError) {
+          errorEl.textContent = "Login failed while checking name: " + nameLookupError.message;
+          return;
+        }
+
+        if (!profileByName) {
+          errorEl.textContent = "Login failed: Full name not found.";
+          return;
+        }
+
+        if (!profileByName.email) {
+          errorEl.textContent = "Login failed: Email not found for this user.";
+          return;
+        }
+
+        // Step 2: Login using found email + password
         const { data, error } = await loginClient.auth.signInWithPassword({
-          email,
+          email: String(profileByName.email).trim().toLowerCase(),
           password
         });
 
         if (error) {
           if ((error.message || "").toLowerCase().includes("email not confirmed")) {
             errorEl.textContent = "Login failed: Email confirmation is still enabled in Supabase, or this user was created before it was turned off.";
+          } else if ((error.message || "").toLowerCase().includes("invalid login credentials")) {
+            errorEl.textContent = "Login failed: Wrong password or invalid name.";
           } else {
             errorEl.textContent = "Login failed: " + error.message;
           }
@@ -256,6 +327,7 @@
           return;
         }
 
+        // Step 3: Load fresh profile using auth user id
         const { data: profile, error: profileError } = await loginClient
           .from("user_profiles")
           .select("id, email, full_name, role, approved")

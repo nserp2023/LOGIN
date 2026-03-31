@@ -4,16 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Billing Software Login</title>
-  <link rel="stylesheet" href="signup.css">
   <style>
-    /* Reset */
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
     }
 
-    /* Background with overlay */
     body {
       font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       background: url("background.jpg") no-repeat center center fixed;
@@ -33,22 +30,6 @@
       background: rgba(0, 0, 0, 0.45);
     }
 
-    /* Glassmorphism container */
-    .login-container {
-      position: relative;
-      z-index: 2;
-      background: rgba(255, 255, 255, 0.15);
-      border-radius: 20px;
-      padding: 40px 35px;
-      width: 380px;
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border: 1px solid rgba(255, 255, 255, 0.25);
-      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
-      animation: fadeInUp 0.8s ease;
-    }
-
-    /* Floating shapes */
     .shape {
       position: absolute;
       border-radius: 50%;
@@ -85,15 +66,24 @@
     }
 
     @keyframes float {
-      0%, 100% {
-        transform: translateY(0) translateX(0);
-      }
-      50% {
-        transform: translateY(-40px) translateX(30px);
-      }
+      0%, 100% { transform: translateY(0) translateX(0); }
+      50% { transform: translateY(-40px) translateX(30px); }
     }
 
-    /* Heading */
+    .login-container {
+      position: relative;
+      z-index: 2;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 20px;
+      padding: 40px 35px;
+      width: 380px;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+      animation: fadeInUp 0.8s ease;
+    }
+
     .login-container h2 {
       margin-bottom: 25px;
       font-size: 26px;
@@ -103,7 +93,6 @@
       letter-spacing: 0.5px;
     }
 
-    /* Input groups */
     .input-group {
       margin-bottom: 20px;
     }
@@ -137,7 +126,6 @@
       box-shadow: 0 0 0 3px rgba(0, 120, 215, 0.4);
     }
 
-    /* Button */
     button {
       width: 100%;
       padding: 14px;
@@ -156,15 +144,14 @@
       box-shadow: 0 6px 20px rgba(0, 120, 215, 0.5);
     }
 
-    /* Error message */
     #error-message {
       color: #ff6b6b;
       margin-top: 12px;
       font-size: 14px;
       text-align: center;
+      min-height: 20px;
     }
 
-    /* Login link */
     .login-container p {
       margin-top: 20px;
       font-size: 14px;
@@ -182,7 +169,6 @@
       text-decoration: underline;
     }
 
-    /* Animation */
     @keyframes fadeInUp {
       from {
         opacity: 0;
@@ -214,7 +200,7 @@
         <input type="password" id="password" name="password" placeholder="Enter password" required>
       </div>
 
-      <button type="submit">Login</button>
+      <button type="submit" id="loginBtn">Login</button>
       <p id="error-message"></p>
     </form>
 
@@ -222,76 +208,85 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabaseClient.js"></script>
   <script>
-    const { createClient } = supabase;
+    const loginClient = window.sbcc;
+    let isLoggingIn = false;
 
-    const supabaseUrl = "https://gqxczzijntbvtlmmzppt.supabase.co";
-    const supabaseKey = "sb_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs";
-    const supabaseClient = createClient(supabaseUrl, supabaseKey);
+    document.getElementById("loginForm").addEventListener("submit", async function (e) {
+      e.preventDefault();
+      if (isLoggingIn) return;
 
-    document.getElementById("loginForm").addEventListener("submit", async function(event) {
-      event.preventDefault();
+      const errorEl = document.getElementById("error-message");
+      const loginBtn = document.getElementById("loginBtn");
 
-      const email = document.getElementById("email").value.trim();
-      const password = document.getElementById("password").value.trim();
-      const errorMessage = document.getElementById("error-message");
+      errorEl.textContent = "";
 
-      errorMessage.textContent = "";
+      const email = document.getElementById("email").value.trim().toLowerCase();
+      const password = document.getElementById("password").value;
 
       if (!email || !password) {
-        errorMessage.textContent = "Both fields are required!";
+        errorEl.textContent = "Please enter email and password.";
         return;
       }
 
-      const { data, error } = await supabaseClient.auth.signInWithPassword({
-        email,
-        password
-      });
+      try {
+        isLoggingIn = true;
+        loginBtn.disabled = true;
+        loginBtn.textContent = "Logging in...";
 
-      if (error) {
-        errorMessage.textContent = "Login failed: " + error.message;
-        return;
+        const { data, error } = await loginClient.auth.signInWithPassword({
+          email,
+          password
+        });
+
+        if (error) {
+          if ((error.message || "").toLowerCase().includes("email not confirmed")) {
+            errorEl.textContent = "Login failed: Email confirmation is still enabled in Supabase, or this user was created before it was turned off.";
+          } else {
+            errorEl.textContent = "Login failed: " + error.message;
+          }
+          return;
+        }
+
+        const user = data?.user;
+
+        if (!user) {
+          errorEl.textContent = "Login failed: User not found.";
+          return;
+        }
+
+        const { data: profile, error: profileError } = await loginClient
+          .from("user_profiles")
+          .select("id, email, full_name, role, approved")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        if (profileError || !profile) {
+          errorEl.textContent = "Login failed: User profile not found.";
+          await loginClient.auth.signOut();
+          return;
+        }
+
+        if (!profile.approved) {
+          errorEl.textContent = "Your account is waiting for OWNER / ADMIN approval.";
+          await loginClient.auth.signOut();
+          return;
+        }
+
+        localStorage.setItem("user_id", profile.id || "");
+        localStorage.setItem("email", profile.email || "");
+        localStorage.setItem("full_name", profile.full_name || "");
+        localStorage.setItem("role", profile.role || "");
+
+        window.location.href = "dashboard.html";
+      } catch (err) {
+        errorEl.textContent = "Unexpected error: " + (err.message || err);
+      } finally {
+        isLoggingIn = false;
+        loginBtn.disabled = false;
+        loginBtn.textContent = "Login";
       }
-
-      const user = data.user;
-      if (!user) {
-        errorMessage.textContent = "Login failed: user details missing.";
-        return;
-      }
-
-      const { data: profile, error: profileError } = await supabaseClient
-        .from("user_profiles")
-        .select("id, email, full_name, role, approved")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      if (profileError) {
-        errorMessage.textContent = "Login succeeded, but role fetch failed: " + profileError.message;
-        await supabaseClient.auth.signOut();
-        return;
-      }
-
-      if (!profile) {
-        errorMessage.textContent = "User profile not found. Please contact Owner/Admin.";
-        await supabaseClient.auth.signOut();
-        return;
-      }
-
-      if (!profile.approved) {
-        errorMessage.textContent = "Your account is waiting for Owner/Admin approval.";
-        await supabaseClient.auth.signOut();
-        return;
-      }
-
-      localStorage.setItem("user_id", user.id);
-      localStorage.setItem("email", profile.email || email);
-      localStorage.setItem("username", profile.full_name || profile.email || email);
-      localStorage.setItem("full_name", profile.full_name || "");
-      localStorage.setItem("role", profile.role || "PENDING");
-      localStorage.setItem("approved", profile.approved ? "true" : "false");
-
-      alert("Login successful!");
-      window.location.href = "dashboard.html";
     });
   </script>
 </body>

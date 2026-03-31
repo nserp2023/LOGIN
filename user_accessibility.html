@@ -156,32 +156,19 @@
 
   <script>
     const accessClient = supabase.createClient(
-      "https://gqxczzijntbvtlmmzppt.supabase.co",
-      "sb_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs"
+      "https://kzxwjujjvnehhthazicc.supabase.co",
+      "sb_publishable_Iu3sQGl9gq_VsVYxR3j_7g_SLvgqp_9"
     );
 
     const PAGE_LIST = [
-      { key: "dashboard", label: "Dashboard" },
       { key: "sales", label: "Sales" },
-      { key: "mobile_sales", label: "Mobile Sales" },
-      { key: "sales_return", label: "Sales Return" },
+      { key: "customer_manager", label: "Customer Manager" },
+      { key: "gstreport", label: "GST Report" },
+      { key: "history", label: "Sales History" },
       { key: "purchase", label: "Purchase" },
-      { key: "purchase_report", label: "Purchase Report" },
-      { key: "stock_report", label: "Stock Report" },
-      { key: "payment_receipt", label: "Payment / Receipt" },
-      { key: "customer", label: "Customer" },
+      { key: "paymentreceipt", label: "Payment / Receipt" },
       { key: "crm", label: "CRM" },
       { key: "users", label: "Users" },
-      { key: "user_accessibility", label: "User Accessibility" },
-      { key: "sales_report", label: "Sales Report" },
-      { key: "sales_return_report", label: "Sales Return Report" },
-      { key: "receipt_report", label: "Receipt Report" },
-      { key: "payment_report", label: "Payment Report" },
-      { key: "products", label: "Products" },
-      { key: "supplier", label: "Supplier" },
-      { key: "hsn", label: "HSN" },
-      { key: "customer_list", label: "Customer List" },
-      { key: "supplier_list", label: "Supplier List" }
     ];
 
     let selectedUser = null;

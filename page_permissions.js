@@ -1,19 +1,13 @@
 // page_permissions.js
 
-const SUPABASE_URL = "https://gqxczzijntbvtlmmzppt.supabase.co";
-const SUPABASE_KEY = "sb_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs";
+const permClient = window.sbcc;
 
-// Use existing global client if available, otherwise create one
-const permClient = window.sbcc || supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-// Optional: keep global for other pages too
-if (!window.sbcc) {
-  window.sbcc = permClient;
+if (!permClient) {
+  console.error("Supabase client is not initialized. Make sure supabaseClient.js is loaded before page_permissions.js");
 }
 
 async function getLoggedInProfile() {
   if (!permClient) {
-    console.error("Supabase client is not initialized.");
     alert("Supabase client not initialized.");
     window.location.href = "index.html";
     return null;
@@ -95,7 +89,9 @@ async function requirePageAccess(pageKey) {
 }
 
 async function logoutPermissionUser() {
-  await permClient.auth.signOut();
+  if (permClient) {
+    await permClient.auth.signOut();
+  }
   localStorage.clear();
   window.location.href = "index.html";
 }

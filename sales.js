@@ -1,7 +1,7 @@
 const { createClient } = supabase;
 
-const supabaseUrl = "https://gqxczzijntbvtlmmzppt.supabase.co";
-const supabaseKey = "sb_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs";
+const supabaseUrl = "https://kzxwjujjvnehhthazicc.supabase.co";
+const supabaseKey = "sb_publishable_Iu3sQGl9gq_VsVYxR3j_7g_SLvgqp_9";
 const supabaseClient = createClient(supabaseUrl, supabaseKey);
 
 // ===== Auth =====

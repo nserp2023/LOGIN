@@ -874,75 +874,33 @@ body.dashboard-page {
       <div class="card" onclick="window.location.href='gstbillwise.html'">📊 GST Bill-wise Report</div>
       <div class="card" onclick="window.location.href='crm.html'">📝 CRM</div>
       <div class="card" onclick="window.location.href='users.html'">⚙️ USER SETTINGS</div>
+      <div class="card" onclick="window.location.href='user_accessibility.html'">👤 PROFILE</div>
     </section>
   </main>
 
   <div id="overlay" class="overlay"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabaseClient.js"></script>
+<script src="page_permissions.js"></script>
 <script>
-const supabaseUrl = "https://gqxczzijntbvtlmmzppt.supabase.co";
-const supabaseKey = "sb_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs";
-const sb = supabase.createClient(supabaseUrl, supabaseKey);
+    const sb = window.sbcc; // supabase client from supabaseClient.js
+
 
 document.addEventListener("DOMContentLoaded", async () => {
   setupSidebar();
-  await checkUserAccess();
-  await loadUserInfo();
+
+  const profile = await getLoggedInProfile();
+  if (!profile) return;
+
+  loadUserInfo(); // already uses localStorage
   applyRolePermissions();
+
   await loadTodayDashboardSummary();
 });
 
 // ===============================
-// 🔐 CHECK LOGIN + APPROVAL
 // ===============================
-async function checkUserAccess() {
-  try {
-    const { data, error } = await sb.auth.getUser();
-
-    if (error) {
-      console.error("Auth error:", error);
-      window.location.href = "index.html";
-      return;
-    }
-
-    const user = data?.user;
-
-    if (!user) {
-      window.location.href = "index.html";
-      return;
-    }
-
-    const { data: profile, error: profileError } = await sb
-      .from("user_profiles")
-      .select("role, approved, full_name, email")
-      .eq("id", user.id)
-      .maybeSingle();
-
-    if (profileError) {
-      console.error("Profile error:", profileError);
-      alert("Failed to load user profile.");
-      await sb.auth.signOut();
-      localStorage.clear();
-      window.location.href = "index.html";
-      return;
-    }
-
-    if (!profile || !profile.approved) {
-      alert("Your account is not approved yet.");
-      await sb.auth.signOut();
-      localStorage.clear();
-      window.location.href = "index.html";
-      return;
-    }
-
-    localStorage.setItem("role", profile.role || "");
-    localStorage.setItem("username", profile.full_name || profile.email || "User");
-  } catch (err) {
-    console.error("checkUserAccess error:", err);
-    window.location.href = "index.html";
-  }
-}
 
 // ===============================
 // 👤 LOAD USER INFO

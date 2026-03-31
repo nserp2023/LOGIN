@@ -4,16 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Signup - Billing Software</title>
-  <link rel="stylesheet" href="signup.css">
   <style>
-    /* Reset */
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
     }
 
-    /* Background with overlay */
     body {
       font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       background: url("background.jpg") no-repeat center center fixed;
@@ -33,22 +30,6 @@
       background: rgba(0, 0, 0, 0.45);
     }
 
-    /* Glassmorphism container */
-    .login-container {
-      position: relative;
-      z-index: 2;
-      background: rgba(255, 255, 255, 0.15);
-      border-radius: 20px;
-      padding: 40px 35px;
-      width: 380px;
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border: 1px solid rgba(255, 255, 255, 0.25);
-      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
-      animation: fadeInUp 0.8s ease;
-    }
-
-    /* Floating shapes */
     .shape {
       position: absolute;
       border-radius: 50%;
@@ -85,15 +66,24 @@
     }
 
     @keyframes float {
-      0%, 100% {
-        transform: translateY(0) translateX(0);
-      }
-      50% {
-        transform: translateY(-40px) translateX(30px);
-      }
+      0%, 100% { transform: translateY(0) translateX(0); }
+      50% { transform: translateY(-40px) translateX(30px); }
     }
 
-    /* Heading */
+    .login-container {
+      position: relative;
+      z-index: 2;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 20px;
+      padding: 40px 35px;
+      width: 380px;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+      animation: fadeInUp 0.8s ease;
+    }
+
     .login-container h2 {
       margin-bottom: 25px;
       font-size: 26px;
@@ -103,7 +93,6 @@
       letter-spacing: 0.5px;
     }
 
-    /* Input groups */
     .input-group {
       margin-bottom: 20px;
     }
@@ -137,7 +126,6 @@
       box-shadow: 0 0 0 3px rgba(0, 120, 215, 0.4);
     }
 
-    /* Button */
     button {
       width: 100%;
       padding: 14px;
@@ -156,12 +144,12 @@
       box-shadow: 0 6px 20px rgba(0, 120, 215, 0.5);
     }
 
-    /* Messages */
     #error-message {
       color: #ff6b6b;
       margin-top: 12px;
       font-size: 14px;
       text-align: center;
+      min-height: 20px;
     }
 
     #success-message {
@@ -169,9 +157,9 @@
       margin-top: 12px;
       font-size: 14px;
       text-align: center;
+      min-height: 20px;
     }
 
-    /* Login link */
     .login-container p {
       margin-top: 20px;
       font-size: 14px;
@@ -189,7 +177,6 @@
       text-decoration: underline;
     }
 
-    /* Animation */
     @keyframes fadeInUp {
       from {
         opacity: 0;
@@ -226,7 +213,7 @@
         <input type="password" id="password" name="password" placeholder="Enter password" required>
       </div>
 
-      <button type="submit">Sign Up</button>
+      <button type="submit" id="signupBtn">Sign Up</button>
       <p id="error-message"></p>
       <p id="success-message"></p>
     </form>
@@ -235,66 +222,76 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabaseClient.js"></script>
   <script>
-    const { createClient } = supabase;
-
-    const supabaseUrl = "https://gqxczzijntbvtlmmzppt.supabase.co";
-    const supabaseKey = "sb_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs";
-    const supabaseClient = createClient(supabaseUrl, supabaseKey);
+    const signupClient = window.sbcc;
+    let isSigningUp = false;
 
     document.getElementById("signupForm").addEventListener("submit", async function(event) {
       event.preventDefault();
+      if (isSigningUp) return;
 
       const full_name = document.getElementById("full_name").value.trim();
-      const email = document.getElementById("email").value.trim();
-      const password = document.getElementById("password").value.trim();
+      const email = document.getElementById("email").value.trim().toLowerCase();
+      const password = document.getElementById("password").value;
       const errorMessage = document.getElementById("error-message");
       const successMessage = document.getElementById("success-message");
+      const signupBtn = document.getElementById("signupBtn");
 
       errorMessage.textContent = "";
       successMessage.textContent = "";
 
       if (!full_name || !email || !password) {
-        errorMessage.textContent = "All fields are required!";
+        errorMessage.textContent = "All fields are required.";
         return;
       }
 
-      // 1. Create auth user
-      const { data, error } = await supabaseClient.auth.signUp({
-        email,
-        password
-      });
+      try {
+        isSigningUp = true;
+        signupBtn.disabled = true;
+        signupBtn.textContent = "Signing Up...";
 
-      if (error) {
-        errorMessage.textContent = "Signup failed: " + error.message;
-        return;
+        const { data, error } = await signupClient.auth.signUp({
+          email,
+          password
+        });
+
+        if (error) {
+          errorMessage.textContent = "Signup failed: " + error.message;
+          return;
+        }
+
+        const user = data?.user;
+
+        if (!user) {
+          errorMessage.textContent = "Signup failed: user details not returned.";
+          return;
+        }
+
+        const { error: profileError } = await signupClient
+          .from("user_profiles")
+          .insert([{
+            id: user.id,
+            email: email,
+            full_name: full_name,
+            role: "PENDING",
+            approved: false
+          }]);
+
+        if (profileError) {
+          errorMessage.textContent = "User created in Auth, but profile save failed: " + profileError.message;
+          return;
+        }
+
+        successMessage.textContent = "Signup successful. Wait for OWNER / ADMIN approval before login.";
+        document.getElementById("signupForm").reset();
+      } catch (err) {
+        errorMessage.textContent = "Unexpected error: " + (err.message || err);
+      } finally {
+        isSigningUp = false;
+        signupBtn.disabled = false;
+        signupBtn.textContent = "Sign Up";
       }
-
-      const user = data.user;
-
-      if (!user) {
-        errorMessage.textContent = "Signup completed, but user details were not returned.";
-        return;
-      }
-
-      // 2. Create profile row
-      const { error: profileError } = await supabaseClient
-        .from("user_profiles")
-        .insert([{
-          id: user.id,
-          email: email,
-          full_name: full_name,
-          role: "PENDING",
-          approved: false
-        }]);
-
-      if (profileError) {
-        errorMessage.textContent = "User created in Auth, but profile save failed: " + profileError.message;
-        return;
-      }
-
-      successMessage.textContent = "Signup successful! Wait for Owner/Admin approval before login.";
-      document.getElementById("signupForm").reset();
     });
   </script>
 </body>

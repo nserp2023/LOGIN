@@ -5,8 +5,8 @@
    Supabase client (CDN setup)
    ------------------------- */
 const supabaseClient = supabase.createClient(
-  "https://gqxczzijntbvtlmmzppt.supabase.co",   // your project URL
-  "sb_publishable_kmh1sok1CWBSBW0kvdla7w_T7kDioRs" // your anon key
+  "https://kzxwjujjvnehhthazicc.supabase.co",   // your project URL
+  "sb_publishable_Iu3sQGl9gq_VsVYxR3j_7g_SLvgqp_9" // your anon key
 );
 
 /* -------------------------

@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Signup - Billing Software</title>
   <style>
     * {
@@ -126,6 +126,11 @@
       box-shadow: 0 0 0 3px rgba(0, 120, 215, 0.4);
     }
 
+    /* Uppercase visual effect */
+    .uppercase-input {
+      text-transform: uppercase;
+    }
+
     button {
       width: 100%;
       padding: 14px;
@@ -142,6 +147,13 @@
     button:hover {
       transform: translateY(-2px);
       box-shadow: 0 6px 20px rgba(0, 120, 215, 0.5);
+    }
+
+    button:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
     }
 
     #error-message {
@@ -197,20 +209,40 @@
   <div class="login-container">
     <h2>Create an Account</h2>
 
-    <form id="signupForm">
+    <form id="signupForm" autocomplete="off">
       <div class="input-group">
         <label for="full_name">Full Name</label>
-        <input type="text" id="full_name" name="full_name" placeholder="Enter full name" required>
+        <input
+          type="text"
+          id="full_name"
+          name="full_name"
+          class="uppercase-input"
+          placeholder="Enter full name"
+          required
+          autofocus
+        />
       </div>
 
       <div class="input-group">
         <label for="email">Email</label>
-        <input type="email" id="email" name="email" placeholder="Enter email" required>
+        <input
+          type="email"
+          id="email"
+          name="email"
+          placeholder="Enter email"
+          required
+        />
       </div>
 
       <div class="input-group">
         <label for="password">Password</label>
-        <input type="password" id="password" name="password" placeholder="Enter password" required>
+        <input
+          type="password"
+          id="password"
+          name="password"
+          placeholder="Enter password"
+          required
+        />
       </div>
 
       <button type="submit" id="signupBtn">Sign Up</button>
@@ -227,16 +259,38 @@
     const signupClient = window.sbcc;
     let isSigningUp = false;
 
+    const fullNameInput = document.getElementById("full_name");
+    const emailInput = document.getElementById("email");
+    const passwordInput = document.getElementById("password");
+    const errorMessage = document.getElementById("error-message");
+    const successMessage = document.getElementById("success-message");
+    const signupBtn = document.getElementById("signupBtn");
+
+    // Fake caps lock behavior for full name field
+    function forceUppercase(el) {
+      el.addEventListener("input", () => {
+        const start = el.selectionStart;
+        const end = el.selectionEnd;
+        el.value = el.value.toUpperCase();
+        try {
+          el.setSelectionRange(start, end);
+        } catch (_) {}
+      });
+    }
+
+    forceUppercase(fullNameInput);
+
+    window.addEventListener("load", () => {
+      fullNameInput.focus();
+    });
+
     document.getElementById("signupForm").addEventListener("submit", async function(event) {
       event.preventDefault();
       if (isSigningUp) return;
 
-      const full_name = document.getElementById("full_name").value.trim();
-      const email = document.getElementById("email").value.trim().toLowerCase();
-      const password = document.getElementById("password").value;
-      const errorMessage = document.getElementById("error-message");
-      const successMessage = document.getElementById("success-message");
-      const signupBtn = document.getElementById("signupBtn");
+      const full_name = fullNameInput.value.trim().toUpperCase();
+      const email = emailInput.value.trim().toLowerCase();
+      const password = passwordInput.value;
 
       errorMessage.textContent = "";
       successMessage.textContent = "";
@@ -285,6 +339,7 @@
 
         successMessage.textContent = "Signup successful. Wait for OWNER / ADMIN approval before login.";
         document.getElementById("signupForm").reset();
+        fullNameInput.focus();
       } catch (err) {
         errorMessage.textContent = "Unexpected error: " + (err.message || err);
       } finally {

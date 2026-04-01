@@ -1075,6 +1075,18 @@
       p2.value   = item.price2 || 0;
       p3.value   = item.price3 || 0;
 
+      const basePurchase = Number(item.purchase_price || item.landing || 0);
+
+if (basePurchase > 0) {
+  p1p.value = item.price1 ? (((Number(item.price1) / basePurchase) - 1) * 100).toFixed(2) : "";
+  p2p.value = item.price2 ? (((Number(item.price2) / basePurchase) - 1) * 100).toFixed(2) : "";
+  p3p.value = item.price3 ? (((Number(item.price3) / basePurchase) - 1) * 100).toFixed(2) : "";
+} else {
+  p1p.value = "";
+  p2p.value = "";
+  p3p.value = "";
+}
+
       calculateRow(row);
     }
 
@@ -1292,7 +1304,7 @@
         return {
           hsn_code: hsn,
           item_code: code,
-          barcode: barcode,
+          barcode: barcode || code,
           item_name: name,
           quantity: num(qty),
           price: num(price),

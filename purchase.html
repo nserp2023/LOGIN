@@ -180,7 +180,8 @@
     }
 
     .field input,
-    .grid input{
+    .grid input,
+    .grid select{
       height:var(--row-h);
       padding:0 12px;
       border-radius:var(--radius-sm);
@@ -197,7 +198,8 @@
     }
 
     .field input:focus,
-    .grid input:focus{
+    .grid input:focus,
+    .grid select:focus{
       border-color:#5ea0ff;
       box-shadow:var(--focus);
       background:#101a2d;
@@ -224,6 +226,7 @@
         120px
         160px
         220px
+        140px
         80px
         100px
         80px
@@ -244,7 +247,7 @@
         130px;
       gap:10px;
       align-items:center;
-      min-width:2400px;
+      min-width:2550px;
       margin-bottom:10px;
     }
 
@@ -271,7 +274,8 @@
       padding:0 4px;
     }
 
-    .grid input{
+    .grid input,
+    .grid select{
       font-size:13px;
     }
 
@@ -405,7 +409,7 @@
 
     .dropdown .opt.item-opt{
       display:grid;
-      grid-template-columns:140px 1fr 100px 120px;
+      grid-template-columns:140px 1fr 140px 100px 120px;
       gap:10px;
     }
 
@@ -545,6 +549,7 @@
           <div>Item code</div>
           <div>Barcode</div>
           <div>Item name</div>
+          <div>Department</div>
           <div>Qty</div>
           <div>Price</div>
           <div>Disc%</div>
@@ -680,17 +685,23 @@
         }
       }
 
-      stockData = allItems;
+      stockData = allItems.map(item => ({
+        ...item,
+        department: String(item.department || "").toUpperCase()
+      }));
     }
 
-    function searchStock(query, field) {
+    function searchStock(query, field, selectedDepartment = "") {
       if (!query) return [];
       const normalizedQuery = normalizeSearchText(query);
       if (!normalizedQuery) return [];
 
       const terms = normalizedQuery.split(" ").filter(Boolean);
+      const deptFilter = String(selectedDepartment || "").trim().toUpperCase();
 
       const scored = stockData.map(item => {
+        if (deptFilter && String(item.department || "").toUpperCase() !== deptFilter) return null;
+
         const codeRaw = String(item.item_code || "");
         const nameRaw = String(item.item_name || "");
         const barcodeRaw = String(item.barcode || "");
@@ -763,6 +774,7 @@
           opt.innerHTML = `
             <div class="muted">${it.item_code ?? ""}</div>
             <div>${it.item_name ?? ""}</div>
+            <div class="muted">${it.department || ""}</div>
             <div class="muted">Stock: ${fmt2(it.balance ?? 0)}</div>
             <div class="muted">${fmt2(it.price1 ?? 0)} / ${fmt2(it.landing ?? 0)}</div>
           `;
@@ -788,7 +800,7 @@
         top = window.scrollY + rect.bottom + 4;
       }
 
-      let minWidth = Math.max(rect.width, 700);
+      let minWidth = Math.max(rect.width, 820);
       let left = window.scrollX + rect.left;
 
       if(left + minWidth > window.innerWidth - 10){
@@ -1054,13 +1066,14 @@
     }
 
     function fillRowFromStock(row, item){
-      const [hsn, code, barcode, name, qty, price, disc, total, gstp, totalG, purch, purchG, landing, p1p, p1, p1g, p2p, p2, p2g, p3p, p3, p3g] =
-        row.querySelectorAll("input");
+      const all = row.querySelectorAll("input, select");
+      const [hsn, code, barcode, name, department, qty, price, disc, total, gstp, totalG, purch, purchG, landing, p1p, p1, p1g, p2p, p2, p2g, p3p, p3, p3g] = all;
 
       code.value    = item.item_code || "";
       barcode.value = item.barcode || item.item_code || "";
       name.value    = item.item_name || "";
       hsn.value     = item.hsn_code || "";
+      department.value = String(item.department || "").toUpperCase();
       gstp.value    = item.gst_percent || "";
 
       price.value   = item.purchase_price || item.landing || 0;
@@ -1077,15 +1090,15 @@
 
       const basePurchase = Number(item.purchase_price || item.landing || 0);
 
-if (basePurchase > 0) {
-  p1p.value = item.price1 ? (((Number(item.price1) / basePurchase) - 1) * 100).toFixed(2) : "";
-  p2p.value = item.price2 ? (((Number(item.price2) / basePurchase) - 1) * 100).toFixed(2) : "";
-  p3p.value = item.price3 ? (((Number(item.price3) / basePurchase) - 1) * 100).toFixed(2) : "";
-} else {
-  p1p.value = "";
-  p2p.value = "";
-  p3p.value = "";
-}
+      if (basePurchase > 0) {
+        p1p.value = item.price1 ? (((Number(item.price1) / basePurchase) - 1) * 100).toFixed(2) : "";
+        p2p.value = item.price2 ? (((Number(item.price2) / basePurchase) - 1) * 100).toFixed(2) : "";
+        p3p.value = item.price3 ? (((Number(item.price3) / basePurchase) - 1) * 100).toFixed(2) : "";
+      } else {
+        p1p.value = "";
+        p2p.value = "";
+        p3p.value = "";
+      }
 
       calculateRow(row);
     }
@@ -1107,10 +1120,23 @@ if (basePurchase > 0) {
         return i;
       };
 
+      const mkDept = () => {
+        const s = document.createElement("select");
+        s.classList.add("dept-inp");
+        s.innerHTML = `
+          <option value="">SELECT</option>
+          <option value="ELECTRICAL">ELECTRICAL</option>
+          <option value="PLUMBING">PLUMBING</option>
+          <option value="INTERLOCK">INTERLOCK</option>
+        `;
+        return s;
+      };
+
       const hsn = mk("HSN");
       const code = mk("Code");
       const barcode = mk("Barcode");
       const name = mk("Name");
+      const department = mkDept();
       const qty = mk("Qty");
       const price = mk("Price");
       const disc = mk("Disc%");
@@ -1134,6 +1160,7 @@ if (basePurchase > 0) {
       barcode.value = prefill.barcode ?? "";
       name.value = prefill.item_name ?? "";
       hsn.value  = prefill.hsn_code ?? "";
+      department.value = String(prefill.department || "").toUpperCase();
       qty.value  = prefill.quantity ?? "";
       price.value= prefill.price ?? prefill.purchase_price ?? "";
       disc.value = prefill.discount_percent ?? "";
@@ -1142,7 +1169,7 @@ if (basePurchase > 0) {
       purchG.value= prefill.purchase_price_gst ?? "";
       landing.value= prefill.landing ?? purchG.value ?? "";
 
-      [hsn,code,barcode,name,qty,price,disc,total,gstp,totalG,purch,purchG,landing,p1p,p1,p1g,p2p,p2,p2g,p3p,p3,p3g]
+      [hsn,code,barcode,name,department,qty,price,disc,total,gstp,totalG,purch,purchG,landing,p1p,p1,p1g,p2p,p2,p2g,p3p,p3,p3g]
         .forEach(el=>wrap.appendChild(el));
       byId("items").appendChild(wrap);
 
@@ -1156,7 +1183,7 @@ if (basePurchase > 0) {
       code.addEventListener("input", (e) => {
         const q = e.target.value.trim();
         if(q.length < 1){ hideDropdown(); return; }
-        const matches = searchStock(q, "item_code");
+        const matches = searchStock(q, "item_code", department.value);
         if(!matches.length) return hideDropdown();
         showDropdown(e.target, matches, (pick) => fillRowFromStock(wrap, pick));
       });
@@ -1164,7 +1191,7 @@ if (basePurchase > 0) {
       name.addEventListener("input", (e) => {
         const q = e.target.value.trim();
         if(q.length < 1){ hideDropdown(); return; }
-        const matches = searchStock(q, "item_name");
+        const matches = searchStock(q, "item_name", department.value);
         if(!matches.length) return hideDropdown();
         showDropdown(e.target, matches, (pick) => fillRowFromStock(wrap, pick));
       });
@@ -1177,6 +1204,16 @@ if (basePurchase > 0) {
 
       [qty,price,disc,gstp,landing,p1p,p1,p1g,p2p,p2,p2g,p3p,p3,p3g].forEach(el=>{
         el.addEventListener("input", () => calculateRow(wrap));
+      });
+
+      department.addEventListener("change", () => {
+        const rawCode = normalizeSearchText(code.value);
+        if(rawCode){
+          const item = stockData.find(i => normalizeSearchText(i.item_code || "") === rawCode);
+          if(item && !department.value){
+            department.value = String(item.department || "").toUpperCase();
+          }
+        }
       });
 
       landing.addEventListener("input", ()=>{
@@ -1194,10 +1231,10 @@ if (basePurchase > 0) {
               block: "center"
             });
 
-            const firstInput = newRow.querySelector("input");
+            const firstInput = newRow.querySelector("input, select");
             if(firstInput){
               firstInput.focus();
-              firstInput.select();
+              if(firstInput.select) firstInput.select();
             }
           }, 60);
         }
@@ -1208,8 +1245,8 @@ if (basePurchase > 0) {
     }
 
     function calculateRow(row){
-      const inputs = row.querySelectorAll("input");
-      const [hsn, code, barcode, name, qty, price, disc, total, gstp, totalG, purch, purchG, landing, p1p, p1, p1g, p2p, p2, p2g, p3p, p3, p3g] = inputs;
+      const all = row.querySelectorAll("input, select");
+      const [hsn, code, barcode, name, department, qty, price, disc, total, gstp, totalG, purch, purchG, landing, p1p, p1, p1g, p2p, p2, p2g, p3p, p3, p3g] = all;
 
       const Q = num(qty.value);
       const P = num(price.value);
@@ -1296,16 +1333,18 @@ if (basePurchase > 0) {
     function collectItems(){
       const rows = [...byId("items").querySelectorAll(".grid")];
       return rows.map(r=>{
-        const inputs = [...r.querySelectorAll("input")].map(i=>i.value);
+        const fields = [...r.querySelectorAll("input, select")];
         const [
-          hsn, code, barcode, name, qty, price, disc, total, gstp, totalG, purch, purchG, landing,
+          hsn, code, barcode, name, department, qty, price, disc, total, gstp, totalG, purch, purchG, landing,
           p1p, p1, p1g, p2p, p2, p2g, p3p, p3, p3g
-        ] = inputs;
+        ] = fields.map(i=>i.value);
+
         return {
           hsn_code: hsn,
           item_code: code,
           barcode: barcode || code,
           item_name: name,
+          department: String(department || "").toUpperCase(),
           quantity: num(qty),
           price: num(price),
           discount_percent: num(disc),
@@ -1397,6 +1436,7 @@ if (basePurchase > 0) {
           item_name: it.item_name,
           barcode: it.barcode,
           hsn_code: it.hsn_code,
+          department: it.department,
           quantity: newQty,
           purchase_price: it.purchase_price,
           purchase_price_gst: it.purchase_price_gst,
@@ -1428,15 +1468,22 @@ if (basePurchase > 0) {
         item_code: it.item_code,
         barcode: it.barcode,
         item_name: it.item_name,
+        department: it.department,
         quantity: it.quantity,
         price: it.price,
         discount_percent: it.discount_percent,
         purchase_price: it.purchase_price,
         purchase_price_gst: it.purchase_price_gst,
         landing: it.landing,
-        price1_percent: it.price1_percent, price1: it.price1, price1_gst: it.price1_gst,
-        price2_percent: it.price2_percent, price2: it.price2, price2_gst: it.price2_gst,
-        price3_percent: it.price3_percent, price3: it.price3, price3_gst: it.price3_gst,
+        price1_percent: it.price1_percent,
+        price1: it.price1,
+        price1_gst: it.price1_gst,
+        price2_percent: it.price2_percent,
+        price2: it.price2,
+        price2_gst: it.price2_gst,
+        price3_percent: it.price3_percent,
+        price3: it.price3,
+        price3_gst: it.price3_gst,
       }));
 
       const { error: e3 } = await sb.from("purchase_item_details").insert(pidRows);
@@ -1467,19 +1514,21 @@ if (basePurchase > 0) {
 
     document.addEventListener("keydown", function(e){
       const headerInputs = Array.from(document.querySelectorAll("#invoiceRow input"));
-      const itemInputs   = Array.from(document.querySelectorAll("#items input"));
+      const itemInputs   = Array.from(document.querySelectorAll("#items input, #items select"));
       const allInputs    = headerInputs.concat(itemInputs);
 
       const current = document.activeElement;
       const idx = allInputs.indexOf(current);
 
       if(idx >= 0){
-        const colsPerItemRow = 22;
+        const colsPerItemRow = 23;
 
         function focusAndSelect(el){
           if(!el) return;
           el.focus();
-          setTimeout(() => el.select(), 0);
+          setTimeout(() => {
+            if(el.select) el.select();
+          }, 0);
         }
 
         if(e.key === "Enter"){

@@ -5,9 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Barcode Print - VAJRA LIGHTS</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabaseClient.js"></script>
-  <script src="page_permissions.js"></script>
-
+<script src="supabaseClient.js"></script>
+<script src="page_permissions.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 
 <style>
@@ -34,7 +33,7 @@ body{
 }
 
 .page{
-    max-width:1400px;
+    max-width:1450px;
     margin:0 auto;
     padding:18px;
 }
@@ -86,7 +85,7 @@ body{
 
 .toolbar{
     display:grid;
-    grid-template-columns: 2.2fr .8fr auto 1.5fr auto auto auto;
+    grid-template-columns: 2fr .7fr 1fr 1fr auto 1.3fr auto auto auto;
     gap:10px;
     align-items:end;
 }
@@ -106,21 +105,21 @@ body{
     letter-spacing:.04em;
 }
 
-.input, .btn{
+.input, .btn, select{
     height:42px;
     border-radius:12px;
     border:1px solid var(--line);
     font-size:14px;
 }
 
-.input{
+.input, select{
     padding:0 12px;
     background:#fff;
     color:var(--text);
     outline:none;
 }
 
-.input:focus{
+.input:focus, select:focus{
     border-color:#93c5fd;
     box-shadow:0 0 0 3px rgba(37,99,235,.12);
 }
@@ -194,7 +193,7 @@ body{
 
 .content{
     display:grid;
-    grid-template-columns: 340px 1fr;
+    grid-template-columns: 360px 1fr;
     gap:14px;
 }
 
@@ -262,10 +261,18 @@ body{
     margin-top:4px;
 }
 
+.queue-price{
+    margin-top:6px;
+    font-size:13px;
+    font-weight:800;
+    color:#111827;
+}
+
 .queue-actions{
     display:flex;
     gap:6px;
     margin-top:10px;
+    flex-wrap:wrap;
 }
 
 .small-btn{
@@ -294,83 +301,85 @@ body{
 
 .labels-wrap{
     padding:14px;
+    overflow:auto;
 }
 
 .sheet{
     background:#fff;
     border:1px dashed #cbd5e1;
     border-radius:16px;
-    padding:8mm 7mm;
-    min-height:calc(100vh - 235px);
+    padding:0;
+    width:210mm;
+    min-width:210mm;
+    margin:0 auto;
 }
 
 #labels{
     display:grid;
-    grid-template-columns:repeat(5, 1fr);
-    grid-template-rows:repeat(13, 1fr);
-    gap:2mm;
+    grid-template-columns:repeat(5, 42mm);
+    grid-template-rows:repeat(13, 22.80mm);
+    gap:0;
+    width:210mm;
+    margin:0 auto;
 }
 
 .label{
+    width:42mm;
+    height:22.80mm;
     border:1px dashed #d9e1ec;
-    border-radius:2mm;
+    border-radius:0;
     background:#fff;
-    height:22mm;
     display:flex;
     flex-direction:column;
     justify-content:flex-start;
     align-items:center;
     overflow:hidden;
-    padding:1.2mm 1.2mm .8mm;
+    padding:.8mm 1mm .6mm;
     text-align:center;
-}
-
-.label-name{
-    font-size:7px;
-    line-height:1.05;
-    font-weight:700;
-    margin-top:1mm;
-    max-height:5mm;
-    overflow:hidden;
-}
-
-.label-code{
-    font-size:7px;
-    line-height:1;
-    margin-top:.8mm;
-    color:#111827;
-    font-weight:600;
+    box-sizing:border-box;
 }
 
 .barcode-wrap{
-    width: 100%;
-    height: 11mm;
+    width:100%;
+    height:9.2mm;
     display:flex;
     align-items:center;
     justify-content:center;
     overflow:hidden;
+    flex:0 0 auto;
 }
 
 .barcode-svg{
     display:block;
-    max-width:100%;
-    max-height:11mm;
-    width:auto !important;
-    height:11mm !important;
-}
-.label-name{
-    font-size:8px;
-    line-height:1.1;
-    font-weight:700;
-    margin-top:1mm;
-    word-break:break-word;
+    width:100% !important;
+    height:8.2mm !important;
+    max-width:38mm;
+    max-height:8.2mm;
 }
 
-.label-code{
+.label-item-code{
     font-size:7px;
     line-height:1;
-    margin-top:.8mm;
-    color:#334155;
+    margin-top:.5mm;
+    color:#1f2937;
+    font-weight:700;
+    max-width:100%;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+}
+
+.label-price{
+    font-size:13px;
+    line-height:1;
+    margin-top:.7mm;
+    color:#000;
+    font-weight:900;
+    letter-spacing:.2px;
+    max-width:100%;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
 }
 
 .label-empty{
@@ -383,32 +392,74 @@ body{
     font-size:12px;
 }
 
-@media (max-width: 1100px){
+@media (max-width: 1200px){
     .content{grid-template-columns:1fr}
     .queue{max-height:none}
-    .toolbar{grid-template-columns:1fr 120px 120px 1fr 170px 120px 120px}
+    .toolbar{grid-template-columns:1fr 120px 160px 160px 120px 1fr 160px 120px 120px}
 }
 
 @media (max-width: 800px){
     .page{padding:10px}
     .toolbar{grid-template-columns:1fr 1fr;}
     .sheet{overflow:auto}
-    #labels{min-width:900px}
+    #labels{min-width:210mm}
 }
 
 @page{
     size:A4 portrait;
-    margin:6mm;
+    margin:0;
 }
 
 @media print{
-    body{background:#fff}
-    .page{max-width:none;padding:0}
-    .topbar, .queue-panel, .footer-note{display:none !important}
-    .content{display:block}
-    .panel, .sheet{border:none; box-shadow:none; border-radius:0; padding:0; background:#fff}
-    .labels-wrap{padding:0}
-    #labels{gap:2mm}
+    html, body{
+        width:210mm;
+        height:297mm;
+        margin:0;
+        padding:0;
+        background:#fff;
+        overflow:hidden;
+    }
+
+    .page{
+        max-width:none;
+        padding:0;
+        margin:0;
+    }
+
+    .topbar,
+    .queue-panel,
+    .footer-note,
+    .panel-head{
+        display:none !important;
+    }
+
+    .content{
+        display:block;
+        margin:0;
+        padding:0;
+    }
+
+    .panel,
+    .sheet{
+        border:none;
+        box-shadow:none;
+        border-radius:0;
+        padding:0;
+        margin:0;
+        background:#fff;
+    }
+
+    .labels-wrap{
+        padding:0;
+        margin:0;
+    }
+
+    #labels{
+        width:210mm;
+        margin:0;
+        gap:0;
+    }
+
     .label{
         border:none;
         border-radius:0;
@@ -423,7 +474,7 @@ body{
         <div class="title-row">
             <div class="title-block">
                 <h1>Barcode Sticker Print</h1>
-                <p>Search by item code or item name, add sticker quantity, or load items from purchase bill.</p>
+                <p>Print barcode, item code and selected price only.</p>
             </div>
             <div class="stats">
                 <div class="stat">Sheet: 5 × 13 = 65 labels</div>
@@ -441,6 +492,25 @@ body{
             <div class="field">
                 <label>Qty</label>
                 <input type="number" id="qty" class="input" min="1" step="1" value="1">
+            </div>
+
+            <div class="field">
+                <label>Price Type</label>
+                <select id="price_type" class="input">
+                    <option value="price1">PRICE 1</option>
+                    <option value="price2">PRICE 2</option>
+                    <option value="price3">PRICE 3</option>
+                </select>
+            </div>
+
+            <div class="field">
+                <label>Print Value</label>
+                <select id="print_value_type" class="input">
+                    <option value="plain">PRICE</option>
+                    <option value="gst">PRICE + GST</option>
+                    <option value="code">CODE PRICE</option>
+                    <option value="code_gst">CODE + GST</option>
+                </select>
             </div>
 
             <button class="btn btn-primary" onclick="addSelectedItem()">ADD</button>
@@ -486,11 +556,11 @@ body{
 </div>
 
 <script>
-    const sb = window.sbcc;
-    document.addEventListener("DOMContentLoaded", async () => {
-      const ok = await requirePageAccess("purchase");
-      if (!ok) return;
-    });
+const sb = window.sbcc;
+document.addEventListener("DOMContentLoaded", async () => {
+  const ok = await requirePageAccess("purchase");
+  if (!ok) return;
+});
 
 let stockData = [];
 let suggestionData = [];
@@ -505,6 +575,8 @@ const suggestionsBox = document.getElementById('suggestions');
 const queueBox = document.getElementById('queue');
 const labelsBox = document.getElementById('labels');
 const filledCount = document.getElementById('filled_count');
+const priceTypeInput = document.getElementById('price_type');
+const printValueTypeInput = document.getElementById('print_value_type');
 
 window.onload = async () => {
     await loadStockData();
@@ -512,6 +584,17 @@ window.onload = async () => {
     renderLabels();
     setupSearch();
     searchInput.focus();
+
+    priceTypeInput.addEventListener('change', () => {
+        updateQueuePrices();
+        renderQueue();
+        renderLabels();
+    });
+
+    printValueTypeInput.addEventListener('change', () => {
+        renderQueue();
+        renderLabels();
+    });
 };
 
 function normalizeText(value){
@@ -525,7 +608,7 @@ function normalizeText(value){
 async function loadStockData(){
     const { data, error } = await sb
         .from('stock_items')
-        .select('item_code, item_name, barcode')
+        .select('item_code, item_name, barcode, price1, price2, price3, gst_percent')
         .order('item_name');
 
     if(error){
@@ -537,7 +620,11 @@ async function loadStockData(){
     stockData = (data || []).map(item => ({
         item_code: item.item_code || '',
         item_name: item.item_name || '',
-        barcode: item.barcode || item.item_code || ''
+        barcode: item.barcode || item.item_code || '',
+        price1: parseFloat(item.price1) || 0,
+        price2: parseFloat(item.price2) || 0,
+        price3: parseFloat(item.price3) || 0,
+        gst_percent: parseFloat(item.gst_percent) || 0
     }));
 }
 
@@ -644,12 +731,22 @@ function renderSuggestions(){
         return;
     }
 
+    const selectedPriceType = priceTypeInput.value;
+
     suggestionData.forEach((item, idx) => {
+        const basePrice = getBasePriceByType(item, selectedPriceType);
+        const gstPrice = basePrice * (1 + (item.gst_percent || 0) / 100);
+
         const div = document.createElement('div');
         div.className = 'suggestion-item' + (idx === selectedSuggestionIndex ? ' active' : '');
         div.innerHTML = `
             <div class="s1">${escapeHtml(item.item_name)}</div>
-            <div class="s2">Code: ${escapeHtml(item.item_code)} &nbsp;|&nbsp; Barcode: ${escapeHtml(item.barcode || item.item_code)}</div>
+            <div class="s2">
+                Code: ${escapeHtml(item.item_code)} |
+                Barcode: ${escapeHtml(item.barcode || item.item_code)} |
+                P: ${formatMoney(basePrice)} |
+                P+GST: ${formatMoney(gstPrice)}
+            </div>
         `;
         div.addEventListener('mousedown', (e) => {
             e.preventDefault();
@@ -685,6 +782,92 @@ function hideSuggestions(){
     selectedSuggestionIndex = -1;
 }
 
+function getBasePriceByType(item, priceType){
+    if(priceType === 'price2') return parseFloat(item.price2) || 0;
+    if(priceType === 'price3') return parseFloat(item.price3) || 0;
+    return parseFloat(item.price1) || 0;
+}
+
+function toCodePrice(value){
+    const map = {
+        '0':'I',
+        '1':'M',
+        '2':'A',
+        '3':'Y',
+        '4':'F',
+        '5':'L',
+        '6':'O',
+        '7':'W',
+        '8':'E',
+        '9':'R'
+    };
+
+    const rounded = Math.round(Number(value) || 0).toString();
+    return rounded.split('').map(ch => map[ch] ?? ch).join('');
+}
+
+function formatMoney(value){
+    return (Number(value) || 0).toFixed(2);
+}
+
+function getPrintablePrice(item){
+    const selectedPriceType = priceTypeInput.value;
+    const printMode = printValueTypeInput.value;
+
+    const basePrice = getBasePriceByType(item, selectedPriceType);
+    const gstPrice = basePrice * (1 + (parseFloat(item.gst_percent) || 0) / 100);
+
+    if(printMode === 'gst'){
+        return formatMoney(gstPrice);
+    }
+
+    if(printMode === 'code'){
+        return toCodePrice(basePrice);
+    }
+
+    if(printMode === 'code_gst'){
+        return toCodePrice(gstPrice);
+    }
+
+    return formatMoney(basePrice);
+}
+
+function getQueueDisplayPrice(item){
+    const selectedPriceType = priceTypeInput.value;
+    const printMode = printValueTypeInput.value;
+    const basePrice = getBasePriceByType(item, selectedPriceType);
+    const gstPrice = basePrice * (1 + (parseFloat(item.gst_percent) || 0) / 100);
+
+    if(printMode === 'gst'){
+        return `PRICE+GST: ${formatMoney(gstPrice)}`;
+    }
+
+    if(printMode === 'code'){
+        return `CODE PRICE: ${toCodePrice(basePrice)}`;
+    }
+
+    if(printMode === 'code_gst'){
+        return `CODE+GST: ${toCodePrice(gstPrice)}`;
+    }
+
+    return `PRICE: ${formatMoney(basePrice)}`;
+}
+
+function updateQueuePrices(){
+    queueItems = queueItems.map(item => {
+        const stock = stockData.find(x => String(x.item_code).trim().toUpperCase() === String(item.item_code).trim().toUpperCase());
+        if(!stock) return item;
+
+        return {
+            ...item,
+            price1: stock.price1,
+            price2: stock.price2,
+            price3: stock.price3,
+            gst_percent: stock.gst_percent
+        };
+    });
+}
+
 function addSelectedItem(){
     const qty = Math.max(1, parseInt(qtyInput.value, 10) || 1);
     const rawSearch = searchInput.value.trim();
@@ -712,7 +895,11 @@ function addSelectedItem(){
             item_code: item.item_code || '',
             item_name: item.item_name || '',
             barcode: item.barcode || item.item_code || '',
-            qty
+            qty,
+            price1: parseFloat(item.price1) || 0,
+            price2: parseFloat(item.price2) || 0,
+            price3: parseFloat(item.price3) || 0,
+            gst_percent: parseFloat(item.gst_percent) || 0
         });
     }
 
@@ -802,7 +989,11 @@ async function loadPurchase(){
         const finalItem = stockItem || {
             item_code: pItem.item_code || '',
             item_name: pItem.item_name || '',
-            barcode: pItem.item_code || ''
+            barcode: pItem.item_code || '',
+            price1: 0,
+            price2: 0,
+            price3: 0,
+            gst_percent: 0
         };
 
         const key = String(finalItem.item_code || finalItem.item_name).trim().toUpperCase();
@@ -816,7 +1007,11 @@ async function loadPurchase(){
                 item_code: finalItem.item_code || '',
                 item_name: finalItem.item_name || '',
                 barcode: finalItem.barcode || finalItem.item_code || '',
-                qty
+                qty,
+                price1: parseFloat(finalItem.price1) || 0,
+                price2: parseFloat(finalItem.price2) || 0,
+                price3: parseFloat(finalItem.price3) || 0,
+                gst_percent: parseFloat(finalItem.gst_percent) || 0
             });
         }
     }
@@ -838,6 +1033,7 @@ function renderQueue(){
                 <div>
                     <div class="queue-name">${escapeHtml(item.item_name || '')}</div>
                     <div class="queue-code">Code: ${escapeHtml(item.item_code || '')}<br>Barcode: ${escapeHtml(item.barcode || item.item_code || '')}</div>
+                    <div class="queue-price">${escapeHtml(getQueueDisplayPrice(item))}</div>
                 </div>
                 <div class="badge">${item.qty}</div>
             </div>
@@ -898,8 +1094,8 @@ function flattenQueue(){
         for(let i=0; i<item.qty; i++){
             out.push({
                 item_code: item.item_code || '',
-                item_name: item.item_name || '',
-                barcode: item.barcode || item.item_code || ''
+                barcode: item.barcode || item.item_code || '',
+                price_text: getPrintablePrice(item)
             });
         }
     });
@@ -918,39 +1114,39 @@ function renderLabels(){
         if(item){
             const barcodeValue = String(item.barcode || item.item_code || '').trim();
 
-if (barcodeValue) {
-    const wrap = document.createElement('div');
-    wrap.className = 'barcode-wrap';
+            if (barcodeValue) {
+                const wrap = document.createElement('div');
+                wrap.className = 'barcode-wrap';
 
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.classList.add('barcode-svg');
-    wrap.appendChild(svg);
-    div.appendChild(wrap);
+                const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                svg.classList.add('barcode-svg');
+                wrap.appendChild(svg);
+                div.appendChild(wrap);
 
-    try {
-        JsBarcode(svg, barcodeValue, {
-            format: 'CODE128',
-            width: 1.8,
-            height: 34,
-            margin: 0,
-            displayValue: false,
-            background: '#ffffff',
-            lineColor: '#000000'
-        });
-    } catch (err) {
-        console.error('Barcode render failed for', barcodeValue, err);
-    }
-}
-
-            const name = document.createElement('div');
-            name.className = 'label-name';
-            name.textContent = item.item_name || '';
-            div.appendChild(name);
+                try {
+                    JsBarcode(svg, barcodeValue, {
+                        format: 'CODE128',
+                        width: 1.15,
+                        height: 26,
+                        margin: 0,
+                        displayValue: false,
+                        background: '#ffffff',
+                        lineColor: '#000000'
+                    });
+                } catch (err) {
+                    console.error('Barcode render failed for', barcodeValue, err);
+                }
+            }
 
             const code = document.createElement('div');
-            code.className = 'label-code';
-            code.textContent = barcodeValue;
+            code.className = 'label-item-code';
+            code.textContent = item.item_code || '';
             div.appendChild(code);
+
+            const price = document.createElement('div');
+            price.className = 'label-price';
+            price.textContent = item.price_text || '';
+            div.appendChild(price);
         }
 
         labelsBox.appendChild(div);

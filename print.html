@@ -374,13 +374,17 @@ let row=1;
 
 pageItems.forEach(item=>{
 
-let qty=parseFloat(item.quantity)||0;
-let price=parseFloat(item.sales_price_gst)||0;
-let gstPercent=parseFloat(item.gst_percent)||0;
+let qty = parseFloat(item.quantity) || 0;
+let price = parseFloat(item.sales_price_gst) || 0;   // keep for amount/totals
+let displayPrice = parseFloat(item.sales_price) || 0; // show only before GST
+let gstPercent = parseFloat(item.gst_percent) || 0;
 
-let amount=qty*price;
-let taxable=amount/(1+gstPercent/100);
-let gst=amount-taxable;
+let amount = qty * displayPrice;       // for display (before GST)
+
+let amountGst = qty * price;           // for GST calculation (with GST)
+
+let taxable = amountGst / (1 + gstPercent / 100);
+let gst = amountGst - taxable;
 
 totalTaxable+=taxable;
 totalGst+=gst;
@@ -398,7 +402,7 @@ html+=`
 <td>${item.item_code||""}</td>
 <td class="left">${item.item_name}</td>
 <td>${qty}</td>
-<td>${price.toFixed(2)}</td>
+<td>${displayPrice.toFixed(2)}</td>
 <td>${gstPercent}%</td>
 <td>${amount.toFixed(2)}</td>
 </tr>`;

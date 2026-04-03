@@ -354,7 +354,9 @@ GSTIN: 32APBPN5593H1ZT
 <div class="right">
 
 ${type==="packing" ? "" :
-`Bill No : ${(head.series_code || "") + "-" + (head.sales_number || head.quotation_number || head.order_number || head.id)}<br>`}
+`Bill No : ${(head.series_code || "") + "-" + (type === "sales_pack"
+    ? head.packing_number
+    : head.sales_number || head.quotation_number || head.order_number || head.id)}<br>`}
 
 Date : ${(
     head.bill_date || 

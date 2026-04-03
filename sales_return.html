@@ -565,7 +565,7 @@ async function loadStockMaster() {
     while (fetchMore) {
         const { data, error } = await sb
             .from("stock_balance_view")
-            .select("item_code,item_name,barcode,price1,price2,price3,landing,balance,gst_percent,hsn_code,department,price1_gst")
+            .select("item_code,item_name,barcode,price1,price2,price3,landing,balance,gst_percent,hsn_code,department")
             .order("item_code", { ascending: true })
             .range(from, from + pageSize - 1);
 

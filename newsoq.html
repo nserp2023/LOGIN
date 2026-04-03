@@ -1523,6 +1523,24 @@ ${data.map((c, idx) => `
         const currentInput = e.target.closest('.row-inp');
         if(!currentInput) return;
 
+        if (
+    e.key === 'Enter' &&
+    currentInput.classList.contains('name-inp') &&
+    !currentInput.value.trim()
+) {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+
+    const sameRow = currentInput.closest('tr');
+    const codeInp = sameRow ? sameRow.querySelector('.code-inp') : null;
+
+    if (codeInp) {
+        codeInp.focus();
+        if (codeInp.select) codeInp.select();
+    }
+    return;
+}
+
         const currentRow = currentInput.closest('tr');
         if(!currentRow) return;
 

@@ -282,6 +282,81 @@
         display: none;
     }
 
+.autocomplete-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+.autocomplete-list {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 1000px;
+    background: white;
+    border: 1px solid var(--border);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 2000;
+    display: none;
+}
+
+.autocomplete-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    font-weight: bold;
+    min-width: 900px;
+    color: #111827;
+}
+
+.autocomplete-table th {
+    background: #e2e8f0;
+    padding: 6px;
+    border: 1px solid #94a3b8;
+    text-align: left;
+    color: #111827;
+}
+
+.autocomplete-table td {
+    padding: 6px;
+    border: 1px solid #cbd5e1;
+    color: #111827;
+    background: white;
+}
+
+.autocomplete-row:hover,
+.autocomplete-row.selected {
+    background: #dbeafe !important;
+    cursor: pointer;
+}
+
+.autocomplete-item {
+    padding: 8px 10px;
+    color: #111827;
+}
+
+@media (max-width: 1024px) {
+    .autocomplete-list {
+        width: min(1000px, calc(100vw - 40px));
+    }
+}
+
+@media (max-width: 600px) {
+    .autocomplete-list {
+        width: calc(100vw - 24px);
+        left: 0;
+        max-height: 240px;
+    }
+
+    .autocomplete-table {
+        min-width: 760px;
+        font-size: 12px;
+    }
+}
+
+
     @media print {
         .footer-section, button, .col-act, .manual-only {
             display: none !important;
@@ -424,9 +499,6 @@
     </div>
 </div>
 
-<datalist id="stock_code_list"></datalist>
-<datalist id="stock_name_list"></datalist>
-
 <script>
 const sb = window.sbcc;
 document.addEventListener("DOMContentLoaded", async () => {
@@ -436,8 +508,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 let currentSaleId = null;
 let stockMaster = [];
-let stockByCode = new Map();
-let stockByName = new Map();
+let stockLoaded = false;
 
 const modeEl = () => document.getElementById("return_mode");
 const isManualMode = () => modeEl().value === "WITHOUT_BILL";
@@ -481,48 +552,176 @@ async function loadSeries() {
     });
 }
 
-async function loadStockMaster() {
-    const { data, error } = await sb
-        .from("stock_items")
-        .select("item_code,item_name,hsn_code,gst_percent,price1,price1_gst")
-        .order("item_name");
 
-    if (error) {
-        console.error(error);
-        alert("Error loading stock items for manual return mode");
-        return;
+async function loadStockMaster() {
+    stockLoaded = false;
+    stockMaster = [];
+
+    let allItems = [];
+    let from = 0;
+    const pageSize = 1000;
+    let fetchMore = true;
+
+    while (fetchMore) {
+        const { data, error } = await sb
+            .from("stock_balance_view")
+            .select("item_code,item_name,barcode,price1,price2,price3,landing,balance,gst_percent,hsn_code,department,price1_gst")
+            .order("item_code", { ascending: true })
+            .range(from, from + pageSize - 1);
+
+        if (error) {
+            console.error(error);
+            alert("Error loading stock items");
+            return;
+        }
+
+        if (data && data.length > 0) {
+            allItems = allItems.concat(data);
+            from += pageSize;
+            if (data.length < pageSize) fetchMore = false;
+        } else {
+            fetchMore = false;
+        }
     }
 
-    stockMaster = data || [];
-    stockByCode = new Map();
-    stockByName = new Map();
+    const uniqueMap = new Map();
+    for (const item of allItems) {
+        const code = String(item.item_code || "").trim().toUpperCase();
+        if (!code) continue;
+        uniqueMap.set(code, item);
+    }
 
-    const codeList = document.getElementById("stock_code_list");
-    const nameList = document.getElementById("stock_name_list");
-    codeList.innerHTML = "";
-    nameList.innerHTML = "";
+    stockMaster = Array.from(uniqueMap.values());
+    stockLoaded = true;
 
-    stockMaster.forEach(item => {
-        const code = (item.item_code || "").trim().toUpperCase();
-        const name = (item.item_name || "").trim().toUpperCase();
-        if (code) stockByCode.set(code, item);
-        if (name && !stockByName.has(name)) stockByName.set(name, item);
+    console.log("Sales Return stock loaded:", stockMaster.length);
+}
 
-        if (code) {
-            const optCode = document.createElement("option");
-            optCode.value = code;
-            optCode.label = `${code} - ${item.item_name || ""}`;
-            codeList.appendChild(optCode);
+function normalizeSearchText(value) {
+    return String(value || "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+}
+
+function searchReturnStock(query, field) {
+    if (!query) return [];
+
+    const normalizedQuery = normalizeSearchText(query);
+    if (!normalizedQuery) return [];
+
+    const terms = normalizedQuery.split(" ").filter(Boolean);
+
+    const scored = stockMaster.map(item => {
+        const codeRaw = String(item.item_code || "");
+        const nameRaw = String(item.item_name || "");
+        const barcodeRaw = String(item.barcode || "");
+
+        const code = normalizeSearchText(codeRaw);
+        const name = normalizeSearchText(nameRaw);
+        const barcode = normalizeSearchText(barcodeRaw);
+
+        const primary = field === "item_code" ? code : name;
+        const secondary = field === "item_code" ? name : code;
+
+        const matched =
+            terms.every(t => primary.includes(t)) ||
+            terms.every(t => secondary.includes(t)) ||
+            terms.every(t => (code + " " + name + " " + barcode).includes(t));
+
+        if (!matched) return null;
+
+        let score = 0;
+
+        if (primary === normalizedQuery) score += 1000;
+        if (secondary === normalizedQuery) score += 900;
+        if (barcode === normalizedQuery) score += 850;
+
+        if (primary.startsWith(normalizedQuery)) score += 700;
+        if (secondary.startsWith(normalizedQuery)) score += 650;
+        if (barcode.startsWith(normalizedQuery)) score += 600;
+
+        if (code.startsWith(normalizedQuery)) score += 600;
+        if (name.startsWith(normalizedQuery)) score += 550;
+
+        for (const t of terms) {
+            if (code.includes(t)) score += 40;
+            if (name.includes(t)) score += 40;
+            if (barcode.includes(t)) score += 35;
         }
 
-        if (name) {
-            const optName = document.createElement("option");
-            optName.value = name;
-            optName.label = `${name} - ${item.item_code || ""}`;
-            nameList.appendChild(optName);
-        }
+        score -= Math.abs(name.length - normalizedQuery.length) * 0.1;
+
+        return { item, score };
+    }).filter(Boolean);
+
+    scored.sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        return String(a.item.item_name || "").localeCompare(String(b.item.item_name || ""));
+    });
+
+    return scored.slice(0, 40).map(x => x.item);
+}
+
+function adjustReturnDropdownPosition(input, list) {
+    const rect = input.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const dropdownHeight = 220;
+
+    if (spaceBelow < dropdownHeight) {
+        list.style.top = "auto";
+        list.style.bottom = "100%";
+    } else {
+        list.style.top = "100%";
+        list.style.bottom = "auto";
+    }
+}
+
+function handleReturnListNav(e, list, callback) {
+    if (getComputedStyle(list).display === "none") return false;
+
+    const items = list.querySelectorAll(".autocomplete-row");
+    if (!items.length) return false;
+
+    let active = list.querySelector(".selected");
+    let idx = active ? parseInt(active.dataset.idx, 10) : -1;
+
+    if (e.key === "ArrowDown") {
+        e.preventDefault();
+        idx = Math.min(idx + 1, items.length - 1);
+    } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        idx = Math.max(idx - 1, 0);
+    } else if (e.key === "Enter") {
+        e.preventDefault();
+        if (active) callback(active);
+        return true;
+    } else if (e.key === "Escape") {
+        list.style.display = "none";
+        list.removeAttribute("data-open");
+        return true;
+    } else {
+        return false;
+    }
+
+    items.forEach(x => x.classList.remove("selected"));
+    if (items[idx]) {
+        items[idx].classList.add("selected");
+        items[idx].scrollIntoView({ block: "nearest" });
+    }
+
+    return true;
+}
+
+function closeAllReturnDropdowns() {
+    document.querySelectorAll(".autocomplete-list").forEach(list => {
+        list.style.display = "none";
+        list.removeAttribute("data-open");
+        list.innerHTML = "";
     });
 }
+
 
 function handleModeChange() {
     const manual = isManualMode();
@@ -692,10 +891,12 @@ async function loadBill(saleId) {
     }
 }
 
+
 function addManualRow(itemData = {}) {
     const tbody = document.getElementById("items_body");
     const tr = document.createElement("tr");
     const idx = tbody.querySelectorAll("tr").length + 1;
+    const rowId = "sr_" + Date.now() + "_" + Math.floor(Math.random() * 100000);
 
     const gstPercent = parseFloat(itemData.gst_percent || 0) || 0;
     let priceGst = parseFloat(itemData.price1_gst || 0) || 0;
@@ -706,10 +907,22 @@ function addManualRow(itemData = {}) {
     }
 
     tr.setAttribute("data-item-code", itemData.item_code || "");
+    tr.setAttribute("data-rowid", rowId);
+
     tr.innerHTML = `
         <td class="col-idx"><div class="readonly-cell row-no">${idx}</div></td>
-        <td class="col-code"><input type="text" class="manual-code" list="stock_code_list" value="${itemData.item_code || ""}" placeholder="Item code"></td>
-        <td class="col-name"><input type="text" class="manual-name" list="stock_name_list" value="${itemData.item_name || ""}" placeholder="Item name"></td>
+        <td class="col-code">
+            <div class="autocomplete-wrapper">
+                <input type="text" class="manual-code" value="${itemData.item_code || ""}" placeholder="Item code" autocomplete="off">
+                <div class="autocomplete-list code-list"></div>
+            </div>
+        </td>
+        <td class="col-name">
+            <div class="autocomplete-wrapper">
+                <input type="text" class="manual-name" value="${itemData.item_name || ""}" placeholder="Item name" autocomplete="off">
+                <div class="autocomplete-list name-list"></div>
+            </div>
+        </td>
         <td class="col-sold"><input type="number" class="sold-qty manual-ref-qty" value="0" step="0.01" min="0" placeholder="0.00"></td>
         <td class="col-price"><input type="number" class="ret-price" value="${priceGst ? priceGst.toFixed(2) : "0.00"}" step="0.01" min="0"></td>
         <td class="col-ret"><input type="number" class="ret-qty" min="0" step="0.01" value="0" data-navcol="0"></td>
@@ -732,52 +945,201 @@ function addManualRow(itemData = {}) {
     }
 }
 
+
+
 function bindManualRowEvents(tr) {
     const codeInput = tr.querySelector(".manual-code");
     const nameInput = tr.querySelector(".manual-name");
+    const soldQtyInput = tr.querySelector(".sold-qty");
     const priceInput = tr.querySelector(".ret-price");
     const qtyInput = tr.querySelector(".ret-qty");
+    const codeList = tr.querySelector(".code-list");
+    const nameList = tr.querySelector(".name-list");
 
     const applyItem = (item) => {
         if (!item) return;
+
         const code = item.item_code || "";
         const name = item.item_name || "";
         const gstPercent = parseFloat(item.gst_percent || 0) || 0;
         const basePrice = parseFloat(item.price1 || 0) || 0;
         let priceGst = parseFloat(item.price1_gst || 0) || 0;
-        if (!priceGst && basePrice) priceGst = basePrice * (1 + (gstPercent / 100));
 
+        if (!priceGst && basePrice) {
+            priceGst = basePrice * (1 + (gstPercent / 100));
+        }
+
+        tr.setAttribute("data-item-code", code);
         codeInput.value = code;
         nameInput.value = name;
-        tr.setAttribute("data-item-code", code);
+        priceInput.value = (priceGst || 0).toFixed(2);
+
         tr.querySelector(".price").innerText = basePrice.toFixed(2);
         tr.querySelector(".gst-percent").innerText = gstPercent.toFixed(2);
         tr.querySelector(".hsn-code").innerText = item.hsn_code || "";
 
-        if (!parseFloat(priceInput.value || 0)) {
-            priceInput.value = (priceGst || 0).toFixed(2);
-        }
-        calcRow(qtyInput || priceInput);
+        closeAllReturnDropdowns();
+        calcRow(qtyInput);
+
+        qtyInput.focus();
+        qtyInput.select();
     };
 
-    codeInput?.addEventListener("change", () => {
-        codeInput.value = codeInput.value.toUpperCase();
-        applyItem(stockByCode.get(codeInput.value.trim().toUpperCase()));
-    });
+    const renderMatches = (input, list, field) => {
+        if (!stockLoaded) {
+            list.innerHTML = `<div class="autocomplete-item">Loading stock items...</div>`;
+            list.style.display = "block";
+            list.setAttribute("data-open", "true");
+            return;
+        }
 
-    nameInput?.addEventListener("change", () => {
-        nameInput.value = nameInput.value.toUpperCase();
-        applyItem(stockByName.get(nameInput.value.trim().toUpperCase()));
-    });
+        const val = input.value || "";
+        if (val.trim().length < 1) {
+            list.style.display = "none";
+            list.removeAttribute("data-open");
+            list.innerHTML = "";
+            return;
+        }
+
+        const matches = searchReturnStock(val, field);
+
+        if (!matches.length) {
+            list.style.display = "none";
+            list.removeAttribute("data-open");
+            list.innerHTML = "";
+            return;
+        }
+
+        adjustReturnDropdownPosition(input, list);
+
+        let html = `
+            <table class="autocomplete-table">
+                <tr>
+                    <th>Item</th>
+                    <th>Code</th>
+                    <th>Stock</th>
+                    <th>P1</th>
+                    <th>P2</th>
+                    <th>P3</th>
+                    <th>Landing</th>
+                </tr>
+        `;
+
+        matches.forEach((item, idx) => {
+            html += `
+                <tr class="autocomplete-row" data-idx="${idx}">
+                    <td>${item.item_name || ""}</td>
+                    <td>${item.item_code || ""}</td>
+                    <td>${item.balance || 0}</td>
+                    <td>₹${item.price1 || 0}</td>
+                    <td>₹${item.price2 || 0}</td>
+                    <td>₹${item.price3 || 0}</td>
+                    <td>₹${item.landing || 0}</td>
+                </tr>
+            `;
+        });
+
+        html += `</table>`;
+
+        list.innerHTML = html;
+        list.style.display = "block";
+        list.setAttribute("data-open", "true");
+
+        list.querySelectorAll(".autocomplete-row").forEach((row, idx) => {
+            row.addEventListener("click", () => applyItem(matches[idx]));
+        });
+
+        const first = list.querySelector(".autocomplete-row");
+        if (first) first.classList.add("selected");
+    };
 
     [codeInput, nameInput].forEach(inp => {
-        inp?.addEventListener("input", () => {
+        inp.addEventListener("input", () => {
             inp.value = inp.value.toUpperCase();
         });
     });
 
-    priceInput?.addEventListener("input", () => calcRow(priceInput));
+    codeInput.addEventListener("input", () => renderMatches(codeInput, codeList, "item_code"));
+    nameInput.addEventListener("input", () => renderMatches(nameInput, nameList, "item_name"));
+
+    codeInput.addEventListener("keydown", (e) => {
+        const used = handleReturnListNav(e, codeList, (row) => row.click());
+        if (used) return;
+
+        if (e.key === "Enter") {
+            e.preventDefault();
+
+            const code = String(codeInput.value || "").trim().toUpperCase();
+            const exact = stockMaster.find(i => String(i.item_code || "").trim().toUpperCase() === code);
+
+            if (exact) {
+                applyItem(exact);
+            } else {
+                nameInput.focus();
+                nameInput.select();
+            }
+        }
+    });
+
+    nameInput.addEventListener("keydown", (e) => {
+        const used = handleReturnListNav(e, nameList, (row) => row.click());
+        if (used) return;
+
+        if (e.key === "Enter") {
+            e.preventDefault();
+
+            const name = String(nameInput.value || "").trim().toUpperCase();
+            const exact = stockMaster.find(i => String(i.item_name || "").trim().toUpperCase() === name);
+
+            if (exact) {
+                applyItem(exact);
+            } else {
+                soldQtyInput.focus();
+                soldQtyInput.select();
+            }
+        }
+    });
+
+    codeInput.addEventListener("change", () => {
+        const code = String(codeInput.value || "").trim().toUpperCase();
+        const exact = stockMaster.find(i => String(i.item_code || "").trim().toUpperCase() === code);
+        if (exact) applyItem(exact);
+    });
+
+    nameInput.addEventListener("change", () => {
+        const name = String(nameInput.value || "").trim().toUpperCase();
+        const exact = stockMaster.find(i => String(i.item_name || "").trim().toUpperCase() === name);
+        if (exact) applyItem(exact);
+    });
+
+    soldQtyInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            priceInput.focus();
+            priceInput.select();
+        }
+    });
+
+    priceInput.addEventListener("input", () => calcRow(priceInput));
+    priceInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            qtyInput.focus();
+            qtyInput.select();
+        }
+    });
+
+    qtyInput.addEventListener("input", () => calcRow(qtyInput));
+    qtyInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            addManualRow();
+        }
+    });
+
+    calcRow(qtyInput);
 }
+
 
 function bindReturnEvents() {
     document.querySelectorAll(".ret-qty").forEach((inp) => {
@@ -898,6 +1260,18 @@ function removeRow(btn) {
         addManualRow();
     }
 }
+
+document.addEventListener("click", (e) => {
+    if (!e.target.closest(".autocomplete-wrapper")) {
+        closeAllReturnDropdowns();
+    }
+});
+
+document.addEventListener("input", function(e) {
+    if (e.target.tagName === "INPUT" && e.target.type === "text") {
+        e.target.value = e.target.value.toUpperCase();
+    }
+});
 
 async function saveReturn() {
     const btn = document.getElementById("btn_save_return");

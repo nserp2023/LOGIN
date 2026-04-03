@@ -169,6 +169,24 @@ thead{
 display:table-header-group;
 }
 
+.consignee-name{
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.consignee-details{
+  font-weight: bold;
+  font-size: 12px;
+}
+
+.gst-col {
+  width: 35px;       /* adjust 40–55 as you like */
+  min-width: 30px;
+  max-width: 45px;
+  text-align: center;
+  padding: 2px;
+}
+
 }
 .summary td{
 border:1px solid #000;
@@ -325,18 +343,18 @@ GSTIN: 32APBPN5593H1ZT
 
 <div class="bill-info">
 
-<div>
+<div class="consignee">
 <b>Consignee</b><br>
-${head.customer_name}<br>
-${head.customer_address}<br>
-GSTIN: ${head.customer_gst || "NA"}<br>
-Mobile: ${head.customer_mobile || "NA"}
+<span class="consignee-name">${head.customer_name}</span><br>
+<span class="consignee-details">${head.customer_address}</span><br>
+<span class="consignee-details">GSTIN: ${head.customer_gst || "NA"}</span><br>
+<span class="consignee-details">Mobile: ${head.customer_mobile || "NA"}</span>
 </div>
 
 <div class="right">
 
 ${type==="packing" ? "" :
-`Bill No : ${head.sales_number || head.quotation_number || head.order_number || head.id}<br>`}
+`Bill No : ${(head.series_code || "") + "-" + (head.sales_number || head.quotation_number || head.order_number || head.id)}<br>`}
 
 Date : ${(
     head.bill_date || 
@@ -358,12 +376,12 @@ Page : ${p+1} / ${pages}
 <thead>
 <tr>
 <th>No</th>
-<th>HSN</th>
 <th>Code</th>
 <th class="left">Item</th>
+<th>HSN</th>
 <th>Qty</th>
 <th>Price</th>
-<th>GST%</th>
+<th class="gst-col">GST%</th>
 <th>Amount</th>
 </tr>
 </thead>
@@ -375,13 +393,17 @@ let row=1;
 pageItems.forEach(item=>{
 
 let qty = parseFloat(item.quantity) || 0;
-let price = parseFloat(item.sales_price_gst) || 0;   // keep for amount/totals
-let displayPrice = parseFloat(item.sales_price) || 0; // show only before GST
+let price = parseFloat(item.sales_price_gst) || 0;   // GST included
 let gstPercent = parseFloat(item.gst_percent) || 0;
 
-let amount = qty * displayPrice;       // for display (before GST)
+// fallback: use saved sales_price if available, otherwise derive display-only ex-GST price
+let displayPrice = parseFloat(item.sales_price);
+if (isNaN(displayPrice)) {
+  displayPrice = price / (1 + gstPercent / 100);
+}
 
-let amountGst = qty * price;           // for GST calculation (with GST)
+let amount = qty * displayPrice;       // show before GST in item row
+let amountGst = qty * price;           // keep totals correct
 
 let taxable = amountGst / (1 + gstPercent / 100);
 let gst = amountGst - taxable;
@@ -398,12 +420,12 @@ gstMap[gstPercent].gst+=gst;
 html+=`
 <tr>
 <td>${row}</td>
-<td>${item.hsn_code||""}</td>
 <td>${item.item_code||""}</td>
 <td class="left">${item.item_name}</td>
+<td>${item.hsn_code||""}</td>
 <td>${qty}</td>
 <td>${displayPrice.toFixed(2)}</td>
-<td>${gstPercent}%</td>
+<td class="gst-col">${gstPercent}</td>
 <td>${amount.toFixed(2)}</td>
 </tr>`;
 

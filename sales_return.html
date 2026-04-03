@@ -12,6 +12,7 @@
     :root {
         --primary: #2563eb;
         --accent: #059669;
+        --danger: #dc2626;
         --bg-overlay: rgba(255, 255, 255, 0.98);
         --border: #cbd5e1;
         --text: #1e293b;
@@ -72,12 +73,19 @@
         transition: all 0.15s;
         height: 32px;
         box-sizing: border-box;
+        background: white;
     }
 
     .form-control:focus {
         outline: none;
         border-color: var(--primary);
         box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+    }
+
+    .form-control:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        background: #e5e7eb;
     }
 
     .w-xs { width: 70px; }
@@ -176,12 +184,13 @@
     }
 
     .col-idx   { width: 40px; text-align: center; }
-    .col-code  { width: 120px; }
+    .col-code  { width: 140px; }
     .col-name  { width: auto; }
     .col-sold  { width: 90px; }
-    .col-price { width: 110px; }
+    .col-price { width: 120px; }
     .col-ret   { width: 100px; }
     .col-tot   { width: 120px; }
+    .col-act   { width: 70px; }
 
     .footer-section {
         padding: 10px 20px;
@@ -213,6 +222,30 @@
     .btn-save:hover { background: #047857; }
     .btn-save:disabled { background: #94a3b8; cursor: not-allowed; }
 
+    .btn-secondary {
+        background: #2563eb;
+        color: white;
+    }
+
+    .btn-secondary:hover {
+        background: #1d4ed8;
+    }
+
+    .btn-delete {
+        background: transparent;
+        color: #fca5a5;
+        border: none;
+        cursor: pointer;
+        font-weight: 700;
+        width: 100%;
+        height: 34px;
+    }
+
+    .btn-delete:hover {
+        background: rgba(220, 38, 38, 0.12);
+        color: #fecaca;
+    }
+
     .bill-select-box {
         min-width: 280px;
     }
@@ -225,8 +258,32 @@
         background: rgba(0,0,0,0.7);
     }
 
+    .manual-only {
+        display: none;
+    }
+
+    body.manual-mode .manual-only {
+        display: inline-flex;
+    }
+
+    body.manual-mode .with-bill-only {
+        opacity: 0.55;
+        pointer-events: none;
+    }
+
+    body.manual-mode #cust_name,
+    body.manual-mode #cust_mobile,
+    body.manual-mode #bill_date {
+        background: white;
+        color: #111827;
+    }
+
+    .hidden-cell {
+        display: none;
+    }
+
     @media print {
-        .footer-section, button {
+        .footer-section, button, .col-act, .manual-only {
             display: none !important;
         }
 
@@ -264,27 +321,36 @@
         </div>
 
         <div class="form-group">
+            <label>Return Mode</label>
+            <select id="return_mode" class="form-control w-md">
+                <option value="WITH_BILL">WITH BILL</option>
+                <option value="WITHOUT_BILL">WITHOUT BILL / BILL NOT KNOWN</option>
+            </select>
+        </div>
+
+        <div class="form-group with-bill-only">
             <label>Series</label>
             <select id="series" class="form-control w-xs"></select>
         </div>
 
-        <div class="form-group">
+        <div class="form-group with-bill-only">
             <label>Bill No</label>
             <input type="number" id="bill_no" class="form-control w-sm" placeholder="Bill No">
         </div>
 
         <button id="btn_load_billno"
+                class="with-bill-only"
                 style="height:32px;background:#2563eb;color:white;border:none;border-radius:4px;padding:0 12px;"
                 onclick="loadBillByBillNo()">
             LOAD BILL
         </button>
 
-        <div class="form-group">
+        <div class="form-group with-bill-only">
             <label>Mobile</label>
             <input type="text" id="search_mobile" class="form-control w-md" placeholder="Search customer mobile">
         </div>
 
-        <div class="form-group">
+        <div class="form-group with-bill-only">
             <label>Customer Bills</label>
             <select id="customer_bills" class="form-control bill-select-box">
                 <option value="">Select Bill</option>
@@ -292,9 +358,14 @@
         </div>
 
         <button id="btn_load_dropdown"
+                class="with-bill-only"
                 style="height:32px;background:#2563eb;color:white;border:none;border-radius:4px;padding:0 12px;"
                 onclick="loadBillFromDropdown()">
             LOAD SELECTED
+        </button>
+
+        <button id="btn_add_manual_row" class="btn btn-secondary manual-only" onclick="addManualRow()">
+            ADD ITEM
         </button>
 
         <div class="grand-total-box">
@@ -332,17 +403,18 @@
                     <th class="col-idx">#</th>
                     <th class="col-code">Item Code</th>
                     <th class="col-name">Item Name</th>
-                    <th class="col-sold">Sold Qty</th>
-                    <th class="col-price">Price+GST</th>
+                    <th class="col-sold" id="th_ref_qty">Sold Qty</th>
+                    <th class="col-price">Return Price+GST</th>
                     <th class="col-ret">Return Qty</th>
                     <th class="col-tot">Return Amount</th>
+                    <th class="col-act manual-only">Remove</th>
                 </tr>
             </thead>
             <tbody id="items_body"></tbody>
         </table>
 
         <div class="mini-note">
-            Tip: Use <b>Enter</b> or <b>Arrow keys</b> to move between return quantity fields.
+            Tip: Use <b>Enter</b> or <b>Arrow keys</b> to move between return quantity fields. In <b>WITHOUT BILL</b> mode you can add items manually and edit the return price.
         </div>
     </div>
 
@@ -352,18 +424,27 @@
     </div>
 </div>
 
+<datalist id="stock_code_list"></datalist>
+<datalist id="stock_name_list"></datalist>
+
 <script>
-    const sb = window.sbcc; // supabase client from supabaseClient.js
-  document.addEventListener("DOMContentLoaded", async () => {
-  const ok = await requirePageAccess("sales");
-  if (!ok) return;
-  });
+const sb = window.sbcc;
+document.addEventListener("DOMContentLoaded", async () => {
+    const ok = await requirePageAccess("sales");
+    if (!ok) return;
+});
 
 let currentSaleId = null;
+let stockMaster = [];
+let stockByCode = new Map();
+let stockByName = new Map();
 
-// ================= INIT =================
+const modeEl = () => document.getElementById("return_mode");
+const isManualMode = () => modeEl().value === "WITHOUT_BILL";
+
 window.onload = async () => {
     await loadSeries();
+    await loadStockMaster();
 
     document.getElementById("search_mobile").addEventListener("input", handleMobileSearch);
     document.getElementById("bill_no").addEventListener("keydown", (e) => {
@@ -372,9 +453,11 @@ window.onload = async () => {
     document.getElementById("customer_bills").addEventListener("keydown", (e) => {
         if (e.key === "Enter") loadBillFromDropdown();
     });
+    document.getElementById("return_mode").addEventListener("change", handleModeChange);
+
+    handleModeChange();
 };
 
-// ================= LOAD SERIES =================
 async function loadSeries() {
     const { data, error } = await sb
         .from("bill_series")
@@ -398,8 +481,84 @@ async function loadSeries() {
     });
 }
 
-// ================= SEARCH BY MOBILE =================
+async function loadStockMaster() {
+    const { data, error } = await sb
+        .from("stock_items")
+        .select("item_code,item_name,hsn_code,gst_percent,price1,price1_gst")
+        .order("item_name");
+
+    if (error) {
+        console.error(error);
+        alert("Error loading stock items for manual return mode");
+        return;
+    }
+
+    stockMaster = data || [];
+    stockByCode = new Map();
+    stockByName = new Map();
+
+    const codeList = document.getElementById("stock_code_list");
+    const nameList = document.getElementById("stock_name_list");
+    codeList.innerHTML = "";
+    nameList.innerHTML = "";
+
+    stockMaster.forEach(item => {
+        const code = (item.item_code || "").trim().toUpperCase();
+        const name = (item.item_name || "").trim().toUpperCase();
+        if (code) stockByCode.set(code, item);
+        if (name && !stockByName.has(name)) stockByName.set(name, item);
+
+        if (code) {
+            const optCode = document.createElement("option");
+            optCode.value = code;
+            optCode.label = `${code} - ${item.item_name || ""}`;
+            codeList.appendChild(optCode);
+        }
+
+        if (name) {
+            const optName = document.createElement("option");
+            optName.value = name;
+            optName.label = `${name} - ${item.item_code || ""}`;
+            nameList.appendChild(optName);
+        }
+    });
+}
+
+function handleModeChange() {
+    const manual = isManualMode();
+    document.body.classList.toggle("manual-mode", manual);
+    document.getElementById("th_ref_qty").textContent = manual ? "Ref Qty" : "Sold Qty";
+
+    clearHeaderFields();
+    document.getElementById("items_body").innerHTML = "";
+    calcTotal();
+    currentSaleId = null;
+
+    document.getElementById("bill_no").value = "";
+    document.getElementById("search_mobile").value = "";
+    document.getElementById("customer_bills").innerHTML = '<option value="">Select Bill</option>';
+
+    ["cust_name", "cust_mobile", "bill_date"].forEach(id => {
+        document.getElementById(id).readOnly = !manual;
+    });
+    document.getElementById("sale_ref").readOnly = true;
+
+    if (manual) {
+        document.getElementById("bill_date").value = new Date().toISOString().split("T")[0];
+        addManualRow();
+    }
+}
+
+function clearHeaderFields() {
+    document.getElementById("cust_name").value = "";
+    document.getElementById("cust_mobile").value = "";
+    document.getElementById("bill_date").value = "";
+    document.getElementById("sale_ref").value = "";
+}
+
 async function handleMobileSearch() {
+    if (isManualMode()) return;
+
     const mobile = document.getElementById("search_mobile").value.trim();
     const dropdown = document.getElementById("customer_bills");
 
@@ -426,8 +585,9 @@ async function handleMobileSearch() {
     });
 }
 
-// ================= LOAD BILL HELPERS =================
 async function loadBillByBillNo() {
+    if (isManualMode()) return;
+
     const series = document.getElementById("series").value;
     const billNo = document.getElementById("bill_no").value;
 
@@ -452,6 +612,8 @@ async function loadBillByBillNo() {
 }
 
 async function loadBillFromDropdown() {
+    if (isManualMode()) return;
+
     const saleId = document.getElementById("customer_bills").value;
     if (!saleId) {
         alert("Select a bill first");
@@ -460,7 +622,6 @@ async function loadBillFromDropdown() {
     await loadBill(saleId);
 }
 
-// ================= LOAD BILL =================
 async function loadBill(saleId) {
     currentSaleId = saleId;
 
@@ -477,7 +638,7 @@ async function loadBill(saleId) {
 
     document.getElementById("cust_name").value = sale.customer_name || "";
     document.getElementById("cust_mobile").value = sale.customer_mobile || "";
-    document.getElementById("bill_date").value = sale.bill_date ? sale.bill_date.split("T")[0] : "";
+    document.getElementById("bill_date").value = sale.bill_date ? String(sale.bill_date).split("T")[0] : "";
     document.getElementById("sale_ref").value = sale.id || "";
 
     const { data: items, error: itemError } = await sb
@@ -503,30 +664,21 @@ async function loadBill(saleId) {
 
         const tr = document.createElement("tr");
         tr.setAttribute("data-item-code", item.item_code || "");
-
         tr.innerHTML = `
-            <td class="col-idx"><div class="readonly-cell">${idx + 1}</div></td>
-            <td class="col-code"><div class="readonly-cell">${item.item_code || ""}</div></td>
-            <td class="col-name"><div class="readonly-cell readonly-strong">${item.item_name || ""}</div></td>
+            <td class="col-idx"><div class="readonly-cell row-no">${idx + 1}</div></td>
+            <td class="col-code"><div class="readonly-cell code-view">${item.item_code || ""}</div></td>
+            <td class="col-name"><div class="readonly-cell readonly-strong name-view">${item.item_name || ""}</div></td>
             <td class="col-sold"><div class="readonly-cell sold-qty">${qty.toFixed(2)}</div></td>
-            <td class="col-price"><div class="readonly-cell price-gst">${priceGst.toFixed(2)}</div></td>
+            <td class="col-price"><input type="number" class="ret-price" value="${priceGst.toFixed(2)}" step="0.01" readonly></td>
             <td class="col-ret">
-                <input type="number"
-                       class="ret-qty"
-                       min="0"
-                       max="${qty}"
-                       step="0.01"
-                       value="0"
-                       data-navcol="0">
+                <input type="number" class="ret-qty" min="0" max="${qty}" step="0.01" value="0" data-navcol="0">
             </td>
-            <td class="col-tot">
-                <input type="text" class="ret-amount" readonly tabindex="-1" value="0.00" style="font-weight:bold;">
-            </td>
-            <td style="display:none"><div class="price">${price.toFixed(2)}</div></td>
-            <td style="display:none"><div class="gst-percent">${gstPercent.toFixed(2)}</div></td>
-            <td style="display:none"><div class="hsn-code">${hsnCode}</div></td>
+            <td class="col-tot"><input type="text" class="ret-amount" readonly tabindex="-1" value="0.00" style="font-weight:bold;"></td>
+            <td class="col-act manual-only"><button type="button" class="btn-delete" onclick="removeRow(this)">X</button></td>
+            <td class="hidden-cell"><div class="price">${price.toFixed(2)}</div></td>
+            <td class="hidden-cell"><div class="gst-percent">${gstPercent.toFixed(2)}</div></td>
+            <td class="hidden-cell"><div class="hsn-code">${hsnCode}</div></td>
         `;
-
         tbody.appendChild(tr);
     });
 
@@ -540,22 +692,119 @@ async function loadBill(saleId) {
     }
 }
 
-// ================= EVENTS =================
+function addManualRow(itemData = {}) {
+    const tbody = document.getElementById("items_body");
+    const tr = document.createElement("tr");
+    const idx = tbody.querySelectorAll("tr").length + 1;
+
+    const gstPercent = parseFloat(itemData.gst_percent || 0) || 0;
+    let priceGst = parseFloat(itemData.price1_gst || 0) || 0;
+    const basePrice = parseFloat(itemData.price1 || 0) || 0;
+
+    if (!priceGst && basePrice) {
+        priceGst = basePrice * (1 + (gstPercent / 100));
+    }
+
+    tr.setAttribute("data-item-code", itemData.item_code || "");
+    tr.innerHTML = `
+        <td class="col-idx"><div class="readonly-cell row-no">${idx}</div></td>
+        <td class="col-code"><input type="text" class="manual-code" list="stock_code_list" value="${itemData.item_code || ""}" placeholder="Item code"></td>
+        <td class="col-name"><input type="text" class="manual-name" list="stock_name_list" value="${itemData.item_name || ""}" placeholder="Item name"></td>
+        <td class="col-sold"><input type="number" class="sold-qty manual-ref-qty" value="0" step="0.01" min="0" placeholder="0.00"></td>
+        <td class="col-price"><input type="number" class="ret-price" value="${priceGst ? priceGst.toFixed(2) : "0.00"}" step="0.01" min="0"></td>
+        <td class="col-ret"><input type="number" class="ret-qty" min="0" step="0.01" value="0" data-navcol="0"></td>
+        <td class="col-tot"><input type="text" class="ret-amount" readonly tabindex="-1" value="0.00" style="font-weight:bold;"></td>
+        <td class="col-act manual-only"><button type="button" class="btn-delete" onclick="removeRow(this)">X</button></td>
+        <td class="hidden-cell"><div class="price">${basePrice.toFixed(2)}</div></td>
+        <td class="hidden-cell"><div class="gst-percent">${gstPercent.toFixed(2)}</div></td>
+        <td class="hidden-cell"><div class="hsn-code">${itemData.hsn_code || ""}</div></td>
+    `;
+
+    tbody.appendChild(tr);
+    bindManualRowEvents(tr);
+    bindReturnEvents();
+    calcTotal();
+
+    const firstInput = tr.querySelector(".manual-code");
+    if (firstInput) {
+        firstInput.focus();
+        firstInput.select();
+    }
+}
+
+function bindManualRowEvents(tr) {
+    const codeInput = tr.querySelector(".manual-code");
+    const nameInput = tr.querySelector(".manual-name");
+    const priceInput = tr.querySelector(".ret-price");
+    const qtyInput = tr.querySelector(".ret-qty");
+
+    const applyItem = (item) => {
+        if (!item) return;
+        const code = item.item_code || "";
+        const name = item.item_name || "";
+        const gstPercent = parseFloat(item.gst_percent || 0) || 0;
+        const basePrice = parseFloat(item.price1 || 0) || 0;
+        let priceGst = parseFloat(item.price1_gst || 0) || 0;
+        if (!priceGst && basePrice) priceGst = basePrice * (1 + (gstPercent / 100));
+
+        codeInput.value = code;
+        nameInput.value = name;
+        tr.setAttribute("data-item-code", code);
+        tr.querySelector(".price").innerText = basePrice.toFixed(2);
+        tr.querySelector(".gst-percent").innerText = gstPercent.toFixed(2);
+        tr.querySelector(".hsn-code").innerText = item.hsn_code || "";
+
+        if (!parseFloat(priceInput.value || 0)) {
+            priceInput.value = (priceGst || 0).toFixed(2);
+        }
+        calcRow(qtyInput || priceInput);
+    };
+
+    codeInput?.addEventListener("change", () => {
+        codeInput.value = codeInput.value.toUpperCase();
+        applyItem(stockByCode.get(codeInput.value.trim().toUpperCase()));
+    });
+
+    nameInput?.addEventListener("change", () => {
+        nameInput.value = nameInput.value.toUpperCase();
+        applyItem(stockByName.get(nameInput.value.trim().toUpperCase()));
+    });
+
+    [codeInput, nameInput].forEach(inp => {
+        inp?.addEventListener("input", () => {
+            inp.value = inp.value.toUpperCase();
+        });
+    });
+
+    priceInput?.addEventListener("input", () => calcRow(priceInput));
+}
+
 function bindReturnEvents() {
     document.querySelectorAll(".ret-qty").forEach((inp) => {
-        inp.addEventListener("input", () => {
-            calcRow(inp);
-        });
+        if (inp.dataset.bound === "1") return;
+        inp.dataset.bound = "1";
 
+        inp.addEventListener("input", () => calcRow(inp));
         inp.addEventListener("keydown", (e) => {
             if (e.key === "-" || e.key === "+" || e.key === "e") {
                 e.preventDefault();
             }
             handleQtyNavigation(e);
         });
-
         inp.addEventListener("focus", () => {
             if (typeof inp.select === "function") inp.select();
+        });
+    });
+
+    document.querySelectorAll(".ret-price").forEach((inp) => {
+        if (inp.dataset.bound === "1") return;
+        inp.dataset.bound = "1";
+
+        inp.addEventListener("input", () => calcRow(inp));
+        inp.addEventListener("keydown", (e) => {
+            if (e.key === "-" || e.key === "+" || e.key === "e") {
+                e.preventDefault();
+            }
         });
     });
 }
@@ -573,6 +822,8 @@ function handleQtyNavigation(e) {
         if (next) {
             next.focus();
             next.select();
+        } else if (isManualMode()) {
+            addManualRow();
         }
     } else if (e.key === "ArrowUp" || (e.key === "Enter" && e.shiftKey)) {
         e.preventDefault();
@@ -584,26 +835,37 @@ function handleQtyNavigation(e) {
     }
 }
 
-// ================= CALCULATION =================
-function calcRow(input) {
-    const tr = input.closest("tr");
+function calcRow(sourceInput) {
+    const tr = sourceInput.closest("tr");
     if (!tr) return;
 
-    const soldQty = parseFloat(tr.querySelector(".sold-qty")?.innerText) || 0;
-    const priceGst = parseFloat(tr.querySelector(".price-gst")?.innerText) || 0;
+    const soldQtyEl = tr.querySelector(".sold-qty");
+    const priceInput = tr.querySelector(".ret-price");
+    const qtyInput = tr.querySelector(".ret-qty");
 
-    let qty = parseFloat(input.value) || 0;
+    const soldQty = parseFloat(soldQtyEl?.value ?? soldQtyEl?.innerText ?? 0) || 0;
+    let priceGst = parseFloat(priceInput?.value || priceInput?.innerText || 0) || 0;
+    let qty = parseFloat(qtyInput?.value || 0) || 0;
 
-    if (qty > soldQty) {
+    if (!isManualMode() && qty > soldQty) {
         alert("Return qty cannot exceed sold qty");
         qty = 0;
-        input.value = 0;
+        qtyInput.value = 0;
     }
 
     if (qty < 0) {
         qty = 0;
-        input.value = 0;
+        qtyInput.value = 0;
     }
+
+    if (priceGst < 0) {
+        priceGst = 0;
+        priceInput.value = 0;
+    }
+
+    const gstPercent = parseFloat(tr.querySelector(".gst-percent")?.innerText || 0) || 0;
+    const basePrice = gstPercent > 0 ? (priceGst / (1 + gstPercent / 100)) : priceGst;
+    tr.querySelector(".price").innerText = basePrice.toFixed(2);
 
     const amt = qty * priceGst;
     tr.querySelector(".ret-amount").value = amt.toFixed(2);
@@ -617,24 +879,75 @@ function calcTotal() {
         total += parseFloat(inp.value) || 0;
     });
     document.getElementById("return_total").innerText = "₹" + total.toFixed(2);
+    refreshRowNumbers();
 }
 
-// ================= SAVE RETURN =================
+function refreshRowNumbers() {
+    document.querySelectorAll("#items_body tr").forEach((tr, idx) => {
+        const no = tr.querySelector(".row-no");
+        if (no) no.textContent = idx + 1;
+    });
+}
+
+function removeRow(btn) {
+    const tr = btn.closest("tr");
+    if (tr) tr.remove();
+    calcTotal();
+
+    if (isManualMode() && !document.querySelector("#items_body tr")) {
+        addManualRow();
+    }
+}
+
 async function saveReturn() {
     const btn = document.getElementById("btn_save_return");
     if (btn.disabled) return;
 
-    if (!currentSaleId) {
+    const manual = isManualMode();
+
+    if (!manual && !currentSaleId) {
         alert("Load a bill first");
         return;
     }
 
-    const totalReturn = parseFloat(
-        document.getElementById("return_total").innerText.replace("₹", "")
-    ) || 0;
-
+    const totalReturn = parseFloat(document.getElementById("return_total").innerText.replace("₹", "")) || 0;
     if (totalReturn <= 0) {
         alert("No return quantity entered");
+        return;
+    }
+
+    const rows = Array.from(document.querySelectorAll("#items_body tr"));
+    const validRows = [];
+
+    for (const row of rows) {
+        const retQty = parseFloat(row.querySelector(".ret-qty")?.value || 0) || 0;
+        if (retQty <= 0) continue;
+
+        const itemCode = manual
+            ? (row.querySelector(".manual-code")?.value || row.getAttribute("data-item-code") || "").trim().toUpperCase()
+            : (row.getAttribute("data-item-code") || "").trim().toUpperCase();
+
+        const itemName = manual
+            ? (row.querySelector(".manual-name")?.value || "").trim().toUpperCase()
+            : (row.querySelector(".name-view")?.innerText || "").trim();
+
+        const priceGst = parseFloat(row.querySelector(".ret-price")?.value || 0) || 0;
+
+        if (!itemCode || !itemName) {
+            alert("Item code and item name are required for manual return rows");
+            return;
+        }
+
+        if (priceGst <= 0) {
+            alert(`Return price must be greater than zero for item ${itemCode}`);
+            return;
+        }
+
+        validRows.push(row);
+    }
+
+    if (!validRows.length) {
+        alert("Please enter at least one valid return row");
         return;
     }
 
@@ -642,13 +955,15 @@ async function saveReturn() {
     btn.innerText = "SAVING...";
 
     try {
+        const returnDateValue = document.getElementById("bill_date").value || new Date().toISOString().split("T")[0];
+
         const { data: retHead, error } = await sb
             .from("sales_return_details")
             .insert([{
-                original_sales_id: currentSaleId,
-                return_date: new Date().toISOString(),
-                customer_name: document.getElementById("cust_name").value || null,
-                customer_mobile: document.getElementById("cust_mobile").value || null,
+                original_sales_id: manual ? null : currentSaleId,
+                return_date: returnDateValue,
+                customer_name: (document.getElementById("cust_name").value || "").trim() || null,
+                customer_mobile: (document.getElementById("cust_mobile").value || "").trim() || null,
                 total_return_amount: totalReturn
             }])
             .select()
@@ -657,44 +972,47 @@ async function saveReturn() {
         if (error) throw error;
 
         const returnId = retHead.id;
-        const rows = document.querySelectorAll("#items_body tr");
 
-        for (const row of rows) {
-            const retQty = parseFloat(row.querySelector(".ret-qty").value) || 0;
+        for (const row of validRows) {
+            const itemCode = manual
+                ? (row.querySelector(".manual-code")?.value || row.getAttribute("data-item-code") || "").trim().toUpperCase()
+                : (row.getAttribute("data-item-code") || "").trim().toUpperCase();
 
-            if (retQty > 0) {
-                const itemCode = row.getAttribute("data-item-code") || "";
-                const itemName = row.children[2].innerText.trim();
-                const soldQty = parseFloat(row.querySelector(".sold-qty")?.innerText) || 0;
-                const price = parseFloat(row.querySelector(".price")?.innerText) || 0;
-                const priceGst = parseFloat(row.querySelector(".price-gst")?.innerText) || 0;
-                const gstPercent = parseFloat(row.querySelector(".gst-percent")?.innerText) || 0;
-                const hsnCode = row.querySelector(".hsn-code")?.innerText || "";
+            const itemName = manual
+                ? (row.querySelector(".manual-name")?.value || "").trim().toUpperCase()
+                : (row.querySelector(".name-view")?.innerText || "").trim();
 
-                const { error: itemErr } = await sb
-                    .from("sales_return_item_details")
-                    .insert([{
-                        return_id: returnId,
-                        item_code: itemCode,
-                        item_name: itemName,
-                        sold_qty: soldQty,
-                        return_qty: retQty,
-                        price: price,
-                        price_gst: priceGst,
-                        hsn_code: hsnCode,
-                        gst_percent: gstPercent
-                    }]);
+            const soldQtyEl = row.querySelector(".sold-qty");
+            const soldQty = parseFloat(soldQtyEl?.value ?? soldQtyEl?.innerText ?? 0) || 0;
+            const retQty = parseFloat(row.querySelector(".ret-qty")?.value || 0) || 0;
+            const price = parseFloat(row.querySelector(".price")?.innerText || 0) || 0;
+            const priceGst = parseFloat(row.querySelector(".ret-price")?.value || 0) || 0;
+            const gstPercent = parseFloat(row.querySelector(".gst-percent")?.innerText || 0) || 0;
+            const hsnCode = row.querySelector(".hsn-code")?.innerText || "";
 
-                if (itemErr) throw itemErr;
+            const { error: itemErr } = await sb
+                .from("sales_return_item_details")
+                .insert([{
+                    return_id: returnId,
+                    item_code: itemCode,
+                    item_name: itemName,
+                    sold_qty: soldQty,
+                    return_qty: retQty,
+                    price: price,
+                    price_gst: priceGst,
+                    hsn_code: hsnCode,
+                    gst_percent: gstPercent
+                }]);
 
-                const { error: stockErr } = await sb.rpc("increase_stock", {
-                    p_item_code: itemCode,
-                    p_qty: retQty,
-                    p_reference_id: returnId
-                });
+            if (itemErr) throw itemErr;
 
-                if (stockErr) throw stockErr;
-            }
+            const { error: stockErr } = await sb.rpc("increase_stock", {
+                p_item_code: itemCode,
+                p_qty: retQty,
+                p_reference_id: returnId
+            });
+
+            if (stockErr) throw stockErr;
         }
 
         alert("Return Saved Successfully!");

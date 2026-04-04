@@ -185,6 +185,7 @@
         .col-qty  { width: 60px; }
         .col-type { width: 50px; }
         .col-price { width: 90px; }
+        .col-disc { width: 70px; }
         .col-gst  { width: 50px; }
         .col-tot  { width: 100px; }
         .col-act  { width: 30px; }
@@ -629,6 +630,7 @@
                     <th class="col-type">Type</th>
                     <th class="col-price">Price</th>
                     <th class="col-price">Price+GST</th>
+                    <th class="col-disc">Disc %</th>
                     <th class="col-gst">GST%</th>
                     <th class="col-tot">Total</th>
                     <th class="col-act"></th>
@@ -1105,6 +1107,9 @@ ${data.map((c, idx) => `
         <td class="col-price">
             <input type="number" class="row-inp price-gst-inp" data-rid="${rId}" data-navcol="5" step="0.01">
         </td>
+        <td class="col-disc">
+            <input type="number" class="row-inp disc-inp" data-rid="${rId}" data-navcol="6" step="0.01" value="0" min="0" max="100">
+        </td>
         <td class="col-gst">
             <input type="text" class="row-inp gst-inp" data-rid="${rId}" readonly tabindex="-1" style="color:#64748b">
         </td>
@@ -1153,8 +1158,9 @@ ${data.map((c, idx) => `
         const typeInp = row.querySelector('.type-inp');
         const priceInp = row.querySelector('.price-inp');
         const priceGstInp = row.querySelector('.price-gst-inp');
+        const discInp = row.querySelector('.disc-inp');
 
-        [codeInp, nameInp, qtyInp, typeInp, priceInp, priceGstInp].forEach(el => {
+        [codeInp, nameInp, qtyInp, typeInp, priceInp, priceGstInp, discInp].forEach(el => {
             el.addEventListener("focus", () => triggerPurchaseHistory(row));
             el.addEventListener("click", () => triggerPurchaseHistory(row));
         });
@@ -1312,7 +1318,7 @@ ${data.map((c, idx) => `
 
         attachSearch(nameInp, `list_name_${id}`, 'item_name');
 
-        const inputs = [qtyInp, typeInp, priceInp, priceGstInp, codeInp, nameInp];
+        const inputs = [qtyInp, typeInp, priceInp, priceGstInp, discInp, codeInp, nameInp];
         inputs.forEach(el => {
             el.addEventListener('input', (e) => {
                 if(e.target === typeInp) updatePriceFromType(id);
@@ -1342,6 +1348,8 @@ ${data.map((c, idx) => `
 
         row.querySelector('.type-inp').value = "1";
         row.querySelector('.price-inp').value = item.price1 || 0;
+        row.querySelector('.price-gst-inp').value = "";
+        row.querySelector('.disc-inp').value = 0;
         row.querySelector('.raw-data').value = JSON.stringify(item);
 
         setTimeout(() => {
@@ -1443,12 +1451,16 @@ ${data.map((c, idx) => `
         const qty = parseFloat(row.querySelector('.qty-inp').value) || 0;
         const price = parseFloat(row.querySelector('.price-inp').value) || 0;
         const gst = parseFloat(row.querySelector('.gst-inp').value) || 0;
+        const disc = Math.min(100, Math.max(0, parseFloat(row.querySelector('.disc-inp').value) || 0));
 
-        const taxAmt = price * (gst/100);
-        const pGst = price + taxAmt;
-        const total = pGst * qty;
+        const pGstBeforeDiscount = price * (1 + (gst / 100));
+        const pGstAfterDiscount = pGstBeforeDiscount - (pGstBeforeDiscount * disc / 100);
+        const priceAfterDiscount = pGstAfterDiscount / (1 + (gst / 100));
+        const total = pGstAfterDiscount * qty;
 
-        row.querySelector('.price-gst-inp').value = pGst.toFixed(2);
+        row.querySelector('.disc-inp').value = disc.toFixed(2).replace(/\.00$/, '');
+        row.querySelector('.price-inp').value = priceAfterDiscount.toFixed(2);
+        row.querySelector('.price-gst-inp').value = pGstAfterDiscount.toFixed(2);
         row.querySelector('.total-inp').value = total.toFixed(2);
         calcTotal();
         calcProfit();
@@ -1459,10 +1471,12 @@ ${data.map((c, idx) => `
         const qty = parseFloat(row.querySelector('.qty-inp').value) || 0;
         const pGst = parseFloat(row.querySelector('.price-gst-inp').value) || 0;
         const gst = parseFloat(row.querySelector('.gst-inp').value) || 0;
+        const disc = Math.min(100, Math.max(0, parseFloat(row.querySelector('.disc-inp').value) || 0));
 
-        const price = pGst / (1 + (gst/100));
+        const price = pGst / (1 + (gst / 100));
         const total = pGst * qty;
 
+        row.querySelector('.disc-inp').value = disc.toFixed(2).replace(/\.00$/, '');
         row.querySelector('.price-inp').value = price.toFixed(2);
         row.querySelector('.total-inp').value = total.toFixed(2);
         calcTotal();
@@ -1529,7 +1543,8 @@ ${data.map((c, idx) => `
             row.querySelector('.qty-inp'),
             row.querySelector('.type-inp'),
             row.querySelector('.price-inp'),
-            row.querySelector('.price-gst-inp')
+            row.querySelector('.price-gst-inp'),
+            row.querySelector('.disc-inp')
         ].filter(Boolean);
     }
 
@@ -1572,7 +1587,7 @@ ${data.map((c, idx) => `
             e.preventDefault();
         }
 
-        if(e.key === 'Enter' && currentInput.classList.contains('price-gst-inp') && !e.shiftKey){
+        if(e.key === 'Enter' && currentInput.classList.contains('disc-inp') && !e.shiftKey){
             e.preventDefault();
             e.stopImmediatePropagation();
 
@@ -1609,7 +1624,7 @@ ${data.map((c, idx) => `
 
         if(targetCol < 0){
             targetRowIndex--;
-            targetCol = 5;
+            targetCol = 6;
         }
 
         if(targetRowIndex < 0) return;
@@ -1632,7 +1647,7 @@ ${data.map((c, idx) => `
             return;
         }
 
-        if(targetCol > 5){
+        if(targetCol > 6){
             targetRowIndex++;
             targetCol = 0;
 
@@ -2199,6 +2214,7 @@ ${data.map((c, idx) => `
                 const qtyField = row.querySelector('.qty-inp');
                 const priceField = row.querySelector('.price-inp');
                 const priceGstField = row.querySelector('.price-gst-inp');
+                const discField = row.querySelector('.disc-inp');
                 const gstField = row.querySelector('.gst-inp');
                 const hsnField = row.querySelector('.hsn-store');
 
@@ -2228,6 +2244,7 @@ ${data.map((c, idx) => `
                         item_name: row.querySelector('.name-inp').value,
                         quantity: qtyField ? qtyField.value : 0,
                         price: priceField ? priceField.value : 0,
+                        discount_percent: discField ? parseFloat(discField.value) || 0 : 0,
                         sales_price: priceField ? priceField.value : 0,
                         sales_price_gst: priceGstField ? priceGstField.value : 0,
                         hsn_code: hsnField ? hsnField.value : "",
@@ -2251,6 +2268,7 @@ ${data.map((c, idx) => `
                         item_name: i.item_name,
                         quantity: i.quantity,
                         price: i.price,
+                        discount_percent: i.discount_percent || 0,
                         sales_price_gst: i.sales_price_gst,
                         hsn_code: i.hsn_code,
                         gst_percent: i.gst_percent
@@ -2392,10 +2410,11 @@ ${data.map((c, idx) => `
             row.querySelector(".qty-inp").value=item.quantity;
             row.querySelector(".price-inp").value=item.price;
             row.querySelector(".price-gst-inp").value=item.sales_price_gst;
+            row.querySelector(".disc-inp").value=item.discount_percent || 0;
             row.querySelector(".gst-inp").value=item.gst_percent;
             row.querySelector(".hsn-store").value=item.hsn_code;
 
-            calcForward(currentRowId-1);
+            calcReverse(currentRowId-1);
         });
 
         calcTotal();
@@ -2462,10 +2481,11 @@ ${data.map((c, idx) => `
             row.querySelector(".qty-inp").value=item.quantity;
             row.querySelector(".price-inp").value=item.price;
             row.querySelector(".price-gst-inp").value=item.sales_price_gst;
+            row.querySelector(".disc-inp").value=item.discount_percent || 0;
             row.querySelector(".gst-inp").value=item.gst_percent;
             row.querySelector(".hsn-store").value=item.hsn_code;
 
-            calcForward(currentRowId-1);
+            calcReverse(currentRowId-1);
         });
 
         calcTotal();
@@ -2661,10 +2681,11 @@ barcodeInput.addEventListener("keydown", async function (e) {
             row.querySelector(".qty-inp").value=item.quantity;
             row.querySelector(".price-inp").value=item.price;
             row.querySelector(".price-gst-inp").value=item.sales_price_gst;
+            row.querySelector(".disc-inp").value=item.discount_percent || 0;
             row.querySelector(".gst-inp").value=item.gst_percent;
             row.querySelector(".hsn-store").value=item.hsn_code;
 
-            calcForward(currentRowId-1);
+            calcReverse(currentRowId-1);
         });
 
         calcTotal();

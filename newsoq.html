@@ -1413,21 +1413,30 @@ ${data.map((c, idx) => `
     }
 
     function updatePriceFromType(id) {
-        const row = document.getElementById(`row_${id}`);
-        const type = row.querySelector('.type-inp').value;
-        const raw = row.querySelector('.raw-data').value;
-        if(!raw) return;
-        
-        const item = JSON.parse(raw);
-        let p = 0;
-        if(type == "1") p = item.price1;
-        else if(type == "2") p = item.price2;
-        else if(type == "3") p = item.price3;
-        else if(type == "L") p = item.landing;
+    const row = document.getElementById(`row_${id}`);
+    const type = row.querySelector('.type-inp').value;
+    const raw = row.querySelector('.raw-data').value;
+    if (!raw) return;
 
-        row.querySelector('.price-inp').value = p;
+    const item = JSON.parse(raw);
+
+    if (type == "1") {
+        row.querySelector('.price-inp').value = item.price1 || 0;
         calcForward(id);
     }
+    else if (type == "2") {
+        row.querySelector('.price-inp').value = item.price2 || 0;
+        calcForward(id);
+    }
+    else if (type == "3") {
+        row.querySelector('.price-inp').value = item.price3 || 0;
+        calcForward(id);
+    }
+    else if (type == "L") {
+        row.querySelector('.price-gst-inp').value = item.landing || 0;
+        calcReverse(id);
+    }
+}
 
     function calcForward(id) {
         const row = document.getElementById(`row_${id}`);

@@ -2671,22 +2671,57 @@ barcodeInput.addEventListener("keydown", async function (e) {
             items = data;
         }
 
-        (items || []).forEach(item=>{
+        const itemCodes = [...new Set((items || []).map(item => item.item_code).filter(Boolean))];
+        let stockRows = [];
+        if (itemCodes.length) {
+            const { data: stockDataForEdit } = await sb
+                .from("stock_balance_view")
+                .select("item_code,item_name,gst_percent,hsn_code,price1,price2,price3,landing,balance,department,barcode")
+                .in("item_code", itemCodes);
+
+            stockRows = stockDataForEdit || [];
+        }
+
+        const stockMap = new Map(
+            stockRows.map(row => [String(row.item_code || "").trim().toUpperCase(), row])
+        );
+
+        for (const item of (items || [])) {
             addNewRow(false);
 
-            const row=document.getElementById(`row_${currentRowId-1}`);
+            const rid = currentRowId - 1;
+            const row = document.getElementById(`row_${rid}`);
 
-            row.querySelector(".code-inp").value=item.item_code;
-            row.querySelector(".name-inp").value=item.item_name;
-            row.querySelector(".qty-inp").value=item.quantity;
-            row.querySelector(".price-inp").value=item.price;
-            row.querySelector(".price-gst-inp").value=item.sales_price_gst;
-            row.querySelector(".disc-inp").value=item.discount_percent || 0;
-            row.querySelector(".gst-inp").value=item.gst_percent;
-            row.querySelector(".hsn-store").value=item.hsn_code;
+            row.querySelector(".code-inp").value = item.item_code || "";
+            row.querySelector(".name-inp").value = item.item_name || "";
+            row.querySelector(".qty-inp").value = item.quantity || 1;
+            row.querySelector(".price-inp").value = item.price || 0;
+            row.querySelector(".price-gst-inp").value = item.sales_price_gst || 0;
+            row.querySelector(".disc-inp").value = item.discount_percent || 0;
+            row.querySelector(".gst-inp").value = item.gst_percent || 0;
+            row.querySelector(".hsn-store").value = item.hsn_code || "";
+            row.querySelector(".type-inp").value = "1";
 
-            calcReverse(currentRowId-1);
-        });
+            const stockRow = stockMap.get(String(item.item_code || "").trim().toUpperCase());
+
+            const rawItem = {
+                item_code: item.item_code || "",
+                item_name: item.item_name || "",
+                gst_percent: item.gst_percent || 0,
+                hsn_code: item.hsn_code || "",
+                price1: stockRow?.price1 ?? item.price ?? 0,
+                price2: stockRow?.price2 ?? item.price ?? 0,
+                price3: stockRow?.price3 ?? item.price ?? 0,
+                landing: stockRow?.landing ?? item.sales_price_gst ?? item.price ?? 0,
+                balance: stockRow?.balance ?? 0,
+                department: stockRow?.department ?? "ALL",
+                barcode: stockRow?.barcode ?? ""
+            };
+
+            row.querySelector(".raw-data").value = JSON.stringify(rawItem);
+
+            calcReverse(rid);
+        }
 
         calcTotal();
 

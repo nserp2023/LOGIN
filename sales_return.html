@@ -907,8 +907,10 @@ function addManualRow(itemData = {}) {
     const rowId = "sr_" + Date.now() + "_" + Math.floor(Math.random() * 100000);
 
     const gstPercent = parseFloat(itemData.gst_percent || 0) || 0;
-    let priceGst = parseFloat(itemData.price1_gst || 0) || 0;
-    const basePrice = parseFloat(itemData.price1 || 0) || 0;
+
+    // USE PRICE 3 FOR WITHOUT BILL MODE
+    let basePrice = parseFloat(itemData.price3 || 0) || 0;
+    let priceGst = parseFloat(itemData.price3_gst || 0) || 0;
 
     if (!priceGst && basePrice) {
         priceGst = basePrice * (1 + (gstPercent / 100));
@@ -970,8 +972,10 @@ function bindManualRowEvents(tr) {
         const code = item.item_code || "";
         const name = item.item_name || "";
         const gstPercent = parseFloat(item.gst_percent || 0) || 0;
-        const basePrice = parseFloat(item.price1 || 0) || 0;
-        let priceGst = parseFloat(item.price1_gst || 0) || 0;
+
+        // USE PRICE 3 FOR WITHOUT BILL MODE
+        const basePrice = parseFloat(item.price3 || 0) || 0;
+        let priceGst = parseFloat(item.price3_gst || 0) || 0;
 
         if (!priceGst && basePrice) {
             priceGst = basePrice * (1 + (gstPercent / 100));

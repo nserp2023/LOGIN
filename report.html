@@ -521,15 +521,15 @@ function editDoc(id){
     }
 
     if(type === "sales_pack"){
-        window.location = `soq.html?edit=${id}&type=sales_pack`;
+        window.location = `newsoq.html?edit=${id}&type=sales_pack`;
     }
 
     if(type === "quotation"){
-        window.location = `soq.html?edit=${id}&type=quotation`;
+        window.location = `newsoq.html?edit=${id}&type=quotation`;
     }
 
     if(type === "sales_order"){
-        window.location = `soq.html?edit=${id}&type=sales_order`;
+        window.location = `newsoq.html?edit=${id}&type=sales_order`;
     }
 }
 
@@ -539,11 +539,11 @@ function convertToSales(id){
     if(!confirm("Convert this document to Sales?")) return;
 
     if(type === "quotation"){
-        window.open(`soq.html?convert=${id}`, "_blank");
+        window.open(`newsoq.html?convert=${id}`, "_blank");
     }
 
     if(type === "sales_order"){
-        window.open(`soq.html?convert_so=${id}`, "_blank");
+        window.open(`newsoq.html?convert_so=${id}`, "_blank");
     }
 }
 </script>

@@ -5,12 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" href="favicon.ico" type="image/x-icon">
 
-<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
 
-<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 
-<link rel="manifest" href="site.webmanifest">
+  <link rel="manifest" href="site.webmanifest">
   <title>Dashboard</title>
   <link rel="stylesheet" href="style.css">
   <style>
@@ -576,6 +576,13 @@ body.dashboard-page {
   gap: 12px;
 }
 
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .topbar h1 {
   margin: 0;
   font-size: 22px;
@@ -599,6 +606,44 @@ body.dashboard-page {
   border-radius: 999px;
   font-weight: 700;
   font-size: 13px;
+}
+
+.backup-btn {
+  border: none;
+  background: linear-gradient(135deg, #0f766e, #0ea5e9);
+  color: #fff;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  font-size: 18px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+  transition: transform 0.15s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+.backup-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(0,0,0,0.16);
+}
+
+.backup-btn:active {
+  transform: scale(0.96);
+}
+
+.backup-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.backup-status {
+  font-size: 12px;
+  color: #1e293b;
+  font-weight: 700;
+  min-width: 90px;
+  text-align: right;
 }
 
 .user-info {
@@ -723,6 +768,11 @@ body.dashboard-page {
   .summary-value {
     font-size: 24px;
   }
+
+  .backup-status {
+    min-width: auto;
+    text-align: left;
+  }
 }
 
 @media (max-width: 480px) {
@@ -825,6 +875,8 @@ body.dashboard-page {
         <h1>RIYARIN BILLING</h1>
       </div>
       <div class="topbar-right">
+        <span id="backupStatus" class="backup-status"></span>
+        <button id="backupBtn" class="backup-btn" title="Full Backup to Excel" aria-label="Full Backup to Excel">💾</button>
         <span id="userRoleBadge" class="role-badge">Staff</span>
       </div>
     </nav>
@@ -889,11 +941,11 @@ body.dashboard-page {
   <div id="overlay" class="overlay"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 <script src="supabaseClient.js"></script>
 <script src="page_permissions.js"></script>
 <script>
     const sb = window.sbcc; // supabase client from supabaseClient.js
-
 
 document.addEventListener("DOMContentLoaded", async () => {
   setupSidebar();
@@ -903,6 +955,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   loadUserInfo(); // already uses localStorage
   applyRolePermissions();
+  setupBackupButton();
 
   await loadTodayDashboardSummary();
 });
@@ -1000,6 +1053,153 @@ function setupSidebar() {
     sidebar?.classList.remove("mobile-open");
     overlay?.classList.remove("show");
   });
+}
+
+// ===============================
+// 💾 FULL BACKUP TO EXCEL
+// ===============================
+function setupBackupButton() {
+  const btn = document.getElementById("backupBtn");
+  if (btn) {
+    btn.addEventListener("click", handleFullBackup);
+  }
+}
+
+async function handleFullBackup() {
+  const btn = document.getElementById("backupBtn");
+  const role = (localStorage.getItem("role") || "").toUpperCase();
+
+  if (!["OWNER", "ADMIN", "MANAGER"].includes(role)) {
+    alert("Backup allowed only for Owner / Admin / Manager.");
+    return;
+  }
+
+  if (!window.XLSX) {
+    alert("Excel library not loaded.");
+    return;
+  }
+
+  const tablesToBackup = [
+    "stock_items",
+    "stock_ledger",
+    "sales_details",
+    "sales_item_details",
+    "quotation_details",
+    "quotation_item_details",
+    "sales_order_details",
+    "sales_order_item_details",
+    "purchase_details",
+    "purchase_item_details",
+    "sales_return_details",
+    "sales_return_item_details",
+    "user_profiles",
+    "user_page_access"
+  ];
+
+  try {
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "⏳";
+    }
+
+    setBackupStatus("Preparing...");
+
+    const workbook = XLSX.utils.book_new();
+
+    for (let i = 0; i < tablesToBackup.length; i++) {
+      const tableName = tablesToBackup[i];
+      setBackupStatus(`Backup ${i + 1}/${tablesToBackup.length}`);
+
+      const rows = await fetchAllRowsFromTable(tableName);
+      const safeRows = Array.isArray(rows) && rows.length ? rows : [{ info: "No data" }];
+
+      const worksheet = XLSX.utils.json_to_sheet(safeRows);
+      autoFitColumns(worksheet, safeRows);
+      XLSX.utils.book_append_sheet(workbook, worksheet, safeSheetName(tableName));
+    }
+
+    const fileName = `supabase_full_backup_${getDateTimeStamp()}.xlsx`;
+    XLSX.writeFile(workbook, fileName);
+
+    setBackupStatus("Backup done");
+    setTimeout(() => setBackupStatus(""), 3000);
+  } catch (err) {
+    console.error("Backup failed:", err);
+    alert("Backup failed. Check console for the exact table error.");
+    setBackupStatus("Backup failed");
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "💾";
+    }
+  }
+}
+
+async function fetchAllRowsFromTable(tableName) {
+  const pageSize = 1000;
+  let from = 0;
+  let allRows = [];
+
+  while (true) {
+    const { data, error } = await sb
+      .from(tableName)
+      .select("*")
+      .range(from, from + pageSize - 1);
+
+    if (error) {
+      throw new Error(tableName + ": " + error.message);
+    }
+
+    if (Array.isArray(data) && data.length) {
+      allRows = allRows.concat(data);
+    }
+
+    if (!data || data.length < pageSize) {
+      break;
+    }
+
+    from += pageSize;
+  }
+
+  return allRows;
+}
+
+function safeSheetName(name) {
+  return String(name).replace(/[\\\/\?\*\[\]\:]/g, "_").slice(0, 31);
+}
+
+function autoFitColumns(worksheet, rows) {
+  if (!rows || !rows.length) return;
+
+  const headers = Object.keys(rows[0]);
+  const colWidths = headers.map(header => ({
+    wch: Math.max(12, String(header).length + 2)
+  }));
+
+  rows.forEach(row => {
+    headers.forEach((header, index) => {
+      const value = row && row[header] != null ? String(row[header]) : "";
+      colWidths[index].wch = Math.min(50, Math.max(colWidths[index].wch, value.length + 2));
+    });
+  });
+
+  worksheet["!cols"] = colWidths;
+}
+
+function getDateTimeStamp() {
+  const now = new Date();
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const dd = String(now.getDate()).padStart(2, "0");
+  const hh = String(now.getHours()).padStart(2, "0");
+  const mi = String(now.getMinutes()).padStart(2, "0");
+  const ss = String(now.getSeconds()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}_${hh}-${mi}-${ss}`;
+}
+
+function setBackupStatus(text) {
+  const el = document.getElementById("backupStatus");
+  if (el) el.innerText = text || "";
 }
 
 // ===============================

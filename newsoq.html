@@ -228,22 +228,26 @@
             position: absolute;
             top: 100%;
             left: 0;
-            width: 1000px;
+            right: auto;
+            min-width: 100%;
+            width: max-content;
+            max-width: min(1000px, calc(100vw - 20px));
             background: white;
             border: 1px solid var(--border);
             box-shadow: 0 4px 6px rgba(0,0,0,0.15);
             max-height: 300px;
             overflow-y: auto;
+            overflow-x: auto;
             z-index: 100;
             display: none;
         }
 
         .autocomplete-table{
-            width:100%;
-            border-collapse:collapse;
-            font-size:13px;
-            font-weight:bold;
-            min-width: 900px;
+            width: max-content;
+            min-width: 700px;
+            border-collapse: collapse;
+            font-size: 13px;
+            font-weight: bold;
         }
 
         .autocomplete-table th{
@@ -383,7 +387,7 @@
                 margin-left: 0;
             }
             .autocomplete-list{
-                width: min(1000px, calc(100vw - 40px));
+                max-width: calc(100vw - 40px);
             }
         }
 
@@ -504,8 +508,7 @@
             }
 
             .autocomplete-list{
-                width: calc(100vw - 24px);
-                left: 0;
+                max-width: calc(100vw - 24px);
                 max-height: 240px;
             }
 
@@ -998,7 +1001,7 @@ async function loadStockData() {
     mobileInput.addEventListener('input', (e) => {
         clearTimeout(custTimer);
         const val = e.target.value;
-        if(val.length < 3) { mobileList.style.display = 'none'; return; }
+        if(val.length < 3) { mobileList.style.display = 'none'; mobileList.removeAttribute("data-open"); return; }
 
         custTimer = setTimeout(async () => {
             const { data } = await sb.from('customers').select('*').ilike('mobile', '%' + val + '%').limit(5);
@@ -1018,7 +1021,7 @@ ${data.map((c, idx) => `
 <tr class="autocomplete-row" data-idx="${idx}">
 <td>${c.mobile}</td>
 <td>${c.name}</td>
-<td>${c.address}</td>
+<td>${c.address || ''}</td>
 <td>${c.gst_number || ''}</td>
 </tr>
 `).join("")}
@@ -1026,6 +1029,8 @@ ${data.map((c, idx) => `
 `;
 
                 mobileList.style.display = 'block';
+                mobileList.setAttribute("data-open","true");
+                adjustDropdownPosition(mobileInput, mobileList);
 
                 mobileList.querySelectorAll(".autocomplete-row").forEach((tr, i) => {
                     tr.onclick = () => selectCustomer(data[i]);
@@ -1035,6 +1040,7 @@ ${data.map((c, idx) => `
                 if (first) first.classList.add("selected");
             } else {
                 mobileList.style.display = 'none';
+                mobileList.removeAttribute("data-open");
             }
         }, 300);
     });
@@ -1063,6 +1069,7 @@ ${data.map((c, idx) => `
         document.getElementById('cust_address').value = c.address || '';
         document.getElementById('cust_gst').value = c.gst_number || '';
         mobileList.style.display = 'none';
+        mobileList.removeAttribute("data-open");
         lastHistoryKey = "";
         document.getElementById('cust_name').focus();
     }
@@ -1318,14 +1325,11 @@ ${data.map((c, idx) => `
 
         attachSearch(nameInp, `list_name_${id}`, 'item_name');
 
-        const inputs = [qtyInp, typeInp, priceInp, priceGstInp, discInp, codeInp, nameInp];
-        inputs.forEach(el => {
-            el.addEventListener('input', (e) => {
-                if(e.target === typeInp) updatePriceFromType(id);
-                else if(e.target === priceGstInp) calcReverse(id);
-                else calcForward(id);
-            });
-        });        
+        qtyInp.addEventListener('input', () => calcForward(id));
+        discInp.addEventListener('input', () => calcForward(id));
+        priceInp.addEventListener('input', () => calcForward(id));
+        priceGstInp.addEventListener('input', () => calcReverse(id));
+        typeInp.addEventListener('change', () => updatePriceFromType(id));
     }
 
     async function fillItem(id, item) {
@@ -1409,16 +1413,56 @@ ${data.map((c, idx) => `
     function adjustDropdownPosition(input, list){
         const rect = input.getBoundingClientRect();
         const spaceBelow = window.innerHeight - rect.bottom;
-        const dropdownHeight = 200;
+        const dropdownHeight = 220;
+        const margin = 10;
 
         if(spaceBelow < dropdownHeight){
             list.style.top = "auto";
             list.style.bottom = "100%";
-        }else{
+        } else {
             list.style.top = "100%";
             list.style.bottom = "auto";
         }
+
+        list.style.left = "0";
+        list.style.right = "auto";
+
+        requestAnimationFrame(() => {
+            const listRect = list.getBoundingClientRect();
+
+            if(listRect.right > window.innerWidth - margin){
+                const shiftLeft = listRect.right - (window.innerWidth - margin);
+                list.style.left = `-${shiftLeft}px`;
+            }
+
+            if(listRect.left < margin){
+                list.style.left = `${margin - rect.left}px`;
+            }
+        });
     }
+
+    function repositionVisibleDropdowns(){
+        document.querySelectorAll('.autocomplete-list[data-open="true"]').forEach(list => {
+            let input = null;
+
+            if(list.id === 'mobile_suggestions'){
+                input = mobileInput;
+            } else if(list.id && list.id.startsWith('list_code_')){
+                const rid = list.id.replace('list_code_', '');
+                input = document.querySelector(`.code-inp[data-rid="${rid}"]`);
+            } else if(list.id && list.id.startsWith('list_name_')){
+                const rid = list.id.replace('list_name_', '');
+                input = document.querySelector(`.name-inp[data-rid="${rid}"]`);
+            }
+
+            if(input && getComputedStyle(list).display !== 'none'){
+                adjustDropdownPosition(input, list);
+            }
+        });
+    }
+
+    window.addEventListener('resize', repositionVisibleDropdowns);
+    window.addEventListener('scroll', repositionVisibleDropdowns, true);
 
     function updatePriceFromType(id) {
     const row = document.getElementById(`row_${id}`);
@@ -1455,11 +1499,9 @@ ${data.map((c, idx) => `
 
         const pGstBeforeDiscount = price * (1 + (gst / 100));
         const pGstAfterDiscount = pGstBeforeDiscount - (pGstBeforeDiscount * disc / 100);
-        const priceAfterDiscount = pGstAfterDiscount / (1 + (gst / 100));
         const total = pGstAfterDiscount * qty;
 
         row.querySelector('.disc-inp').value = disc.toFixed(2).replace(/\.00$/, '');
-        row.querySelector('.price-inp').value = priceAfterDiscount.toFixed(2);
         row.querySelector('.price-gst-inp').value = pGstAfterDiscount.toFixed(2);
         row.querySelector('.total-inp').value = total.toFixed(2);
         calcTotal();

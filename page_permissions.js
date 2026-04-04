@@ -78,11 +78,43 @@ async function hasPageAccess(pageKey) {
   return !!(data && data.allowed === true);
 }
 
+async function hasActionAccess(actionKey) {
+  const profile = await getLoggedInProfile();
+  if (!profile) return false;
+
+  const role = (profile.role || "").toUpperCase();
+
+  if (role === "OWNER" || role === "ADMIN") return true;
+
+  const { data, error } = await permClient
+    .from("user_page_access")
+    .select("allowed")
+    .eq("user_id", profile.id)
+    .eq("page_key", actionKey)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Action permission fetch error:", error);
+    return false;
+  }
+
+  return !!(data && data.allowed === true);
+}
+
 async function requirePageAccess(pageKey) {
   const allowed = await hasPageAccess(pageKey);
   if (!allowed) {
     alert("You do not have permission to open this page.");
     window.location.href = "dashboard.html";
+    return false;
+  }
+  return true;
+}
+
+async function requireActionAccess(actionKey, message = "You do not have permission for this action.") {
+  const allowed = await hasActionAccess(actionKey);
+  if (!allowed) {
+    alert(message);
     return false;
   }
   return true;

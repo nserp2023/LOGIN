@@ -616,6 +616,16 @@
             </select>
         </div>
 
+        <div class="grand-total-box" style="background:#1e293b;">
+    <span>TOTAL QTY</span>
+    <div id="display_total_qty">0</div>
+</div>
+
+<div class="grand-total-box" style="background:#334155;">
+    <span>AMOUNT (Before GST)</span>
+    <div id="display_total_before_gst">₹0.00</div>
+</div>
+
         <div class="grand-total-box">
             <span>GRAND TOTAL</span>
             <div id="display_grand_total">₹0.00</div>
@@ -1526,10 +1536,32 @@ ${data.map((c, idx) => `
     }
 
     function calcTotal() {
-        let sum = 0;
-        document.querySelectorAll('.total-inp').forEach(i => sum += parseFloat(i.value) || 0);
-        document.getElementById('display_grand_total').innerText = '₹' + sum.toFixed(2);
-    }
+    let totalAfterGST = 0;
+    let totalBeforeGST = 0;
+    let totalQty = 0;
+
+    document.querySelectorAll('#bill_body tr').forEach(row => {
+        const qty = parseFloat(row.querySelector('.qty-inp')?.value) || 0;
+        const price = parseFloat(row.querySelector('.price-inp')?.value) || 0;
+        const gst = parseFloat(row.querySelector('.gst-inp')?.value) || 0;
+        const disc = parseFloat(row.querySelector('.disc-inp')?.value) || 0;
+
+        // before GST (after discount)
+        let priceAfterDisc = price - (price * disc / 100);
+        let beforeGST = priceAfterDisc * qty;
+
+        // after GST
+        let afterGST = beforeGST * (1 + gst / 100);
+
+        totalQty += qty;
+        totalBeforeGST += beforeGST;
+        totalAfterGST += afterGST;
+    });
+
+    document.getElementById('display_grand_total').innerText = '₹' + totalAfterGST.toFixed(2);
+    document.getElementById('display_total_before_gst').innerText = '₹' + totalBeforeGST.toFixed(2);
+    document.getElementById('display_total_qty').innerText = totalQty.toFixed(2);
+}
 
     const trigger = document.getElementById('profit_trigger');
     const profitBox = document.getElementById('profit_box');

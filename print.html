@@ -403,29 +403,43 @@ let row=1;
 pageItems.forEach(item=>{
 
 let qty = parseFloat(item.quantity) || 0;
-let price = parseFloat(item.sales_price_gst) || 0;   // GST included
 let gstPercent = parseFloat(item.gst_percent) || 0;
+let discountPercent = parseFloat(item.discount_percent) || 0;
 
-// fallback: use saved sales_price if available, otherwise derive display-only ex-GST price
-let displayPrice = parseFloat(item.sales_price);
-if (isNaN(displayPrice)) {
-  displayPrice = price / (1 + gstPercent / 100);
+// base price before discount and before GST
+let basePrice = parseFloat(item.price);
+if (isNaN(basePrice)) {
+  basePrice = parseFloat(item.sales_price);
+}
+if (isNaN(basePrice)) {
+  let spGst = parseFloat(item.sales_price_gst) || 0;
+  basePrice = spGst / (1 + gstPercent / 100);
 }
 
-let amount = qty * displayPrice;       // show before GST in item row
-let amountGst = qty * price;           // keep totals correct
+// row price after discount, before GST
+let displayPrice = basePrice - (basePrice * discountPercent / 100);
 
-let taxable = amountGst / (1 + gstPercent / 100);
-let gst = amountGst - taxable;
+// row amount after discount, before GST
+let amount = qty * displayPrice;
 
-totalTaxable+=taxable;
-totalGst+=gst;
+// GST on discounted taxable value
+let gst = amount * (gstPercent / 100);
 
-if(!gstMap[gstPercent])
-gstMap[gstPercent]={taxable:0,gst:0};
+// row total after discount, including GST
+let amountGst = amount + gst;
 
-gstMap[gstPercent].taxable+=taxable;
-gstMap[gstPercent].gst+=gst;
+// taxable value should be discounted amount before GST
+let taxable = amount;
+
+totalTaxable += taxable;
+totalGst += gst;
+
+if (!gstMap[gstPercent]) {
+  gstMap[gstPercent] = { taxable: 0, gst: 0 };
+}
+
+gstMap[gstPercent].taxable += taxable;
+gstMap[gstPercent].gst += gst;
 
 html+=`
 <tr>

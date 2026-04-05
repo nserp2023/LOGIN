@@ -2588,7 +2588,7 @@ ${data.map((c, idx) => `
             );
             row.querySelector(".landing-inp").value = parseFloat(stockRow?.landing || 0).toFixed(2);
 
-            calcReverse(currentRowId-1);
+            calcForward(currentRowId-1);
         });
 
         calcTotal();
@@ -2664,7 +2664,7 @@ ${data.map((c, idx) => `
             );
             row.querySelector(".landing-inp").value = parseFloat(stockRow?.landing || 0).toFixed(2);
 
-            calcReverse(currentRowId-1);
+            calcForward(currentRowId-1);
         });
 
         calcTotal();
@@ -2903,7 +2903,7 @@ barcodeInput.addEventListener("keydown", async function (e) {
                 landingInp.value = parseFloat(rawItem.landing || 0).toFixed(2);
             }
 
-            calcReverse(rid);
+            calcForward(rid);
         }
 
         calcTotal();

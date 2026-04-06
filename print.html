@@ -354,8 +354,8 @@ GSTIN: 32APBPN5593H1ZT
 <div class="consignee">
 <b>Consignee</b><br>
 <span class="consignee-name">${head.customer_name}</span><br>
-<span class="consignee-details">${head.customer_address}</span><br>
-<span class="consignee-details">GSTIN: ${head.customer_gst || "NA"}</span><br>
+<span class="consignee-details">${head.address || ""}</span><br>
+<span class="consignee-details">GSTIN: ${head.gst_number || "NA"}</span><br>
 <span class="consignee-details">Mobile: ${head.customer_mobile || "NA"}</span>
 </div>
 

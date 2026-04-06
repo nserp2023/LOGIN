@@ -2223,21 +2223,22 @@ ${data.map((c, idx) => `
                 };
             }
             else if(docType === "sales" || docType === "sales_pack"){
-                insertData = {
-                    series_code: head.series,
-                    sales_number: nextBillNo,
-                    bill_date: head.date,
-                    customer_name: head.name,
-                    customer_mobile: head.mob,
-                    gst_number: head.gst,
-                    invoice_number: nextBillNo,
-                    invoice_date: head.date,
-                    invoice_amount: head.total,
-                    salesman: document.getElementById("salesman").value,
-                    created_by: createdBy,
-                    round_off: 0
-                };
-            }
+    insertData = {
+        series_code: head.series,
+        sales_number: nextBillNo,
+        bill_date: head.date,
+        customer_name: head.name,
+        customer_mobile: head.mob,
+        gst_number: head.gst,
+        address: head.addr,   // ✅ ADD THIS LINE
+        invoice_number: nextBillNo,
+        invoice_date: head.date,
+        invoice_amount: head.total,
+        salesman: document.getElementById("salesman").value,
+        created_by: createdBy,
+        round_off: 0
+    };
+}
 
             let headerTable;
 

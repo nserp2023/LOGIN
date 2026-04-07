@@ -1341,7 +1341,7 @@ async function saveReturn() {
     btn.innerText = "SAVING...";
 
     try {
-        const returnDateValue = document.getElementById("bill_date").value || new Date().toISOString().split("T")[0];
+        const returnDateValue = new Date().toISOString().split("T")[0];
 
         const { data: retHead, error } = await sb
             .from("sales_return_details")

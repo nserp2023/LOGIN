@@ -631,7 +631,8 @@ body{
 const sb = window.sbcc;
 
 document.addEventListener("DOMContentLoaded", async () => {
-    await safeRequirePageAccess();
+    const ok = await safeRequirePageAccess();
+    if(!ok) return;
     await initPage();
 });
 
@@ -656,20 +657,23 @@ const priceTypeInput = document.getElementById('price_type');
 const printValueTypeInput = document.getElementById('print_value_type');
 
 async function safeRequirePageAccess(){
+    if(typeof requirePageAccess !== 'function') return true;
+
     try{
-        if(typeof requirePageAccess === 'function'){
-            const okBarcode = await requirePageAccess('barcode');
-            if(okBarcode === false){
-                try{
-                    const okPurchase = await requirePageAccess('purchase');
-                    if(okPurchase === false) return false;
-                }catch(e){}
-            }
-        }
+        const okBarcode = await requirePageAccess('barcode');
+        if(okBarcode === true) return true;
     }catch(err){
-        console.warn('Page access check skipped:', err);
+        console.warn('Barcode page access check failed:', err);
     }
-    return true;
+
+    try{
+        const okPurchase = await requirePageAccess('purchase');
+        if(okPurchase === true) return true;
+    }catch(err){
+        console.warn('Purchase page access fallback failed:', err);
+    }
+
+    return false;
 }
 
 async function initPage(){

@@ -30,6 +30,10 @@
     --shadow:0 10px 25px rgba(15,23,42,.08);
     --soft:#eff6ff;
     --soft2:#f8fbff;
+    --cal-top:0mm;
+    --cal-left:0mm;
+    --cal-scale-x:1;
+    --cal-scale-y:1;
 }
 
 *{box-sizing:border-box}
@@ -375,6 +379,8 @@ body{
     gap:0;
     width:210mm;
     margin:0 auto;
+    transform:translate(var(--cal-left), var(--cal-top)) scaleX(var(--cal-scale-x)) scaleY(var(--cal-scale-y));
+    transform-origin:top left;
 }
 
 .label{
@@ -454,6 +460,53 @@ body{
     padding:9px 12px;
 }
 
+.calibration-panel{
+    margin-top:10px;
+    border:1px solid #dbe3ef;
+    background:#f8fbff;
+    border-radius:14px;
+    padding:12px;
+}
+
+.calibration-title{
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    align-items:center;
+    flex-wrap:wrap;
+    margin-bottom:10px;
+}
+
+.calibration-title h3{
+    margin:0;
+    font-size:14px;
+}
+
+.calibration-title p{
+    margin:2px 0 0;
+    color:var(--muted);
+    font-size:12px;
+}
+
+.calibration-grid{
+    display:grid;
+    grid-template-columns:repeat(4, minmax(120px, 1fr)) auto;
+    gap:10px;
+    align-items:end;
+}
+
+.calibration-actions{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+}
+
+.calibration-hint{
+    margin-top:8px;
+    color:var(--muted);
+    font-size:12px;
+}
+
 @media (max-width: 1280px){
     .content{grid-template-columns:1fr}
     .queue{max-height:none}
@@ -471,6 +524,7 @@ body{
         grid-template-columns: 110px minmax(220px,1.7fr) 80px 80px 95px 80px 95px 80px 95px;
         font-size:12px;
     }
+    .calibration-grid{grid-template-columns:1fr 1fr}
 }
 
 @page{
@@ -596,6 +650,38 @@ body{
         </div>
 
         <div class="info-line" id="load_status">Loading stock items...</div>
+
+        <div class="calibration-panel">
+            <div class="calibration-title">
+                <div>
+                    <h3>Print Calibration</h3>
+                    <p>Use small values first. Changes affect preview and print.</p>
+                </div>
+            </div>
+            <div class="calibration-grid">
+                <div class="field">
+                    <label>Top Offset (mm)</label>
+                    <input type="number" id="cal_top" class="input" step="0.5" value="0">
+                </div>
+                <div class="field">
+                    <label>Left Offset (mm)</label>
+                    <input type="number" id="cal_left" class="input" step="0.5" value="0">
+                </div>
+                <div class="field">
+                    <label>Width Scale (%)</label>
+                    <input type="number" id="cal_scale_x" class="input" step="0.1" value="100">
+                </div>
+                <div class="field">
+                    <label>Height Scale (%)</label>
+                    <input type="number" id="cal_scale_y" class="input" step="0.1" value="100">
+                </div>
+                <div class="calibration-actions">
+                    <button class="btn" type="button" onclick="saveCalibration()">SAVE</button>
+                    <button class="btn btn-danger" type="button" onclick="resetCalibration()">RESET</button>
+                </div>
+            </div>
+            <div class="calibration-hint">Example: if print starts too low, set Top Offset to -2. If print starts too much to the right, set Left Offset to -2.</div>
+        </div>
     </div>
 
     <div class="content">
@@ -655,12 +741,16 @@ const stockCount = document.getElementById('stock_count');
 const loadStatus = document.getElementById('load_status');
 const priceTypeInput = document.getElementById('price_type');
 const printValueTypeInput = document.getElementById('print_value_type');
+const calTopInput = document.getElementById('cal_top');
+const calLeftInput = document.getElementById('cal_left');
+const calScaleXInput = document.getElementById('cal_scale_x');
+const calScaleYInput = document.getElementById('cal_scale_y');
 
 async function safeRequirePageAccess(){
     if(typeof requirePageAccess !== 'function') return true;
 
     try{
-        const okBarcode = await requirePageAccess('purchase');
+        const okBarcode = await requirePageAccess('barcode');
         if(okBarcode === true) return true;
     }catch(err){
         console.warn('Barcode page access check failed:', err);
@@ -678,6 +768,7 @@ async function safeRequirePageAccess(){
 
 async function initPage(){
     setupInputs();
+    loadCalibration();
     renderQueue();
     renderLabels();
     searchInput.focus();
@@ -762,9 +853,77 @@ function setupInputs(){
         renderLabels();
     });
 
+    [calTopInput, calLeftInput, calScaleXInput, calScaleYInput].forEach(inp => {
+        inp.addEventListener('input', applyCalibrationFromInputs);
+        inp.addEventListener('change', saveCalibration);
+    });
+
     document.addEventListener('click', (e) => {
         if(!e.target.closest('.search-wrap')) hideSuggestions();
     });
+}
+
+
+function applyCalibration(topMm, leftMm, scaleXPercent, scaleYPercent){
+    const root = document.documentElement;
+    const safeTop = Number.isFinite(topMm) ? topMm : 0;
+    const safeLeft = Number.isFinite(leftMm) ? leftMm : 0;
+    const safeScaleX = Number.isFinite(scaleXPercent) && scaleXPercent > 0 ? scaleXPercent : 100;
+    const safeScaleY = Number.isFinite(scaleYPercent) && scaleYPercent > 0 ? scaleYPercent : 100;
+
+    root.style.setProperty('--cal-top', `${safeTop}mm`);
+    root.style.setProperty('--cal-left', `${safeLeft}mm`);
+    root.style.setProperty('--cal-scale-x', String(safeScaleX / 100));
+    root.style.setProperty('--cal-scale-y', String(safeScaleY / 100));
+}
+
+function applyCalibrationFromInputs(){
+    applyCalibration(
+        parseFloat(calTopInput.value) || 0,
+        parseFloat(calLeftInput.value) || 0,
+        parseFloat(calScaleXInput.value) || 100,
+        parseFloat(calScaleYInput.value) || 100
+    );
+}
+
+function loadCalibration(){
+    let saved = null;
+    try{
+        saved = JSON.parse(localStorage.getItem('barcode_print_calibration') || 'null');
+    }catch(e){}
+
+    const cal = {
+        top: Number(saved?.top) || 0,
+        left: Number(saved?.left) || 0,
+        scaleX: Number(saved?.scaleX) || 100,
+        scaleY: Number(saved?.scaleY) || 100
+    };
+
+    calTopInput.value = cal.top;
+    calLeftInput.value = cal.left;
+    calScaleXInput.value = cal.scaleX;
+    calScaleYInput.value = cal.scaleY;
+    applyCalibration(cal.top, cal.left, cal.scaleX, cal.scaleY);
+}
+
+function saveCalibration(){
+    const cal = {
+        top: parseFloat(calTopInput.value) || 0,
+        left: parseFloat(calLeftInput.value) || 0,
+        scaleX: parseFloat(calScaleXInput.value) || 100,
+        scaleY: parseFloat(calScaleYInput.value) || 100
+    };
+    applyCalibration(cal.top, cal.left, cal.scaleX, cal.scaleY);
+    localStorage.setItem('barcode_print_calibration', JSON.stringify(cal));
+}
+
+function resetCalibration(){
+    calTopInput.value = 0;
+    calLeftInput.value = 0;
+    calScaleXInput.value = 100;
+    calScaleYInput.value = 100;
+    applyCalibration(0, 0, 100, 100);
+    localStorage.removeItem('barcode_print_calibration');
 }
 
 function normalizeText(value){

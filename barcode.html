@@ -4,12 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="favicon.ico" type="image/x-icon">
-
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
-
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
-
 <link rel="manifest" href="site.webmanifest">
 <title>Barcode Print - VAJRA LIGHTS</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -25,11 +22,14 @@
     --text:#0f172a;
     --muted:#64748b;
     --line:#dbe3ef;
+    --line-strong:#c7d2e3;
     --primary:#2563eb;
     --primary-dark:#1d4ed8;
     --accent:#059669;
     --danger:#dc2626;
     --shadow:0 10px 25px rgba(15,23,42,.08);
+    --soft:#eff6ff;
+    --soft2:#f8fbff;
 }
 
 *{box-sizing:border-box}
@@ -42,7 +42,7 @@ body{
 }
 
 .page{
-    max-width:1450px;
+    max-width:1500px;
     margin:0 auto;
     padding:18px;
 }
@@ -94,7 +94,7 @@ body{
 
 .toolbar{
     display:grid;
-    grid-template-columns: 2fr .7fr 1fr 1fr auto 1.3fr auto auto auto;
+    grid-template-columns: minmax(360px,2fr) 92px 140px 140px auto minmax(170px,1fr) auto auto auto;
     gap:10px;
     align-items:end;
 }
@@ -162,47 +162,92 @@ body{
     border-color:#fecdd3;
 }
 
+.search-wrap{position:relative}
+
 .suggestions{
     position:absolute;
-    top:100%;
+    top:calc(100% + 8px);
     left:0;
-    right:0;
-    margin-top:6px;
+    min-width:100%;
+    width:min(1080px, calc(100vw - 36px));
     background:#fff;
-    border:1px solid var(--line);
-    border-radius:14px;
-    box-shadow:0 14px 30px rgba(15,23,42,.14);
+    border:1px solid var(--line-strong);
+    border-radius:16px;
+    box-shadow:0 18px 40px rgba(15,23,42,.16);
     overflow:hidden;
     display:none;
-    z-index:50;
-    max-height:320px;
-    overflow-y:auto;
+    z-index:1000;
+}
+
+.suggestions-head,
+.suggestion-row{
+    display:grid;
+    grid-template-columns: 120px minmax(240px,1.8fr) 95px 95px 110px 95px 110px 95px 110px;
+    gap:8px;
+    align-items:center;
+}
+
+.suggestions-head{
+    padding:10px 12px;
+    background:#f8fbff;
+    border-bottom:1px solid #e8eef8;
+    font-size:11px;
+    color:#64748b;
+    font-weight:800;
+    text-transform:uppercase;
+    letter-spacing:.04em;
+    position:sticky;
+    top:0;
+    z-index:2;
+}
+
+.suggestions-body{
+    max-height:340px;
+    overflow:auto;
 }
 
 .suggestion-item{
-    padding:10px 12px;
     border-bottom:1px solid #eef2f7;
     cursor:pointer;
 }
 
 .suggestion-item:last-child{border-bottom:none}
-.suggestion-item:hover,
-.suggestion-item.active{background:#eff6ff}
 
-.s1{
-    font-weight:700;
+.suggestion-row{
+    padding:10px 12px;
     font-size:13px;
-    color:var(--text);
 }
-.s2{
-    color:var(--muted);
-    font-size:12px;
-    margin-top:2px;
+
+.suggestion-item:hover,
+.suggestion-item.active{
+    background:#eff6ff;
+}
+
+.s-cell-name{
+    font-weight:700;
+    color:#111827;
+}
+.s-cell-code{
+    font-weight:700;
+    color:#1d4ed8;
+}
+.s-cell-muted{
+    color:#64748b;
+}
+.s-cell-num{
+    text-align:right;
+    font-variant-numeric:tabular-nums;
+}
+.s-empty{
+    padding:16px;
+    text-align:center;
+    color:#64748b;
+    font-size:13px;
 }
 
 .content{
     display:grid;
-    grid-template-columns: 360px 1fr;
+    grid-template-columns: 380px 1fr;
     gap:14px;
 }
 
@@ -391,9 +436,7 @@ body{
     white-space:nowrap;
 }
 
-.label-empty{
-    opacity:.18;
-}
+.label-empty{opacity:.18}
 
 .footer-note{
     margin-top:10px;
@@ -401,17 +444,33 @@ body{
     font-size:12px;
 }
 
-@media (max-width: 1200px){
-    .content{grid-template-columns:1fr}
-    .queue{max-height:none}
-    .toolbar{grid-template-columns:1fr 120px 160px 160px 120px 1fr 160px 120px 120px}
+.info-line{
+    margin-top:10px;
+    font-size:12px;
+    color:#475569;
+    background:#f8fafc;
+    border:1px solid #e2e8f0;
+    border-radius:12px;
+    padding:9px 12px;
 }
 
-@media (max-width: 800px){
+@media (max-width: 1280px){
+    .content{grid-template-columns:1fr}
+    .queue{max-height:none}
+    .toolbar{grid-template-columns:1fr 100px 1fr 1fr 120px 1fr 160px 120px 120px}
+}
+
+@media (max-width: 900px){
     .page{padding:10px}
-    .toolbar{grid-template-columns:1fr 1fr;}
+    .toolbar{grid-template-columns:1fr 1fr}
     .sheet{overflow:auto}
     #labels{min-width:210mm}
+    .suggestions{width:min(1080px, calc(100vw - 20px))}
+    .suggestions-head,
+    .suggestion-row{
+        grid-template-columns: 110px minmax(220px,1.7fr) 80px 80px 95px 80px 95px 80px 95px;
+        font-size:12px;
+    }
 }
 
 @page{
@@ -438,7 +497,8 @@ body{
     .topbar,
     .queue-panel,
     .footer-note,
-    .panel-head{
+    .panel-head,
+    .info-line{
         display:none !important;
     }
 
@@ -483,18 +543,19 @@ body{
         <div class="title-row">
             <div class="title-block">
                 <h1>Barcode Sticker Print</h1>
-                <p>Print barcode, item code and selected price only.</p>
+                <p>Sales-style item search with barcode, stock and live prices.</p>
             </div>
             <div class="stats">
                 <div class="stat">Sheet: 5 × 13 = 65 labels</div>
+                <div class="stat">Stock Loaded: <span id="stock_count">0</span></div>
                 <div class="stat">Filled: <span id="filled_count">0</span></div>
             </div>
         </div>
 
         <div class="toolbar">
-            <div class="field">
-                <label>Item Code / Item Name</label>
-                <input type="text" id="search" class="input" placeholder="Type item code or item name" autocomplete="off">
+            <div class="field search-wrap">
+                <label>Item Code / Item Name / Barcode</label>
+                <input type="text" id="search" class="input" placeholder="Type item code, item name or barcode" autocomplete="off">
                 <div id="suggestions" class="suggestions"></div>
             </div>
 
@@ -533,6 +594,8 @@ body{
             <button class="btn" onclick="renderLabels()">REFRESH</button>
             <button class="btn btn-danger" onclick="clearAllLabels()">CLEAR ALL</button>
         </div>
+
+        <div class="info-line" id="load_status">Loading stock items...</div>
     </div>
 
     <div class="content">
@@ -558,7 +621,7 @@ body{
                 <div class="sheet">
                     <div id="labels"></div>
                 </div>
-                <div class="footer-note">Tip: first do one sample print on plain A4 paper and place it behind your sticker sheet to check alignment.</div>
+                <div class="footer-note">Tip: do one sample print on plain A4 paper first and check alignment behind the sticker sheet.</div>
             </div>
         </div>
     </div>
@@ -566,9 +629,10 @@ body{
 
 <script>
 const sb = window.sbcc;
+
 document.addEventListener("DOMContentLoaded", async () => {
-  const ok = await requirePageAccess("purchase");
-  if (!ok) return;
+    await safeRequirePageAccess();
+    await initPage();
 });
 
 let stockData = [];
@@ -576,6 +640,8 @@ let suggestionData = [];
 let selectedSuggestionIndex = -1;
 let selectedItem = null;
 let queueItems = [];
+let stockLoaded = false;
+let stockLoading = false;
 
 const searchInput = document.getElementById('search');
 const qtyInput = document.getElementById('qty');
@@ -584,93 +650,47 @@ const suggestionsBox = document.getElementById('suggestions');
 const queueBox = document.getElementById('queue');
 const labelsBox = document.getElementById('labels');
 const filledCount = document.getElementById('filled_count');
+const stockCount = document.getElementById('stock_count');
+const loadStatus = document.getElementById('load_status');
 const priceTypeInput = document.getElementById('price_type');
 const printValueTypeInput = document.getElementById('print_value_type');
 
-window.onload = async () => {
-    await loadStockData();
+async function safeRequirePageAccess(){
+    try{
+        if(typeof requirePageAccess === 'function'){
+            const okBarcode = await requirePageAccess('barcode');
+            if(okBarcode === false){
+                try{
+                    const okPurchase = await requirePageAccess('purchase');
+                    if(okPurchase === false) return false;
+                }catch(e){}
+            }
+        }
+    }catch(err){
+        console.warn('Page access check skipped:', err);
+    }
+    return true;
+}
+
+async function initPage(){
+    setupInputs();
     renderQueue();
     renderLabels();
-    setupSearch();
     searchInput.focus();
-
-    priceTypeInput.addEventListener('change', () => {
-        updateQueuePrices();
-        renderQueue();
-        renderLabels();
-    });
-
-    printValueTypeInput.addEventListener('change', () => {
-        renderQueue();
-        renderLabels();
-    });
-};
-
-function normalizeText(value){
-    return String(value || '')
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
+    await loadStockData();
 }
 
-async function loadStockData(){
-    const { data, error } = await sb
-        .from('stock_items')
-        .select('item_code, item_name, barcode, price1, price2, price3, gst_percent')
-        .order('item_name');
-
-    if(error){
-        console.error('Stock load error:', error);
-        alert('Unable to load stock items');
-        return;
-    }
-
-    stockData = (data || []).map(item => ({
-        item_code: item.item_code || '',
-        item_name: item.item_name || '',
-        barcode: item.barcode || item.item_code || '',
-        price1: parseFloat(item.price1) || 0,
-        price2: parseFloat(item.price2) || 0,
-        price3: parseFloat(item.price3) || 0,
-        gst_percent: parseFloat(item.gst_percent) || 0
-    }));
-}
-
-function searchItems(query){
-    const q = normalizeText(query);
-    if(!q) return [];
-
-    const terms = q.split(' ').filter(Boolean);
-
-    const scored = stockData.map(item => {
-        const code = normalizeText(item.item_code);
-        const name = normalizeText(item.item_name);
-        const barcode = normalizeText(item.barcode);
-
-        const hay = `${code} ${name} ${barcode}`;
-        if(!terms.every(t => hay.includes(t))) return null;
-
-        let score = 0;
-        if(code === q) score += 1000;
-        if(name === q) score += 950;
-        if(barcode === q) score += 900;
-        if(code.startsWith(q)) score += 700;
-        if(name.startsWith(q)) score += 650;
-        if(barcode.startsWith(q)) score += 600;
-        terms.forEach(t => {
-            if(code.includes(t)) score += 50;
-            if(name.includes(t)) score += 45;
-            if(barcode.includes(t)) score += 40;
+function setupInputs(){
+    const upperInputs = [searchInput, purchaseInput];
+    upperInputs.forEach(el => {
+        el.addEventListener('input', () => {
+            const start = el.selectionStart;
+            const end = el.selectionEnd;
+            el.value = String(el.value || '').toUpperCase();
+            try{ el.setSelectionRange(start, end); }catch(e){}
         });
-        return { item, score };
-    }).filter(Boolean);
+    });
 
-    scored.sort((a,b) => b.score - a.score || a.item.item_name.localeCompare(b.item.item_name));
-    return scored.slice(0, 20).map(x => x.item);
-}
-
-function setupSearch(){
     searchInput.addEventListener('input', () => {
         const value = searchInput.value.trim();
         selectedItem = null;
@@ -680,34 +700,35 @@ function setupSearch(){
             return;
         }
 
+        if(!stockLoaded){
+            showLoadingSuggestions();
+            return;
+        }
+
         suggestionData = searchItems(value);
         renderSuggestions();
     });
 
     searchInput.addEventListener('keydown', (e) => {
         const items = suggestionsBox.querySelectorAll('.suggestion-item');
-
         if(e.key === 'ArrowDown'){
             e.preventDefault();
             if(!items.length) return;
             selectedSuggestionIndex = Math.min(selectedSuggestionIndex + 1, items.length - 1);
             updateSuggestionHighlight();
-        }
-        else if(e.key === 'ArrowUp'){
+        } else if(e.key === 'ArrowUp'){
             e.preventDefault();
             if(!items.length) return;
             selectedSuggestionIndex = Math.max(selectedSuggestionIndex - 1, 0);
             updateSuggestionHighlight();
-        }
-        else if(e.key === 'Enter'){
+        } else if(e.key === 'Enter'){
             e.preventDefault();
             if(items.length && selectedSuggestionIndex >= 0 && suggestionData[selectedSuggestionIndex]){
                 chooseSuggestion(suggestionData[selectedSuggestionIndex]);
             } else {
                 addSelectedItem();
             }
-        }
-        else if(e.key === 'Escape'){
+        } else if(e.key === 'Escape'){
             hideSuggestions();
         }
     });
@@ -726,53 +747,253 @@ function setupSearch(){
         }
     });
 
+    priceTypeInput.addEventListener('change', () => {
+        renderSuggestions();
+        renderQueue();
+        renderLabels();
+    });
+
+    printValueTypeInput.addEventListener('change', () => {
+        renderQueue();
+        renderLabels();
+    });
+
     document.addEventListener('click', (e) => {
-        if(!e.target.closest('.field')) hideSuggestions();
+        if(!e.target.closest('.search-wrap')) hideSuggestions();
     });
 }
 
-function renderSuggestions(){
-    suggestionsBox.innerHTML = '';
-    selectedSuggestionIndex = suggestionData.length ? 0 : -1;
+function normalizeText(value){
+    return String(value || '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
 
-    if(!suggestionData.length){
+async function loadStockData(){
+    stockLoaded = false;
+    stockLoading = true;
+    loadStatus.textContent = 'Loading stock items...';
+    stockCount.textContent = '0';
+
+    const allRows = [];
+    const batchSize = 1000;
+    const candidates = [
+        {
+            table: 'stock_balance_view',
+            select: 'item_code,item_name,barcode,price1,price1_gst,price2,price2_gst,price3,price3_gst,gst_percent,balance,landing'
+        },
+        {
+            table: 'stock_items',
+            select: 'item_code,item_name,barcode,price1,price1_gst,price2,price2_gst,price3,price3_gst,gst_percent,landing,quantity'
+        }
+    ];
+
+    let chosen = null;
+    let lastError = null;
+
+    for(const source of candidates){
+        try{
+            let from = 0;
+            let total = [];
+            while(true){
+                const { data, error } = await sb
+                    .from(source.table)
+                    .select(source.select)
+                    .range(from, from + batchSize - 1);
+
+                if(error){
+                    throw error;
+                }
+
+                if(!data || !data.length) break;
+                total = total.concat(data);
+                stockCount.textContent = String(total.length);
+                loadStatus.textContent = `Loading stock items... ${total.length}`;
+                if(data.length < batchSize) break;
+                from += batchSize;
+            }
+
+            if(total.length){
+                chosen = source.table;
+                total.forEach(row => allRows.push(row));
+                break;
+            }
+        }catch(err){
+            console.warn(`Unable to load ${source.table}:`, err);
+            lastError = err;
+        }
+    }
+
+    stockData = allRows.map(item => {
+        const p1 = parseFloat(item.price1) || 0;
+        const p2 = parseFloat(item.price2) || 0;
+        const p3 = parseFloat(item.price3) || 0;
+        const gst = parseFloat(item.gst_percent) || 0;
+
+        return {
+            item_code: item.item_code || '',
+            item_name: item.item_name || '',
+            barcode: item.barcode || item.item_code || '',
+            price1: p1,
+            price1_gst: parseFloat(item.price1_gst) || calcGstPrice(p1, gst),
+            price2: p2,
+            price2_gst: parseFloat(item.price2_gst) || calcGstPrice(p2, gst),
+            price3: p3,
+            price3_gst: parseFloat(item.price3_gst) || calcGstPrice(p3, gst),
+            gst_percent: gst,
+            balance: parseFloat(item.balance ?? item.quantity) || 0,
+            landing: parseFloat(item.landing) || 0
+        };
+    });
+
+    stockLoaded = true;
+    stockLoading = false;
+    stockCount.textContent = String(stockData.length);
+    loadStatus.textContent = stockData.length
+        ? `Loaded ${stockData.length} stock items from ${chosen || 'table'}.`
+        : 'No stock items found.';
+    if(!stockData.length && lastError){
+        console.error('Final stock load error:', lastError);
+    }
+}
+
+function calcGstPrice(price, gstPercent){
+    return (parseFloat(price) || 0) * (1 + (parseFloat(gstPercent) || 0) / 100);
+}
+
+function getBasePriceByType(item, priceType){
+    if(priceType === 'price2') return parseFloat(item.price2) || 0;
+    if(priceType === 'price3') return parseFloat(item.price3) || 0;
+    return parseFloat(item.price1) || 0;
+}
+
+function getGstPriceByType(item, priceType){
+    if(priceType === 'price2') return parseFloat(item.price2_gst) || calcGstPrice(item.price2, item.gst_percent);
+    if(priceType === 'price3') return parseFloat(item.price3_gst) || calcGstPrice(item.price3, item.gst_percent);
+    return parseFloat(item.price1_gst) || calcGstPrice(item.price1, item.gst_percent);
+}
+
+function searchItems(query){
+    const q = normalizeText(query);
+    if(!q || !stockData.length) return [];
+
+    const terms = q.split(' ').filter(Boolean);
+
+    const scored = stockData.map(item => {
+        const code = normalizeText(item.item_code);
+        const name = normalizeText(item.item_name);
+        const barcode = normalizeText(item.barcode);
+        const hay = `${code} ${name} ${barcode}`;
+
+        if(!terms.every(t => hay.includes(t))) return null;
+
+        let score = 0;
+        if(code === q) score += 3000;
+        if(barcode === q) score += 2800;
+        if(name === q) score += 2600;
+        if(code.startsWith(q)) score += 1900;
+        if(barcode.startsWith(q)) score += 1800;
+        if(name.startsWith(q)) score += 1700;
+
+        terms.forEach(t => {
+            if(code.includes(t)) score += 120;
+            if(barcode.includes(t)) score += 110;
+            if(name.includes(t)) score += 100;
+        });
+
+        return { item, score };
+    }).filter(Boolean);
+
+    scored.sort((a, b) =>
+        b.score - a.score ||
+        a.item.item_name.localeCompare(b.item.item_name) ||
+        a.item.item_code.localeCompare(b.item.item_code)
+    );
+
+    return scored.slice(0, 30).map(x => x.item);
+}
+
+function showLoadingSuggestions(){
+    suggestionsBox.innerHTML = `<div class="s-empty">Loading stock items...</div>`;
+    suggestionsBox.style.display = 'block';
+}
+
+function renderSuggestions(){
+    const value = searchInput.value.trim();
+    if(!value){
         hideSuggestions();
         return;
     }
 
-    const selectedPriceType = priceTypeInput.value;
+    if(stockLoading && !stockLoaded){
+        showLoadingSuggestions();
+        return;
+    }
 
-    suggestionData.forEach((item, idx) => {
-        const basePrice = getBasePriceByType(item, selectedPriceType);
-        const gstPrice = basePrice * (1 + (item.gst_percent || 0) / 100);
+    if(!suggestionData.length){
+        suggestionsBox.innerHTML = `<div class="s-empty">No items found</div>`;
+        suggestionsBox.style.display = 'block';
+        selectedSuggestionIndex = -1;
+        return;
+    }
 
-        const div = document.createElement('div');
-        div.className = 'suggestion-item' + (idx === selectedSuggestionIndex ? ' active' : '');
-        div.innerHTML = `
-            <div class="s1">${escapeHtml(item.item_name)}</div>
-            <div class="s2">
-                Code: ${escapeHtml(item.item_code)} |
-                Barcode: ${escapeHtml(item.barcode || item.item_code)} |
-                P: ${formatMoney(basePrice)} |
-                P+GST: ${formatMoney(gstPrice)}
+    selectedSuggestionIndex = Math.min(Math.max(selectedSuggestionIndex, 0), suggestionData.length - 1);
+
+    const body = suggestionData.map((item, idx) => {
+        return `
+            <div class="suggestion-item ${idx === selectedSuggestionIndex ? 'active' : ''}" data-index="${idx}">
+                <div class="suggestion-row">
+                    <div class="s-cell-code">${escapeHtml(item.item_code)}</div>
+                    <div class="s-cell-name">${escapeHtml(item.item_name)}</div>
+                    <div class="s-cell-num">${formatNumber(item.balance)}</div>
+                    <div class="s-cell-num">${formatMoney(item.landing)}</div>
+                    <div class="s-cell-num">${formatMoney(item.price1)}</div>
+                    <div class="s-cell-num">${formatMoney(item.price1_gst)}</div>
+                    <div class="s-cell-num">${formatMoney(item.price2)}</div>
+                    <div class="s-cell-num">${formatMoney(item.price2_gst)}</div>
+                    <div class="s-cell-num">${formatMoney(item.price3)}</div>
+                </div>
             </div>
         `;
-        div.addEventListener('mousedown', (e) => {
-            e.preventDefault();
-            chooseSuggestion(item);
-        });
-        suggestionsBox.appendChild(div);
-    });
+    }).join('');
+
+    suggestionsBox.innerHTML = `
+        <div class="suggestions-head">
+            <div>Code</div>
+            <div>Item Name</div>
+            <div>Stock</div>
+            <div>Landing</div>
+            <div>P1</div>
+            <div>P1+GST</div>
+            <div>P2</div>
+            <div>P2+GST</div>
+            <div>P3</div>
+        </div>
+        <div class="suggestions-body">${body}</div>
+    `;
 
     suggestionsBox.style.display = 'block';
+
+    suggestionsBox.querySelectorAll('.suggestion-item').forEach(el => {
+        el.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            const idx = Number(el.dataset.index);
+            if(!Number.isNaN(idx) && suggestionData[idx]){
+                chooseSuggestion(suggestionData[idx]);
+            }
+        });
+    });
 }
 
 function updateSuggestionHighlight(){
     const items = suggestionsBox.querySelectorAll('.suggestion-item');
-    items.forEach(el => el.classList.remove('active'));
+    items.forEach((el, idx) => {
+        el.classList.toggle('active', idx === selectedSuggestionIndex);
+    });
     if(items[selectedSuggestionIndex]){
-        items[selectedSuggestionIndex].classList.add('active');
-        items[selectedSuggestionIndex].scrollIntoView({ block:'nearest' });
+        items[selectedSuggestionIndex].scrollIntoView({ block: 'nearest' });
     }
 }
 
@@ -791,26 +1012,8 @@ function hideSuggestions(){
     selectedSuggestionIndex = -1;
 }
 
-function getBasePriceByType(item, priceType){
-    if(priceType === 'price2') return parseFloat(item.price2) || 0;
-    if(priceType === 'price3') return parseFloat(item.price3) || 0;
-    return parseFloat(item.price1) || 0;
-}
-
 function toCodePrice(value){
-    const map = {
-        '0':'I',
-        '1':'M',
-        '2':'A',
-        '3':'Y',
-        '4':'F',
-        '5':'L',
-        '6':'O',
-        '7':'W',
-        '8':'E',
-        '9':'R'
-    };
-
+    const map = {'0':'I','1':'M','2':'A','3':'Y','4':'F','5':'L','6':'O','7':'W','8':'E','9':'R'};
     const rounded = Math.round(Number(value) || 0).toString();
     return rounded.split('').map(ch => map[ch] ?? ch).join('');
 }
@@ -819,62 +1022,47 @@ function formatMoney(value){
     return (Number(value) || 0).toFixed(2);
 }
 
+function formatNumber(value){
+    return Number(value || 0).toFixed(2).replace(/\.00$/, '');
+}
+
 function getPrintablePrice(item){
-    const selectedPriceType = priceTypeInput.value;
     const printMode = printValueTypeInput.value;
+    const basePrice = getBasePriceByType(item, priceTypeInput.value);
+    const gstPrice = getGstPriceByType(item, priceTypeInput.value);
 
-    const basePrice = getBasePriceByType(item, selectedPriceType);
-    const gstPrice = basePrice * (1 + (parseFloat(item.gst_percent) || 0) / 100);
-
-    if(printMode === 'gst'){
-        return formatMoney(gstPrice);
-    }
-
-    if(printMode === 'code'){
-        return toCodePrice(basePrice);
-    }
-
-    if(printMode === 'code_gst'){
-        return toCodePrice(gstPrice);
-    }
-
+    if(printMode === 'gst') return formatMoney(gstPrice);
+    if(printMode === 'code') return toCodePrice(basePrice);
+    if(printMode === 'code_gst') return toCodePrice(gstPrice);
     return formatMoney(basePrice);
 }
 
 function getQueueDisplayPrice(item){
-    const selectedPriceType = priceTypeInput.value;
     const printMode = printValueTypeInput.value;
-    const basePrice = getBasePriceByType(item, selectedPriceType);
-    const gstPrice = basePrice * (1 + (parseFloat(item.gst_percent) || 0) / 100);
+    const basePrice = getBasePriceByType(item, priceTypeInput.value);
+    const gstPrice = getGstPriceByType(item, priceTypeInput.value);
 
-    if(printMode === 'gst'){
-        return `PRICE+GST: ${formatMoney(gstPrice)}`;
-    }
-
-    if(printMode === 'code'){
-        return `CODE PRICE: ${toCodePrice(basePrice)}`;
-    }
-
-    if(printMode === 'code_gst'){
-        return `CODE+GST: ${toCodePrice(gstPrice)}`;
-    }
-
+    if(printMode === 'gst') return `PRICE+GST: ${formatMoney(gstPrice)}`;
+    if(printMode === 'code') return `CODE PRICE: ${toCodePrice(basePrice)}`;
+    if(printMode === 'code_gst') return `CODE+GST: ${toCodePrice(gstPrice)}`;
     return `PRICE: ${formatMoney(basePrice)}`;
 }
 
-function updateQueuePrices(){
-    queueItems = queueItems.map(item => {
-        const stock = stockData.find(x => String(x.item_code).trim().toUpperCase() === String(item.item_code).trim().toUpperCase());
-        if(!stock) return item;
+function findStockItemByCodeOrName(code, name){
+    const normCode = String(code || '').trim().toUpperCase();
+    const normName = normalizeText(name || '');
+    let item = null;
 
-        return {
-            ...item,
-            price1: stock.price1,
-            price2: stock.price2,
-            price3: stock.price3,
-            gst_percent: stock.gst_percent
-        };
-    });
+    if(normCode){
+        item = stockData.find(x =>
+            String(x.item_code || '').trim().toUpperCase() === normCode ||
+            String(x.barcode || '').trim().toUpperCase() === normCode
+        ) || null;
+    }
+    if(!item && normName){
+        item = searchItems(name)[0] || null;
+    }
+    return item;
 }
 
 function addSelectedItem(){
@@ -893,25 +1081,7 @@ function addSelectedItem(){
         return;
     }
 
-    const key = String(item.item_code || '').trim().toUpperCase();
-    const existing = queueItems.find(x => x.key === key);
-
-    if(existing){
-        existing.qty += qty;
-    } else {
-        queueItems.push({
-            key,
-            item_code: item.item_code || '',
-            item_name: item.item_name || '',
-            barcode: item.barcode || item.item_code || '',
-            qty,
-            price1: parseFloat(item.price1) || 0,
-            price2: parseFloat(item.price2) || 0,
-            price3: parseFloat(item.price3) || 0,
-            gst_percent: parseFloat(item.gst_percent) || 0
-        });
-    }
-
+    upsertQueueItem(item, qty);
     searchInput.value = '';
     qtyInput.value = 1;
     selectedItem = null;
@@ -921,6 +1091,39 @@ function addSelectedItem(){
     searchInput.focus();
 }
 
+function upsertQueueItem(item, qtyToAdd){
+    const key = String(item.item_code || item.barcode || item.item_name || '').trim().toUpperCase();
+    const existing = queueItems.find(x => x.key === key);
+
+    if(existing){
+        existing.qty += qtyToAdd;
+        existing.item_name = item.item_name || existing.item_name;
+        existing.barcode = item.barcode || existing.barcode;
+        existing.price1 = parseFloat(item.price1) || existing.price1 || 0;
+        existing.price2 = parseFloat(item.price2) || existing.price2 || 0;
+        existing.price3 = parseFloat(item.price3) || existing.price3 || 0;
+        existing.price1_gst = parseFloat(item.price1_gst) || existing.price1_gst || calcGstPrice(existing.price1, existing.gst_percent);
+        existing.price2_gst = parseFloat(item.price2_gst) || existing.price2_gst || calcGstPrice(existing.price2, existing.gst_percent);
+        existing.price3_gst = parseFloat(item.price3_gst) || existing.price3_gst || calcGstPrice(existing.price3, existing.gst_percent);
+        existing.gst_percent = parseFloat(item.gst_percent) || existing.gst_percent || 0;
+    } else {
+        queueItems.push({
+            key,
+            item_code: item.item_code || '',
+            item_name: item.item_name || '',
+            barcode: item.barcode || item.item_code || '',
+            qty: Math.max(1, parseInt(qtyToAdd, 10) || 1),
+            price1: parseFloat(item.price1) || 0,
+            price2: parseFloat(item.price2) || 0,
+            price3: parseFloat(item.price3) || 0,
+            price1_gst: parseFloat(item.price1_gst) || calcGstPrice(item.price1, item.gst_percent),
+            price2_gst: parseFloat(item.price2_gst) || calcGstPrice(item.price2, item.gst_percent),
+            price3_gst: parseFloat(item.price3_gst) || calcGstPrice(item.price3, item.gst_percent),
+            gst_percent: parseFloat(item.gst_percent) || 0
+        });
+    }
+}
+
 async function loadPurchase(){
     const bill = purchaseInput.value.trim();
     if(!bill){
@@ -928,103 +1131,112 @@ async function loadPurchase(){
         return;
     }
 
+    loadStatus.textContent = `Loading purchase ${bill}...`;
     let purchaseId = null;
+    let purchaseRows = [];
 
-    const headerTryQueries = [
-        () => sb.from('purchase_details').select('id').eq('purchase_number', bill).maybeSingle(),
-        () => sb.from('purchase_details').select('id').eq('bill_number', bill).maybeSingle(),
-        () => sb.from('purchase_details').select('id').eq('invoice_number', bill).maybeSingle()
-    ];
+    const headerFields = ['purchase_number', 'bill_number', 'invoice_number', 'id'];
 
-    for(const fn of headerTryQueries){
+    for(const field of headerFields){
         try{
-            const { data } = await fn();
-            if(data?.id){
-                purchaseId = data.id;
+            const { data, error } = await sb
+                .from('purchase_details')
+                .select('*')
+                .eq(field, bill)
+                .limit(1);
+
+            if(!error && data && data.length){
+                purchaseId = data[0].id;
                 break;
             }
-        }catch(err){ }
+        }catch(err){}
     }
 
-    let purchaseItems = [];
+    const itemFieldCandidates = ['purchase_id', 'header_id', 'bill_id'];
 
     if(purchaseId){
-        const itemIdFields = ['purchase_id', 'header_id', 'bill_id'];
-        for(const field of itemIdFields){
+        for(const field of itemFieldCandidates){
             try{
                 const { data, error } = await sb
                     .from('purchase_item_details')
-                    .select('item_code, item_name, quantity')
+                    .select('*')
                     .eq(field, purchaseId);
+
                 if(!error && data && data.length){
-                    purchaseItems = data;
+                    purchaseRows = data;
                     break;
                 }
-            }catch(err){ }
+            }catch(err){}
         }
     }
 
-    if(!purchaseItems.length){
+    if(!purchaseRows.length){
         const directFields = ['purchase_number', 'bill_number', 'invoice_number'];
         for(const field of directFields){
             try{
                 const { data, error } = await sb
                     .from('purchase_item_details')
-                    .select('item_code, item_name, quantity')
+                    .select('*')
                     .eq(field, bill);
+
                 if(!error && data && data.length){
-                    purchaseItems = data;
+                    purchaseRows = data;
                     break;
                 }
-            }catch(err){ }
+            }catch(err){}
         }
     }
 
-    if(!purchaseItems.length){
-        alert('Purchase items not found. Check purchase table/column names once.');
+    if(!purchaseRows.length){
+        loadStatus.textContent = `Purchase ${bill} not found.`;
+        alert('Purchase items not found. Check purchase number and item table column names once.');
         return;
     }
 
-    for(const pItem of purchaseItems){
-        const code = String(pItem.item_code || '').trim().toUpperCase();
-        const name = String(pItem.item_name || '').trim();
-        const qty = Math.max(1, Math.round(parseFloat(pItem.quantity) || 1));
+    for(const row of purchaseRows){
+        const qty = Math.max(1, Math.round(parseFloat(row.quantity) || 1));
+        const stockItem = findStockItemByCodeOrName(row.item_code, row.item_name);
 
-        let stockItem = stockData.find(x => String(x.item_code || '').trim().toUpperCase() === code);
-        if(!stockItem && name){
-            stockItem = searchItems(name)[0] || null;
-        }
+        const rowBase = parseFloat(
+            row.sales_price ??
+            row.price ??
+            row.purchase_price ??
+            row.price1 ??
+            0
+        ) || 0;
 
-        const finalItem = stockItem || {
-            item_code: pItem.item_code || '',
-            item_name: pItem.item_name || '',
-            barcode: pItem.item_code || '',
-            price1: 0,
-            price2: 0,
-            price3: 0,
-            gst_percent: 0
+        const rowGst = parseFloat(row.gst_percent) || (stockItem ? stockItem.gst_percent : 0) || 0;
+        const rowBaseGst = parseFloat(
+            row.sales_price_gst ??
+            row.purchase_price_gst ??
+            row.price1_gst ??
+            0
+        ) || calcGstPrice(rowBase, rowGst);
+
+        const finalItem = stockItem ? {
+            ...stockItem,
+            item_code: row.item_code || stockItem.item_code,
+            item_name: row.item_name || stockItem.item_name,
+            barcode: row.barcode || stockItem.barcode || stockItem.item_code
+        } : {
+            item_code: row.item_code || '',
+            item_name: row.item_name || '',
+            barcode: row.barcode || row.item_code || '',
+            price1: rowBase,
+            price2: rowBase,
+            price3: rowBase,
+            price1_gst: rowBaseGst,
+            price2_gst: rowBaseGst,
+            price3_gst: rowBaseGst,
+            gst_percent: rowGst,
+            balance: 0,
+            landing: parseFloat(row.purchase_price) || 0
         };
 
-        const key = String(finalItem.item_code || finalItem.item_name).trim().toUpperCase();
-        const existing = queueItems.find(x => x.key === key);
-
-        if(existing){
-            existing.qty += qty;
-        } else {
-            queueItems.push({
-                key,
-                item_code: finalItem.item_code || '',
-                item_name: finalItem.item_name || '',
-                barcode: finalItem.barcode || finalItem.item_code || '',
-                qty,
-                price1: parseFloat(finalItem.price1) || 0,
-                price2: parseFloat(finalItem.price2) || 0,
-                price3: parseFloat(finalItem.price3) || 0,
-                gst_percent: parseFloat(finalItem.gst_percent) || 0
-            });
-        }
+        upsertQueueItem(finalItem, qty);
     }
 
+    loadStatus.textContent = `Loaded ${purchaseRows.length} purchase item(s) for ${bill}.`;
     renderQueue();
     renderLabels();
 }
@@ -1100,7 +1312,7 @@ function clearAllLabels(){
 function flattenQueue(){
     const out = [];
     queueItems.forEach(item => {
-        for(let i=0; i<item.qty; i++){
+        for(let i = 0; i < item.qty; i++){
             out.push({
                 item_code: item.item_code || '',
                 barcode: item.barcode || item.item_code || '',
@@ -1108,22 +1320,21 @@ function flattenQueue(){
             });
         }
     });
-    return out.slice(0,65);
+    return out.slice(0, 65);
 }
 
 function renderLabels(){
     labelsBox.innerHTML = '';
     const flat = flattenQueue();
 
-    for(let i=0; i<65; i++){
+    for(let i = 0; i < 65; i++){
         const item = flat[i];
         const div = document.createElement('div');
         div.className = 'label' + (item ? '' : ' label-empty');
 
         if(item){
             const barcodeValue = String(item.barcode || item.item_code || '').trim();
-
-            if (barcodeValue) {
+            if(barcodeValue){
                 const wrap = document.createElement('div');
                 wrap.className = 'barcode-wrap';
 
@@ -1132,7 +1343,7 @@ function renderLabels(){
                 wrap.appendChild(svg);
                 div.appendChild(wrap);
 
-                try {
+                try{
                     JsBarcode(svg, barcodeValue, {
                         format: 'CODE128',
                         width: 1.15,
@@ -1142,7 +1353,7 @@ function renderLabels(){
                         background: '#ffffff',
                         lineColor: '#000000'
                     });
-                } catch (err) {
+                }catch(err){
                     console.error('Barcode render failed for', barcodeValue, err);
                 }
             }
@@ -1165,7 +1376,7 @@ function renderLabels(){
 }
 
 function updateFilledCount(){
-    const total = queueItems.reduce((sum, item) => sum + (parseInt(item.qty,10) || 0), 0);
+    const total = queueItems.reduce((sum, item) => sum + (parseInt(item.qty, 10) || 0), 0);
     filledCount.textContent = Math.min(total, 65);
 }
 

@@ -660,7 +660,7 @@ async function safeRequirePageAccess(){
     if(typeof requirePageAccess !== 'function') return true;
 
     try{
-        const okBarcode = await requirePageAccess('barcode');
+        const okBarcode = await requirePageAccess('purchase');
         if(okBarcode === true) return true;
     }catch(err){
         console.warn('Barcode page access check failed:', err);

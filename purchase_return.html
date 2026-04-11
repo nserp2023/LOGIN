@@ -1,0 +1,1281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+  <script src="common-ui.js"></script>
+  <link rel="manifest" href="site.webmanifest">
+  <title>Purchase Return</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root{
+      --bg:#0b1020;
+      --bg-soft:#11182c;
+      --panel:#131c31;
+      --text:#e8eefc;
+      --text-soft:#b9c5dd;
+      --muted:#8fa1bf;
+      --border:#263552;
+      --border-soft:#1e2b45;
+      --ok:#22c55e;
+      --warn:#f59e0b;
+      --err:#f43f5e;
+      --shadow:0 12px 30px rgba(0,0,0,.28);
+      --focus:0 0 0 3px rgba(96,165,250,.18);
+      --row-h:42px;
+      --radius:14px;
+      --radius-sm:10px;
+      --mono:ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    }
+
+    *{box-sizing:border-box}
+
+    html,body{
+      margin:0;
+      min-height:100%;
+      background:
+        radial-gradient(circle at top left, rgba(56,189,248,.08), transparent 28%),
+        radial-gradient(circle at top right, rgba(96,165,250,.08), transparent 24%),
+        linear-gradient(180deg, #09101d 0%, #0b1020 100%);
+      color:var(--text);
+      font:14px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body{ padding:20px 0 150px; }
+    #items{ padding-bottom:140px; }
+
+    .wrap{
+      max-width:1700px;
+      margin:0 auto;
+      padding:0 18px 24px;
+    }
+
+    .page-top{
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap:16px;
+      margin-bottom:16px;
+      flex-wrap:wrap;
+    }
+
+    .title{ display:flex; flex-direction:column; gap:4px; }
+
+    .title h1{
+      margin:0;
+      font-size:24px;
+      font-weight:700;
+      letter-spacing:.2px;
+      color:#f8fbff;
+    }
+
+    .title span{
+      color:var(--text-soft);
+      font-size:13px;
+    }
+
+    .page-badges{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 12px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      background:rgba(19,28,49,.92);
+      color:var(--text-soft);
+      font-size:12px;
+      box-shadow:var(--shadow);
+    }
+
+    .panel{
+      background:linear-gradient(180deg, rgba(19,28,49,.98), rgba(14,22,39,.98));
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:14px;
+      backdrop-filter: blur(6px);
+    }
+
+    .panel + .panel{ margin-top:12px; }
+
+    .panel-head{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:12px;
+      flex-wrap:wrap;
+    }
+
+    .panel-title{
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+    }
+
+    .panel-title h2{
+      margin:0;
+      font-size:16px;
+      font-weight:700;
+      color:#f5f8ff;
+    }
+
+    .panel-title small{
+      color:var(--muted);
+      font-size:12px;
+    }
+
+    .row{
+      display:grid;
+      gap:10px;
+      align-items:end;
+      grid-auto-flow:column;
+      grid-auto-columns:minmax(125px, 1fr);
+      overflow-x:auto;
+      padding-bottom:4px;
+      scrollbar-width:thin;
+    }
+
+    .row::-webkit-scrollbar,
+    .table-container::-webkit-scrollbar,
+    .dropdown::-webkit-scrollbar{
+      height:10px;
+      width:10px;
+    }
+
+    .row::-webkit-scrollbar-thumb,
+    .table-container::-webkit-scrollbar-thumb,
+    .dropdown::-webkit-scrollbar-thumb{
+      background:#2e4268;
+      border-radius:999px;
+    }
+
+    .field{
+      display:flex;
+      flex-direction:column;
+      min-width:125px;
+      position:relative;
+    }
+
+    .field label{
+      color:var(--muted);
+      font-size:12px;
+      font-weight:600;
+      margin-bottom:6px;
+      letter-spacing:.02em;
+    }
+
+    .field input,
+    .field select,
+    .grid input{
+      height:var(--row-h);
+      padding:0 12px;
+      border-radius:var(--radius-sm);
+      border:1px solid var(--border);
+      background:linear-gradient(180deg, #0f1728, #0c1424);
+      color:var(--text);
+      outline:none;
+      transition:border-color .15s, box-shadow .15s, background .15s, transform .04s, opacity .15s;
+    }
+
+    .field input::placeholder,
+    .grid input::placeholder{
+      color:#7083a7;
+    }
+
+    .field input:focus,
+    .field select:focus,
+    .grid input:focus{
+      border-color:#5ea0ff;
+      box-shadow:var(--focus);
+      background:#101a2d;
+    }
+
+    .readonly{
+      background:linear-gradient(180deg, #0c1320, #0a101b) !important;
+      color:#d8e3f8 !important;
+    }
+
+    .table-container{
+      overflow:auto;
+      width:100%;
+      border:1px solid var(--border-soft);
+      border-radius:12px;
+      background:rgba(9,15,28,.45);
+      padding:10px;
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns:
+        90px
+        120px
+        160px
+        220px
+        140px
+        90px
+        110px
+        90px
+        120px
+        100px
+        120px
+        120px
+        130px
+        130px
+        120px;
+      gap:10px;
+      align-items:center;
+      min-width:1840px;
+      margin-bottom:10px;
+    }
+
+    .grid:last-child{ margin-bottom:0; }
+
+    .hdr{
+      position:sticky;
+      top:0;
+      z-index:5;
+      padding-bottom:8px;
+      margin-bottom:12px;
+      background:linear-gradient(180deg, rgba(16,24,42,.98), rgba(16,24,42,.95));
+      border-bottom:1px solid var(--border);
+    }
+
+    .hdr > div{
+      color:#9eb0cf;
+      font-size:12px;
+      font-weight:700;
+      text-transform:uppercase;
+      letter-spacing:.03em;
+      padding:0 4px;
+    }
+
+    .grid input{ font-size:13px; }
+
+    #items .grid{
+      padding:10px;
+      border:1px solid rgba(38,53,82,.85);
+      border-radius:12px;
+      background:linear-gradient(180deg, rgba(17,24,41,.72), rgba(11,17,31,.72));
+    }
+
+    #items .grid:nth-child(odd){
+      background:linear-gradient(180deg, rgba(17,24,41,.82), rgba(11,17,31,.82));
+    }
+
+    #items .grid:nth-child(even){
+      background:linear-gradient(180deg, rgba(21,30,49,.82), rgba(12,20,36,.82));
+    }
+
+    #items .grid:hover{
+      border-color:#325086;
+      background:linear-gradient(180deg, rgba(22,34,58,.95), rgba(14,24,42,.95));
+    }
+
+    .items-disabled{
+      opacity:.48;
+      pointer-events:none;
+      filter:grayscale(.1);
+    }
+
+    .actions{
+      display:flex;
+      justify-content:flex-end;
+      gap:12px;
+      margin-top:16px;
+      flex-wrap:wrap;
+    }
+
+    .btn{
+      height:44px;
+      padding:0 18px;
+      border-radius:12px;
+      border:1px solid var(--border);
+      background:linear-gradient(180deg, #1b2944, #13203a);
+      color:#edf4ff;
+      cursor:pointer;
+      font-weight:700;
+      letter-spacing:.15px;
+      transition:transform .06s, filter .15s, border-color .15s, box-shadow .15s, opacity .15s;
+      box-shadow:0 8px 18px rgba(0,0,0,.18);
+    }
+
+    .btn:hover{
+      filter:brightness(1.06);
+      border-color:#3b5f99;
+    }
+
+    .btn:active{ transform:translateY(1px); }
+
+    .btn.primary{
+      background:linear-gradient(180deg, #3b82f6, #2563eb);
+      border-color:#2563eb;
+      color:#fff;
+    }
+
+    .btn.danger{
+      background:linear-gradient(180deg, #ef4444, #dc2626);
+      border-color:#dc2626;
+      color:#fff;
+    }
+
+    .btn:disabled{
+      opacity:.45;
+      cursor:not-allowed;
+      filter:none;
+      transform:none;
+      box-shadow:none;
+    }
+
+    .status{
+      margin-top:10px;
+      padding:10px 12px;
+      border-radius:12px;
+      background:rgba(10,16,28,.55);
+      border:1px solid var(--border-soft);
+      font:12px var(--mono);
+      color:var(--muted);
+      min-height:40px;
+      display:flex;
+      align-items:center;
+    }
+
+    .ok{color:var(--ok)}
+    .warn{color:var(--warn)}
+    .err{color:var(--err)}
+
+    .dropdown{
+      position:absolute;
+      z-index:50;
+      background:linear-gradient(180deg, #111a2e, #0c1423);
+      border:1px solid #33486f;
+      border-radius:12px;
+      box-shadow:0 18px 30px rgba(0,0,0,.38);
+      min-width:320px;
+      max-height:260px;
+      overflow:auto;
+      backdrop-filter:blur(10px);
+    }
+
+    .dropdown .opt{
+      padding:10px 12px;
+      border-bottom:1px solid rgba(38,53,82,.65);
+    }
+
+    .dropdown .opt:last-child{ border-bottom:none; }
+
+    .dropdown .opt:hover{
+      background:#17233b;
+      cursor:pointer;
+    }
+
+    .dropdown .opt.purchase-opt{
+      display:grid;
+      grid-template-columns:160px 160px 1fr 140px;
+      gap:10px;
+    }
+
+    .dropdown .muted{
+      color:var(--muted);
+      font:12px var(--mono);
+    }
+
+    .sticky-bar{
+      position:fixed;
+      left:0;
+      right:0;
+      bottom:0;
+      z-index:100;
+      padding:10px 14px;
+      background:rgba(8,13,24,.86);
+      backdrop-filter:blur(10px);
+      border-top:1px solid rgba(51,72,111,.7);
+      box-shadow:0 -10px 30px rgba(0,0,0,.28);
+    }
+
+    .sticky-inner{
+      max-width:1700px;
+      margin:0 auto;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+    }
+
+    .sticky-note{
+      color:var(--text-soft);
+      font-size:12px;
+    }
+
+    .sticky-actions{
+      display:flex;
+      gap:12px;
+      flex-wrap:wrap;
+    }
+
+    .chip{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 12px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      background:rgba(16,24,42,.65);
+      color:var(--text-soft);
+      font-size:12px;
+      min-height:42px;
+    }
+
+    @media (max-width: 900px){
+      .wrap{padding:0 10px 18px}
+      .panel{padding:12px}
+      .title h1{font-size:20px}
+      .btn{width:100%}
+      .actions{justify-content:stretch}
+      .actions .btn{flex:1 1 100%}
+      .sticky-inner{
+        flex-direction:column;
+        align-items:stretch;
+      }
+      .sticky-actions .btn{
+        flex:1 1 100%;
+      }
+      body{ padding-bottom:140px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="page-top">
+      <div class="title">
+        <h1 id="pageTitle">Purchase Return</h1>
+        <span id="pageSubTitle">Load original purchase, enter return quantity, and save. Stock effect must be handled by your SQL trigger.</span>
+      </div>
+      <div class="page-badges">
+        <div class="badge" id="modeBadge">Purchase Return Entry</div>
+        <div class="badge">Invoice Search</div>
+        <div class="badge">Trigger Based</div>
+      </div>
+    </div>
+
+    <div class="panel" id="loadPanel">
+      <div class="panel-head">
+        <div class="panel-title">
+          <h2>Find Original Purchase</h2>
+          <small>Search by supplier GST, supplier name, invoice number, or purchase number.</small>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label>Search purchase</label>
+          <input id="purchaseSearch" autocomplete="off" placeholder="TYPE GST / SUPPLIER / INVOICE / PURCHASE NO" />
+        </div>
+        <div class="field">
+          <label>Quick filter</label>
+          <select id="searchMode">
+            <option value="all">ALL</option>
+            <option value="invoice_number">INVOICE NUMBER</option>
+            <option value="gst_number">GST NUMBER</option>
+            <option value="supplier_name">SUPPLIER NAME</option>
+            <option value="purchase_number">PURCHASE NUMBER</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>&nbsp;</label>
+          <button class="btn" id="searchBtn">Load Search</button>
+        </div>
+        <div class="field">
+          <label>&nbsp;</label>
+          <div class="chip" id="loadedChip">No purchase loaded</div>
+        </div>
+      </div>
+      <div class="status" id="loadStatus"></div>
+    </div>
+
+    <div class="panel" id="returnPanel">
+      <div class="panel-head">
+        <div class="panel-title">
+          <h2>Return Details</h2>
+          <small>Original purchase details are auto-filled after loading. Only entered return quantities will be saved.</small>
+        </div>
+      </div>
+
+      <div class="row" id="returnRow">
+        <div class="field"><label>PR number</label><input id="purchaseReturnNumber" class="readonly" readonly /></div>
+        <div class="field"><label>Return date</label><input id="returnDate" type="date" /></div>
+        <div class="field"><label>Original purchase no</label><input id="purchaseNumber" class="readonly" readonly /></div>
+        <div class="field"><label>GST number</label><input id="gstNumber" class="readonly" readonly /></div>
+        <div class="field"><label>Supplier name</label><input id="supplierName" class="readonly" readonly /></div>
+        <div class="field"><label>Supplier address</label><input id="supplierAddress" class="readonly" readonly /></div>
+        <div class="field"><label>Original invoice no</label><input id="invoiceNumber" class="readonly" readonly /></div>
+        <div class="field"><label>Original invoice date</label><input id="invoiceDate" class="readonly" readonly /></div>
+        <div class="field"><label>Return amount</label><input id="invoiceAmount" class="readonly" readonly /></div>
+        <div class="field"><label>Round off</label><input id="roundOff" class="readonly" readonly /></div>
+        <div class="field"><label>Payable</label><input id="payable" class="readonly" readonly /></div>
+      </div>
+      <div class="status" id="returnStatus"></div>
+    </div>
+
+    <div class="panel" id="itemsPanel">
+      <div class="panel-head">
+        <div class="panel-title">
+          <h2>Purchase Return Items</h2>
+          <small>Return qty cannot be more than original purchase qty</small>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <div class="grid hdr">
+          <div>HSN</div>
+          <div>Item code</div>
+          <div>Barcode</div>
+          <div>Item name</div>
+          <div>Department</div>
+          <div>Pur Qty</div>
+          <div>Ret Qty</div>
+          <div>Balance Qty</div>
+          <div>Price</div>
+          <div>Disc%</div>
+          <div>Total</div>
+          <div>GST%</div>
+          <div>Total+GST</div>
+          <div>Purchase</div>
+          <div>Purchase+GST</div>
+        </div>
+        <div id="items"></div>
+      </div>
+
+      <div class="actions">
+        <button class="btn" id="fullReturnBtn">Fill Full Return</button>
+        <button class="btn" id="reloadBtn">Reload Original Items</button>
+        <button class="btn danger" id="saveBtn" disabled>Save Purchase Return</button>
+      </div>
+    </div>
+
+    <div class="status" id="saveStatus"></div>
+  </div>
+
+  <div class="sticky-bar">
+    <div class="sticky-inner">
+      <div class="sticky-note">
+        Search original purchase → load items → type return quantity → save. No direct stock update in this page.
+      </div>
+      <div class="sticky-actions">
+        <button class="btn" id="fullReturnBtnSticky">Fill Full Return</button>
+        <button class="btn" id="reloadBtnSticky">Reload Original Items</button>
+        <button class="btn danger" id="saveBtnSticky" disabled>Save Purchase Return</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+  <script src="supabaseClient.js"></script>
+  <script src="page_permissions.js"></script>
+  <script>
+    const sb = window.sbcc;
+
+    const byId = id => document.getElementById(id);
+    const fmt2 = v => (isFinite(v) ? Number(v).toFixed(2) : "0.00");
+    const num = v => (v === "" || v == null ? 0 : Number(v));
+    const todayISO = () => new Date().toISOString().slice(0,10);
+
+    let dropdown = null;
+    let activeIndex = -1;
+    let loadedPurchase = null;
+    let loadedItems = [];
+    let isEditMode = false;
+    let editingReturnId = null;
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      const ok = await requirePageAccess("purchase");
+      if (!ok) return;
+      await initPage();
+
+      const params = new URLSearchParams(window.location.search);
+      const editId = params.get("edit");
+
+      if (editId) {
+        isEditMode = true;
+        editingReturnId = editId;
+        await loadExistingPurchaseReturn(editId);
+      }
+
+      syncStickySaveState();
+    });
+
+    document.addEventListener("input", function(e){
+      if(e.target.tagName === "INPUT" && e.target.type !== "date" && !e.target.readOnly){
+        e.target.value = String(e.target.value || "").toUpperCase();
+      }
+    });
+
+    function syncStickySaveState(){
+      byId("saveBtnSticky").disabled = byId("saveBtn").disabled;
+    }
+
+    function setItemsEnabled(enabled){
+      const panel = byId("itemsPanel");
+      if(enabled) panel.classList.remove("items-disabled");
+      else panel.classList.add("items-disabled");
+
+      byId("reloadBtn").disabled = !enabled;
+      byId("reloadBtnSticky").disabled = !enabled;
+      byId("fullReturnBtn").disabled = !enabled;
+      byId("fullReturnBtnSticky").disabled = !enabled;
+
+      if(!enabled) byId("saveBtn").disabled = true;
+      syncStickySaveState();
+    }
+
+    function updateModeUi(){
+      if(isEditMode){
+        byId("pageTitle").textContent = "Edit Purchase Return";
+        byId("pageSubTitle").textContent = "Loaded existing purchase return. Updating will reverse old items and apply new values through your trigger.";
+        byId("modeBadge").textContent = "Edit Mode";
+        byId("saveBtn").textContent = "Update Purchase Return";
+        byId("saveBtnSticky").textContent = "Update Purchase Return";
+        byId("loadStatus").innerHTML = `<span class="ok">Edit mode active. Existing purchase return loaded.</span>`;
+      } else {
+        byId("pageTitle").textContent = "Purchase Return";
+        byId("pageSubTitle").textContent = "Load original purchase, enter return quantity, and save. Stock effect must be handled by your SQL trigger.";
+        byId("modeBadge").textContent = "Purchase Return Entry";
+        byId("saveBtn").textContent = "Save Purchase Return";
+        byId("saveBtnSticky").textContent = "Save Purchase Return";
+      }
+    }
+
+    function hideDropdown(){
+      if(dropdown){
+        dropdown.remove();
+        dropdown = null;
+      }
+    }
+
+    function highlightOption(){
+      if(!dropdown) return;
+      const opts = dropdown.querySelectorAll(".opt");
+      opts.forEach((opt, i) => {
+        opt.style.background = (i === activeIndex) ? "#1b2130" : "";
+        if(i === activeIndex) opt.scrollIntoView({ block: "nearest" });
+      });
+    }
+
+    function showDropdown(anchorInput, items, onPick){
+      hideDropdown();
+
+      const rect = anchorInput.getBoundingClientRect();
+      dropdown = document.createElement("div");
+      dropdown.className = "dropdown";
+      document.body.appendChild(dropdown);
+
+      items.forEach((it) => {
+        const opt = document.createElement("div");
+        opt.className = "opt purchase-opt";
+        opt.innerHTML = `
+          <div class="muted">${it.purchase_number || ""}</div>
+          <div class="muted">${it.invoice_number || ""}</div>
+          <div>${it.supplier_name || ""}</div>
+          <div class="muted">${it.gst_number || ""}</div>
+        `;
+        opt.onclick = () => {
+          onPick(it);
+          hideDropdown();
+        };
+        dropdown.appendChild(opt);
+      });
+
+      const dropdownHeight = Math.min(260, items.length * 44);
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const spaceAbove = rect.top;
+
+      let top;
+      if(spaceBelow < dropdownHeight && spaceAbove > dropdownHeight){
+        top = window.scrollY + rect.top - dropdownHeight - 6;
+      } else {
+        top = window.scrollY + rect.bottom + 4;
+      }
+
+      let minWidth = Math.max(rect.width, 760);
+      let left = window.scrollX + rect.left;
+      if(left + minWidth > window.innerWidth - 10){
+        left = Math.max(10, window.innerWidth - minWidth - 10);
+      }
+
+      dropdown.style.top = top + "px";
+      dropdown.style.left = left + "px";
+      dropdown.style.minWidth = minWidth + "px";
+
+      activeIndex = 0;
+      highlightOption();
+
+      anchorInput.onkeydown = (e) => {
+        const opts = dropdown.querySelectorAll(".opt");
+        if(!opts.length) return;
+
+        if(e.key === "ArrowDown"){
+          e.preventDefault();
+          activeIndex = (activeIndex + 1) % opts.length;
+          highlightOption();
+        } else if(e.key === "ArrowUp"){
+          e.preventDefault();
+          activeIndex = (activeIndex - 1 + opts.length) % opts.length;
+          highlightOption();
+        } else if(e.key === "Enter"){
+          e.preventDefault();
+          opts[activeIndex]?.click();
+        } else if(e.key === "Escape"){
+          hideDropdown();
+        }
+      };
+    }
+
+    document.addEventListener("click", e => {
+      if(dropdown && !dropdown.contains(e.target)) hideDropdown();
+    });
+
+    window.addEventListener("resize", hideDropdown);
+    window.addEventListener("scroll", hideDropdown, true);
+
+    async function generatePurchaseReturnNumber(){
+      const d = new Date();
+      const stamp = d.toISOString().slice(0,10).replace(/-/g, "");
+      const rand = Math.floor(Math.random() * 90000) + 10000;
+      return `PR-${stamp}-${rand}`;
+    }
+
+    function clearLoadedPurchase(){
+      loadedPurchase = null;
+      loadedItems = [];
+      byId("loadedChip").textContent = "No purchase loaded";
+      byId("purchaseNumber").value = "";
+      byId("gstNumber").value = "";
+      byId("supplierName").value = "";
+      byId("supplierAddress").value = "";
+      byId("invoiceNumber").value = "";
+      byId("invoiceDate").value = "";
+      byId("invoiceAmount").value = "";
+      byId("roundOff").value = "";
+      byId("payable").value = "";
+      byId("items").innerHTML = "";
+      byId("returnStatus").innerHTML = `<span class="warn">Load original purchase invoice first.</span>`;
+      setItemsEnabled(false);
+    }
+
+    async function initPage(){
+      byId("purchaseReturnNumber").value = await generatePurchaseReturnNumber();
+      byId("returnDate").value = todayISO();
+      clearLoadedPurchase();
+      byId("loadStatus").innerHTML = `<span class="warn">Search and select an original purchase invoice.</span>`;
+      byId("saveStatus").textContent = "";
+      updateModeUi();
+    }
+
+    async function searchPurchases(){
+      const q = byId("purchaseSearch").value.trim();
+      const mode = byId("searchMode").value;
+      const status = byId("loadStatus");
+
+      if(q.length < 1){
+        status.innerHTML = `<span class="warn">Type supplier name, GST, invoice number, or purchase number.</span>`;
+        hideDropdown();
+        return;
+      }
+
+      let query = sb
+        .from("purchase_details")
+        .select("id,purchase_number,gst_number,supplier_name,address,invoice_number,invoice_date,invoice_amount,round_off,payable,bill_date,created_at")
+        .order("created_at", { ascending: false })
+        .limit(20);
+
+      if(mode === "all"){
+        query = query.or(`gst_number.ilike.%${q}%,supplier_name.ilike.%${q}%,invoice_number.ilike.%${q}%,purchase_number.ilike.%${q}%`);
+      } else {
+        query = query.ilike(mode, `%${q}%`);
+      }
+
+      const { data, error } = await query;
+      if(error){
+        console.error(error);
+        status.innerHTML = `<span class="err">Purchase search failed: ${error.message}</span>`;
+        hideDropdown();
+        return;
+      }
+
+      if(!data || !data.length){
+        status.innerHTML = `<span class="warn">No purchase found.</span>`;
+        hideDropdown();
+        return;
+      }
+
+      status.innerHTML = `<span class="ok">${data.length} purchase record(s) found. Select one.</span>`;
+      showDropdown(byId("purchaseSearch"), data, async pick => {
+        byId("purchaseSearch").value = `${pick.purchase_number || ""} / ${pick.invoice_number || ""}`;
+        await loadPurchase(pick.id, null);
+      });
+    }
+
+    async function loadPurchase(purchaseId, existingReturnItemsMap = null){
+      const loadStatus = byId("loadStatus");
+      const returnStatus = byId("returnStatus");
+      const saveStatus = byId("saveStatus");
+      saveStatus.textContent = "";
+
+      const { data: header, error: hErr } = await sb
+        .from("purchase_details")
+        .select("*")
+        .eq("id", purchaseId)
+        .single();
+
+      if(hErr || !header){
+        console.error(hErr);
+        loadStatus.innerHTML = `<span class="err">Unable to load purchase header.</span>`;
+        clearLoadedPurchase();
+        return;
+      }
+
+      const { data: items, error: iErr } = await sb
+        .from("purchase_item_details")
+        .select("*")
+        .eq("purchase_id", purchaseId)
+        .order("id", { ascending: true });
+
+      if(iErr){
+        console.error(iErr);
+        loadStatus.innerHTML = `<span class="err">Unable to load purchase items.</span>`;
+        clearLoadedPurchase();
+        return;
+      }
+
+      loadedPurchase = header;
+      loadedItems = items || [];
+
+      byId("loadedChip").textContent = `${header.purchase_number || ""} | ${header.invoice_number || ""}`;
+      byId("purchaseNumber").value = header.purchase_number || "";
+      byId("gstNumber").value = header.gst_number || "";
+      byId("supplierName").value = header.supplier_name || "";
+      byId("supplierAddress").value = header.address || "";
+      byId("invoiceNumber").value = header.invoice_number || "";
+      byId("invoiceDate").value = header.invoice_date || "";
+      byId("invoiceAmount").value = fmt2(0);
+      byId("roundOff").value = fmt2(0);
+      byId("payable").value = fmt2(0);
+
+      renderLoadedItems(existingReturnItemsMap);
+      setItemsEnabled(true);
+      loadStatus.innerHTML = `<span class="ok">Original purchase loaded successfully.</span>`;
+      returnStatus.innerHTML = `<span class="ok">Edit return quantities and save purchase return.</span>`;
+      maybeEnableSave();
+    }
+
+    function renderLoadedItems(existingReturnItemsMap = null){
+      const box = byId("items");
+      box.innerHTML = "";
+
+      loadedItems.forEach((it, idx) => {
+        const row = document.createElement("div");
+        row.className = "grid";
+        row.dataset.itemId = it.id || "";
+        row.dataset.itemCode = it.item_code || "";
+        row.dataset.originalQty = num(it.quantity);
+
+        const prev = existingReturnItemsMap ? existingReturnItemsMap[it.item_code || ""] : null;
+
+        const mkInput = (val = "", cls = "", readonly = false, type = "text") => {
+          const el = document.createElement("input");
+          el.value = val ?? "";
+          el.type = type;
+          if(cls) el.classList.add(cls);
+          if(readonly){
+            el.readOnly = true;
+            el.classList.add("readonly");
+          }
+          return el;
+        };
+
+        const hsn = mkInput(it.hsn_code || "", "", true);
+        const code = mkInput(it.item_code || "", "", true);
+        const barcode = mkInput(it.barcode || "", "", true);
+        const name = mkInput(it.item_name || "", "", true);
+        const department = mkInput(it.department || "", "", true);
+        const purQty = mkInput(fmt2(it.quantity || 0), "", true);
+        const retQty = mkInput(prev ? String(num(prev.quantity)) : "", "", false, "number");
+        retQty.step = "0.01";
+        retQty.min = "0";
+        const balQty = mkInput("0.00", "", true);
+        const price = mkInput(fmt2(prev ? (prev.price ?? it.price) : it.price || 0), "", true);
+        const disc = mkInput(fmt2(prev ? (prev.discount_percent ?? it.discount_percent) : it.discount_percent || 0), "", true);
+        const total = mkInput("0.00", "", true);
+        const gst = mkInput(fmt2(prev ? (prev.gst_percent ?? it.gst_percent) : it.gst_percent || 0), "", true);
+        const totalG = mkInput("0.00", "", true);
+        const purchase = mkInput(fmt2(prev ? (prev.purchase_price ?? it.purchase_price) : it.purchase_price || 0), "", true);
+        const purchaseG = mkInput(fmt2(prev ? (prev.purchase_price_gst ?? it.purchase_price_gst) : it.purchase_price_gst || 0), "", true);
+
+        [
+          hsn, code, barcode, name, department, purQty, retQty, balQty, price, disc,
+          total, gst, totalG, purchase, purchaseG
+        ].forEach(el => row.appendChild(el));
+
+        box.appendChild(row);
+
+        retQty.addEventListener("input", () => calculateRow(row));
+        retQty.addEventListener("keydown", (e) => {
+          const inputs = Array.from(document.querySelectorAll('#items .grid input[type="number"]'));
+          const pos = inputs.indexOf(e.target);
+
+          if(e.key === "Enter"){
+            e.preventDefault();
+            const next = inputs[pos + 1];
+            if(next) next.focus();
+            else byId("saveBtn").focus();
+          }
+        });
+
+        if(idx === loadedItems.length - 1){
+          retQty.addEventListener("keydown", (e) => {
+            if(e.key === "Enter"){
+              e.preventDefault();
+              byId("saveBtn").focus();
+            }
+          });
+        }
+
+        calculateRow(row);
+      });
+
+      updateSummaryFromItems();
+    }
+
+    function calculateRow(row){
+      const inputs = row.querySelectorAll("input");
+      const purQty = num(inputs[5].value);
+      let retQty = num(inputs[6].value);
+      const price = num(inputs[8].value);
+      const disc = num(inputs[9].value);
+      const gst = num(inputs[11].value);
+
+      if(retQty < 0) retQty = 0;
+      if(retQty > purQty) retQty = purQty;
+
+      inputs[6].value = retQty ? String(retQty) : "";
+      inputs[7].value = fmt2(purQty - retQty);
+
+      const gross = retQty * price;
+      const discAmt = gross * (disc / 100);
+      const total = gross - discAmt;
+      const totalG = total + (total * (gst / 100));
+
+      inputs[10].value = fmt2(total);
+      inputs[12].value = fmt2(totalG);
+
+      maybeEnableSave();
+      updateSummaryFromItems();
+    }
+
+    function fillFullReturn(){
+      const rows = Array.from(document.querySelectorAll("#items .grid"));
+      rows.forEach(row => {
+        const inputs = row.querySelectorAll("input");
+        const purQty = num(inputs[5].value);
+        inputs[6].value = purQty ? String(purQty) : "";
+        calculateRow(row);
+      });
+      byId("returnStatus").innerHTML = `<span class="ok">Full return quantity filled for all items.</span>`;
+    }
+
+    function collectItems(){
+      const rows = Array.from(document.querySelectorAll("#items .grid"));
+      return rows.map(row => {
+        const inputs = row.querySelectorAll("input");
+        return {
+          hsn_code: inputs[0].value,
+          item_code: inputs[1].value,
+          barcode: inputs[2].value,
+          item_name: inputs[3].value,
+          department: inputs[4].value,
+          original_quantity: num(inputs[5].value),
+          return_quantity: num(inputs[6].value),
+          balance_quantity: num(inputs[7].value),
+          price: num(inputs[8].value),
+          discount_percent: num(inputs[9].value),
+          total: num(inputs[10].value),
+          gst_percent: num(inputs[11].value),
+          total_gst: num(inputs[12].value),
+          purchase_price: num(inputs[13].value),
+          purchase_price_gst: num(inputs[14].value)
+        };
+      }).filter(x => x.return_quantity > 0);
+    }
+
+    function updateSummaryFromItems(){
+      const items = collectItems();
+      const payable = items.reduce((sum, it) => sum + it.total_gst, 0);
+      const rounded = Math.round(payable);
+      const roundOff = rounded - payable;
+      const invoiceAmount = payable + roundOff;
+
+      byId("payable").value = fmt2(payable);
+      byId("roundOff").value = fmt2(roundOff);
+      byId("invoiceAmount").value = fmt2(invoiceAmount);
+    }
+
+    function maybeEnableSave(){
+      const items = collectItems();
+      const hasHeader = !!loadedPurchase;
+      const hasDate = !!byId("returnDate").value;
+      byId("saveBtn").disabled = !(hasHeader && hasDate && items.length > 0);
+      syncStickySaveState();
+    }
+
+    async function loadExistingPurchaseReturn(returnId){
+      updateModeUi();
+      byId("saveStatus").textContent = "Loading existing purchase return...";
+
+      const { data: header, error: headErr } = await sb
+        .from("purchase_return_details")
+        .select("*")
+        .eq("id", returnId)
+        .single();
+
+      if(headErr || !header){
+        byId("saveStatus").innerHTML = `<span class="err">Unable to load purchase return header.</span>`;
+        console.error(headErr);
+        return;
+      }
+
+      const { data: returnItems, error: itemErr } = await sb
+        .from("purchase_return_item_details")
+        .select("*")
+        .eq("purchase_return_id", returnId)
+        .order("id", { ascending: true });
+
+      if(itemErr){
+        byId("saveStatus").innerHTML = `<span class="err">Unable to load purchase return items.</span>`;
+        console.error(itemErr);
+        return;
+      }
+
+      byId("purchaseReturnNumber").value = header.purchase_return_number || "";
+      byId("returnDate").value = header.return_date || todayISO();
+      byId("gstNumber").value = header.gst_number || "";
+      byId("supplierName").value = header.supplier_name || "";
+      byId("supplierAddress").value = header.address || "";
+      byId("invoiceNumber").value = header.original_invoice_number || "";
+      byId("invoiceDate").value = header.original_invoice_date || "";
+      byId("invoiceAmount").value = fmt2(header.total_amount || 0);
+      byId("roundOff").value = fmt2(header.round_off || 0);
+      byId("payable").value = fmt2(header.payable || 0);
+
+      let purchaseId = header.purchase_id || null;
+      if (!purchaseId && header.purchase_number) {
+        const { data: purchaseByNo } = await sb
+          .from("purchase_details")
+          .select("id")
+          .eq("purchase_number", header.purchase_number)
+          .limit(1)
+          .maybeSingle();
+        purchaseId = purchaseByNo?.id || null;
+      }
+
+      const existingReturnItemsMap = {};
+      (returnItems || []).forEach(it => {
+        existingReturnItemsMap[it.item_code || ""] = it;
+      });
+
+      if (purchaseId) {
+        await loadPurchase(purchaseId, existingReturnItemsMap);
+      } else {
+        byId("saveStatus").innerHTML = `<span class="err">Could not locate original purchase for this return.</span>`;
+      }
+
+      byId("purchaseSearch").value = `${header.purchase_number || ""} / ${header.original_invoice_number || ""}`;
+      byId("saveStatus").innerHTML = `<span class="ok">Existing purchase return loaded.</span>`;
+      updateModeUi();
+    }
+
+    async function savePurchaseReturn(){
+      const status = byId("saveStatus");
+
+      if(!loadedPurchase){
+        status.innerHTML = `<span class="err">Load original purchase first.</span>`;
+        return;
+      }
+
+      const returnItems = collectItems();
+
+      if(!returnItems.length){
+        status.innerHTML = `<span class="err">Enter at least one return quantity.</span>`;
+        return;
+      }
+
+      for(const it of returnItems){
+        if(it.return_quantity > it.original_quantity){
+          status.innerHTML = `<span class="err">Return qty cannot be more than purchase qty for ${it.item_code}</span>`;
+          return;
+        }
+      }
+
+      byId("saveBtn").disabled = true;
+      syncStickySaveState();
+      status.textContent = isEditMode ? "Updating purchase return..." : "Saving purchase return...";
+
+      const headerPayload = {
+        purchase_return_number: byId("purchaseReturnNumber").value.trim(),
+        return_date: byId("returnDate").value,
+        purchase_id: loadedPurchase.id,
+        purchase_number: loadedPurchase.purchase_number,
+        gst_number: loadedPurchase.gst_number,
+        supplier_name: loadedPurchase.supplier_name,
+        address: loadedPurchase.address,
+        original_invoice_number: loadedPurchase.invoice_number,
+        original_invoice_date: loadedPurchase.invoice_date,
+        total_amount: num(byId("invoiceAmount").value),
+        round_off: num(byId("roundOff").value),
+        payable: num(byId("payable").value)
+      };
+
+      let purchaseReturnId = editingReturnId;
+
+      if(isEditMode && editingReturnId){
+        const { error: updErr } = await sb
+          .from("purchase_return_details")
+          .update(headerPayload)
+          .eq("id", editingReturnId);
+
+        if(updErr){
+          status.innerHTML = `<span class="err">Header update failed: ${updErr.message}</span>`;
+          byId("saveBtn").disabled = false;
+          syncStickySaveState();
+          return;
+        }
+
+        const { error: delErr } = await sb
+          .from("purchase_return_item_details")
+          .delete()
+          .eq("purchase_return_id", editingReturnId);
+
+        if(delErr){
+          status.innerHTML = `<span class="err">Old item delete failed: ${delErr.message}</span>`;
+          byId("saveBtn").disabled = false;
+          syncStickySaveState();
+          return;
+        }
+      } else {
+        const { data: prHead, error: headErr } = await sb
+          .from("purchase_return_details")
+          .insert(headerPayload)
+          .select("id")
+          .single();
+
+        if(headErr){
+          status.innerHTML = `<span class="err">Header save failed: ${headErr.message}</span>`;
+          byId("saveBtn").disabled = false;
+          syncStickySaveState();
+          return;
+        }
+
+        purchaseReturnId = prHead.id;
+      }
+
+      const itemPayload = returnItems.map(it => ({
+        purchase_return_id: purchaseReturnId,
+        purchase_id: loadedPurchase.id,
+        purchase_number: loadedPurchase.purchase_number,
+        hsn_code: it.hsn_code,
+        item_code: it.item_code,
+        barcode: it.barcode,
+        item_name: it.item_name,
+        department: it.department,
+        quantity: it.return_quantity,
+        original_quantity: it.original_quantity,
+        balance_quantity: it.balance_quantity,
+        price: it.price,
+        discount_percent: it.discount_percent,
+        purchase_price: it.purchase_price,
+        purchase_price_gst: it.purchase_price_gst,
+        landing: it.purchase_price_gst,
+        gst_percent: it.gst_percent,
+        total: it.total,
+        total_gst: it.total_gst
+      }));
+
+      const { error: itemErr } = await sb
+        .from("purchase_return_item_details")
+        .insert(itemPayload);
+
+      if(itemErr){
+        status.innerHTML = `<span class="err">Item save failed: ${itemErr.message}</span>`;
+        byId("saveBtn").disabled = false;
+        syncStickySaveState();
+        return;
+      }
+
+      status.innerHTML = `<span class="ok">${isEditMode ? "Purchase Return Updated Successfully." : "Purchase Return Saved Successfully."}</span>`;
+
+      if (isEditMode) {
+        setTimeout(() => {
+          window.location.href = "purchase_return_report.html";
+        }, 400);
+      } else {
+        await initPage();
+      }
+    }
+
+    function reloadOriginalItems(){
+      if(!loadedPurchase) return;
+      renderLoadedItems();
+      byId("returnStatus").innerHTML = `<span class="ok">Original items reloaded.</span>`;
+      byId("saveStatus").textContent = "";
+    }
+
+    document.addEventListener("keydown", function(e){
+      const headerInputs = Array.from(document.querySelectorAll("#loadPanel input, #loadPanel select, #returnPanel input"));
+      const itemInputs = Array.from(document.querySelectorAll("#items .grid input"));
+      const actionInputs = [byId("fullReturnBtn"), byId("reloadBtn"), byId("saveBtn")];
+      const all = headerInputs.concat(itemInputs, actionInputs);
+      const current = document.activeElement;
+      const idx = all.indexOf(current);
+
+      if(idx >= 0 && e.key === "Enter" && !dropdown){
+        if(current.id === "searchBtn" || current.id === "saveBtn" || current.id === "reloadBtn" || current.id === "fullReturnBtn") return;
+        e.preventDefault();
+        const next = e.shiftKey ? all[idx - 1] : all[idx + 1];
+        if(next) next.focus();
+      }
+    });
+
+    byId("searchBtn").addEventListener("click", searchPurchases);
+    byId("purchaseSearch").addEventListener("input", () => {
+      const q = byId("purchaseSearch").value.trim();
+      if(q.length >= 2 && !isEditMode) searchPurchases();
+      else if(!q.length) hideDropdown();
+    });
+    byId("purchaseSearch").addEventListener("keydown", (e) => {
+      if(e.key === "Enter" && !dropdown && !isEditMode){
+        e.preventDefault();
+        searchPurchases();
+      }
+    });
+
+    byId("fullReturnBtn").addEventListener("click", fillFullReturn);
+    byId("fullReturnBtnSticky").addEventListener("click", fillFullReturn);
+    byId("reloadBtn").addEventListener("click", reloadOriginalItems);
+    byId("reloadBtnSticky").addEventListener("click", reloadOriginalItems);
+    byId("saveBtn").addEventListener("click", savePurchaseReturn);
+    byId("saveBtnSticky").addEventListener("click", () => {
+      if(!byId("saveBtnSticky").disabled) savePurchaseReturn();
+    });
+    byId("returnDate").addEventListener("change", maybeEnableSave);
+  </script>
+</body>
+</html>

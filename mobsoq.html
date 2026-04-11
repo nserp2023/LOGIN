@@ -9,13 +9,14 @@
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
 
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
-<script src="common-ui.js"></script>
+
 <link rel="manifest" href="site.webmanifest">
     <title>VAJRA LIGHTS - Billing Software</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabaseClient.js"></script>
     <script src="page_permissions.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="common-ui.js"></script>
     
     <style>
         :root {
@@ -71,12 +72,13 @@
         }
 
         .form-group label {
-            font-size: 11px;
-            font-weight: 700;
-            color: #64748b;
-            margin-bottom: 3px;
-            text-transform: uppercase;
-        }
+    font-size: 12px;
+    font-weight: 800;
+    color: #ffffff;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
 
         .form-control {
             padding: 6px 10px;
@@ -184,7 +186,13 @@
         .col-qty  { width: 60px; }
         .col-type { width: 50px; }
         .col-price { width: 90px; }
+        .col-disc { width: 70px; }
+        .col-landing { width: 90px; }
         .col-gst  { width: 50px; }
+
+        .landing-col-hidden {
+            display: none !important;
+        }
         .col-tot  { width: 100px; }
         .col-act  { width: 30px; }
 
@@ -226,22 +234,26 @@
             position: absolute;
             top: 100%;
             left: 0;
-            width: 1000px;
+            right: auto;
+            min-width: 100%;
+            width: max-content;
+            max-width: min(1000px, calc(100vw - 20px));
             background: white;
             border: 1px solid var(--border);
             box-shadow: 0 4px 6px rgba(0,0,0,0.15);
             max-height: 300px;
             overflow-y: auto;
+            overflow-x: auto;
             z-index: 100;
             display: none;
         }
 
         .autocomplete-table{
-            width:100%;
-            border-collapse:collapse;
-            font-size:13px;
-            font-weight:bold;
-            min-width: 900px;
+            width: max-content;
+            min-width: 700px;
+            border-collapse: collapse;
+            font-size: 13px;
+            font-weight: bold;
         }
 
         .autocomplete-table th{
@@ -381,7 +393,7 @@
                 margin-left: 0;
             }
             .autocomplete-list{
-                width: min(1000px, calc(100vw - 40px));
+                max-width: calc(100vw - 40px);
             }
         }
 
@@ -502,8 +514,7 @@
             }
 
             .autocomplete-list{
-                width: calc(100vw - 24px);
-                left: 0;
+                max-width: calc(100vw - 24px);
                 max-height: 240px;
             }
 
@@ -527,7 +538,7 @@
             <label>Type</label>
             <select id="doc_type" class="form-control w-sm">
                 <option value="sales">SALES</option>
-                <option value="sales_pack">SALES + PACKING</option>
+                <option value="sales_pack">BILL</option>
                 <option value="quotation">QUOTATION</option>
                 <option value="sales_order">SALES ORDER</option>
             </select>
@@ -601,6 +612,26 @@
             </select>
         </div>
 
+        <div class="form-group">
+            <label>Department</label>
+            <select id="department_filter" class="form-control w-md">
+                <option value="" selected>ALL ITEMS</option>
+                <option value="ELECTRICAL">ELECTRICAL</option>
+                <option value="PLUMBING">PLUMBING</option>
+                <option value="INTERLOCK">INTERLOCK</option>
+            </select>
+        </div>
+
+        <div class="grand-total-box" style="background:#1e293b;">
+    <span>TOTAL QTY</span>
+    <div id="display_total_qty">0</div>
+</div>
+
+<div class="grand-total-box" style="background:#334155;">
+    <span>AMOUNT (Before GST)</span>
+    <div id="display_total_before_gst">₹0.00</div>
+</div>
+
         <div class="grand-total-box">
             <span>GRAND TOTAL</span>
             <div id="display_grand_total">₹0.00</div>
@@ -618,6 +649,8 @@
                     <th class="col-type">Type</th>
                     <th class="col-price">Price</th>
                     <th class="col-price">Price+GST</th>
+                    <th class="col-disc">Disc %</th>
+                    <th class="col-landing landing-col">Landing</th>
                     <th class="col-gst">GST%</th>
                     <th class="col-tot">Total</th>
                     <th class="col-act"></th>
@@ -727,13 +760,68 @@
     let editingType = null;
     let historyTimer = null;
     let lastHistoryKey = "";
+    let stockLoaded = false;
+    let currentUserRole = "";
+    let canSeeLandingColumn = false;
 
     // --- 3. INITIALIZATION ---
+
+    async function loadCurrentUserRole() {
+        try {
+            const { data: authData, error: authError } = await sb.auth.getUser();
+            if (authError || !authData?.user) {
+                currentUserRole = "";
+                canSeeLandingColumn = false;
+                return;
+            }
+
+            const { data: profile, error: profileError } = await sb
+                .from("user_profiles")
+                .select("role")
+                .eq("id", authData.user.id)
+                .maybeSingle();
+
+            if (profileError || !profile) {
+                currentUserRole = "";
+                canSeeLandingColumn = false;
+                return;
+            }
+
+            currentUserRole = String(profile.role || "").trim().toUpperCase();
+            canSeeLandingColumn = currentUserRole === "OWNER" || currentUserRole === "ADMIN";
+        } catch (err) {
+            console.error("Error loading current user role:", err);
+            currentUserRole = "";
+            canSeeLandingColumn = false;
+        }
+    }
+
+    function applyLandingColumnVisibility(root = document) {
+        const hidden = !canSeeLandingColumn;
+        root.querySelectorAll('.landing-col').forEach(el => {
+            el.classList.toggle('landing-col-hidden', hidden);
+        });
+    }
+
     window.onload = async () => {
         setupDate();
         await loadBillSeries();
         await fetchNextBillNumber();
+        await loadCurrentUserRole();
         await loadStockData();
+        applyLandingColumnVisibility();
+        syncPaymentUI();
+
+        document.getElementById("payment_type").addEventListener("change", syncPaymentUI);
+        document.getElementById("paid_amount").addEventListener("input", () => {
+            const total = getGrandTotalAmount();
+            const paidEl = document.getElementById("paid_amount");
+            let paid = parseFloat(paidEl.value) || 0;
+            if (paid < 0) paid = 0;
+            if (paid > total) paid = total;
+            paidEl.value = paid ? paid.toFixed(2) : "0.00";
+            syncPaymentUI();
+        });
 
         const params = new URLSearchParams(window.location.search);
         const convertId = params.get("convert");
@@ -790,6 +878,20 @@
             else{
                 sm.disabled=false;
             }
+
+            syncPaymentUI();
+        });
+
+        document.getElementById("department_filter").addEventListener("change", () => {
+            document.querySelectorAll(".autocomplete-list").forEach(list => {
+                list.style.display = "none";
+                list.removeAttribute("data-open");
+                list.innerHTML = "";
+            });
+
+            document.querySelectorAll("#bill_body tr").forEach(row => {
+                applyItemRestriction(row);
+            });
         });
     };
 
@@ -803,6 +905,53 @@
         document.getElementById('bill_date').valueAsDate = new Date();
     }
 
+    function getGrandTotalAmount() {
+        return parseFloat((document.getElementById('display_grand_total').innerText || '₹0').replace('₹','')) || 0;
+    }
+
+    function syncPaymentUI() {
+        const docType = document.getElementById("doc_type").value;
+        const paymentTypeGroup = document.getElementById("payment_type_group");
+        const paidAmountGroup = document.getElementById("paid_amount_group");
+        const balanceBox = document.getElementById("balance_box");
+        const paymentTypeEl = document.getElementById("payment_type");
+        const paidAmountEl = document.getElementById("paid_amount");
+
+        const isSalesDoc = docType === "sales";
+        const showPayment = isSalesDoc;
+
+        paymentTypeGroup.style.display = showPayment ? "" : "none";
+        paidAmountGroup.style.display = showPayment ? "" : "none";
+        balanceBox.style.display = showPayment ? "" : "none";
+
+        if(!showPayment){
+            paymentTypeEl.value = "CASH";
+            paidAmountEl.value = "0";
+            paidAmountEl.disabled = true;
+            document.getElementById('display_balance_amount').innerText = '₹0.00';
+            return;
+        }
+
+        const total = getGrandTotalAmount();
+        const paymentType = paymentTypeEl.value;
+
+        if (paymentType === "CASH") {
+            paidAmountEl.value = total.toFixed(2);
+            paidAmountEl.disabled = true;
+        } else {
+            paidAmountEl.disabled = false;
+            let paid = parseFloat(paidAmountEl.value) || 0;
+            if (paid > total) {
+                paid = total;
+                paidAmountEl.value = total.toFixed(2);
+            }
+        }
+
+        const paidAmount = parseFloat(paidAmountEl.value) || 0;
+        const balanceAmount = Math.max(0, total - paidAmount);
+        document.getElementById('display_balance_amount').innerText = '₹' + balanceAmount.toFixed(2);
+    }
+
     async function fetchNextBillNumber() {
         const series = document.getElementById('bill_series').value;
         const { data } = await sb
@@ -814,46 +963,100 @@
         document.getElementById('bill_number').value = data ? (data.bill_number + 1) : 1;
     }
 
-    async function loadStockData() {
-        let allItems = [];
-        let from = 0;
-        let pageSize = 1000;
-        let fetchMore = true;
+async function loadStockData() {
+    stockLoaded = false;
+    stockData = [];
 
-        while (fetchMore) {
-            const { data, error } = await sb
+    let allItems = [];
+    let from = 0;
+    const pageSize = 1000;
+    let fetchMore = true;
+
+    while (fetchMore) {
+        let data = null;
+        let error = null;
+
+        for (let attempt = 1; attempt <= 3; attempt++) {
+const stockSelect = canSeeLandingColumn
+                ? 'item_code,item_name,barcode,price1,price2,price3,landing,balance,gst_percent,hsn_code,department'
+                : 'item_code,item_name,barcode,price1,price2,price3,balance,gst_percent,hsn_code,department';
+
+            const res = await sb
                 .from('stock_balance_view')
-                .select('*')
+                .select(stockSelect)
+                .order('item_code', { ascending: true })
                 .range(from, from + pageSize - 1);
 
-            if (error) {
-                console.error("Error loading stock:", error);
-                alert("Error loading stock items. Check console.");
-                break;
-            }
+            data = res.data;
+            error = res.error;
 
-            if (data && data.length > 0) {
-                allItems = allItems.concat(data);
-                from += pageSize;
+            if (!error) break;
 
-                if (data.length < pageSize) {
-                    fetchMore = false;
-                }
-            } else {
-                fetchMore = false;
-            }
+            console.warn(`Stock load retry ${attempt} failed for chunk starting ${from}`, error);
+            await new Promise(r => setTimeout(r, 300));
         }
 
-        stockData = allItems;
-        console.log("Total Stock Items Loaded:", stockData.length);
+        if (error) {
+            console.error("Error loading stock:", error);
+            alert(`Stock loading failed near row ${from + 1}. Please reload once.`);
+            return;
+        }
+
+        if (data && data.length > 0) {
+            allItems = allItems.concat(data);
+            from += pageSize;
+
+            if (data.length < pageSize) {
+                fetchMore = false;
+            }
+        } else {
+            fetchMore = false;
+        }
     }
 
+    const uniqueMap = new Map();
+
+    for (const item of allItems) {
+        const code = String(item.item_code || "").trim();
+        if (!code) continue;
+
+        uniqueMap.set(code, {
+            ...item,
+            department: normalizeDepartment(item.department)
+        });
+    }
+
+    stockData = Array.from(uniqueMap.values());
+    stockLoaded = true;
+
+    console.log("Total Stock Items Loaded:", stockData.length);
+}
     function normalizeSearchText(value) {
         return String(value || "")
             .toLowerCase()
             .replace(/[^a-z0-9]+/g, " ")
             .replace(/\s+/g, " ")
             .trim();
+    }
+
+    function getSelectedDepartment() {
+        return String(document.getElementById("department_filter")?.value || "").trim().toUpperCase();
+    }
+
+    function normalizeDepartment(value) {
+        return String(value || "ALL").trim().toUpperCase();
+    }
+
+    function itemMatchesDepartment(item) {
+        const selectedDept = getSelectedDepartment();
+        if (!selectedDept || selectedDept === "ALL") return true;
+
+        const itemDept = normalizeDepartment(item.department);
+        return itemDept === selectedDept;
+    }
+
+    function getDepartmentFilteredStockData() {
+        return stockData.filter(item => itemMatchesDepartment(item));
     }
 
     function searchStock(query, field) {
@@ -864,12 +1067,14 @@
 
         const terms = normalizedQuery.split(" ").filter(Boolean);
 
-        const scored = stockData.map(item => {
+        const scored = getDepartmentFilteredStockData().map(item => {
             const codeRaw = String(item.item_code || "");
             const nameRaw = String(item.item_name || "");
+            const barcodeRaw = String(item.barcode || "");
 
             const code = normalizeSearchText(codeRaw);
             const name = normalizeSearchText(nameRaw);
+            const barcode = normalizeSearchText(barcodeRaw);
 
             let searchablePrimary = field === "item_code" ? code : name;
             let searchableSecondary = field === "item_code" ? name : code;
@@ -877,7 +1082,7 @@
             const matched =
                 terms.every(t => searchablePrimary.includes(t)) ||
                 terms.every(t => searchableSecondary.includes(t)) ||
-                terms.every(t => (code + " " + name).includes(t));
+                terms.every(t => (code + " " + name + " " + barcode).includes(t));
 
             if (!matched) return null;
 
@@ -885,9 +1090,11 @@
 
             if (searchablePrimary === normalizedQuery) score += 1000;
             if (searchableSecondary === normalizedQuery) score += 900;
+            if (barcode === normalizedQuery) score += 850;
 
             if (searchablePrimary.startsWith(normalizedQuery)) score += 700;
             if (searchableSecondary.startsWith(normalizedQuery)) score += 650;
+            if (barcode.startsWith(normalizedQuery)) score += 600;
 
             if (code.startsWith(normalizedQuery)) score += 600;
             if (name.startsWith(normalizedQuery)) score += 550;
@@ -895,6 +1102,7 @@
             for (const t of terms) {
                 if (code.includes(t)) score += 40;
                 if (name.includes(t)) score += 40;
+                if (barcode.includes(t)) score += 35;
             }
 
             score -= Math.abs(name.length - normalizedQuery.length) * 0.1;
@@ -917,7 +1125,7 @@
     mobileInput.addEventListener('input', (e) => {
         clearTimeout(custTimer);
         const val = e.target.value;
-        if(val.length < 3) { mobileList.style.display = 'none'; return; }
+        if(val.length < 3) { mobileList.style.display = 'none'; mobileList.removeAttribute("data-open"); return; }
 
         custTimer = setTimeout(async () => {
             const { data } = await sb.from('customers').select('*').ilike('mobile', '%' + val + '%').limit(5);
@@ -937,7 +1145,7 @@ ${data.map((c, idx) => `
 <tr class="autocomplete-row" data-idx="${idx}">
 <td>${c.mobile}</td>
 <td>${c.name}</td>
-<td>${c.address}</td>
+<td>${c.address || ''}</td>
 <td>${c.gst_number || ''}</td>
 </tr>
 `).join("")}
@@ -945,6 +1153,8 @@ ${data.map((c, idx) => `
 `;
 
                 mobileList.style.display = 'block';
+                mobileList.setAttribute("data-open","true");
+                adjustDropdownPosition(mobileInput, mobileList);
 
                 mobileList.querySelectorAll(".autocomplete-row").forEach((tr, i) => {
                     tr.onclick = () => selectCustomer(data[i]);
@@ -954,6 +1164,7 @@ ${data.map((c, idx) => `
                 if (first) first.classList.add("selected");
             } else {
                 mobileList.style.display = 'none';
+                mobileList.removeAttribute("data-open");
             }
         }, 300);
     });
@@ -982,6 +1193,7 @@ ${data.map((c, idx) => `
         document.getElementById('cust_address').value = c.address || '';
         document.getElementById('cust_gst').value = c.gst_number || '';
         mobileList.style.display = 'none';
+        mobileList.removeAttribute("data-open");
         lastHistoryKey = "";
         document.getElementById('cust_name').focus();
     }
@@ -1026,6 +1238,12 @@ ${data.map((c, idx) => `
         <td class="col-price">
             <input type="number" class="row-inp price-gst-inp" data-rid="${rId}" data-navcol="5" step="0.01">
         </td>
+        <td class="col-disc">
+            <input type="number" class="row-inp disc-inp" data-rid="${rId}" data-navcol="6" step="0.01" value="0" min="0" max="100">
+        </td>
+        <td class="col-landing landing-col">
+            <input type="text" class="landing-inp" data-rid="${rId}" readonly tabindex="-1" style="color:#facc15;font-weight:bold;">
+        </td>
         <td class="col-gst">
             <input type="text" class="row-inp gst-inp" data-rid="${rId}" readonly tabindex="-1" style="color:#64748b">
         </td>
@@ -1037,6 +1255,7 @@ ${data.map((c, idx) => `
         </td>
         `;
         tbody.appendChild(row);
+        applyLandingColumnVisibility(row);
 
         const qtyInput = row.querySelector('.qty-inp');
         qtyInput.addEventListener('keydown', function(e) {
@@ -1074,8 +1293,10 @@ ${data.map((c, idx) => `
         const typeInp = row.querySelector('.type-inp');
         const priceInp = row.querySelector('.price-inp');
         const priceGstInp = row.querySelector('.price-gst-inp');
+        const discInp = row.querySelector('.disc-inp');
+        const landingInp = row.querySelector('.landing-inp');
 
-        [codeInp, nameInp, qtyInp, typeInp, priceInp, priceGstInp].forEach(el => {
+        [codeInp, nameInp, qtyInp, typeInp, priceInp, priceGstInp, discInp].forEach(el => {
             el.addEventListener("focus", () => triggerPurchaseHistory(row));
             el.addEventListener("click", () => triggerPurchaseHistory(row));
         });
@@ -1093,7 +1314,15 @@ ${data.map((c, idx) => `
         const attachSearch = (inp, listId, field) => {
             const list = document.getElementById(listId);
 
+            
+
             inp.addEventListener('input', () => {
+                if (!stockLoaded) {
+    list.innerHTML = `<div class="autocomplete-item">Loading stock items...</div>`;
+    list.style.display = 'block';
+    list.setAttribute("data-open","true");   // ✅ ADD THIS
+    return;
+}
                 const val = inp.value;
 
                 if(val.length < 1){
@@ -1112,11 +1341,12 @@ ${data.map((c, idx) => `
                     <tr>
                     <th>Item</th>
                     <th>Code</th>
+                    <th>Dept</th>
                     <th>Stock</th>
                     <th>P1</th>
                     <th>P2</th>
                     <th>P3</th>
-                    <th>Landing</th>
+                    ${canSeeLandingColumn ? '<th>Landing</th>' : ''}
                     </tr>
                     `;
 
@@ -1125,11 +1355,12 @@ ${data.map((c, idx) => `
                         <tr class="autocomplete-row" data-idx="${idx}">
                         <td>${item.item_name}</td>
                         <td>${item.item_code}</td>
+                        <td>${item.department || 'ALL'}</td>
                         <td>${item.balance || 0}</td>
                         <td>₹${item.price1 || 0}</td>
                         <td>₹${item.price2 || 0}</td>
                         <td>₹${item.price3 || 0}</td>
-                        <td>₹${item.landing || 0}</td>
+                        ${canSeeLandingColumn ? `<td>₹${item.landing || 0}</td>` : ''}
                         </tr>
                         `;
                     });
@@ -1162,10 +1393,13 @@ ${data.map((c, idx) => `
         attachSearch(codeInp, `list_code_${id}`, 'item_code');
 
         codeInp.addEventListener("change", () => {
+            if (!stockLoaded) return;
             const code = normalizeSearchText(codeInp.value);
 
             const item = stockData.find(
-                i => normalizeSearchText(i.item_code || "") === code
+                i =>
+                    normalizeSearchText(i.item_code || "") === code &&
+                    itemMatchesDepartment(i)
             );
 
             if(item){
@@ -1176,12 +1410,20 @@ ${data.map((c, idx) => `
         codeInp.addEventListener("keydown", (e)=>{
             if(e.key !== "Enter") return;
 
+            if (!stockLoaded) {
+    e.preventDefault();
+    e.stopPropagation();
+    return;
+}
+
             const code = normalizeSearchText(codeInp.value);
             const row = document.getElementById(`row_${id}`);
             const nameInp = row.querySelector('.name-inp');
 
             const item = stockData.find(
-                i => normalizeSearchText(i.item_code || "") === code
+                i =>
+                    normalizeSearchText(i.item_code || "") === code &&
+                    itemMatchesDepartment(i)
             );
 
             if(item){
@@ -1212,14 +1454,11 @@ ${data.map((c, idx) => `
 
         attachSearch(nameInp, `list_name_${id}`, 'item_name');
 
-        const inputs = [qtyInp, typeInp, priceInp, priceGstInp, codeInp, nameInp];
-        inputs.forEach(el => {
-            el.addEventListener('input', (e) => {
-                if(e.target === typeInp) updatePriceFromType(id);
-                else if(e.target === priceGstInp) calcReverse(id);
-                else calcForward(id);
-            });
-        });        
+        qtyInp.addEventListener('input', () => calcForward(id));
+        discInp.addEventListener('input', () => calcForward(id));
+        priceInp.addEventListener('input', () => calcForward(id));
+        priceGstInp.addEventListener('input', () => calcReverse(id));
+        typeInp.addEventListener('change', () => updatePriceFromType(id));
     }
 
     async function fillItem(id, item) {
@@ -1242,7 +1481,14 @@ ${data.map((c, idx) => `
 
         row.querySelector('.type-inp').value = "1";
         row.querySelector('.price-inp').value = item.price1 || 0;
+        row.querySelector('.price-gst-inp').value = "";
+        row.querySelector('.disc-inp').value = 0;
         row.querySelector('.raw-data').value = JSON.stringify(item);
+
+        const landingInp = row.querySelector('.landing-inp');
+        if (landingInp) {
+            landingInp.value = parseFloat(item.landing || 0).toFixed(2);
+        }
 
         setTimeout(() => {
             const qtyBox = row.querySelector('.qty-inp');
@@ -1253,9 +1499,13 @@ ${data.map((c, idx) => `
         calcForward(id);
         triggerPurchaseHistory(row);
 
+        const freshSelect = canSeeLandingColumn
+            ? 'balance, price1, price2, price3, landing'
+            : 'balance, price1, price2, price3';
+
         const { data: freshStock, error } = await sb
             .from('stock_balance_view')
-            .select('balance, price1, price2, price3, landing')
+            .select(freshSelect)
             .eq('item_code', item.item_code)
             .maybeSingle();
 
@@ -1269,6 +1519,11 @@ ${data.map((c, idx) => `
             const currentQty = freshStock ? freshStock.balance : 0;
             qtyBox.title = `Available Stock: ${currentQty}`;
             qtyBox.style.backgroundColor = "";
+
+            const landingInp = row.querySelector('.landing-inp');
+            if (landingInp) {
+                landingInp.value = parseFloat((freshStock && 'landing' in freshStock ? freshStock.landing : item.landing) || 0).toFixed(2);
+            }
         }
     }
 
@@ -1301,45 +1556,96 @@ ${data.map((c, idx) => `
     function adjustDropdownPosition(input, list){
         const rect = input.getBoundingClientRect();
         const spaceBelow = window.innerHeight - rect.bottom;
-        const dropdownHeight = 200;
+        const dropdownHeight = 220;
+        const margin = 10;
 
         if(spaceBelow < dropdownHeight){
             list.style.top = "auto";
             list.style.bottom = "100%";
-        }else{
+        } else {
             list.style.top = "100%";
             list.style.bottom = "auto";
         }
+
+        list.style.left = "0";
+        list.style.right = "auto";
+
+        requestAnimationFrame(() => {
+            const listRect = list.getBoundingClientRect();
+
+            if(listRect.right > window.innerWidth - margin){
+                const shiftLeft = listRect.right - (window.innerWidth - margin);
+                list.style.left = `-${shiftLeft}px`;
+            }
+
+            if(listRect.left < margin){
+                list.style.left = `${margin - rect.left}px`;
+            }
+        });
     }
+
+    function repositionVisibleDropdowns(){
+        document.querySelectorAll('.autocomplete-list[data-open="true"]').forEach(list => {
+            let input = null;
+
+            if(list.id === 'mobile_suggestions'){
+                input = mobileInput;
+            } else if(list.id && list.id.startsWith('list_code_')){
+                const rid = list.id.replace('list_code_', '');
+                input = document.querySelector(`.code-inp[data-rid="${rid}"]`);
+            } else if(list.id && list.id.startsWith('list_name_')){
+                const rid = list.id.replace('list_name_', '');
+                input = document.querySelector(`.name-inp[data-rid="${rid}"]`);
+            }
+
+            if(input && getComputedStyle(list).display !== 'none'){
+                adjustDropdownPosition(input, list);
+            }
+        });
+    }
+
+    window.addEventListener('resize', repositionVisibleDropdowns);
+    window.addEventListener('scroll', repositionVisibleDropdowns, true);
 
     function updatePriceFromType(id) {
-        const row = document.getElementById(`row_${id}`);
-        const type = row.querySelector('.type-inp').value;
-        const raw = row.querySelector('.raw-data').value;
-        if(!raw) return;
-        
-        const item = JSON.parse(raw);
-        let p = 0;
-        if(type == "1") p = item.price1;
-        else if(type == "2") p = item.price2;
-        else if(type == "3") p = item.price3;
-        else if(type == "L") p = item.landing;
+    const row = document.getElementById(`row_${id}`);
+    const type = row.querySelector('.type-inp').value;
+    const raw = row.querySelector('.raw-data').value;
+    if (!raw) return;
 
-        row.querySelector('.price-inp').value = p;
+    const item = JSON.parse(raw);
+
+    if (type == "1") {
+        row.querySelector('.price-inp').value = item.price1 || 0;
         calcForward(id);
     }
+    else if (type == "2") {
+        row.querySelector('.price-inp').value = item.price2 || 0;
+        calcForward(id);
+    }
+    else if (type == "3") {
+        row.querySelector('.price-inp').value = item.price3 || 0;
+        calcForward(id);
+    }
+    else if (type == "L") {
+        row.querySelector('.price-gst-inp').value = item.landing || 0;
+        calcReverse(id);
+    }
+}
 
     function calcForward(id) {
         const row = document.getElementById(`row_${id}`);
         const qty = parseFloat(row.querySelector('.qty-inp').value) || 0;
         const price = parseFloat(row.querySelector('.price-inp').value) || 0;
         const gst = parseFloat(row.querySelector('.gst-inp').value) || 0;
+        const disc = Math.min(100, Math.max(0, parseFloat(row.querySelector('.disc-inp').value) || 0));
 
-        const taxAmt = price * (gst/100);
-        const pGst = price + taxAmt;
-        const total = pGst * qty;
+        const pGstBeforeDiscount = price * (1 + (gst / 100));
+        const pGstAfterDiscount = pGstBeforeDiscount - (pGstBeforeDiscount * disc / 100);
+        const total = pGstAfterDiscount * qty;
 
-        row.querySelector('.price-gst-inp').value = pGst.toFixed(2);
+        row.querySelector('.disc-inp').value = disc.toFixed(2).replace(/\.00$/, '');
+        row.querySelector('.price-gst-inp').value = pGstAfterDiscount.toFixed(2);
         row.querySelector('.total-inp').value = total.toFixed(2);
         calcTotal();
         calcProfit();
@@ -1350,10 +1656,12 @@ ${data.map((c, idx) => `
         const qty = parseFloat(row.querySelector('.qty-inp').value) || 0;
         const pGst = parseFloat(row.querySelector('.price-gst-inp').value) || 0;
         const gst = parseFloat(row.querySelector('.gst-inp').value) || 0;
+        const disc = Math.min(100, Math.max(0, parseFloat(row.querySelector('.disc-inp').value) || 0));
 
-        const price = pGst / (1 + (gst/100));
+        const price = pGst / (1 + (gst / 100));
         const total = pGst * qty;
 
+        row.querySelector('.disc-inp').value = disc.toFixed(2).replace(/\.00$/, '');
         row.querySelector('.price-inp').value = price.toFixed(2);
         row.querySelector('.total-inp').value = total.toFixed(2);
         calcTotal();
@@ -1361,10 +1669,33 @@ ${data.map((c, idx) => `
     }
 
     function calcTotal() {
-        let sum = 0;
-        document.querySelectorAll('.total-inp').forEach(i => sum += parseFloat(i.value) || 0);
-        document.getElementById('display_grand_total').innerText = '₹' + sum.toFixed(2);
-    }
+    let totalAfterGST = 0;
+    let totalBeforeGST = 0;
+    let totalQty = 0;
+
+    document.querySelectorAll('#bill_body tr').forEach(row => {
+        const qty = parseFloat(row.querySelector('.qty-inp')?.value) || 0;
+        const price = parseFloat(row.querySelector('.price-inp')?.value) || 0;
+        const gst = parseFloat(row.querySelector('.gst-inp')?.value) || 0;
+        const disc = parseFloat(row.querySelector('.disc-inp')?.value) || 0;
+
+        // before GST (after discount)
+        let priceAfterDisc = price - (price * disc / 100);
+        let beforeGST = priceAfterDisc * qty;
+
+        // after GST
+        let afterGST = beforeGST * (1 + gst / 100);
+
+        totalQty += qty;
+        totalBeforeGST += beforeGST;
+        totalAfterGST += afterGST;
+    });
+
+    document.getElementById('display_grand_total').innerText = '₹' + totalAfterGST.toFixed(2);
+    document.getElementById('display_total_before_gst').innerText = '₹' + totalBeforeGST.toFixed(2);
+    document.getElementById('display_total_qty').innerText = totalQty.toFixed(2);
+    syncPaymentUI();
+}
 
     const trigger = document.getElementById('profit_trigger');
     const profitBox = document.getElementById('profit_box');
@@ -1420,7 +1751,8 @@ ${data.map((c, idx) => `
             row.querySelector('.qty-inp'),
             row.querySelector('.type-inp'),
             row.querySelector('.price-inp'),
-            row.querySelector('.price-gst-inp')
+            row.querySelector('.price-gst-inp'),
+            row.querySelector('.disc-inp')
         ].filter(Boolean);
     }
 
@@ -1430,6 +1762,24 @@ ${data.map((c, idx) => `
 
         const currentInput = e.target.closest('.row-inp');
         if(!currentInput) return;
+
+        if (
+    e.key === 'Enter' &&
+    currentInput.classList.contains('name-inp') &&
+    !currentInput.value.trim()
+) {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+
+    const sameRow = currentInput.closest('tr');
+    const codeInp = sameRow ? sameRow.querySelector('.code-inp') : null;
+
+    if (codeInp) {
+        codeInp.focus();
+        if (codeInp.select) codeInp.select();
+    }
+    return;
+}
 
         const currentRow = currentInput.closest('tr');
         if(!currentRow) return;
@@ -1445,7 +1795,7 @@ ${data.map((c, idx) => `
             e.preventDefault();
         }
 
-        if(e.key === 'Enter' && currentInput.classList.contains('price-gst-inp') && !e.shiftKey){
+        if(e.key === 'Enter' && currentInput.classList.contains('disc-inp') && !e.shiftKey){
             e.preventDefault();
             e.stopImmediatePropagation();
 
@@ -1482,7 +1832,7 @@ ${data.map((c, idx) => `
 
         if(targetCol < 0){
             targetRowIndex--;
-            targetCol = 5;
+            targetCol = 6;
         }
 
         if(targetRowIndex < 0) return;
@@ -1505,7 +1855,7 @@ ${data.map((c, idx) => `
             return;
         }
 
-        if(targetCol > 5){
+        if(targetCol > 6){
             targetRowIndex++;
             targetCol = 0;
 
@@ -1831,7 +2181,28 @@ ${data.map((c, idx) => `
                 total: parseFloat(document.getElementById('display_grand_total').innerText.replace('₹',''))
             };
 
-            if(!head.mob || !head.name) throw new Error("Customer Name & Mobile are required.");
+            const paymentType = document.getElementById("payment_type")?.value || "CASH";
+            const paidAmountInput = parseFloat(document.getElementById("paid_amount")?.value) || 0;
+            const totalAmount = parseFloat(head.total || 0) || 0;
+            const paidAmount = Math.min(totalAmount, Math.max(0, paidAmountInput));
+            const balanceAmount = Math.max(0, totalAmount - paidAmount);
+
+            const hasCustomerDetails = !!((head.mob || "").trim() || (head.name || "").trim());
+
+            if (!hasCustomerDetails) {
+                head.name = " ";
+                head.mob = "";
+                head.addr = "";
+                head.gst = "";
+            }
+
+            if (docType === "sales" && paymentType === "CREDIT" && !((head.mob || "").trim() || (head.name || "").trim())) {
+                throw new Error("Customer Name or Mobile is required for CREDIT sales.");
+            }
+
+            if (docType === "sales" && paymentType === "CASH" && Math.abs(totalAmount - paidAmount) > 0.009) {
+                throw new Error("Cash sale must be fully paid.");
+            }
 
             const createdBy =
                 localStorage.getItem("staff_name") ||
@@ -1864,23 +2235,39 @@ ${data.map((c, idx) => `
             
             console.log("Auto-detected Bill No:", nextBillNo);
 
-            let custId;
-            const { data: existC } = await sb
-                .from('customers')
-                .select('customer_id')
-                .eq('mobile', head.mob)
-                .maybeSingle();
-            
-            if(existC) {
-                custId = existC.customer_id;
-                await sb.from('customers').update({ name: head.name, address: head.addr, gst_number: head.gst })
-                    .eq('customer_id', custId);
-            } else {
-                const { data: newC, error: cErr } = await sb.from('customers').insert([{
-                    mobile: head.mob, name: head.name, address: head.addr, gst_number: head.gst
-                }]).select().single();
-                if(cErr) throw cErr;
-                custId = newC.customer_id;
+            let custId = null;
+
+            if ((head.mob || "").trim()) {
+                const { data: existC } = await sb
+                    .from('customers')
+                    .select('customer_id')
+                    .eq('mobile', head.mob)
+                    .maybeSingle();
+
+                if (existC) {
+                    custId = existC.customer_id;
+                    await sb
+                        .from('customers')
+                        .update({
+                            name: head.name || " ",
+                            address: head.addr || "",
+                            gst_number: head.gst || ""
+                        })
+                        .eq('customer_id', custId);
+                } else {
+                    const { data: newC, error: cErr } = await sb
+                        .from('customers')
+                        .insert([{
+                            mobile: head.mob,
+                            name: head.name || " ",
+                            address: head.addr || "",
+                            gst_number: head.gst || ""
+                        }])
+                        .select()
+                        .single();
+                    if(cErr) throw cErr;
+                    custId = newC.customer_id;
+                }
             }
 
             let insertData;
@@ -1919,9 +2306,13 @@ ${data.map((c, idx) => `
                     customer_name: head.name,
                     customer_mobile: head.mob,
                     gst_number: head.gst,
+                    address: head.addr,
                     invoice_number: nextBillNo,
                     invoice_date: head.date,
                     invoice_amount: head.total,
+                    payment_type: docType === "sales" ? paymentType : "CASH",
+                    paid_amount: docType === "sales" ? paidAmount : head.total,
+                    balance_amount: docType === "sales" ? balanceAmount : 0,
                     salesman: document.getElementById("salesman").value,
                     created_by: createdBy,
                     round_off: 0
@@ -2072,6 +2463,7 @@ ${data.map((c, idx) => `
                 const qtyField = row.querySelector('.qty-inp');
                 const priceField = row.querySelector('.price-inp');
                 const priceGstField = row.querySelector('.price-gst-inp');
+                const discField = row.querySelector('.disc-inp');
                 const gstField = row.querySelector('.gst-inp');
                 const hsnField = row.querySelector('.hsn-store');
 
@@ -2101,6 +2493,7 @@ ${data.map((c, idx) => `
                         item_name: row.querySelector('.name-inp').value,
                         quantity: qtyField ? qtyField.value : 0,
                         price: priceField ? priceField.value : 0,
+                        discount_percent: discField ? parseFloat(discField.value) || 0 : 0,
                         sales_price: priceField ? priceField.value : 0,
                         sales_price_gst: priceGstField ? priceGstField.value : 0,
                         hsn_code: hsnField ? hsnField.value : "",
@@ -2124,6 +2517,7 @@ ${data.map((c, idx) => `
                         item_name: i.item_name,
                         quantity: i.quantity,
                         price: i.price,
+                        discount_percent: i.discount_percent || 0,
                         sales_price_gst: i.sales_price_gst,
                         hsn_code: i.hsn_code,
                         gst_percent: i.gst_percent
@@ -2168,7 +2562,7 @@ ${data.map((c, idx) => `
                 window.loadedQuotationId=null;
             }
 
-            location.reload();
+            window.location.replace(window.location.pathname + "?fresh=" + Date.now());
 
         } catch(e) {
             console.error(e);
@@ -2265,8 +2659,14 @@ ${data.map((c, idx) => `
             row.querySelector(".qty-inp").value=item.quantity;
             row.querySelector(".price-inp").value=item.price;
             row.querySelector(".price-gst-inp").value=item.sales_price_gst;
+            row.querySelector(".disc-inp").value=item.discount_percent || 0;
             row.querySelector(".gst-inp").value=item.gst_percent;
             row.querySelector(".hsn-store").value=item.hsn_code;
+
+            const stockRow = stockData.find(x =>
+                String(x.item_code || "").trim().toUpperCase() === String(item.item_code || "").trim().toUpperCase()
+            );
+            row.querySelector(".landing-inp").value = parseFloat(stockRow?.landing || 0).toFixed(2);
 
             calcForward(currentRowId-1);
         });
@@ -2276,12 +2676,22 @@ ${data.map((c, idx) => `
     }
 
     function applyItemRestriction(row){
-        const docType = document.getElementById("doc_type").value;
+        const selectedDept = getSelectedDepartment();
+        const nameInp = row.querySelector('.name-inp');
+        const codeInp = row.querySelector('.code-inp');
 
-        if(docType !== "sales_order"){
-            row.querySelector('.name-inp').style.backgroundColor = "";
+        if(!nameInp || !codeInp) return;
+
+        if(!selectedDept || selectedDept === "ALL"){
+            nameInp.style.backgroundColor = "";
+            codeInp.style.backgroundColor = "";
+            nameInp.title = "ALL ITEMS";
+            codeInp.title = "ALL ITEMS";
         } else {
-            row.querySelector('.name-inp').style.backgroundColor = "";
+            nameInp.style.backgroundColor = "rgba(37, 99, 235, 0.10)";
+            codeInp.style.backgroundColor = "rgba(37, 99, 235, 0.10)";
+            nameInp.title = `ONLY ${selectedDept} ITEMS`;
+            codeInp.title = `ONLY ${selectedDept} ITEMS`;
         }
     }
 
@@ -2325,8 +2735,14 @@ ${data.map((c, idx) => `
             row.querySelector(".qty-inp").value=item.quantity;
             row.querySelector(".price-inp").value=item.price;
             row.querySelector(".price-gst-inp").value=item.sales_price_gst;
+            row.querySelector(".disc-inp").value=item.discount_percent || 0;
             row.querySelector(".gst-inp").value=item.gst_percent;
             row.querySelector(".hsn-store").value=item.hsn_code;
+
+            const stockRow = stockData.find(x =>
+                String(x.item_code || "").trim().toUpperCase() === String(item.item_code || "").trim().toUpperCase()
+            );
+            row.querySelector(".landing-inp").value = parseFloat(stockRow?.landing || 0).toFixed(2);
 
             calcForward(currentRowId-1);
         });
@@ -2353,6 +2769,13 @@ barcodeInput.addEventListener("keydown", async function (e) {
 
     if (error || !item) {
         alert("Item not found for barcode: " + code);
+        barcodeInput.value = "";
+        barcodeInput.focus();
+        return;
+    }
+
+    if (!itemMatchesDepartment(item)) {
+        alert("This item is not in selected department.");
         barcodeInput.value = "";
         barcodeInput.focus();
         return;
@@ -2507,21 +2930,61 @@ barcodeInput.addEventListener("keydown", async function (e) {
             items = data;
         }
 
-        (items || []).forEach(item=>{
+        const itemCodes = [...new Set((items || []).map(item => item.item_code).filter(Boolean))];
+        let stockRows = [];
+        if (itemCodes.length) {
+            const { data: stockDataForEdit } = await sb
+                .from("stock_balance_view")
+                .select("item_code,item_name,gst_percent,hsn_code,price1,price2,price3,landing,balance,department,barcode")
+                .in("item_code", itemCodes);
+
+            stockRows = stockDataForEdit || [];
+        }
+
+        const stockMap = new Map(
+            stockRows.map(row => [String(row.item_code || "").trim().toUpperCase(), row])
+        );
+
+        for (const item of (items || [])) {
             addNewRow(false);
 
-            const row=document.getElementById(`row_${currentRowId-1}`);
+            const rid = currentRowId - 1;
+            const row = document.getElementById(`row_${rid}`);
 
-            row.querySelector(".code-inp").value=item.item_code;
-            row.querySelector(".name-inp").value=item.item_name;
-            row.querySelector(".qty-inp").value=item.quantity;
-            row.querySelector(".price-inp").value=item.price;
-            row.querySelector(".price-gst-inp").value=item.sales_price_gst;
-            row.querySelector(".gst-inp").value=item.gst_percent;
-            row.querySelector(".hsn-store").value=item.hsn_code;
+            row.querySelector(".code-inp").value = item.item_code || "";
+            row.querySelector(".name-inp").value = item.item_name || "";
+            row.querySelector(".qty-inp").value = item.quantity || 1;
+            row.querySelector(".price-inp").value = item.price || 0;
+            row.querySelector(".price-gst-inp").value = item.sales_price_gst || 0;
+            row.querySelector(".disc-inp").value = item.discount_percent || 0;
+            row.querySelector(".gst-inp").value = item.gst_percent || 0;
+            row.querySelector(".hsn-store").value = item.hsn_code || "";
+            row.querySelector(".type-inp").value = "1";
 
-            calcForward(currentRowId-1);
-        });
+            const stockRow = stockMap.get(String(item.item_code || "").trim().toUpperCase());
+
+            const rawItem = {
+                item_code: item.item_code || "",
+                item_name: item.item_name || "",
+                gst_percent: item.gst_percent || 0,
+                hsn_code: item.hsn_code || "",
+                price1: stockRow?.price1 ?? item.price ?? 0,
+                price2: stockRow?.price2 ?? item.price ?? 0,
+                price3: stockRow?.price3 ?? item.price ?? 0,
+                landing: stockRow?.landing ?? item.sales_price_gst ?? item.price ?? 0,
+                balance: stockRow?.balance ?? 0,
+                department: stockRow?.department ?? "ALL",
+                barcode: stockRow?.barcode ?? ""
+            };
+
+            row.querySelector(".raw-data").value = JSON.stringify(rawItem);
+            const landingInp = row.querySelector(".landing-inp");
+            if (landingInp) {
+                landingInp.value = parseFloat(rawItem.landing || 0).toFixed(2);
+            }
+
+            calcForward(rid);
+        }
 
         calcTotal();
 
@@ -2586,12 +3049,14 @@ async function handleBarcodeValue(code) {
     if (!code) return;
 
     const item = stockData.find(x =>
-        String(x.barcode || "").trim().toUpperCase() === code ||
-        String(x.item_code || "").trim().toUpperCase() === code
+        (
+            String(x.barcode || "").trim().toUpperCase() === code ||
+            String(x.item_code || "").trim().toUpperCase() === code
+        ) && itemMatchesDepartment(x)
     );
 
     if (!item) {
-        alert("Item not found: " + code);
+        alert("Item not found in selected department: " + code);
         return;
     }
 

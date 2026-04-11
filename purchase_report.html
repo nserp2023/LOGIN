@@ -2,32 +2,48 @@
 <html>
 <head>
     <link rel="icon" href="favicon.ico" type="image/x-icon">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+    <link rel="manifest" href="site.webmanifest">
 
-<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+    <title>Purchase Report - VAJRA LIGHTS</title>
 
-<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
-
-<link rel="manifest" href="site.webmanifest">
-<title>Purchase Report - VAJRA LIGHTS</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabaseClient.js"></script>
-<script src="page_permissions.js"></script>
-<script src="common-ui.js"></script>
-
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabaseClient.js"></script>
+    <script src="page_permissions.js"></script>
+    <script src="common-ui.js"></script>
 
 <style>
-
-/* ===== PAGE BACKGROUND - DARK WOOD ===== */
 body {
     font-family: Arial, sans-serif;
-    padding:20px;
+    padding: 20px;
     background-image: url("https://www.transparenttextures.com/patterns/dark-wood.png");
     background-color: #3b2a1e;
     color: #fff;
 }
 
-/* ===== TABLE ===== */
+.topbar {
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:12px;
+    flex-wrap:wrap;
+    margin-bottom:14px;
+}
+
+h2 {
+    margin:0;
+}
+
+.filters {
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    align-items:center;
+    margin-bottom:12px;
+}
+
 table {
     width:100%;
     border-collapse:collapse;
@@ -60,14 +76,14 @@ tr:hover {
 }
 
 input, select {
-    padding:6px;
+    padding:8px;
     border-radius:6px;
     border:1px solid #aaa;
-    margin:5px;
+    margin:0;
 }
 
 button {
-    padding:6px 10px;
+    padding:8px 12px;
     border:none;
     border-radius:6px;
     background:#ffd700;
@@ -79,6 +95,15 @@ button:hover {
     background:#ffcc00;
 }
 
+.btn-new {
+    background: linear-gradient(180deg,#22c55e,#16a34a);
+    color:white;
+}
+
+.btn-new:hover {
+    background: linear-gradient(180deg,#2ed065,#15803d);
+}
+
 .dropdown-wood {
     background-image: url("https://www.transparenttextures.com/patterns/light-wood.png");
     background-color: #e4c9a8;
@@ -88,8 +113,9 @@ button:hover {
 }
 
 .dropdown-wood table {
-    background: rgba(255,255,255,0.9);
+    background: rgba(255,255,255,0.95);
     color:#000;
+    margin-top:10px;
 }
 
 .dropdown-wood th {
@@ -97,25 +123,65 @@ button:hover {
     color:#000;
 }
 
+.status-box {
+    padding:10px 12px;
+    border-radius:8px;
+    background: rgba(0,0,0,0.35);
+    margin-bottom:10px;
+    color:#fff3b0;
+}
+
+.right {
+    text-align:right;
+}
+
+.action-cell {
+    white-space:nowrap;
+}
+
+.action-cell button {
+    margin-right:6px;
+}
+
+.action-cell button:last-child {
+    margin-right:0;
+}
+
+@media (max-width: 900px){
+    body { padding:12px; }
+    .filters > * { width:100%; }
+    .topbar > * { width:100%; }
+    th, td { font-size:12px; padding:8px; }
+}
 </style>
 </head>
 <body>
 
-<h2>Purchase Report</h2>
+<div class="topbar">
+    <h2>Purchase Report</h2>
+    <button class="btn-new" onclick="goToNewPurchase()">+ New Purchase</button>
+</div>
 
-From: <input type="date" id="from_date">
-To: <input type="date" id="to_date">
+<div class="filters">
+    <label>From:</label>
+    <input type="date" id="from_date">
 
-Series:
-<select id="series_filter">
-    <option value="">All</option>
-</select>
+    <label>To:</label>
+    <input type="date" id="to_date">
 
-Supplier Name:
-<input type="text" id="supplier_filter" placeholder="Search supplier">
+    <label>Series:</label>
+    <select id="series_filter">
+        <option value="">All</option>
+    </select>
 
-Mobile:
-<input type="text" id="mobile_filter" placeholder="Search mobile">
+    <label>Supplier Name:</label>
+    <input type="text" id="supplier_filter" placeholder="Search supplier">
+
+    <label>Mobile:</label>
+    <input type="text" id="mobile_filter" placeholder="Search mobile">
+</div>
+
+<div class="status-box" id="statusBox">Ready.</div>
 
 <table>
 <thead>
@@ -125,7 +191,7 @@ Mobile:
 <th>Date</th>
 <th>Supplier</th>
 <th>Mobile</th>
-<th>Total</th>
+<th class="right">Total</th>
 <th>Print</th>
 <th>Edit</th>
 </tr>
@@ -134,23 +200,53 @@ Mobile:
 </table>
 
 <script>
+const sb = window.sbcc;
 
-    const sb = window.sbcc; // supabase client from supabaseClient.js
-  document.addEventListener("DOMContentLoaded", async () => {
-  const ok = await requirePageAccess("purchase");
-  if (!ok) return;
-  });
+document.addEventListener("DOMContentLoaded", async () => {
+    const ok = await requirePageAccess("purchase");
+    if (!ok) return;
 
+    const today = new Date().toISOString().split("T")[0];
+    document.getElementById("from_date").value = today;
+    document.getElementById("to_date").value = today;
 
+    await loadSeries();
+    loadPurchase();
 
+    document.getElementById("from_date").addEventListener("change", loadPurchase);
+    document.getElementById("to_date").addEventListener("change", loadPurchase);
+    document.getElementById("series_filter").addEventListener("change", loadPurchase);
+    document.getElementById("supplier_filter").addEventListener("input", debounce(loadPurchase, 400));
+    document.getElementById("mobile_filter").addEventListener("input", debounce(loadPurchase, 400));
+});
+
+function goToNewPurchase(){
+    window.location.href = "purchase.html";
+}
+
+function debounce(func, delay) {
+    let timeout;
+    return function() {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func(), delay);
+    };
+}
+
+function money(v){
+    return parseFloat(v || 0).toFixed(2);
+}
 
 async function loadPurchase() {
-
     const from = document.getElementById('from_date').value;
     const to = document.getElementById('to_date').value;
     const series = document.getElementById('series_filter').value;
     const supplier = document.getElementById('supplier_filter').value.trim();
     const mobile = document.getElementById('mobile_filter').value.trim();
+    const body = document.getElementById('report_body');
+    const statusBox = document.getElementById('statusBox');
+
+    body.innerHTML = '';
+    statusBox.textContent = 'Loading purchase report...';
 
     let query = sb
         .from('purchase_details')
@@ -166,37 +262,20 @@ async function loadPurchase() {
     const { data, error } = await query;
 
     if(error){
-        alert(error.message);
+        console.error(error);
+        statusBox.textContent = error.message;
         return;
     }
 
-    const body = document.getElementById('report_body');
-    body.innerHTML = '';
-    data.forEach(row => {
-
-    body.innerHTML += `
-    <tr>
-        <td>${row.series_code || ''}</td>
-        <td>${row.purchase_number || ''}</td>
-        <td>${row.bill_date || ''}</td>
-        <td>${row.supplier_name || ''}</td>
-        <td>${row.supplier_mobile || ''}</td>
-        <td>${parseFloat(row.invoice_amount || 0).toFixed(2)}</td>
-        <td>
-            <button onclick="printPurchase('${row.id}')">Print</button>
-        </td>
-        <td>
-            <button onclick="editPurchase('${row.id}')">Edit</button>
-        </td>
-    </tr>
-    `;
-});
-
+    if(!data || !data.length){
+        body.innerHTML = '<tr><td colspan="8">No purchase records found.</td></tr>';
+        statusBox.textContent = 'No records found.';
+        return;
+    }
 
     let totalSum = 0;
 
-    for (let p of data) {
-
+    for (const p of data) {
         totalSum += parseFloat(p.invoice_amount || 0);
 
         body.innerHTML += `
@@ -206,16 +285,12 @@ async function loadPurchase() {
     <td>${p.bill_date || ''}</td>
     <td>${p.supplier_name || ''}</td>
     <td>${p.supplier_mobile || ''}</td>
-    <td>₹${parseFloat(p.invoice_amount || 0).toFixed(2)}</td>
-    <td>
-        <button onclick="event.stopPropagation(); printBill(${p.id})">
-            🖨 Print
-        </button>
+    <td class="right">₹${money(p.invoice_amount)}</td>
+    <td class="action-cell">
+        <button onclick="event.stopPropagation(); printPurchase(${p.id})">🖨 Print</button>
     </td>
-    <td>
-        <button onclick="event.stopPropagation(); editBill(${p.id})">
-            ✏ Edit
-        </button>
+    <td class="action-cell">
+        <button onclick="event.stopPropagation(); editPurchase(${p.id})">✏ Edit</button>
     </td>
 </tr>
 
@@ -229,9 +304,12 @@ async function loadPurchase() {
 
     body.innerHTML += `
 <tr class="total-row">
-    <td colspan="6">TOTAL PURCHASE</td>
-    <td>₹${totalSum.toFixed(2)}</td>
+    <td colspan="5">TOTAL PURCHASE</td>
+    <td class="right">₹${money(totalSum)}</td>
+    <td colspan="2"></td>
 </tr>`;
+
+    statusBox.textContent = `${data.length} purchase bill(s) loaded.`;
 }
 
 function printPurchase(id){
@@ -242,15 +320,7 @@ function editPurchase(id){
     window.location.href = `purchasemod.html?edit=${id}`;
 }
 
-const editId = new URLSearchParams(window.location.search).get("edit");
-
-if (editId) {
-    loadForEdit(editId);
-}
-
-
 async function toggleDetails(id) {
-
     const row = document.getElementById(`details-${id}`);
     const container = document.getElementById(`items-${id}`);
 
@@ -265,27 +335,30 @@ async function toggleDetails(id) {
     const { data, error } = await sb
         .from('purchase_item_details')
         .select('*')
-        .eq('purchase_id', id);
+        .eq('purchase_id', id)
+        .order('id', { ascending: true });
 
     if (error) {
+        console.error(error);
         container.innerHTML = "Error loading items";
         return;
     }
 
-    if (!data.length) {
+    if (!data || !data.length) {
         container.innerHTML = "No items found.";
         return;
     }
 
-let html = `
+    let html = `
 <div class="dropdown-wood">
-<table style="width:100%; margin-top:10px;">
+<table style="width:100%;">
 <tr>
 <th>Item Code</th>
 <th>Item Name</th>
 <th>Qty</th>
 <th>Price</th>
-<th>Total</th>
+<th>Purchase Price</th>
+<th>Purchase+GST</th>
 </tr>
 `;
 
@@ -295,67 +368,30 @@ let html = `
 <td>${i.item_code || ''}</td>
 <td>${i.item_name || ''}</td>
 <td>${i.quantity || 0}</td>
-<td>₹${parseFloat(i.price || 0).toFixed(2)}</td>
-<td>₹${parseFloat(i.total_price || 0).toFixed(2)}</td>
+<td>₹${money(i.price)}</td>
+<td>₹${money(i.purchase_price)}</td>
+<td>₹${money(i.purchase_price_gst)}</td>
 </tr>
 `;
     });
 
     html += "</table></div>";
-
     container.innerHTML = html;
 }
 
-function printBill(id) {
-    window.open(`purchase_details.html?id=${id}&print=true`, '_blank');
-}
-
-function editBill(id) {
-    window.open(`purchasemod.html?edit=${id}`, '_blank');
-}
-
-document.addEventListener("DOMContentLoaded", async () => {
-
-    const today = new Date().toISOString().split("T")[0];
-
-    document.getElementById("from_date").value = today;
-    document.getElementById("to_date").value = today;
-
-    await loadSeries();
-    loadPurchase();
-
-    document.getElementById("from_date").addEventListener("change", loadPurchase);
-    document.getElementById("to_date").addEventListener("change", loadPurchase);
-    document.getElementById("series_filter").addEventListener("change", loadPurchase);
-    document.getElementById("supplier_filter").addEventListener("input", debounce(loadPurchase, 500));
-    document.getElementById("mobile_filter").addEventListener("input", debounce(loadPurchase, 500));
-});
-
-function debounce(func, delay) {
-    let timeout;
-    return function() {
-        clearTimeout(timeout);
-        timeout = setTimeout(() => func(), delay);
-    };
-}
-
 async function loadSeries() {
-
     const { data, error } = await sb
         .from('bill_series')
-        .select('series_code');
+        .select('series_code')
+        .order('series_code', { ascending: true });
 
     if (error) return;
 
     const select = document.getElementById('series_filter');
-
     data.forEach(s => {
-        select.innerHTML += `<option value="${s.series_code}">
-                                ${s.series_code}
-                             </option>`;
+        select.innerHTML += `<option value="${s.series_code}">${s.series_code}</option>`;
     });
 }
-
 </script>
 
 </body>

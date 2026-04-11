@@ -2694,6 +2694,10 @@ ${data.map((c, idx) => `
         });
 
         calcTotal();
+        document.getElementById("cust_address").value = head?.address || "";
+        document.getElementById("payment_type").value = "CASH";
+        document.getElementById("paid_amount").value = "0.00";
+        syncPaymentUI();
         alert("Sales Order loaded. Modify if needed and save as Sales.");
     }
 
@@ -2770,6 +2774,10 @@ ${data.map((c, idx) => `
         });
 
         calcTotal();
+        document.getElementById("cust_address").value = qHead?.address || "";
+        document.getElementById("payment_type").value = "CASH";
+        document.getElementById("paid_amount").value = "0.00";
+        syncPaymentUI();
         alert("Quotation loaded. You can modify items and save as Sales.");
     }
 
@@ -2912,7 +2920,22 @@ barcodeInput.addEventListener("keydown", async function (e) {
 
         document.getElementById("cust_name").value = head.customer_name || "";
         document.getElementById("cust_mobile").value = head.customer_mobile || "";
+        document.getElementById("cust_address").value = head.address || "";
         document.getElementById("cust_gst").value = head.gst_number || "";
+
+        const paymentTypeEl = document.getElementById("payment_type");
+        const paidAmountEl = document.getElementById("paid_amount");
+        if (paymentTypeEl) {
+            paymentTypeEl.value = type === "sales"
+                ? String(head.payment_type || "CASH").toUpperCase()
+                : "CASH";
+        }
+        if (paidAmountEl) {
+            const paidValue = type === "sales"
+                ? parseFloat(head.paid_amount ?? head.invoice_amount ?? 0) || 0
+                : parseFloat(head.invoice_amount || head.total_amount || head.packing_amount || 0) || 0;
+            paidAmountEl.value = paidValue.toFixed(2);
+        }
 
         const rawDate =
             head.bill_date ||
@@ -3014,6 +3037,8 @@ barcodeInput.addEventListener("keydown", async function (e) {
             document.getElementById("salesman").value="VAJRA";
             document.getElementById("salesman").disabled=true;
         }
+
+        syncPaymentUI();
     }
 
 let html5QrScanner = null;

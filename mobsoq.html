@@ -563,6 +563,24 @@
             <label>Date</label>
             <input type="date" id="bill_date" class="form-control nav-input" tabindex="2">
         </div>
+
+        <div class="form-group" id="payment_type_group">
+    <label>Payment Type</label>
+    <select id="payment_type" class="form-control w-sm">
+        <option value="CASH">CASH</option>
+        <option value="CREDIT">CREDIT</option>
+    </select>
+</div>
+
+<div class="form-group" id="paid_amount_group">
+    <label>Paid Amount</label>
+    <input type="number" id="paid_amount" class="form-control w-md" value="0" step="0.01" min="0">
+</div>
+
+<div class="grand-total-box" id="balance_box" style="background:#7c2d12;">
+    <span>BALANCE</span>
+    <div id="display_balance_amount">₹0.00</div>
+</div>
         
         <div class="form-group" style="position: relative;">
             <label>Mobile</label>
@@ -910,47 +928,51 @@
     }
 
     function syncPaymentUI() {
-        const docType = document.getElementById("doc_type").value;
-        const paymentTypeGroup = document.getElementById("payment_type_group");
-        const paidAmountGroup = document.getElementById("paid_amount_group");
-        const balanceBox = document.getElementById("balance_box");
-        const paymentTypeEl = document.getElementById("payment_type");
-        const paidAmountEl = document.getElementById("paid_amount");
+    const docType = document.getElementById("doc_type")?.value || "sales";
+    const paymentTypeGroup = document.getElementById("payment_type_group");
+    const paidAmountGroup = document.getElementById("paid_amount_group");
+    const balanceBox = document.getElementById("balance_box");
+    const paymentTypeEl = document.getElementById("payment_type");
+    const paidAmountEl = document.getElementById("paid_amount");
+    const balanceText = document.getElementById("display_balance_amount");
 
-        const isSalesDoc = docType === "sales";
-        const showPayment = isSalesDoc;
-
-        paymentTypeGroup.style.display = showPayment ? "" : "none";
-        paidAmountGroup.style.display = showPayment ? "" : "none";
-        balanceBox.style.display = showPayment ? "" : "none";
-
-        if(!showPayment){
-            paymentTypeEl.value = "CASH";
-            paidAmountEl.value = "0";
-            paidAmountEl.disabled = true;
-            document.getElementById('display_balance_amount').innerText = '₹0.00';
-            return;
-        }
-
-        const total = getGrandTotalAmount();
-        const paymentType = paymentTypeEl.value;
-
-        if (paymentType === "CASH") {
-            paidAmountEl.value = total.toFixed(2);
-            paidAmountEl.disabled = true;
-        } else {
-            paidAmountEl.disabled = false;
-            let paid = parseFloat(paidAmountEl.value) || 0;
-            if (paid > total) {
-                paid = total;
-                paidAmountEl.value = total.toFixed(2);
-            }
-        }
-
-        const paidAmount = parseFloat(paidAmountEl.value) || 0;
-        const balanceAmount = Math.max(0, total - paidAmount);
-        document.getElementById('display_balance_amount').innerText = '₹' + balanceAmount.toFixed(2);
+    if (!paymentTypeGroup || !paidAmountGroup || !balanceBox || !paymentTypeEl || !paidAmountEl || !balanceText) {
+        return;
     }
+
+    const isSalesDoc = docType === "sales";
+    const showPayment = isSalesDoc;
+
+    paymentTypeGroup.style.display = showPayment ? "" : "none";
+    paidAmountGroup.style.display = showPayment ? "" : "none";
+    balanceBox.style.display = showPayment ? "" : "none";
+
+    if (!showPayment) {
+        paymentTypeEl.value = "CASH";
+        paidAmountEl.value = "0.00";
+        paidAmountEl.disabled = true;
+        balanceText.innerText = "₹0.00";
+        return;
+    }
+
+    const total = parseFloat((document.getElementById("display_grand_total")?.innerText || "₹0").replace("₹", "")) || 0;
+    const paymentType = paymentTypeEl.value || "CASH";
+
+    if (paymentType === "CASH") {
+        paidAmountEl.value = total.toFixed(2);
+        paidAmountEl.disabled = true;
+    } else {
+        paidAmountEl.disabled = false;
+        let paid = parseFloat(paidAmountEl.value) || 0;
+        if (paid < 0) paid = 0;
+        if (paid > total) paid = total;
+        paidAmountEl.value = paid.toFixed(2);
+    }
+
+    const paidAmount = parseFloat(paidAmountEl.value) || 0;
+    const balanceAmount = Math.max(0, total - paidAmount);
+    balanceText.innerText = "₹" + balanceAmount.toFixed(2);
+}
 
     async function fetchNextBillNumber() {
         const series = document.getElementById('bill_series').value;

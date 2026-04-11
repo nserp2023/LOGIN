@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+    <link rel="manifest" href="site.webmanifest">
+
+    <title>Purchase Return Report - VAJRA LIGHTS</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabaseClient.js"></script>
+    <script src="page_permissions.js"></script>
+    <script src="common-ui.js"></script>
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    padding: 20px;
+    background-image: url("https://www.transparenttextures.com/patterns/dark-wood.png");
+    background-color: #3b2a1e;
+    color: #fff;
+}
+
+.topbar {
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:12px;
+    margin-bottom:14px;
+}
+
+h2 {
+    margin:0;
+}
+
+.filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+input, select, button {
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: 1px solid #aaa;
+    margin: 0;
+}
+
+button {
+    padding: 8px 12px;
+    border: none;
+    border-radius: 6px;
+    background: #ffd700;
+    color: #000;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+button:hover {
+    background: #ffcc00;
+}
+
+.btn-new {
+    background: linear-gradient(180deg,#22c55e,#16a34a);
+    color: #fff;
+}
+
+.btn-new:hover {
+    background: linear-gradient(180deg,#28d463,#15803d);
+}
+
+.btn-edit {
+    background: linear-gradient(180deg,#3b82f6,#2563eb);
+    color: #fff;
+}
+
+.btn-edit:hover {
+    background: linear-gradient(180deg,#5a9bff,#1d4ed8);
+}
+
+.btn-delete {
+    background: linear-gradient(180deg,#ef4444,#dc2626);
+    color: #fff;
+}
+
+.btn-delete:hover {
+    background: linear-gradient(180deg,#ff5a5a,#b91c1c);
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 12px;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(4px);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+th, td {
+    border: 1px solid rgba(255,255,255,0.15);
+    padding: 10px;
+    text-align: left;
+    font-size: 14px;
+}
+
+th {
+    background: rgba(0,0,0,0.8);
+    color: #ffd700;
+}
+
+tr:hover {
+    background: rgba(255,255,255,0.05);
+    cursor: pointer;
+}
+
+.total-row {
+    font-weight: bold;
+    background: rgba(255,215,0,0.15);
+}
+
+.dropdown-wood {
+    background-image: url("https://www.transparenttextures.com/patterns/light-wood.png");
+    background-color: #e4c9a8;
+    color: #000;
+    padding: 15px;
+    border-radius: 6px;
+}
+
+.dropdown-wood table {
+    background: rgba(255,255,255,0.95);
+    color: #000;
+    margin-top: 0;
+}
+
+.dropdown-wood th {
+    background: #c89f6d;
+    color: #000;
+}
+
+.status {
+    margin-top: 10px;
+    padding: 10px 12px;
+    background: rgba(0,0,0,0.4);
+    border-radius: 8px;
+    color: #fff3b0;
+    min-height: 20px;
+}
+
+.right {
+    text-align: right;
+}
+
+.action-cell {
+    white-space: nowrap;
+}
+
+.action-cell button {
+    margin-right: 6px;
+}
+
+.action-cell button:last-child {
+    margin-right: 0;
+}
+
+@media (max-width: 900px) {
+    body {
+        padding: 12px;
+    }
+
+    th, td {
+        font-size: 12px;
+        padding: 8px;
+    }
+
+    .filters > * {
+        width: 100%;
+    }
+
+    .topbar > * {
+        width: 100%;
+    }
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+    <h2>Purchase Return Report</h2>
+    <button class="btn-new" onclick="goToNewPR()">+ New Purchase Return</button>
+</div>
+
+<div class="filters">
+    <label>From:</label>
+    <input type="date" id="from_date">
+
+    <label>To:</label>
+    <input type="date" id="to_date">
+
+    <label>Supplier:</label>
+    <input type="text" id="supplier_filter" placeholder="Search supplier">
+
+    <label>GST:</label>
+    <input type="text" id="gst_filter" placeholder="Search GST">
+
+    <label>Original Invoice:</label>
+    <input type="text" id="invoice_filter" placeholder="Search original invoice">
+
+    <label>PR No:</label>
+    <input type="text" id="pr_filter" placeholder="Search PR number">
+
+    <button id="refreshBtn">Load Report</button>
+</div>
+
+<div class="status" id="statusBox">Ready.</div>
+
+<table>
+    <thead>
+        <tr>
+            <th>PR No</th>
+            <th>Return Date</th>
+            <th>Supplier</th>
+            <th>GST</th>
+            <th>Original Invoice</th>
+            <th class="right">Amount</th>
+            <th class="right">Round Off</th>
+            <th class="right">Payable</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody id="report_body"></tbody>
+</table>
+
+<script>
+const sb = window.sbcc;
+
+document.addEventListener("DOMContentLoaded", async () => {
+    const ok = await requirePageAccess("purchase");
+    if (!ok) return;
+
+    const today = new Date().toISOString().split("T")[0];
+    document.getElementById("from_date").value = today;
+    document.getElementById("to_date").value = today;
+
+    document.getElementById("refreshBtn").addEventListener("click", loadPurchaseReturnReport);
+    document.getElementById("from_date").addEventListener("change", loadPurchaseReturnReport);
+    document.getElementById("to_date").addEventListener("change", loadPurchaseReturnReport);
+    document.getElementById("supplier_filter").addEventListener("input", debounce(loadPurchaseReturnReport, 400));
+    document.getElementById("gst_filter").addEventListener("input", debounce(loadPurchaseReturnReport, 400));
+    document.getElementById("invoice_filter").addEventListener("input", debounce(loadPurchaseReturnReport, 400));
+    document.getElementById("pr_filter").addEventListener("input", debounce(loadPurchaseReturnReport, 400));
+
+    loadPurchaseReturnReport();
+});
+
+function goToNewPR(){
+    window.location.href = "purchase_return.html";
+}
+
+function debounce(func, delay) {
+    let timeout;
+    return function () {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func(), delay);
+    };
+}
+
+function fmt2(v) {
+    return parseFloat(v || 0).toFixed(2);
+}
+
+async function loadPurchaseReturnReport() {
+    const from = document.getElementById("from_date").value;
+    const to = document.getElementById("to_date").value;
+    const supplier = document.getElementById("supplier_filter").value.trim();
+    const gst = document.getElementById("gst_filter").value.trim();
+    const invoice = document.getElementById("invoice_filter").value.trim();
+    const prNo = document.getElementById("pr_filter").value.trim();
+
+    const body = document.getElementById("report_body");
+    const statusBox = document.getElementById("statusBox");
+
+    body.innerHTML = "";
+    statusBox.textContent = "Loading purchase return report...";
+
+    let query = sb
+        .from("purchase_return_details")
+        .select("*")
+        .gte("return_date", from)
+        .lte("return_date", to)
+        .order("id", { ascending: false });
+
+    if (supplier) query = query.ilike("supplier_name", `%${supplier}%`);
+    if (gst) query = query.ilike("gst_number", `%${gst}%`);
+    if (invoice) query = query.ilike("original_invoice_number", `%${invoice}%`);
+    if (prNo) query = query.ilike("purchase_return_number", `%${prNo}%`);
+
+    const { data, error } = await query;
+
+    if (error) {
+        console.error(error);
+        statusBox.textContent = "Error loading report: " + error.message;
+        return;
+    }
+
+    if (!data || !data.length) {
+        body.innerHTML = '<tr><td colspan="9">No purchase return entries found.</td></tr>';
+        statusBox.textContent = "No records found.";
+        return;
+    }
+
+    let totalAmount = 0;
+    let totalRoundOff = 0;
+    let totalPayable = 0;
+
+    for (const row of data) {
+        totalAmount += parseFloat(row.total_amount || 0);
+        totalRoundOff += parseFloat(row.round_off || 0);
+        totalPayable += parseFloat(row.payable || 0);
+
+        body.innerHTML += `
+            <tr onclick="toggleDetails(${row.id})">
+                <td>${row.purchase_return_number || ''}</td>
+                <td>${row.return_date || ''}</td>
+                <td>${row.supplier_name || ''}</td>
+                <td>${row.gst_number || ''}</td>
+                <td>${row.original_invoice_number || ''}</td>
+                <td class="right">₹${fmt2(row.total_amount)}</td>
+                <td class="right">₹${fmt2(row.round_off)}</td>
+                <td class="right">₹${fmt2(row.payable)}</td>
+                <td class="action-cell" onclick="event.stopPropagation()">
+                    <button class="btn-edit" onclick="editPurchaseReturn(${row.id})">Edit</button>
+                    <button class="btn-delete" onclick="deletePurchaseReturn(${row.id}, '${(row.purchase_return_number || '').replace(/'/g, "\'")}')">Delete</button>
+                </td>
+            </tr>
+            <tr id="details-${row.id}" style="display:none;">
+                <td colspan="9">
+                    <div id="items-${row.id}">Loading...</div>
+                </td>
+            </tr>
+        `;
+    }
+
+    body.innerHTML += `
+        <tr class="total-row">
+            <td colspan="5">TOTAL PURCHASE RETURN</td>
+            <td class="right">₹${fmt2(totalAmount)}</td>
+            <td class="right">₹${fmt2(totalRoundOff)}</td>
+            <td class="right">₹${fmt2(totalPayable)}</td>
+            <td></td>
+        </tr>
+    `;
+
+    statusBox.textContent = `${data.length} record(s) loaded.`;
+}
+
+async function toggleDetails(id) {
+    const row = document.getElementById(`details-${id}`);
+    const container = document.getElementById(`items-${id}`);
+
+    if (row.style.display === "table-row") {
+        row.style.display = "none";
+        return;
+    }
+
+    row.style.display = "table-row";
+    container.innerHTML = "Loading items...";
+
+    const { data, error } = await sb
+        .from("purchase_return_item_details")
+        .select("*")
+        .eq("purchase_return_id", id)
+        .order("id", { ascending: true });
+
+    if (error) {
+        container.innerHTML = "Error loading items: " + error.message;
+        return;
+    }
+
+    if (!data || !data.length) {
+        container.innerHTML = "No items found.";
+        return;
+    }
+
+    let html = `
+        <div class="dropdown-wood">
+            <table>
+                <tr>
+                    <th>Item Code</th>
+                    <th>Item Name</th>
+                    <th>Barcode</th>
+                    <th>Department</th>
+                    <th>Qty</th>
+                    <th>Price</th>
+                    <th>Disc%</th>
+                    <th>GST%</th>
+                    <th>Purchase+GST</th>
+                </tr>
+    `;
+
+    data.forEach(i => {
+        html += `
+            <tr>
+                <td>${i.item_code || ''}</td>
+                <td>${i.item_name || ''}</td>
+                <td>${i.barcode || ''}</td>
+                <td>${i.department || ''}</td>
+                <td>${fmt2(i.quantity)}</td>
+                <td>₹${fmt2(i.price)}</td>
+                <td>${fmt2(i.discount_percent)}</td>
+                <td>${fmt2(i.gst_percent)}</td>
+                <td>₹${fmt2(i.purchase_price_gst)}</td>
+            </tr>
+        `;
+    });
+
+    html += `</table></div>`;
+    container.innerHTML = html;
+}
+
+function editPurchaseReturn(id){
+    window.location.href = `purchase_return.html?edit=${id}`;
+}
+
+async function deletePurchaseReturn(id, prNo){
+    const statusBox = document.getElementById("statusBox");
+    const ok = confirm(`Delete Purchase Return ${prNo || id}?\n\nThis should reverse stock through your DELETE trigger.`);
+    if(!ok) return;
+
+    statusBox.textContent = "Deleting purchase return...";
+
+    const { error } = await sb
+        .from("purchase_return_details")
+        .delete()
+        .eq("id", id);
+
+    if(error){
+        console.error(error);
+        statusBox.textContent = "Delete failed: " + error.message;
+        return;
+    }
+
+    statusBox.textContent = "Purchase return deleted successfully.";
+    loadPurchaseReturnReport();
+}
+</script>
+
+</body>
+</html>

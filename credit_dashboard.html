@@ -517,14 +517,14 @@ function openCreditReport(){
 }
 
 function openLedgerPage(){
-    window.open("customer_ledger_credit_only_fixed.html", "_blank");
+    window.open("customer_ledger.html", "_blank");
 }
 
 function openCustomerLedger(customer){
     const params = new URLSearchParams();
     if (customer.mobile) params.set("search", customer.mobile);
     if (customer.name) params.set("name", customer.name);
-    window.open(`customer_ledger_credit_only_fixed.html?${params.toString()}`, "_blank");
+    window.open(`customer_ledger.html?${params.toString()}`, "_blank");
 }
 
 function openCollect(customer){

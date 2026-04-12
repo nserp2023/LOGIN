@@ -405,6 +405,10 @@
                 <label for="remarks">Remarks</label>
                 <textarea id="remarks" name="remarks" placeholder="Optional remarks"></textarea>
             </div>
+
+            <div class="field full">
+                <div id="allocationPreview" style="display:none; background:#eff6ff; border:1px solid #bfdbfe; color:#1e3a8a; padding:12px; border-radius:12px; font-size:14px; line-height:1.5;"></div>
+            </div>
         </div>
 
         <div class="btn-row">
@@ -489,6 +493,7 @@
     const creditChip = document.getElementById("creditChip");
     const formMessage = document.getElementById("formMessage");
     const partySuggestions = document.getElementById("partySuggestions");
+    const allocationPreview = document.getElementById("allocationPreview");
 
     const searchParty = document.getElementById("searchParty");
     const searchType = document.getElementById("searchType");
@@ -500,6 +505,7 @@
     let activeSuggestionIndex = -1;
     let isSaving = false;
     let selectedCreditBill = null;
+    let selectedCustomerAutoAllocation = null;
 
     window.onload = async function(){
         txnDate.value = new Date().toISOString().split("T")[0];
@@ -523,12 +529,26 @@
             partyLabel.textContent = "Received From";
             modeBadge.textContent = "Receipt Mode";
         }
-        creditChip.style.display = selectedCreditBill ? "inline-block" : "none";
+        creditChip.style.display = (selectedCreditBill || selectedCustomerAutoAllocation) ? "inline-block" : "none";
+        creditChip.textContent = selectedCustomerAutoAllocation ? "Auto Credit Collection" : "Credit Collection Mode";
+    }
+
+    function hideAllocationPreview(){
+        allocationPreview.style.display = "none";
+        allocationPreview.innerHTML = "";
+    }
+
+    function showAllocationPreview(html){
+        allocationPreview.innerHTML = html;
+        allocationPreview.style.display = html ? "block" : "none";
     }
 
     function resetCreditSelection(clearAmount = false){
         selectedCreditBill = null;
+        selectedCustomerAutoAllocation = null;
         creditChip.style.display = "none";
+        creditChip.textContent = "Credit Collection Mode";
+        hideAllocationPreview();
         if(clearAmount) amount.value = "";
     }
 
@@ -549,7 +569,6 @@
         }
 
         let nextNumber = 1;
-
         if(data && data.length){
             const lastVoucher = data[0].voucher_no || "";
             const match = lastVoucher.match(/(\d+)$/);
@@ -617,17 +636,16 @@
         const items = [];
         const cleanQuery = query.trim();
 
-        const { data: partyData, error: partyErr } = await sb
-            .from("parties")
-            .select("id, party_name")
-            .ilike("party_name", `%${cleanQuery}%`)
-            .order("party_name", { ascending: true })
-            .limit(8);
+        const partyPromises = [
+            sb.from("parties").select("id, party_name").ilike("party_name", `%${cleanQuery}%`).order("party_name", { ascending: true }).limit(8),
+            sb.from("customers").select("customer_id, name, mobile, address").or(`name.ilike.%${escapeOrValue(cleanQuery)}%,mobile.ilike.%${escapeOrValue(cleanQuery)}%`).order("name", { ascending: true }).limit(8)
+        ];
 
-        if(partyErr){
-            console.error(partyErr);
-        } else {
-            (partyData || []).forEach(row => {
+        const [partyRes, customerRes] = await Promise.allSettled(partyPromises);
+
+        if(partyRes.status === "fulfilled" && !partyRes.value.error){
+            (partyRes.value.data || []).forEach(row => {
+                if(!row.party_name) return;
                 items.push({
                     kind: "party",
                     party_name: row.party_name || "",
@@ -636,45 +654,46 @@
             });
         }
 
+        if(customerRes.status === "fulfilled" && !customerRes.value.error){
+            (customerRes.value.data || []).forEach(row => {
+                const label = `${row.name || ""} ${row.mobile || ""}`.trim();
+                if(!label) return;
+                items.push({
+                    kind: "customer",
+                    party_name: row.name || row.mobile || "",
+                    customer_name: row.name || "",
+                    customer_mobile: row.mobile || "",
+                    customer_address: row.address || "",
+                    label
+                });
+            });
+        }
+
         if(txnType.value === "receipt"){
+            const autoCustomers = await fetchCustomerAutoAllocationOptions(cleanQuery);
+            autoCustomers.forEach(row => items.push(row));
+
             const creditItems = await fetchCustomerCreditBills(cleanQuery);
             creditItems.forEach(row => items.push(row));
         }
 
-        suggestionItems = items;
-        renderSuggestions(items, cleanQuery);
+        suggestionItems = dedupeSuggestionItems(items);
+        renderSuggestions(suggestionItems, cleanQuery);
+    }
+
+    function dedupeSuggestionItems(items){
+        const seen = new Set();
+        return items.filter(item => {
+            const key = [item.kind, item.sales_id || "", (item.customer_mobile || "").toLowerCase(), (item.customer_name || item.party_name || "").toLowerCase()].join("|");
+            if(seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
     }
 
     async function fetchCustomerCreditBills(query){
-        const search = (query || "").trim();
-        if(!search) return [];
-
-        let billRows = [];
-        const maybeMobile = search.replace(/\D/g, "");
-
-        let q = sb
-            .from("sales_details")
-            .select("id, series_code, sales_number, bill_date, customer_mobile, customer_name, payment_type, paid_amount, balance_amount")
-            .eq("payment_type", "CREDIT")
-            .gt("balance_amount", 0)
-            .order("bill_date", { ascending: false })
-            .limit(12);
-
-        if(maybeMobile.length >= 3){
-            q = q.ilike("customer_mobile", `%${maybeMobile}%`);
-        } else {
-            q = q.ilike("customer_name", `%${search}%`);
-        }
-
-        const { data, error } = await q;
-        if(error){
-            console.error("Credit bill load error:", error);
-            return [];
-        }
-
-        billRows = data || [];
-
-        return billRows.map(row => ({
+        const rows = await fetchOpenCreditBillsForSearch(query, 12, false);
+        return rows.map(row => ({
             kind: "credit_bill",
             sales_id: row.id,
             series_code: row.series_code || "",
@@ -686,6 +705,70 @@
             paid_amount: parseFloat(row.paid_amount || 0),
             label: `${row.customer_name || ""} ${row.customer_mobile || ""}`.trim()
         }));
+    }
+
+    async function fetchCustomerAutoAllocationOptions(query){
+        const rows = await fetchOpenCreditBillsForSearch(query, 40, true);
+        const grouped = new Map();
+
+        for(const row of rows){
+            const key = normaliseCustomerKey(row.customer_name, row.customer_mobile);
+            if(!key || key === "|") continue;
+
+            if(!grouped.has(key)){
+                grouped.set(key, {
+                    kind: "customer_credit_auto",
+                    customer_name: row.customer_name || "",
+                    customer_mobile: row.customer_mobile || "",
+                    total_balance: 0,
+                    bills: []
+                });
+            }
+
+            const bucket = grouped.get(key);
+            const billBal = parseFloat(row.balance_amount || 0);
+            bucket.total_balance += billBal;
+            bucket.bills.push({
+                sales_id: row.id,
+                series_code: row.series_code || "",
+                sales_number: row.sales_number || "",
+                bill_date: row.bill_date || "",
+                balance_amount: billBal,
+                paid_amount: parseFloat(row.paid_amount || 0)
+            });
+        }
+
+        return Array.from(grouped.values())
+            .filter(x => x.bills.length > 0)
+            .sort((a, b) => a.customer_name.localeCompare(b.customer_name));
+    }
+
+    async function fetchOpenCreditBillsForSearch(query, limit = 20, asc = false){
+        const search = (query || "").trim();
+        if(!search) return [];
+
+        let q = sb
+            .from("sales_details")
+            .select("id, series_code, sales_number, bill_date, customer_mobile, customer_name, payment_type, paid_amount, balance_amount")
+            .eq("payment_type", "CREDIT")
+            .gt("balance_amount", 0)
+            .order("bill_date", { ascending: asc })
+            .order("sales_number", { ascending: asc })
+            .limit(limit);
+
+        const maybeMobile = search.replace(/\D/g, "");
+        if(maybeMobile.length >= 3){
+            q = q.ilike("customer_mobile", `%${maybeMobile}%`);
+        } else {
+            q = q.or(`customer_name.ilike.%${escapeOrValue(search)}%,customer_mobile.ilike.%${escapeOrValue(search)}%`);
+        }
+
+        const { data, error } = await q;
+        if(error){
+            console.error("Credit bill load error:", error);
+            return [];
+        }
+        return data || [];
     }
 
     function renderSuggestions(items, query){
@@ -701,11 +784,22 @@
             div.className = "autocomplete-item";
             div.dataset.index = index;
 
-            if(item.kind === "credit_bill"){
+            if(item.kind === "customer_credit_auto"){
+                div.innerHTML = `
+                    <div class="autocomplete-title">${escapeHtml(item.customer_name || item.customer_mobile || "Customer")} ${item.customer_mobile ? "- " + escapeHtml(item.customer_mobile) : ""}</div>
+                    <div class="autocomplete-sub">Auto adjust oldest pending bills first • ${item.bills.length} bill(s)</div>
+                    <div class="autocomplete-money">Total Pending Credit ₹${Number(item.total_balance || 0).toFixed(2)}</div>
+                `;
+            } else if(item.kind === "credit_bill"){
                 div.innerHTML = `
                     <div class="autocomplete-title">${escapeHtml(item.customer_name || "")} ${item.customer_mobile ? "- " + escapeHtml(item.customer_mobile) : ""}</div>
                     <div class="autocomplete-sub">Bill ${escapeHtml(formatBillNo(item.series_code, item.sales_number))} • ${escapeHtml(item.bill_date || "")}</div>
                     <div class="autocomplete-money">Pending Credit ₹${Number(item.balance_amount || 0).toFixed(2)}</div>
+                `;
+            } else if(item.kind === "customer"){
+                div.innerHTML = `
+                    <div class="autocomplete-title">${escapeHtml(item.customer_name || item.party_name || "")}</div>
+                    <div class="autocomplete-sub">${escapeHtml(item.customer_mobile || "")}${item.customer_address ? " • " + escapeHtml(item.customer_address) : ""}</div>
                 `;
             } else {
                 const safeName = escapeHtml(item.party_name || "");
@@ -715,14 +809,26 @@
             }
 
             div.addEventListener("click", async () => {
-                if(item.kind === "credit_bill"){
+                if(item.kind === "customer_credit_auto"){
+                    selectedCustomerAutoAllocation = JSON.parse(JSON.stringify(item));
+                    selectedCreditBill = null;
+                    partyName.value = item.customer_mobile || item.customer_name || "";
+                    amount.value = Number(item.total_balance || 0).toFixed(2);
+                    creditChip.style.display = "inline-block";
+                    creditChip.textContent = "Auto Credit Collection";
+                    remarks.value = `Auto credit collection from customer`;
+                    updateAutoAllocationPreview();
+                } else if(item.kind === "credit_bill"){
                     selectedCreditBill = item;
+                    selectedCustomerAutoAllocation = null;
                     partyName.value = item.customer_mobile || item.customer_name || "";
                     amount.value = Number(item.balance_amount || 0).toFixed(2);
                     creditChip.style.display = "inline-block";
+                    creditChip.textContent = "Credit Collection Mode";
                     remarks.value = `Credit collection for bill ${formatBillNo(item.series_code, item.sales_number)}`;
+                    showAllocationPreview(`<strong>Selected single bill:</strong> ${escapeHtml(formatBillNo(item.series_code, item.sales_number))} • Pending ₹${Number(item.balance_amount || 0).toFixed(2)}`);
                 } else {
-                    partyName.value = item.party_name || "";
+                    partyName.value = item.customer_mobile || item.party_name || item.customer_name || "";
                     resetCreditSelection(true);
                 }
 
@@ -735,6 +841,53 @@
         });
 
         partySuggestions.style.display = "block";
+    }
+
+    function updateAutoAllocationPreview(){
+        if(!selectedCustomerAutoAllocation){
+            hideAllocationPreview();
+            return;
+        }
+
+        const enteredAmount = parseFloat(amount.value || 0);
+        const plan = buildAutoAllocationPlan(selectedCustomerAutoAllocation.bills || [], enteredAmount);
+        const lines = plan.allocations.slice(0, 6).map((row, idx) => {
+            return `${idx + 1}. ${escapeHtml(formatBillNo(row.series_code, row.sales_number))} • ${escapeHtml(row.bill_date || "")} • ₹${Number(row.applied_amount || 0).toFixed(2)}`;
+        }).join("<br>");
+
+        const more = plan.allocations.length > 6 ? `<br>+ ${plan.allocations.length - 6} more bill(s)` : "";
+        const advanceHtml = plan.advance_amount > 0
+            ? `<br><strong>Advance kept:</strong> ₹${Number(plan.advance_amount).toFixed(2)}`
+            : "";
+
+        showAllocationPreview(`
+            <strong>Automatic allocation preview</strong><br>
+            Received Amount: ₹${Number(enteredAmount || 0).toFixed(2)}<br>
+            ${lines || "No bill allocation yet"}
+            ${more}
+            ${advanceHtml}
+        `);
+    }
+
+    amount.addEventListener("input", updateAutoAllocationPreview);
+
+    function buildAutoAllocationPlan(bills, receiptAmount){
+        let remaining = Math.max(0, parseFloat(receiptAmount || 0));
+        const allocations = [];
+
+        for(const bill of (bills || [])){
+            if(remaining <= 0) break;
+            const billBalance = parseFloat(bill.balance_amount || 0);
+            if(billBalance <= 0) continue;
+            const applied = Math.min(billBalance, remaining);
+            allocations.push({ ...bill, applied_amount: applied });
+            remaining -= applied;
+        }
+
+        return {
+            allocations,
+            advance_amount: Math.max(0, remaining)
+        };
     }
 
     function highlightSuggestion(items){
@@ -752,11 +905,15 @@
     }
 
     function escapeRegExp(string){
-        return String(string).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        return String(string).replace(/[.*+?^${}()|[\]\\]/g, "\$&");
+    }
+
+    function escapeOrValue(text){
+        return String(text || "").replaceAll(",", " ");
     }
 
     async function ensurePartyExists(name){
-        const cleanName = name.trim();
+        const cleanName = (name || "").trim();
         if(!cleanName) return null;
 
         const { data: existing } = await sb
@@ -798,26 +955,22 @@
             txnDate.focus();
             return;
         }
-
         if(!voucher){
             showMessage("Voucher number missing", false);
             return;
         }
-
         if(!party){
             showMessage(`Please enter ${type === "payment" ? "Paid To" : "Received From"} name`, false);
             partyName.focus();
             return;
         }
-
         if(!amt || amt <= 0){
             showMessage("Please enter valid amount", false);
             amount.focus();
             return;
         }
-
         if(selectedCreditBill && amt > Number(selectedCreditBill.balance_amount || 0)){
-            showMessage("Receipt amount cannot be more than pending credit balance", false);
+            showMessage("Receipt amount cannot be more than pending credit balance for selected bill", false);
             amount.focus();
             return;
         }
@@ -828,8 +981,22 @@
 
         try{
             let savedPartyName = party;
-            if(selectedCreditBill){
+            let referenceId = null;
+            let referenceType = null;
+            let approvalStatus = "approved";
+            let finalRemarks = note || null;
+
+            if(selectedCustomerAutoAllocation){
+                savedPartyName = selectedCustomerAutoAllocation.customer_name || party;
+                const plan = buildAutoAllocationPlan(selectedCustomerAutoAllocation.bills || [], amt);
+                referenceType = "customer_credit_auto";
+                approvalStatus = "pending";
+                finalRemarks = buildAutoAllocationRemark(note, plan);
+            } else if(selectedCreditBill){
                 savedPartyName = selectedCreditBill.customer_name || party;
+                referenceId = selectedCreditBill.sales_id;
+                referenceType = "sales_credit";
+                approvalStatus = (type === "receipt") ? "pending" : "approved";
             }
 
             const partyId = await ensurePartyExists(savedPartyName);
@@ -841,24 +1008,20 @@
                 party_id: partyId,
                 party_name: savedPartyName,
                 amount: amt,
-                remarks: note || null,
-                reference_id: selectedCreditBill ? selectedCreditBill.sales_id : null,
-                reference_type: selectedCreditBill ? "sales_credit" : null,
-                approval_status: (type === "receipt" && selectedCreditBill) ? "pending" : "approved"
+                remarks: finalRemarks,
+                reference_id: referenceId,
+                reference_type: referenceType,
+                approval_status: approvalStatus
             };
 
-            const { error } = await sb
-                .from("cash_transactions")
-                .insert([insertRow]);
-
+            const { error } = await sb.from("cash_transactions").insert([insertRow]);
             if(error) throw error;
 
-            showMessage("Transaction saved successfully", true);
+            showMessage(selectedCustomerAutoAllocation ? "Receipt saved in auto allocation mode" : "Transaction saved successfully", true);
             await loadTransactions(searchParty.value.trim());
             clearForm(false);
             await generateNextVoucherNo();
             partyName.focus();
-
         }catch(err){
             console.error(err);
             showMessage(err.message || "Failed to save transaction", false);
@@ -867,6 +1030,37 @@
             saveBtn.disabled = false;
             saveBtn.textContent = "Save Entry";
         }
+    }
+
+    function buildAutoAllocationRemark(userRemark, plan){
+        const allocations = (plan.allocations || []).map(x => `${formatBillNo(x.series_code, x.sales_number)}:${Number(x.applied_amount || 0).toFixed(2)}`).join("|");
+        const meta = `AUTO_ALLOC[[${allocations}]][ADV:${Number(plan.advance_amount || 0).toFixed(2)}]]`;
+        return [userRemark || "", meta].filter(Boolean).join(" ");
+    }
+
+    function parseAutoAllocationRemark(text){
+        const raw = String(text || "");
+        const match = raw.match(/AUTO_ALLOC\[\[(.*?)\]\]\[ADV:(.*?)\]\]/);
+        if(!match){
+            return { cleanRemarks: raw, allocations: [], advance_amount: 0 };
+        }
+
+        const allocPart = match[1] || "";
+        const advance = parseFloat(match[2] || 0) || 0;
+        const allocations = allocPart
+            .split("|")
+            .map(x => x.trim())
+            .filter(Boolean)
+            .map(x => {
+                const [billNo, amt] = x.split(":");
+                return { bill_no: billNo || "", amount: parseFloat(amt || 0) || 0 };
+            });
+
+        return {
+            cleanRemarks: raw.replace(match[0], "").trim(),
+            allocations,
+            advance_amount: advance
+        };
     }
 
     clearBtn.addEventListener("click", () => clearForm(true));
@@ -893,15 +1087,12 @@
     searchBtn.addEventListener("click", () => {
         loadTransactions(searchParty.value.trim());
     });
-
     searchParty.addEventListener("input", () => {
         loadTransactions(searchParty.value.trim());
     });
-
     searchType.addEventListener("change", () => {
         loadTransactions(searchParty.value.trim());
     });
-
     searchDate.addEventListener("change", () => {
         loadTransactions(searchParty.value.trim());
     });
@@ -910,6 +1101,7 @@
         let query = sb
             .from("cash_transactions")
             .select("id, txn_date, voucher_no, txn_type, party_name, amount, remarks, approval_status, approved_by, approved_at, reference_id, reference_type")
+            .neq("reference_type", "customer_advance")
             .order("txn_date", { ascending: false })
             .order("id", { ascending: false })
             .limit(100);
@@ -921,41 +1113,28 @@
         if(partySearchValue){
             query = query.ilike("party_name", `%${partySearchValue}%`);
         }
-
         if(typeValue){
             query = query.eq("txn_type", typeValue);
         }
-
         if(dateValue){
             query = query.eq("txn_date", dateValue);
         }
 
         const { data, error } = await query;
-
         if(error){
             console.error(error);
-            resultsBody.innerHTML = `
-                <tr>
-                    <td colspan="8" style="text-align:center; color:red;">Failed to load transactions</td>
-                </tr>
-            `;
+            resultsBody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:red;">Failed to load transactions</td></tr>`;
             return;
         }
 
-        let rows = data || [];
+        const rows = data || [];
         const linkedIds = rows.filter(r => r.reference_type === "sales_credit" && r.reference_id).map(r => r.reference_id);
-
         let salesMap = {};
+
         if(linkedIds.length){
             const uniqueIds = [...new Set(linkedIds)];
-            const { data: salesRows } = await sb
-                .from("sales_details")
-                .select("id, series_code, sales_number")
-                .in("id", uniqueIds);
-
-            (salesRows || []).forEach(row => {
-                salesMap[row.id] = row;
-            });
+            const { data: salesRows } = await sb.from("sales_details").select("id, series_code, sales_number").in("id", uniqueIds);
+            (salesRows || []).forEach(row => { salesMap[row.id] = row; });
         }
 
         renderTransactions(rows, salesMap);
@@ -963,11 +1142,7 @@
 
     function renderTransactions(rows, salesMap = {}){
         if(!rows.length){
-            resultsBody.innerHTML = `
-                <tr>
-                    <td colspan="8" style="text-align:center; color:#64748b;">No transactions found</td>
-                </tr>
-            `;
+            resultsBody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:#64748b;">No transactions found</td></tr>`;
             return;
         }
 
@@ -975,11 +1150,12 @@
         const canApprove = ["manager", "admin", "owner"].includes(role);
 
         resultsBody.innerHTML = rows.map(row => {
+            const parsedRemark = parseAutoAllocationRemark(row.remarks || "");
             let approveCell = "-";
 
             if(row.txn_type === "payment"){
                 approveCell = `<span class="status-badge status-not-needed">Not Needed</span>`;
-            } else if(row.reference_type === "sales_credit"){
+            } else if(["sales_credit", "customer_credit_auto"].includes(row.reference_type)){
                 if(row.approval_status === "approved"){
                     approveCell = `<span class="status-badge status-approved">Approved</span>`;
                 } else if(row.approval_status === "rejected"){
@@ -996,7 +1172,12 @@
             let linkedBill = "-";
             if(row.reference_type === "sales_credit" && row.reference_id && salesMap[row.reference_id]){
                 linkedBill = `<span class="linked-bill">${escapeHtml(formatBillNo(salesMap[row.reference_id].series_code, salesMap[row.reference_id].sales_number))}</span>`;
+            } else if(row.reference_type === "customer_credit_auto"){
+                linkedBill = `<span class="linked-bill">AUTO ${parsedRemark.allocations.length ? "• " + parsedRemark.allocations.length + " bill(s)" : ""}</span>`;
             }
+
+            const remarkText = parsedRemark.cleanRemarks || "";
+            const advanceText = parsedRemark.advance_amount > 0 ? `<div class="small">Advance kept: ₹${Number(parsedRemark.advance_amount).toFixed(2)}</div>` : "";
 
             return `
                 <tr>
@@ -1006,7 +1187,7 @@
                     <td>${escapeHtml(row.party_name || "")}</td>
                     <td>${linkedBill}</td>
                     <td class="amount">${Number(row.amount || 0).toFixed(2)}</td>
-                    <td>${escapeHtml(row.remarks || "")}</td>
+                    <td>${escapeHtml(remarkText)}${advanceText}</td>
                     <td>${approveCell}</td>
                 </tr>
             `;
@@ -1024,6 +1205,10 @@
         const s = series || "";
         const n = number || "";
         return s && n ? `${s}-${n}` : (n || s || "");
+    }
+
+    function normaliseCustomerKey(name, mobile){
+        return `${String(name || "").trim().toLowerCase()}|${String(mobile || "").replace(/\D/g, "")}`;
     }
 
     function escapeHtml(text){
@@ -1049,7 +1234,7 @@
 
         const { data: txRow, error: txErr } = await sb
             .from("cash_transactions")
-            .select("id, amount, reference_id, reference_type, approval_status")
+            .select("id, voucher_no, txn_date, party_id, party_name, amount, remarks, reference_id, reference_type, approval_status")
             .eq("id", id)
             .maybeSingle();
 
@@ -1063,11 +1248,20 @@
             return;
         }
 
-        if (txRow.reference_type !== "sales_credit" || !txRow.reference_id) {
-            alert("This receipt is not linked to a credit bill.");
+        if (txRow.reference_type === "sales_credit") {
+            await approveSingleBillReceipt(txRow, username);
             return;
         }
 
+        if (txRow.reference_type === "customer_credit_auto") {
+            await approveAutoAllocatedReceipt(txRow, username);
+            return;
+        }
+
+        alert("This receipt is not linked to a credit bill.");
+    }
+
+    async function approveSingleBillReceipt(txRow, username){
         const { data: saleRow, error: saleErr } = await sb
             .from("sales_details")
             .select("id, paid_amount, balance_amount")
@@ -1087,20 +1281,16 @@
             alert("Invalid receipt amount.");
             return;
         }
-
         if (receiptAmount > currentBalance) {
             alert("Receipt amount is greater than current pending balance.");
             return;
         }
 
-        const newPaid = currentPaid + receiptAmount;
-        const newBalance = Math.max(0, currentBalance - receiptAmount);
-
         const { error: salesUpdErr } = await sb
             .from("sales_details")
             .update({
-                paid_amount: newPaid,
-                balance_amount: newBalance
+                paid_amount: currentPaid + receiptAmount,
+                balance_amount: Math.max(0, currentBalance - receiptAmount)
             })
             .eq("id", txRow.reference_id);
 
@@ -1116,7 +1306,7 @@
                 approved_by: username,
                 approved_at: new Date().toISOString()
             })
-            .eq("id", id);
+            .eq("id", txRow.id);
 
         if (txUpdErr) {
             alert("Approval failed: " + txUpdErr.message);
@@ -1127,18 +1317,103 @@
         await loadTransactions(searchParty.value.trim());
     }
 
+    async function approveAutoAllocatedReceipt(txRow, username){
+        const receiptAmount = parseFloat(txRow.amount || 0);
+        if(receiptAmount <= 0){
+            alert("Invalid receipt amount.");
+            return;
+        }
+
+        const { data: openBills, error: billsErr } = await sb
+            .from("sales_details")
+            .select("id, series_code, sales_number, bill_date, customer_name, customer_mobile, paid_amount, balance_amount, payment_type")
+            .eq("payment_type", "CREDIT")
+            .gt("balance_amount", 0)
+            .or(`customer_name.ilike.%${escapeOrValue(txRow.party_name || "")}%,customer_mobile.ilike.%${escapeOrValue(txRow.party_name || "").replace(/\D/g, "")}%`)
+            .order("bill_date", { ascending: true })
+            .order("sales_number", { ascending: true });
+
+        if(billsErr){
+            alert("Unable to load customer credit bills: " + billsErr.message);
+            return;
+        }
+
+        const bills = (openBills || []).filter(x => (x.customer_name || x.customer_mobile || "").trim());
+        if(!bills.length){
+            alert("No open credit bills found for this customer.");
+            return;
+        }
+
+        let remaining = receiptAmount;
+        for(const bill of bills){
+            if(remaining <= 0) break;
+            const currentBalance = parseFloat(bill.balance_amount || 0);
+            const currentPaid = parseFloat(bill.paid_amount || 0);
+            if(currentBalance <= 0) continue;
+
+            const applied = Math.min(currentBalance, remaining);
+            const { error: updErr } = await sb
+                .from("sales_details")
+                .update({
+                    paid_amount: currentPaid + applied,
+                    balance_amount: Math.max(0, currentBalance - applied)
+                })
+                .eq("id", bill.id);
+
+            if(updErr){
+                alert("Failed while applying to bill " + formatBillNo(bill.series_code, bill.sales_number) + ": " + updErr.message);
+                return;
+            }
+
+            remaining -= applied;
+        }
+
+        const { error: txUpdErr } = await sb
+            .from("cash_transactions")
+            .update({
+                approval_status: "approved",
+                approved_by: username,
+                approved_at: new Date().toISOString(),
+                remarks: buildAutoAllocationRemark(parseAutoAllocationRemark(txRow.remarks || "").cleanRemarks, buildAutoAllocationPlan(bills, receiptAmount))
+            })
+            .eq("id", txRow.id);
+
+        if(txUpdErr){
+            alert("Approval failed: " + txUpdErr.message);
+            return;
+        }
+
+        if(remaining > 0){
+            const advanceRow = {
+                voucher_no: txRow.voucher_no,
+                txn_date: txRow.txn_date,
+                txn_type: "receipt",
+                party_id: txRow.party_id || null,
+                party_name: txRow.party_name,
+                amount: remaining,
+                remarks: `Advance amount from voucher ${txRow.voucher_no}`,
+                reference_id: txRow.id,
+                reference_type: "customer_advance",
+                approval_status: "approved",
+                approved_by: username,
+                approved_at: new Date().toISOString()
+            };
+
+            const { error: advErr } = await sb.from("cash_transactions").insert([advanceRow]);
+            if(advErr){
+                console.error("Advance save failed", advErr);
+                alert("Receipt approved, but advance row was not saved separately: " + advErr.message);
+            }
+        }
+
+        alert("Auto credit receipt approved successfully");
+        await loadTransactions(searchParty.value.trim());
+    }
+
     window.approveCreditReceipt = approveCreditReceipt;
 
     function setupEnterNavigation(){
-        const orderedFields = [
-            txnType,
-            txnDate,
-            partyName,
-            amount,
-            remarks,
-            saveBtn
-        ];
-
+        const orderedFields = [txnType, txnDate, partyName, amount, remarks, saveBtn];
         orderedFields.forEach((field, index) => {
             field.addEventListener("keydown", function(e){
                 if(e.key !== "Enter") return;

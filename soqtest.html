@@ -955,7 +955,9 @@
         return;
     }
 
-    const total = parseFloat((document.getElementById("display_grand_total")?.innerText || "₹0").replace("₹", "")) || 0;
+const total = Math.round(
+    parseFloat((document.getElementById("display_grand_total")?.innerText || "₹0").replace("₹", "")) || 0
+);
     const paymentType = paymentTypeEl.value || "CASH";
 
     if (paymentType === "CASH") {
@@ -1690,7 +1692,7 @@ ${data.map((c, idx) => `
         calcProfit();
     }
 
-    function calcTotal() {
+function calcTotal() {
     let totalAfterGST = 0;
     let totalBeforeGST = 0;
     let totalQty = 0;
@@ -1701,11 +1703,8 @@ ${data.map((c, idx) => `
         const gst = parseFloat(row.querySelector('.gst-inp')?.value) || 0;
         const disc = parseFloat(row.querySelector('.disc-inp')?.value) || 0;
 
-        // before GST (after discount)
         let priceAfterDisc = price - (price * disc / 100);
         let beforeGST = priceAfterDisc * qty;
-
-        // after GST
         let afterGST = beforeGST * (1 + gst / 100);
 
         totalQty += qty;
@@ -1713,9 +1712,16 @@ ${data.map((c, idx) => `
         totalAfterGST += afterGST;
     });
 
-    document.getElementById('display_grand_total').innerText = '₹' + totalAfterGST.toFixed(2);
+    const roundedTotal = Math.round(totalAfterGST);
+    const roundOff = roundedTotal - totalAfterGST;
+
+    document.getElementById('display_grand_total').innerText = '₹' + roundedTotal.toFixed(2);
     document.getElementById('display_total_before_gst').innerText = '₹' + totalBeforeGST.toFixed(2);
     document.getElementById('display_total_qty').innerText = totalQty.toFixed(2);
+
+    // (Optional) show round off somewhere later if you want
+    // document.getElementById('display_roundoff').innerText = roundOff.toFixed(2);
+
     syncPaymentUI();
 }
 
@@ -2204,10 +2210,21 @@ ${data.map((c, idx) => `
             };
 
             const paymentType = document.getElementById("payment_type")?.value || "CASH";
-            const paidAmountInput = parseFloat(document.getElementById("paid_amount")?.value) || 0;
-            const totalAmount = parseFloat(head.total || 0) || 0;
-            const paidAmount = Math.min(totalAmount, Math.max(0, paidAmountInput));
-            const balanceAmount = Math.max(0, totalAmount - paidAmount);
+
+const exactTotal = parseFloat(head.total || 0) || 0;
+const roundedTotal = Math.round(exactTotal);
+const roundOff = roundedTotal - exactTotal;
+
+let paidAmount = parseFloat(document.getElementById("paid_amount")?.value) || 0;
+
+// restrict
+paidAmount = Math.max(0, Math.min(roundedTotal, paidAmount));
+
+if (paymentType === "CASH") {
+    paidAmount = roundedTotal;
+}
+
+const balanceAmount = Math.max(0, roundedTotal - paidAmount);
 
             const hasCustomerDetails = !!((head.mob || "").trim() || (head.name || "").trim());
 

@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+  <link rel="manifest" href="site.webmanifest">
+
+  <title>Credit Report - VAJRA LIGHTS</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabaseClient.js"></script>
+  <script src="page_permissions.js"></script>
+  <script src="common-ui.js"></script>
+
+  <style>
+    :root{
+      --bg:#0f172a;
+      --panel:#111827;
+      --panel2:#1f2937;
+      --line:#334155;
+      --text:#e5e7eb;
+      --muted:#94a3b8;
+      --gold:#facc15;
+      --green:#22c55e;
+      --red:#ef4444;
+      --blue:#2563eb;
+      --amber:#f59e0b;
+      --white:#ffffff;
+    }
+
+    *{ box-sizing:border-box; }
+
+    body{
+      margin:0;
+      font-family:Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      background:
+        linear-gradient(rgba(2,6,23,.92), rgba(2,6,23,.92)),
+        url("background.jpg") center/cover fixed;
+      color:var(--text);
+      min-height:100vh;
+      padding:14px;
+    }
+
+    .container{
+      max-width:1700px;
+      margin:0 auto;
+    }
+
+    .topbar{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      flex-wrap:wrap;
+      margin-bottom:14px;
+    }
+
+    .title-wrap h1{
+      margin:0;
+      font-size:28px;
+      color:var(--gold);
+      letter-spacing:.4px;
+    }
+
+    .title-wrap p{
+      margin:4px 0 0;
+      color:var(--muted);
+      font-size:13px;
+    }
+
+    .top-actions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    .card{
+      background:rgba(17,24,39,.92);
+      border:1px solid var(--line);
+      border-radius:12px;
+      box-shadow:0 10px 30px rgba(0,0,0,.25);
+    }
+
+    .filters{
+      padding:14px;
+      display:grid;
+      grid-template-columns:repeat(8, minmax(120px,1fr));
+      gap:10px;
+      margin-bottom:14px;
+    }
+
+    .field{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      min-width:0;
+    }
+
+    .field label{
+      font-size:12px;
+      font-weight:700;
+      color:var(--muted);
+      text-transform:uppercase;
+      letter-spacing:.5px;
+    }
+
+    .field input,
+    .field select{
+      height:38px;
+      border-radius:8px;
+      border:1px solid var(--line);
+      background:#0b1220;
+      color:var(--white);
+      padding:0 10px;
+      outline:none;
+    }
+
+    .field input:focus,
+    .field select:focus{
+      border-color:var(--blue);
+      box-shadow:0 0 0 2px rgba(37,99,235,.2);
+    }
+
+    .checkbox-wrap{
+      display:flex;
+      align-items:flex-end;
+      gap:10px;
+      padding-bottom:6px;
+    }
+
+    .checkbox-box{
+      height:38px;
+      display:flex;
+      align-items:center;
+      gap:8px;
+      color:var(--white);
+      padding:0 6px;
+      border-radius:8px;
+    }
+
+    .btn{
+      height:38px;
+      border:none;
+      border-radius:8px;
+      padding:0 14px;
+      cursor:pointer;
+      font-weight:700;
+      letter-spacing:.3px;
+    }
+
+    .btn-primary{
+      background:var(--blue);
+      color:white;
+    }
+
+    .btn-primary:hover{ filter:brightness(1.08); }
+
+    .btn-green{
+      background:var(--green);
+      color:#052e16;
+    }
+
+    .btn-green:hover{ filter:brightness(1.06); }
+
+    .btn-ghost{
+      background:#1e293b;
+      color:#e5e7eb;
+      border:1px solid var(--line);
+    }
+
+    .summary{
+      display:grid;
+      grid-template-columns:repeat(4, minmax(180px,1fr));
+      gap:12px;
+      margin-bottom:14px;
+    }
+
+    .summary-box{
+      padding:14px 16px;
+      border-radius:12px;
+      background:rgba(17,24,39,.92);
+      border:1px solid var(--line);
+    }
+
+    .summary-box .label{
+      color:var(--muted);
+      font-size:12px;
+      text-transform:uppercase;
+      font-weight:700;
+      letter-spacing:.5px;
+    }
+
+    .summary-box .value{
+      margin-top:6px;
+      font-size:26px;
+      font-weight:800;
+      color:var(--white);
+    }
+
+    .summary-box.red .value{ color:#fca5a5; }
+    .summary-box.green .value{ color:#86efac; }
+    .summary-box.gold .value{ color:#fde68a; }
+
+    .status{
+      padding:10px 14px;
+      margin-bottom:12px;
+      color:#fde68a;
+      background:rgba(15,23,42,.8);
+      border:1px solid var(--line);
+      border-radius:10px;
+      font-size:13px;
+    }
+
+    .table-wrap{
+      overflow:auto;
+      border-radius:12px;
+    }
+
+    table{
+      width:100%;
+      border-collapse:collapse;
+      min-width:1250px;
+    }
+
+    thead{
+      position:sticky;
+      top:0;
+      z-index:5;
+    }
+
+    th{
+      background:#0b1220;
+      color:var(--gold);
+      font-size:12px;
+      text-transform:uppercase;
+      letter-spacing:.5px;
+      padding:12px 10px;
+      text-align:left;
+      border-bottom:1px solid var(--line);
+      white-space:nowrap;
+    }
+
+    td{
+      padding:11px 10px;
+      border-bottom:1px solid rgba(148,163,184,.12);
+      vertical-align:middle;
+      white-space:nowrap;
+      font-size:14px;
+    }
+
+    tbody tr.main-row:hover{
+      background:rgba(37,99,235,.08);
+      cursor:pointer;
+    }
+
+    .right{ text-align:right; }
+    .center{ text-align:center; }
+
+    .chip{
+      display:inline-flex;
+      align-items:center;
+      padding:4px 8px;
+      border-radius:999px;
+      font-size:11px;
+      font-weight:700;
+      letter-spacing:.4px;
+      border:1px solid transparent;
+    }
+
+    .chip-credit{
+      background:rgba(245,158,11,.12);
+      color:#fcd34d;
+      border-color:rgba(245,158,11,.35);
+    }
+
+    .chip-settled{
+      background:rgba(34,197,94,.12);
+      color:#86efac;
+      border-color:rgba(34,197,94,.35);
+    }
+
+    .chip-partial{
+      background:rgba(59,130,246,.12);
+      color:#93c5fd;
+      border-color:rgba(59,130,246,.35);
+    }
+
+    .details-row{
+      display:none;
+      background:rgba(2,6,23,.55);
+    }
+
+    .details-cell{
+      padding:0;
+    }
+
+    .details-box{
+      padding:12px;
+      background:rgba(2,6,23,.45);
+    }
+
+    .mini-table{
+      width:100%;
+      min-width:700px;
+      border-collapse:collapse;
+      background:rgba(255,255,255,.03);
+    }
+
+    .mini-table th{
+      background:#111827;
+      color:#cbd5e1;
+      font-size:11px;
+    }
+
+    .mini-table td{
+      font-size:13px;
+    }
+
+    .empty{
+      padding:26px;
+      text-align:center;
+      color:var(--muted);
+    }
+
+    @media (max-width: 1200px){
+      .filters{
+        grid-template-columns:repeat(4, minmax(140px,1fr));
+      }
+      .summary{
+        grid-template-columns:repeat(2, minmax(160px,1fr));
+      }
+    }
+
+    @media (max-width: 700px){
+      body{ padding:10px; }
+      .filters{
+        grid-template-columns:1fr;
+      }
+      .summary{
+        grid-template-columns:1fr;
+      }
+      .top-actions{
+        width:100%;
+      }
+      .top-actions .btn{
+        flex:1 1 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="topbar">
+      <div class="title-wrap">
+        <h1>Credit Report</h1>
+        <p>Track pending customer balances from sales credit bills.</p>
+      </div>
+      <div class="top-actions">
+        <button class="btn btn-green" onclick="openSalesPage()">+ New Sales Bill</button>
+        <button class="btn btn-ghost" onclick="window.open('report.html','_blank')">Sales Report</button>
+      </div>
+    </div>
+
+    <div class="card filters">
+      <div class="field">
+        <label>From Date</label>
+        <input type="date" id="from_date">
+      </div>
+
+      <div class="field">
+        <label>To Date</label>
+        <input type="date" id="to_date">
+      </div>
+
+      <div class="field">
+        <label>Mobile</label>
+        <input type="text" id="mobile_filter" placeholder="Search mobile">
+      </div>
+
+      <div class="field">
+        <label>Customer Name</label>
+        <input type="text" id="name_filter" placeholder="Search customer">
+      </div>
+
+      <div class="field">
+        <label>Bill No</label>
+        <input type="text" id="bill_filter" placeholder="Search bill no">
+      </div>
+
+      <div class="field">
+        <label>Series</label>
+        <select id="series_filter">
+          <option value="">ALL</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Payment Status</label>
+        <select id="status_filter">
+          <option value="ALL">ALL</option>
+          <option value="OUTSTANDING">OUTSTANDING ONLY</option>
+          <option value="SETTLED">SETTLED ONLY</option>
+        </select>
+      </div>
+
+      <div class="checkbox-wrap">
+        <div class="checkbox-box">
+          <input type="checkbox" id="credit_only" checked>
+          <label for="credit_only" style="margin:0; color:#fff; font-size:13px; text-transform:none; letter-spacing:0;">Credit only</label>
+        </div>
+        <button class="btn btn-primary" id="btn_load">Load Report</button>
+      </div>
+    </div>
+
+    <div class="summary">
+      <div class="summary-box gold">
+        <div class="label">Credit Bills</div>
+        <div class="value" id="sum_bills">0</div>
+      </div>
+      <div class="summary-box">
+        <div class="label">Total Credit Amount</div>
+        <div class="value" id="sum_total">₹0.00</div>
+      </div>
+      <div class="summary-box green">
+        <div class="label">Total Paid</div>
+        <div class="value" id="sum_paid">₹0.00</div>
+      </div>
+      <div class="summary-box red">
+        <div class="label">Outstanding</div>
+        <div class="value" id="sum_balance">₹0.00</div>
+      </div>
+    </div>
+
+    <div class="status" id="status_box">Ready.</div>
+
+    <div class="card table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Series</th>
+            <th>Bill No</th>
+            <th>Date</th>
+            <th>Mobile</th>
+            <th>Customer</th>
+            <th>Payment</th>
+            <th class="right">Bill Amount</th>
+            <th class="right">Paid</th>
+            <th class="right">Balance</th>
+            <th class="center">Status</th>
+          </tr>
+        </thead>
+        <tbody id="report_body">
+          <tr><td colspan="10" class="empty">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    const sb = window.sbcc;
+    const qs = (id) => document.getElementById(id);
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      const ok = await requirePageAccess("sales");
+      if (!ok) return;
+
+      const today = new Date();
+      const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+
+      qs("from_date").value = firstDay.toISOString().split("T")[0];
+      qs("to_date").value = today.toISOString().split("T")[0];
+
+      await loadSeries();
+      bindEvents();
+      await loadCreditReport();
+    });
+
+    function bindEvents() {
+      qs("btn_load").addEventListener("click", loadCreditReport);
+
+      ["from_date", "to_date", "series_filter", "status_filter", "credit_only"].forEach(id => {
+        qs(id).addEventListener("change", loadCreditReport);
+      });
+
+      ["mobile_filter", "name_filter", "bill_filter"].forEach(id => {
+        qs(id).addEventListener("input", debounce(loadCreditReport, 350));
+      });
+    }
+
+    function debounce(fn, delay = 300) {
+      let t;
+      return (...args) => {
+        clearTimeout(t);
+        t = setTimeout(() => fn(...args), delay);
+      };
+    }
+
+    function money(v) {
+      return "₹" + (parseFloat(v || 0).toFixed(2));
+    }
+
+    function openSalesPage() {
+      window.location.href = "soqtest.html";
+    }
+
+    async function loadSeries() {
+      try {
+        const { data, error } = await sb
+          .from("bill_series")
+          .select("series_code")
+          .order("series_code", { ascending: true });
+
+        if (error) throw error;
+
+        const select = qs("series_filter");
+        (data || []).forEach(row => {
+          const opt = document.createElement("option");
+          opt.value = row.series_code || "";
+          opt.textContent = row.series_code || "";
+          select.appendChild(opt);
+        });
+      } catch (err) {
+        console.error("Series load error:", err);
+      }
+    }
+
+    async function loadCreditReport() {
+      const body = qs("report_body");
+      const statusBox = qs("status_box");
+
+      body.innerHTML = `<tr><td colspan="10" class="empty">Loading...</td></tr>`;
+      statusBox.textContent = "Loading credit report...";
+
+      try {
+        const fromDate = qs("from_date").value;
+        const toDate = qs("to_date").value;
+        const mobile = (qs("mobile_filter").value || "").trim();
+        const name = (qs("name_filter").value || "").trim();
+        const bill = (qs("bill_filter").value || "").trim();
+        const series = qs("series_filter").value;
+        const statusFilter = qs("status_filter").value;
+        const creditOnly = qs("credit_only").checked;
+
+        let query = sb
+          .from("sales_details")
+          .select(`
+            id,
+            series_code,
+            sales_number,
+            bill_date,
+            customer_mobile,
+            customer_name,
+            invoice_amount,
+            payment_type,
+            paid_amount,
+            balance_amount
+          `)
+          .order("bill_date", { ascending: false })
+          .order("sales_number", { ascending: false });
+
+        if (fromDate) query = query.gte("bill_date", fromDate);
+        if (toDate) query = query.lte("bill_date", toDate);
+        if (mobile) query = query.ilike("customer_mobile", `%${mobile}%`);
+        if (name) query = query.ilike("customer_name", `%${name}%`);
+        if (bill) query = query.or(`sales_number.ilike.%${bill}%,invoice_number.ilike.%${bill}%`);
+        if (series) query = query.eq("series_code", series);
+        if (creditOnly) query = query.eq("payment_type", "CREDIT");
+
+        const { data, error } = await query;
+        if (error) throw error;
+
+        let rows = (data || []).map(r => ({
+          ...r,
+          invoice_amount: parseFloat(r.invoice_amount || 0),
+          paid_amount: parseFloat(r.paid_amount || 0),
+          balance_amount: parseFloat(r.balance_amount || 0),
+        }));
+
+        if (statusFilter === "OUTSTANDING") {
+          rows = rows.filter(r => r.balance_amount > 0);
+        } else if (statusFilter === "SETTLED") {
+          rows = rows.filter(r => r.balance_amount <= 0);
+        }
+
+        renderRows(rows);
+      } catch (err) {
+        console.error("Credit report load error:", err);
+        body.innerHTML = `<tr><td colspan="10" class="empty">Error loading credit report.</td></tr>`;
+        statusBox.textContent = "Error: " + (err.message || "Unable to load report");
+      }
+    }
+
+    function renderRows(rows) {
+      const body = qs("report_body");
+      const statusBox = qs("status_box");
+
+      let totalBills = 0;
+      let totalAmount = 0;
+      let totalPaid = 0;
+      let totalBalance = 0;
+
+      if (!rows.length) {
+        body.innerHTML = `<tr><td colspan="10" class="empty">No credit records found.</td></tr>`;
+        qs("sum_bills").textContent = "0";
+        qs("sum_total").textContent = money(0);
+        qs("sum_paid").textContent = money(0);
+        qs("sum_balance").textContent = money(0);
+        statusBox.textContent = "No records found.";
+        return;
+      }
+
+      let html = "";
+
+      rows.forEach((row) => {
+        totalBills += 1;
+        totalAmount += row.invoice_amount || 0;
+        totalPaid += row.paid_amount || 0;
+        totalBalance += row.balance_amount || 0;
+
+        let chipClass = "chip-credit";
+        let chipText = row.payment_type || "CREDIT";
+
+        if ((row.balance_amount || 0) <= 0) {
+          chipClass = "chip-settled";
+          chipText = "SETTLED";
+        } else if ((row.paid_amount || 0) > 0) {
+          chipClass = "chip-partial";
+          chipText = "PARTIAL";
+        }
+
+        html += `
+          <tr class="main-row" onclick="toggleDetails(${row.id})">
+            <td>${row.series_code || ""}</td>
+            <td>${row.sales_number || ""}</td>
+            <td>${row.bill_date || ""}</td>
+            <td>${row.customer_mobile || ""}</td>
+            <td>${row.customer_name || ""}</td>
+            <td>${row.payment_type || "CASH"}</td>
+            <td class="right">${money(row.invoice_amount)}</td>
+            <td class="right">${money(row.paid_amount)}</td>
+            <td class="right">${money(row.balance_amount)}</td>
+            <td class="center"><span class="chip ${chipClass}">${chipText}</span></td>
+          </tr>
+          <tr class="details-row" id="details_${row.id}">
+            <td colspan="10" class="details-cell">
+              <div class="details-box" id="details_box_${row.id}">
+                Loading items...
+              </div>
+            </td>
+          </tr>
+        `;
+      });
+
+      body.innerHTML = html;
+
+      qs("sum_bills").textContent = String(totalBills);
+      qs("sum_total").textContent = money(totalAmount);
+      qs("sum_paid").textContent = money(totalPaid);
+      qs("sum_balance").textContent = money(totalBalance);
+
+      statusBox.textContent = `${rows.length} credit bill(s) loaded.`;
+    }
+
+    async function toggleDetails(salesId) {
+      const row = document.getElementById(`details_${salesId}`);
+      const box = document.getElementById(`details_box_${salesId}`);
+      if (!row || !box) return;
+
+      const isOpen = row.style.display === "table-row";
+      row.style.display = isOpen ? "none" : "table-row";
+      if (isOpen) return;
+
+      if (box.dataset.loaded === "1") return;
+
+      box.innerHTML = "Loading items...";
+
+      try {
+        const { data, error } = await sb
+          .from("sales_item_details")
+          .select(`
+            item_code,
+            item_name,
+            quantity,
+            price,
+            sales_price_gst,
+            gst_percent,
+            discount_percent
+          `)
+          .eq("sales_id", salesId)
+          .order("id", { ascending: true });
+
+        if (error) throw error;
+
+        if (!data || !data.length) {
+          box.innerHTML = `<div class="empty">No items found.</div>`;
+          box.dataset.loaded = "1";
+          return;
+        }
+
+        let html = `
+          <table class="mini-table">
+            <thead>
+              <tr>
+                <th>Item Code</th>
+                <th>Item Name</th>
+                <th class="right">Qty</th>
+                <th class="right">Price</th>
+                <th class="right">Price+GST</th>
+                <th class="right">Disc %</th>
+                <th class="right">GST %</th>
+              </tr>
+            </thead>
+            <tbody>
+        `;
+
+        data.forEach(item => {
+          html += `
+            <tr>
+              <td>${item.item_code || ""}</td>
+              <td>${item.item_name || ""}</td>
+              <td class="right">${parseFloat(item.quantity || 0).toFixed(2)}</td>
+              <td class="right">${money(item.price)}</td>
+              <td class="right">${money(item.sales_price_gst)}</td>
+              <td class="right">${parseFloat(item.discount_percent || 0).toFixed(2)}</td>
+              <td class="right">${parseFloat(item.gst_percent || 0).toFixed(2)}</td>
+            </tr>
+          `;
+        });
+
+        html += `</tbody></table>`;
+        box.innerHTML = html;
+        box.dataset.loaded = "1";
+      } catch (err) {
+        console.error("Item details error:", err);
+        box.innerHTML = `<div class="empty">Error loading items.</div>`;
+      }
+    }
+
+    window.toggleDetails = toggleDetails;
+  </script>
+</body>
+</html>

@@ -4,9 +4,12 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <link rel="icon" href="favicon.ico" type="image/x-icon">
+
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+
 <link rel="manifest" href="site.webmanifest">
 <title>Payment / Receipt - VAJRA LIGHTS</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -26,9 +29,10 @@
         --hover:#eff6ff;
         --shadow:0 10px 25px rgba(0,0,0,0.08);
         --radius:14px;
-        --amber:#f59e0b;
     }
+
     *{ box-sizing:border-box; }
+
     body{
         margin:0;
         font-family:Segoe UI, Roboto, Arial, sans-serif;
@@ -36,7 +40,12 @@
         color:var(--text);
         padding:14px;
     }
-    .container{ max-width:1100px; margin:auto; }
+
+    .container{
+        max-width:1000px;
+        margin:auto;
+    }
+
     .card{
         background:var(--card);
         border:1px solid var(--border);
@@ -45,7 +54,11 @@
         padding:16px;
         margin-bottom:16px;
     }
-    h1,h2{ margin:0 0 12px; }
+
+    h1,h2{
+        margin:0 0 12px;
+    }
+
     .title-row{
         display:flex;
         justify-content:space-between;
@@ -53,29 +66,30 @@
         gap:10px;
         flex-wrap:wrap;
     }
-    .title-right{
-        display:flex;
-        gap:10px;
-        flex-wrap:wrap;
-        align-items:center;
-    }
+
     .grid{
         display:grid;
         grid-template-columns:repeat(4, 1fr);
         gap:12px;
     }
+
     .field{
         display:flex;
         flex-direction:column;
         gap:6px;
         position:relative;
     }
-    .field.full{ grid-column:1 / -1; }
+
+    .field.full{
+        grid-column:1 / -1;
+    }
+
     label{
         font-size:13px;
         font-weight:600;
         color:var(--muted);
     }
+
     input, select, textarea, button{
         width:100%;
         min-height:44px;
@@ -86,27 +100,40 @@
         outline:none;
         background:#fff;
     }
+
     input:focus, select:focus, textarea:focus{
         border-color:var(--primary);
         box-shadow:0 0 0 3px rgba(37,99,235,0.12);
     }
+
     textarea{
         min-height:90px;
         resize:vertical;
     }
+
     .btn-row{
         display:flex;
         gap:10px;
         flex-wrap:wrap;
         margin-top:12px;
     }
+
     button{
         cursor:pointer;
         border:none;
         font-weight:700;
     }
-    .btn-primary{ background:var(--primary); color:#fff; }
-    .btn-secondary{ background:#e2e8f0; color:#0f172a; }
+
+    .btn-primary{
+        background:var(--primary);
+        color:#fff;
+    }
+
+    .btn-secondary{
+        background:#e2e8f0;
+        color:#0f172a;
+    }
+
     .badge{
         background:#dbeafe;
         color:#1d4ed8;
@@ -115,20 +142,7 @@
         font-size:13px;
         font-weight:700;
     }
-    .credit-chip{
-        background:#fff7ed;
-        color:#9a3412;
-        border:1px solid #fdba74;
-        padding:8px 12px;
-        border-radius:999px;
-        font-size:13px;
-        font-weight:700;
-        display:none;
-    }
-    .small{ font-size:12px; color:var(--muted); }
-    .message{ margin-top:10px; font-weight:700; }
-    .success-msg{ color:var(--success); }
-    .error-msg{ color:var(--danger); }
+
     .autocomplete-list{
         position:absolute;
         top:100%;
@@ -139,99 +153,165 @@
         border-radius:10px;
         margin-top:4px;
         box-shadow:var(--shadow);
-        max-height:260px;
+        max-height:220px;
         overflow:auto;
         z-index:50;
         display:none;
     }
+
     .autocomplete-item{
         padding:10px 12px;
         cursor:pointer;
         border-bottom:1px solid #f1f5f9;
     }
-    .autocomplete-item:last-child{ border-bottom:none; }
+
+    .autocomplete-item:last-child{
+        border-bottom:none;
+    }
+
     .autocomplete-item.active,
-    .autocomplete-item:hover{ background:var(--hover); }
-    .credit-item-title{ font-weight:700; }
-    .credit-item-sub{ font-size:12px; color:var(--muted); margin-top:4px; }
+    .autocomplete-item:hover{
+        background:var(--hover);
+    }
+
     .search-box{
         display:grid;
         grid-template-columns:2fr 1fr 1fr auto;
         gap:10px;
         align-items:end;
     }
+
     .table-wrap{
         overflow:auto;
         border:1px solid var(--border);
         border-radius:12px;
     }
+
     table{
         width:100%;
         border-collapse:collapse;
-        min-width:860px;
+        min-width:720px;
         background:#fff;
     }
+
     th, td{
         padding:12px 10px;
         border-bottom:1px solid #e2e8f0;
         text-align:left;
         font-size:14px;
     }
+
     th{
         background:#f8fafc;
         position:sticky;
         top:0;
         z-index:1;
     }
-    .amount{ text-align:right; font-weight:700; }
-    .payment{ color:var(--danger); font-weight:700; text-transform:capitalize; }
-    .receipt{ color:var(--success); font-weight:700; text-transform:capitalize; }
-    .accept-btn{
-        background:#16a34a;
-        color:#fff;
-        border:none;
-        padding:8px 12px;
-        border-radius:8px;
-        font-size:13px;
+
+    .amount{
+        text-align:right;
         font-weight:700;
-        cursor:pointer;
-        width:auto;
-        min-height:auto;
     }
-    .accept-btn:hover{ opacity:0.95; }
-    .accept-btn:disabled{ background:#94a3b8; cursor:not-allowed; }
-    .status-badge{
-        display:inline-block;
-        padding:6px 10px;
-        border-radius:999px;
+
+    .payment{
+        color:var(--danger);
+        font-weight:700;
+        text-transform:capitalize;
+    }
+
+    .receipt{
+        color:var(--success);
+        font-weight:700;
+        text-transform:capitalize;
+    }
+
+    .small{
         font-size:12px;
-        font-weight:700;
-        white-space:nowrap;
+        color:var(--muted);
     }
-    .status-pending{ background:#fef3c7; color:#92400e; }
-    .status-approved{ background:#dcfce7; color:#166534; }
-    .status-rejected{ background:#fee2e2; color:#991b1b; }
-    .status-not-needed{ background:#e2e8f0; color:#334155; }
-    .linked-bill{
-        display:inline-block;
-        padding:4px 8px;
-        border-radius:999px;
-        background:#fff7ed;
-        color:#9a3412;
-        font-size:12px;
+
+    .message{
+        margin-top:10px;
         font-weight:700;
     }
+
+    .success-msg{ color:var(--success); }
+    .error-msg{ color:var(--danger); }
+
     @media (max-width: 900px){
-        .grid{ grid-template-columns:repeat(2, 1fr); }
-        .search-box{ grid-template-columns:1fr 1fr; }
+        .grid{
+            grid-template-columns:repeat(2, 1fr);
+        }
+
+        .search-box{
+            grid-template-columns:1fr 1fr;
+        }
     }
+
     @media (max-width: 600px){
-        body{ padding:10px; }
-        .card{ padding:12px; }
-        .grid{ grid-template-columns:1fr; }
-        .search-box{ grid-template-columns:1fr; }
-        input, select, textarea, button{ font-size:16px; }
+        body{
+            padding:10px;
+        }
+
+        .card{
+            padding:12px;
+        }
+
+        .grid{
+            grid-template-columns:1fr;
+        }
+
+        .search-box{
+            grid-template-columns:1fr;
+        }
+
+        input, select, textarea, button{
+            font-size:16px;
+        }
     }
+.accept-btn{
+    background:#16a34a;
+    color:#fff;
+    border:none;
+    padding:8px 12px;
+    border-radius:8px;
+    font-size:13px;
+    font-weight:700;
+    cursor:pointer;
+}
+
+.accept-btn:hover{
+    opacity:0.95;
+}
+
+.accept-btn:disabled{
+    background:#94a3b8;
+    cursor:not-allowed;
+}
+
+.status-badge{
+    display:inline-block;
+    padding:6px 10px;
+    border-radius:999px;
+    font-size:12px;
+    font-weight:700;
+}
+
+.status-pending{
+    background:#fef3c7;
+    color:#92400e;
+}
+
+.status-approved{
+    background:#dcfce7;
+    color:#166534;
+}
+
+.status-rejected{
+    background:#fee2e2;
+    color:#991b1b;
+}
+
 </style>
 </head>
 <body>
@@ -240,10 +320,7 @@
     <div class="card">
         <div class="title-row">
             <h1>Payment / Receipt Entry</h1>
-            <div class="title-right">
-                <div class="credit-chip" id="creditChip">Credit Collection Mode</div>
-                <div class="badge" id="modeBadge">Payment Mode</div>
-            </div>
+            <div class="badge" id="modeBadge">Payment Mode</div>
         </div>
 
         <div class="grid">
@@ -272,9 +349,9 @@
 
             <div class="field full" id="partyFieldWrap">
                 <label for="partyName" id="partyLabel">Paid To</label>
-                <input type="text" id="partyName" name="partyName" autocomplete="off" placeholder="Type name or mobile..." />
+                <input type="text" id="partyName" name="partyName" autocomplete="off" placeholder="Type name..." />
                 <div id="partySuggestions" class="autocomplete-list"></div>
-                <div class="small">Saved names and pending credit bills appear automatically. Use Arrow keys + Enter.</div>
+                <div class="small">Saved names will appear automatically. Use Arrow keys + Enter.</div>
             </div>
 
             <div class="field full">
@@ -327,7 +404,6 @@
                         <th>Voucher No</th>
                         <th>Type</th>
                         <th>Party</th>
-                        <th>Linked Bill</th>
                         <th class="amount">Amount</th>
                         <th>Remarks</th>
                         <th>Approve</th>
@@ -335,7 +411,7 @@
                 </thead>
                 <tbody id="resultsBody">
                     <tr>
-                        <td colspan="8" style="text-align:center; color:#64748b;">No transactions found</td>
+                        <td colspan="7" style="text-align:center; color:#64748b;">No transactions found</td>
                     </tr>
                 </tbody>
             </table>
@@ -345,468 +421,414 @@
 </div>
 
 <script>
-const sb = window.sbcc;
+    // =========================
+    // 1. SUPABASE CONNECTION
+    // =========================
+    const sb = window.sbcc; // supabase client from supabaseClient.js
+  document.addEventListener("DOMContentLoaded", async () => {
+  const ok = await requirePageAccess("paymentreceipt");
+  if (!ok) return;
+  });
 
-document.addEventListener("DOMContentLoaded", async () => {
-    const ok = await requirePageAccess("paymentreceipt");
-    if (!ok) return;
-});
+    // =========================
+    // 2. ELEMENTS
+    // =========================
+    const txnType = document.getElementById("txnType");
+    const txnDate = document.getElementById("txnDate");
+    const voucherNo = document.getElementById("voucherNo");
+    const amount = document.getElementById("amount");
+    const partyName = document.getElementById("partyName");
+    const remarks = document.getElementById("remarks");
+    const saveBtn = document.getElementById("saveBtn");
+    const clearBtn = document.getElementById("clearBtn");
+    const partyLabel = document.getElementById("partyLabel");
+    const modeBadge = document.getElementById("modeBadge");
+    const formMessage = document.getElementById("formMessage");
+    const partySuggestions = document.getElementById("partySuggestions");
 
-const txnType = document.getElementById("txnType");
-const txnDate = document.getElementById("txnDate");
-const voucherNo = document.getElementById("voucherNo");
-const amount = document.getElementById("amount");
-const partyName = document.getElementById("partyName");
-const remarks = document.getElementById("remarks");
-const saveBtn = document.getElementById("saveBtn");
-const clearBtn = document.getElementById("clearBtn");
-const partyLabel = document.getElementById("partyLabel");
-const modeBadge = document.getElementById("modeBadge");
-const creditChip = document.getElementById("creditChip");
-const formMessage = document.getElementById("formMessage");
-const partySuggestions = document.getElementById("partySuggestions");
+    const searchParty = document.getElementById("searchParty");
+    const searchType = document.getElementById("searchType");
+    const searchDate = document.getElementById("searchDate");
+    const searchBtn = document.getElementById("searchBtn");
+    const resultsBody = document.getElementById("resultsBody");
 
-const searchParty = document.getElementById("searchParty");
-const searchType = document.getElementById("searchType");
-const searchDate = document.getElementById("searchDate");
-const searchBtn = document.getElementById("searchBtn");
-const resultsBody = document.getElementById("resultsBody");
+    let suggestionItems = [];
+    let activeSuggestionIndex = -1;
+    let isSaving = false;
 
-let suggestionItems = [];
-let activeSuggestionIndex = -1;
-let isSaving = false;
-let selectedCreditBill = null;
-
-window.onload = async function(){
-    txnDate.value = new Date().toISOString().split("T")[0];
-    updateTypeUI();
-    await generateNextVoucherNo();
-    await loadTransactions();
-    setupEnterNavigation();
-    await applyUrlPrefill();
-};
-
-txnType.addEventListener("change", async () => {
-    updateTypeUI();
-    resetCreditSelection(false);
-    await generateNextVoucherNo();
-});
-
-function updateTypeUI(){
-    if(txnType.value === "payment"){
-        partyLabel.textContent = "Paid To";
-        modeBadge.textContent = "Payment Mode";
-    }else{
-        partyLabel.textContent = "Received From";
-        modeBadge.textContent = "Receipt Mode";
-    }
-    creditChip.style.display = selectedCreditBill ? "inline-block" : "none";
-}
-
-function resetCreditSelection(clearAmount = false){
-    selectedCreditBill = null;
-    creditChip.style.display = "none";
-    if(clearAmount) amount.value = "";
-}
-
-async function generateNextVoucherNo(){
-    const prefix = txnType.value === "payment" ? "PAY" : "REC";
-    const { data, error } = await sb
-        .from("cash_transactions")
-        .select("voucher_no")
-        .eq("txn_type", txnType.value)
-        .order("id", { ascending: false })
-        .limit(1);
-
-    if(error){
-        console.error(error);
-        voucherNo.value = `${prefix}-0001`;
-        return;
-    }
-
-    let nextNumber = 1;
-    if(data && data.length){
-        const lastVoucher = data[0].voucher_no || "";
-        const match = lastVoucher.match(/(\d+)$/);
-        if(match) nextNumber = parseInt(match[1], 10) + 1;
-    }
-    voucherNo.value = `${prefix}-${String(nextNumber).padStart(4, "0")}`;
-}
-
-partyName.addEventListener("input", async function(){
-    activeSuggestionIndex = -1;
-    const q = partyName.value.trim();
-    resetCreditSelection(true);
-
-    if(!q){
-        hideSuggestions();
+    // =========================
+    // 3. INITIAL LOAD
+    // =========================
+    window.onload = async function(){
+        txnDate.value = new Date().toISOString().split("T")[0];
+        updateTypeUI();
+        await generateNextVoucherNo();
         await loadTransactions();
-        return;
-    }
+        setupEnterNavigation();
+    };
 
-    await showPartySuggestions(q);
-    await loadTransactions(q);
-});
-
-partyName.addEventListener("keydown", function(e){
-    const items = partySuggestions.querySelectorAll(".autocomplete-item");
-
-    if(partySuggestions.style.display === "block" && items.length){
-        if(e.key === "ArrowDown"){
-            e.preventDefault();
-            activeSuggestionIndex = Math.min(activeSuggestionIndex + 1, items.length - 1);
-            highlightSuggestion(items);
-            return;
-        }
-        if(e.key === "ArrowUp"){
-            e.preventDefault();
-            activeSuggestionIndex = Math.max(activeSuggestionIndex - 1, 0);
-            highlightSuggestion(items);
-            return;
-        }
-        if(e.key === "Enter" && activeSuggestionIndex >= 0){
-            e.preventDefault();
-            items[activeSuggestionIndex].click();
-            return;
-        }
-        if(e.key === "Escape"){
-            hideSuggestions();
-        }
-    }
-});
-
-document.addEventListener("click", function(e){
-    if(!partySuggestions.contains(e.target) && e.target !== partyName){
-        hideSuggestions();
-    }
-});
-
-async function showPartySuggestions(query){
-    const items = [];
-    const cleanQuery = query.trim();
-
-    const { data: partyData, error: partyErr } = await sb
-        .from("parties")
-        .select("id, party_name")
-        .ilike("party_name", `%${cleanQuery}%`)
-        .order("party_name", { ascending: true })
-        .limit(8);
-
-    if(partyErr){
-        console.error(partyErr);
-    } else {
-        (partyData || []).forEach(row => {
-            items.push({
-                kind: "party",
-                party_name: row.party_name || "",
-                label: row.party_name || ""
-            });
-        });
-    }
-
-    if(txnType.value === "receipt"){
-        const creditItems = await fetchCustomerCreditBills(cleanQuery);
-        creditItems.forEach(row => items.push(row));
-    }
-
-    suggestionItems = items;
-    renderSuggestions(items, cleanQuery);
-}
-
-async function fetchCustomerCreditBills(query){
-    const search = (query || "").trim();
-    if(!search) return [];
-
-    const maybeMobile = search.replace(/\D/g, "");
-    let q = sb
-        .from("sales_details")
-        .select("id, series_code, sales_number, bill_date, customer_mobile, customer_name, payment_type, paid_amount, balance_amount")
-        .eq("payment_type", "CREDIT")
-        .gt("balance_amount", 0)
-        .order("bill_date", { ascending: false })
-        .limit(12);
-
-    if(maybeMobile.length >= 3){
-        q = q.ilike("customer_mobile", `%${maybeMobile}%`);
-    } else {
-        q = q.ilike("customer_name", `%${search}%`);
-    }
-
-    const { data, error } = await q;
-    if(error){
-        console.error("Credit bill load error:", error);
-        return [];
-    }
-
-    return (data || []).map(row => ({
-        kind: "credit_bill",
-        sales_id: row.id,
-        series_code: row.series_code || "",
-        sales_number: row.sales_number || "",
-        bill_date: row.bill_date || "",
-        customer_mobile: row.customer_mobile || "",
-        customer_name: row.customer_name || "",
-        balance_amount: parseFloat(row.balance_amount || 0),
-        paid_amount: parseFloat(row.paid_amount || 0),
-        label: `${row.customer_name || ""} ${row.customer_mobile || ""}`.trim()
-    }));
-}
-
-function renderSuggestions(items, query){
-    partySuggestions.innerHTML = "";
-
-    if(!items.length){
-        hideSuggestions();
-        return;
-    }
-
-    items.forEach((item, index) => {
-        const div = document.createElement("div");
-        div.className = "autocomplete-item";
-        div.dataset.index = index;
-
-        if(item.kind === "credit_bill"){
-            div.innerHTML = `
-                <div class="credit-item-title">${escapeHtml(item.customer_name || "")} ${item.customer_mobile ? "- " + escapeHtml(item.customer_mobile) : ""}</div>
-                <div class="credit-item-sub">Bill ${escapeHtml(formatBillNo(item.series_code, item.sales_number))} • ${escapeHtml(item.bill_date || "")} • Pending ₹${Number(item.balance_amount || 0).toFixed(2)}</div>
-            `;
-        } else {
-            const safeName = escapeHtml(item.party_name || "");
-            const safeQuery = escapeRegExp(query);
-            const regex = new RegExp(`(${safeQuery})`, "ig");
-            div.innerHTML = safeName.replace(regex, "<strong>$1</strong>");
-        }
-
-        div.addEventListener("click", async () => {
-            if(item.kind === "credit_bill"){
-                applySelectedCreditBill(item);
-            } else {
-                partyName.value = item.party_name || "";
-                resetCreditSelection(true);
-            }
-            hideSuggestions();
-            amount.focus();
-            await loadTransactions(partyName.value.trim());
-        });
-
-        partySuggestions.appendChild(div);
+    // =========================
+    // 4. TYPE UI
+    // =========================
+    txnType.addEventListener("change", async () => {
+        updateTypeUI();
+        await generateNextVoucherNo();
     });
 
-    partySuggestions.style.display = "block";
-}
-
-function applySelectedCreditBill(item){
-    selectedCreditBill = item;
-    partyName.value = item.customer_mobile || item.customer_name || "";
-    amount.value = Number(item.balance_amount || 0).toFixed(2);
-    creditChip.style.display = "inline-block";
-    remarks.value = `Credit collection for bill ${formatBillNo(item.series_code, item.sales_number)}`;
-}
-
-function highlightSuggestion(items){
-    items.forEach(item => item.classList.remove("active"));
-    if(items[activeSuggestionIndex]){
-        items[activeSuggestionIndex].classList.add("active");
-        items[activeSuggestionIndex].scrollIntoView({ block: "nearest" });
-    }
-}
-
-function hideSuggestions(){
-    partySuggestions.style.display = "none";
-    partySuggestions.innerHTML = "";
-    activeSuggestionIndex = -1;
-}
-
-function escapeRegExp(string){
-    return String(string).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-async function ensurePartyExists(name){
-    const cleanName = name.trim();
-    if(!cleanName) return null;
-
-    const { data: existing } = await sb
-        .from("parties")
-        .select("id, party_name")
-        .eq("party_name", cleanName)
-        .maybeSingle();
-
-    if(existing) return existing.id;
-
-    const { data, error } = await sb
-        .from("parties")
-        .insert([{ party_name: cleanName }])
-        .select("id")
-        .single();
-
-    if(error){
-        console.error("Party save error:", error);
-        return null;
+    function updateTypeUI(){
+        if(txnType.value === "payment"){
+            partyLabel.textContent = "Paid To";
+            modeBadge.textContent = "Payment Mode";
+        }else{
+            partyLabel.textContent = "Received From";
+            modeBadge.textContent = "Receipt Mode";
+        }
     }
 
-    return data.id;
-}
+    // =========================
+    // 5. NEXT VOUCHER NUMBER
+    // =========================
+    async function generateNextVoucherNo(){
+        const prefix = txnType.value === "payment" ? "PAY" : "REC";
 
-saveBtn.addEventListener("click", saveTransaction);
+        const { data, error } = await sb
+            .from("cash_transactions")
+            .select("voucher_no")
+            .eq("txn_type", txnType.value)
+            .order("id", { ascending: false })
+            .limit(1);
 
-async function saveTransaction(){
-    if(isSaving) return;
-
-    const type = txnType.value;
-    const date = txnDate.value;
-    const voucher = voucherNo.value.trim();
-    const party = partyName.value.trim();
-    const amt = parseFloat(amount.value || 0);
-    const note = remarks.value.trim();
-
-    if(!date){
-        showMessage("Please select date", false);
-        txnDate.focus();
-        return;
-    }
-
-    if(!voucher){
-        showMessage("Voucher number missing", false);
-        return;
-    }
-
-    if(!party){
-        showMessage(`Please enter ${type === "payment" ? "Paid To" : "Received From"} name`, false);
-        partyName.focus();
-        return;
-    }
-
-    if(!amt || amt <= 0){
-        showMessage("Please enter valid amount", false);
-        amount.focus();
-        return;
-    }
-
-    if(selectedCreditBill && amt > Number(selectedCreditBill.balance_amount || 0)){
-        showMessage("Receipt amount cannot be more than pending credit balance", false);
-        amount.focus();
-        return;
-    }
-
-    isSaving = true;
-    saveBtn.disabled = true;
-    saveBtn.textContent = "Saving...";
-
-    try{
-        let savedPartyName = party;
-        if(selectedCreditBill){
-            savedPartyName = selectedCreditBill.customer_name || party;
+        if(error){
+            console.error(error);
+            voucherNo.value = `${prefix}-0001`;
+            return;
         }
 
-        const partyId = await ensurePartyExists(savedPartyName);
+        let nextNumber = 1;
 
-        const insertRow = {
-            voucher_no: voucher,
-            txn_date: date,
-            txn_type: type,
-            party_id: partyId,
-            party_name: savedPartyName,
-            amount: amt,
-            remarks: note || null,
-            reference_id: selectedCreditBill ? selectedCreditBill.sales_id : null,
-            reference_type: selectedCreditBill ? "sales_credit" : null,
-            approval_status: (type === "receipt" && selectedCreditBill) ? "pending" : "approved"
-        };
+        if(data && data.length){
+            const lastVoucher = data[0].voucher_no || "";
+            const match = lastVoucher.match(/(\d+)$/);
+            if(match){
+                nextNumber = parseInt(match[1], 10) + 1;
+            }
+        }
 
-        const { error } = await sb
-            .from("cash_transactions")
-            .insert([insertRow]);
-
-        if(error) throw error;
-
-        showMessage("Transaction saved successfully", true);
-        await loadTransactions(searchParty.value.trim());
-        clearForm(false);
-        await generateNextVoucherNo();
-        partyName.focus();
-
-    }catch(err){
-        console.error(err);
-        showMessage(err.message || "Failed to save transaction", false);
-    }finally{
-        isSaving = false;
-        saveBtn.disabled = false;
-        saveBtn.textContent = "Save Entry";
-    }
-}
-
-clearBtn.addEventListener("click", () => clearForm(true));
-
-function clearForm(withVoucherRefresh = true){
-    txnDate.value = new Date().toISOString().split("T")[0];
-    partyName.value = "";
-    amount.value = "";
-    remarks.value = "";
-    hideSuggestions();
-    formMessage.textContent = "";
-    resetCreditSelection(true);
-
-    if(withVoucherRefresh){
-        generateNextVoucherNo();
-    }
-}
-
-function showMessage(msg, ok){
-    formMessage.textContent = msg;
-    formMessage.className = "message " + (ok ? "success-msg" : "error-msg");
-}
-
-searchBtn.addEventListener("click", () => loadTransactions(searchParty.value.trim()));
-searchParty.addEventListener("input", () => loadTransactions(searchParty.value.trim()));
-searchType.addEventListener("change", () => loadTransactions(searchParty.value.trim()));
-searchDate.addEventListener("change", () => loadTransactions(searchParty.value.trim()));
-
-async function loadTransactions(nameFilter = ""){
-    let query = sb
-        .from("cash_transactions")
-        .select("id, txn_date, voucher_no, txn_type, party_name, amount, remarks, approval_status, approved_by, approved_at, reference_id, reference_type")
-        .order("txn_date", { ascending: false })
-        .order("id", { ascending: false })
-        .limit(100);
-
-    const partySearchValue = (nameFilter || searchParty.value || "").trim();
-    const typeValue = searchType.value;
-    const dateValue = searchDate.value;
-
-    if(partySearchValue) query = query.ilike("party_name", `%${partySearchValue}%`);
-    if(typeValue) query = query.eq("txn_type", typeValue);
-    if(dateValue) query = query.eq("txn_date", dateValue);
-
-    const { data, error } = await query;
-
-    if(error){
-        console.error(error);
-        resultsBody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:red;">Failed to load transactions</td></tr>`;
-        return;
+        voucherNo.value = `${prefix}-${String(nextNumber).padStart(4, "0")}`;
     }
 
-    let rows = data || [];
-    const linkedIds = rows.filter(r => r.reference_type === "sales_credit" && r.reference_id).map(r => r.reference_id);
-    let salesMap = {};
+    // =========================
+    // 6. PARTY AUTOCOMPLETE
+    // =========================
+    partyName.addEventListener("input", async function(){
+        activeSuggestionIndex = -1;
+        const q = partyName.value.trim();
 
-    if(linkedIds.length){
-        const uniqueIds = [...new Set(linkedIds)];
-        const { data: salesRows } = await sb
-            .from("sales_details")
-            .select("id, series_code, sales_number")
-            .in("id", uniqueIds);
+        if(!q){
+            hideSuggestions();
+            await loadTransactions();
+            return;
+        }
 
-        (salesRows || []).forEach(row => {
-            salesMap[row.id] = row;
+        await showPartySuggestions(q);
+        await loadTransactions(q);
+    });
+
+    partyName.addEventListener("keydown", function(e){
+        const items = partySuggestions.querySelectorAll(".autocomplete-item");
+
+        if(partySuggestions.style.display === "block" && items.length){
+            if(e.key === "ArrowDown"){
+                e.preventDefault();
+                activeSuggestionIndex = Math.min(activeSuggestionIndex + 1, items.length - 1);
+                highlightSuggestion(items);
+                return;
+            }
+
+            if(e.key === "ArrowUp"){
+                e.preventDefault();
+                activeSuggestionIndex = Math.max(activeSuggestionIndex - 1, 0);
+                highlightSuggestion(items);
+                return;
+            }
+
+            if(e.key === "Enter" && activeSuggestionIndex >= 0){
+                e.preventDefault();
+                items[activeSuggestionIndex].click();
+                return;
+            }
+
+            if(e.key === "Escape"){
+                hideSuggestions();
+            }
+        }
+    });
+
+    document.addEventListener("click", function(e){
+        if(!partySuggestions.contains(e.target) && e.target !== partyName){
+            hideSuggestions();
+        }
+    });
+
+    async function showPartySuggestions(query){
+        const { data, error } = await sb
+            .from("parties")
+            .select("id, party_name")
+            .ilike("party_name", `%${query}%`)
+            .order("party_name", { ascending: true })
+            .limit(8);
+
+        if(error){
+            console.error(error);
+            hideSuggestions();
+            return;
+        }
+
+        suggestionItems = data || [];
+        renderSuggestions(suggestionItems, query);
+    }
+
+    function renderSuggestions(items, query){
+        partySuggestions.innerHTML = "";
+
+        if(!items.length){
+            hideSuggestions();
+            return;
+        }
+
+        items.forEach((item, index) => {
+            const div = document.createElement("div");
+            div.className = "autocomplete-item";
+            div.dataset.index = index;
+
+            const safeName = item.party_name;
+            const regex = new RegExp(`(${escapeRegExp(query)})`, "ig");
+            div.innerHTML = safeName.replace(regex, "<strong>$1</strong>");
+
+            div.addEventListener("click", async () => {
+                partyName.value = item.party_name;
+                hideSuggestions();
+                amount.focus();
+                await loadTransactions(item.party_name);
+            });
+
+            partySuggestions.appendChild(div);
         });
+
+        partySuggestions.style.display = "block";
     }
 
-    renderTransactions(rows, salesMap);
-}
+    function highlightSuggestion(items){
+        items.forEach(item => item.classList.remove("active"));
+        if(items[activeSuggestionIndex]){
+            items[activeSuggestionIndex].classList.add("active");
+            items[activeSuggestionIndex].scrollIntoView({ block: "nearest" });
+        }
+    }
 
-function renderTransactions(rows, salesMap = {}){
+    function hideSuggestions(){
+        partySuggestions.style.display = "none";
+        partySuggestions.innerHTML = "";
+        activeSuggestionIndex = -1;
+    }
+
+    function escapeRegExp(string){
+        return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }
+
+    // =========================
+    // 7. SAVE PARTY IF NEW
+    // =========================
+    async function ensurePartyExists(name){
+        const cleanName = name.trim();
+        if(!cleanName) return null;
+
+        const { data: existing } = await sb
+            .from("parties")
+            .select("id, party_name")
+            .eq("party_name", cleanName)
+            .maybeSingle();
+
+        if(existing) return existing.id;
+
+        const { data, error } = await sb
+            .from("parties")
+            .insert([{ party_name: cleanName }])
+            .select("id")
+            .single();
+
+        if(error){
+            console.error("Party save error:", error);
+            return null;
+        }
+
+        return data.id;
+    }
+
+    // =========================
+    // 8. SAVE TRANSACTION
+    // =========================
+    saveBtn.addEventListener("click", saveTransaction);
+
+    async function saveTransaction(){
+        if(isSaving) return;
+
+        const type = txnType.value;
+        const date = txnDate.value;
+        const voucher = voucherNo.value.trim();
+        const party = partyName.value.trim();
+        const amt = parseFloat(amount.value || 0);
+        const note = remarks.value.trim();
+
+        if(!date){
+            showMessage("Please select date", false);
+            txnDate.focus();
+            return;
+        }
+
+        if(!voucher){
+            showMessage("Voucher number missing", false);
+            return;
+        }
+
+        if(!party){
+            showMessage(`Please enter ${type === "payment" ? "Paid To" : "Received From"} name`, false);
+            partyName.focus();
+            return;
+        }
+
+        if(!amt || amt <= 0){
+            showMessage("Please enter valid amount", false);
+            amount.focus();
+            return;
+        }
+
+        isSaving = true;
+        saveBtn.disabled = true;
+        saveBtn.textContent = "Saving...";
+
+        try{
+            const partyId = await ensurePartyExists(party);
+
+            const { error } = await sb
+    .from("cash_transactions")
+    .insert([{
+        voucher_no: voucher,
+        txn_date: date,
+        txn_type: type,
+        party_id: partyId,
+        party_name: party,
+        amount: amt,
+        remarks: note || null,
+        approval_status: type === "receipt" ? "approved" : "pending"
+    }]);
+
+            if(error) throw error;
+
+            showMessage("Transaction saved successfully", true);
+            await loadTransactions(party);
+            clearForm(false);
+            await generateNextVoucherNo();
+            partyName.focus();
+
+        }catch(err){
+            console.error(err);
+            showMessage(err.message || "Failed to save transaction", false);
+        }finally{
+            isSaving = false;
+            saveBtn.disabled = false;
+            saveBtn.textContent = "Save Entry";
+        }
+    }
+
+    // =========================
+    // 9. CLEAR FORM
+    // =========================
+    clearBtn.addEventListener("click", () => clearForm(true));
+
+    function clearForm(withVoucherRefresh = true){
+        txnDate.value = new Date().toISOString().split("T")[0];
+        partyName.value = "";
+        amount.value = "";
+        remarks.value = "";
+        hideSuggestions();
+        formMessage.textContent = "";
+
+        if(withVoucherRefresh){
+            generateNextVoucherNo();
+        }
+    }
+
+    function showMessage(msg, ok){
+        formMessage.textContent = msg;
+        formMessage.className = "message " + (ok ? "success-msg" : "error-msg");
+    }
+
+    // =========================
+    // 10. LOAD TRANSACTIONS
+    // =========================
+    searchBtn.addEventListener("click", () => {
+        loadTransactions(searchParty.value.trim());
+    });
+
+    searchParty.addEventListener("input", () => {
+        loadTransactions(searchParty.value.trim());
+    });
+
+    searchType.addEventListener("change", () => {
+        loadTransactions(searchParty.value.trim());
+    });
+
+    searchDate.addEventListener("change", () => {
+        loadTransactions(searchParty.value.trim());
+    });
+
+    async function loadTransactions(nameFilter = ""){
+        let query = sb
+            .from("cash_transactions")
+            .select("id, txn_date, voucher_no, txn_type, party_name, amount, remarks, approval_status, approved_by, approved_at")
+            .order("txn_date", { ascending: false })
+            .order("id", { ascending: false })
+            .limit(100);
+
+        const partySearchValue = (nameFilter || searchParty.value || "").trim();
+        const typeValue = searchType.value;
+        const dateValue = searchDate.value;
+
+        if(partySearchValue){
+            query = query.ilike("party_name", `%${partySearchValue}%`);
+        }
+
+        if(typeValue){
+            query = query.eq("txn_type", typeValue);
+        }
+
+        if(dateValue){
+            query = query.eq("txn_date", dateValue);
+        }
+
+        const { data, error } = await query;
+
+        if(error){
+            console.error(error);
+            resultsBody.innerHTML = `
+                <tr>
+                    <td colspan="6" style="text-align:center; color:red;">Failed to load transactions</td>
+                </tr>
+            `;
+            return;
+        }
+
+        renderTransactions(data || []);
+    }
+
+function renderTransactions(rows){
     if(!rows.length){
-        resultsBody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:#64748b;">No transactions found</td></tr>`;
+        resultsBody.innerHTML = `
+            <tr>
+                <td colspan="7" style="text-align:center; color:#64748b;">No transactions found</td>
+            </tr>
+        `;
         return;
     }
 
@@ -817,231 +839,121 @@ function renderTransactions(rows, salesMap = {}){
         let approveCell = "-";
 
         if(row.txn_type === "payment"){
-            approveCell = `<span class="status-badge status-not-needed">Not Needed</span>`;
-        } else if(row.reference_type === "sales_credit"){
             if(row.approval_status === "approved"){
                 approveCell = `<span class="status-badge status-approved">Approved</span>`;
             } else if(row.approval_status === "rejected"){
                 approveCell = `<span class="status-badge status-rejected">Rejected</span>`;
             } else if(canApprove){
-                approveCell = `<button class="accept-btn" onclick="approveCreditReceipt(${row.id})">Accept</button>`;
+                approveCell = `<button class="accept-btn" onclick="approvePayment(${row.id})">Accept</button>`;
             } else {
                 approveCell = `<span class="status-badge status-pending">Pending</span>`;
             }
         } else {
-            approveCell = `<span class="status-badge status-not-needed">Not Needed</span>`;
-        }
-
-        let linkedBill = "-";
-        if(row.reference_type === "sales_credit" && row.reference_id && salesMap[row.reference_id]){
-            linkedBill = `<span class="linked-bill">${escapeHtml(formatBillNo(salesMap[row.reference_id].series_code, salesMap[row.reference_id].sales_number))}</span>`;
+            approveCell = `<span class="status-badge status-approved">Not Needed</span>`;
         }
 
         return `
             <tr>
                 <td>${formatDate(row.txn_date)}</td>
-                <td>${escapeHtml(row.voucher_no || "")}</td>
-                <td><span class="${row.txn_type}">${escapeHtml(row.txn_type || "")}</span></td>
+                <td>${row.voucher_no}</td>
+                <td><span class="${row.txn_type}">${row.txn_type}</span></td>
                 <td>${escapeHtml(row.party_name || "")}</td>
-                <td>${linkedBill}</td>
-                <td class="amount">${Number(row.amount || 0).toFixed(2)}</td>
+                <td class="amount">${Number(row.amount).toFixed(2)}</td>
                 <td>${escapeHtml(row.remarks || "")}</td>
                 <td>${approveCell}</td>
             </tr>
         `;
     }).join("");
 }
+    function formatDate(dateStr){
+        if(!dateStr) return "";
+        const d = new Date(dateStr);
+        if(isNaN(d)) return dateStr;
+        return d.toLocaleDateString("en-GB");
+    }
 
-function formatDate(dateStr){
-    if(!dateStr) return "";
-    const d = new Date(dateStr);
-    if(isNaN(d)) return dateStr;
-    return d.toLocaleDateString("en-GB");
-}
+    function escapeHtml(text){
+        return String(text)
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll('"', "&quot;")
+            .replaceAll("'", "&#039;");
+    }
 
-function formatBillNo(series, number){
-    const s = series || "";
-    const n = number || "";
-    return s && n ? `${s}-${n}` : (n || s || "");
-}
-
-function escapeHtml(text){
-    return String(text || "")
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
-}
-
-async function approveCreditReceipt(id) {
+async function approvePayment(id) {
     const role = (localStorage.getItem("role") || "staff").toLowerCase();
-    const username = localStorage.getItem("username") || localStorage.getItem("staff_name") || "Unknown";
+    const username = localStorage.getItem("username") || "Unknown";
 
     if (!["admin", "manager", "owner"].includes(role)) {
-        alert("Only admin, manager, or owner can approve credit receipts.");
+        alert("Only admin or manager can approve payment.");
         return;
     }
 
-    const ok = confirm("Do you want to approve this credit receipt?");
+    const ok = confirm("Do you want to approve this payment?");
     if (!ok) return;
 
-    const { data: txRow, error: txErr } = await sb
-        .from("cash_transactions")
-        .select("id, amount, reference_id, reference_type, approval_status")
-        .eq("id", id)
-        .maybeSingle();
-
-    if (txErr || !txRow) {
-        alert("Unable to load receipt record.");
-        return;
-    }
-
-    if (txRow.approval_status === "approved") {
-        alert("This receipt is already approved.");
-        return;
-    }
-
-    if (txRow.reference_type !== "sales_credit" || !txRow.reference_id) {
-        alert("This receipt is not linked to a credit bill.");
-        return;
-    }
-
-    const { data: saleRow, error: saleErr } = await sb
-        .from("sales_details")
-        .select("id, paid_amount, balance_amount")
-        .eq("id", txRow.reference_id)
-        .maybeSingle();
-
-    if (saleErr || !saleRow) {
-        alert("Unable to load linked sales bill.");
-        return;
-    }
-
-    const currentPaid = parseFloat(saleRow.paid_amount || 0);
-    const currentBalance = parseFloat(saleRow.balance_amount || 0);
-    const receiptAmount = parseFloat(txRow.amount || 0);
-
-    if (receiptAmount <= 0) {
-        alert("Invalid receipt amount.");
-        return;
-    }
-
-    if (receiptAmount > currentBalance) {
-        alert("Receipt amount is greater than current pending balance.");
-        return;
-    }
-
-    const newPaid = currentPaid + receiptAmount;
-    const newBalance = Math.max(0, currentBalance - receiptAmount);
-
-    const { error: salesUpdErr } = await sb
-        .from("sales_details")
-        .update({
-            paid_amount: newPaid,
-            balance_amount: newBalance
-        })
-        .eq("id", txRow.reference_id);
-
-    if (salesUpdErr) {
-        alert("Failed to update credit balance: " + salesUpdErr.message);
-        return;
-    }
-
-    const { error: txUpdErr } = await sb
+    const { error } = await sb
         .from("cash_transactions")
         .update({
             approval_status: "approved",
             approved_by: username,
             approved_at: new Date().toISOString()
         })
-        .eq("id", id);
+        .eq("id", id)
+        .eq("txn_type", "payment");
 
-    if (txUpdErr) {
-        alert("Approval failed: " + txUpdErr.message);
+    if (error) {
+        alert("Approval failed: " + error.message);
         return;
     }
 
-    alert("Credit receipt approved successfully");
+    alert("Payment approved successfully");
     await loadTransactions(searchParty.value.trim());
 }
+    // =========================
+    // 11. ENTER KEY NAVIGATION
+    // =========================
+    function setupEnterNavigation(){
+        const orderedFields = [
+            txnType,
+            txnDate,
+            partyName,
+            amount,
+            remarks,
+            saveBtn
+        ];
 
-async function applyUrlPrefill(){
-    const url = new URL(window.location.href);
-    const type = url.searchParams.get("type");
-    const mobile = (url.searchParams.get("mobile") || "").trim();
-    const name = (url.searchParams.get("name") || "").trim();
-    const bill = (url.searchParams.get("bill") || "").trim();
+        orderedFields.forEach((field, index) => {
+            field.addEventListener("keydown", function(e){
+                if(e.key !== "Enter") return;
 
-    if(type === "receipt"){
-        txnType.value = "receipt";
-        updateTypeUI();
-        await generateNextVoucherNo();
-    }
+                // allow dropdown selection first
+                if(field === partyName && partySuggestions.style.display === "block"){
+                    const items = partySuggestions.querySelectorAll(".autocomplete-item");
+                    if(items.length && activeSuggestionIndex >= 0){
+                        e.preventDefault();
+                        items[activeSuggestionIndex].click();
+                        return;
+                    }
+                }
 
-    if(mobile || name){
-        partyName.value = mobile || name;
-    }
-
-    if(type === "receipt" && (mobile || name)){
-        const searchKey = mobile || name;
-        const creditItems = await fetchCustomerCreditBills(searchKey);
-
-        if(creditItems.length){
-            let chosen = null;
-            if(bill){
-                chosen = creditItems.find(x => formatBillNo(x.series_code, x.sales_number) === bill) || null;
-            }
-            if(!chosen) chosen = creditItems[0];
-            applySelectedCreditBill(chosen);
-        } else if(name) {
-            remarks.value = bill ? `Credit collection for bill ${bill}` : "";
-        }
-    }
-
-    if(bill && !remarks.value){
-        remarks.value = `Credit collection for bill ${bill}`;
-    }
-}
-
-function setupEnterNavigation(){
-    const orderedFields = [
-        txnType,
-        txnDate,
-        partyName,
-        amount,
-        remarks,
-        saveBtn
-    ];
-
-    orderedFields.forEach((field, index) => {
-        field.addEventListener("keydown", function(e){
-            if(e.key !== "Enter") return;
-
-            if(field === partyName && partySuggestions.style.display === "block"){
-                const items = partySuggestions.querySelectorAll(".autocomplete-item");
-                if(items.length && activeSuggestionIndex >= 0){
+                // textarea: Enter should move, not create new line
+                if(field === remarks || field.tagName === "INPUT" || field.tagName === "SELECT" || field.tagName === "BUTTON"){
                     e.preventDefault();
-                    items[activeSuggestionIndex].click();
-                    return;
+                    const next = orderedFields[index + 1];
+                    if(next){
+                        next.focus();
+                        if(next.select) next.select();
+                    }else{
+                        saveTransaction();
+                    }
                 }
-            }
-
-            if(field === remarks || field.tagName === "INPUT" || field.tagName === "SELECT" || field.tagName === "BUTTON"){
-                e.preventDefault();
-                const next = orderedFields[index + 1];
-                if(next){
-                    next.focus();
-                    if(next.select) next.select();
-                }else{
-                    saveTransaction();
-                }
-            }
+            });
         });
-    });
-}
+    }
 
-window.approveCreditReceipt = approveCreditReceipt;
+    
 </script>
 </body>
 </html>

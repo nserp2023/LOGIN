@@ -2192,6 +2192,9 @@ function calcTotal() {
     }
 
     async function saveAndPrint() {
+        const totalAmount = parseFloat(
+    (document.getElementById('display_grand_total').innerText || '₹0').replace('₹','')
+) || 0;
         const docType=document.getElementById("doc_type").value;
         const btn = document.getElementById('btn_save');
         if(btn.disabled) return; 

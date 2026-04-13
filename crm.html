@@ -326,7 +326,7 @@
 
     .toolbar{
       display:grid;
-      grid-template-columns:1.5fr 1fr 1fr 1fr 1fr;
+      grid-template-columns:1.4fr 1fr 1fr 1fr 1fr 1fr;
       gap:12px;
       margin-bottom:14px;
     }
@@ -427,6 +427,18 @@
     .mini-view{background:#ede9fe;color:#6d28d9}
     .mini-edit{background:#dbeafe;color:#1d4ed8}
     .mini-delete{background:#fee2e2;color:#b91c1c}
+    .mini-solve{background:#dcfce7;color:#166534}
+    .mini-progress{background:#fef3c7;color:#92400e}
+
+    .status-open{background:#fee2e2;color:#b91c1c}
+    .status-progress{background:#fef3c7;color:#92400e}
+    .status-solved{background:#dcfce7;color:#166534}
+    .status-closed{background:#e0f2fe;color:#0369a1}
+
+    .timeline{display:grid;gap:10px}
+    .timeline-item{border:1px solid #e2e8f0;border-radius:12px;padding:12px;background:#fff}
+    .timeline-item .line1{font-size:13px;font-weight:900}
+    .timeline-item .line2{margin-top:6px;font-size:12px;color:var(--muted);line-height:1.45}
 
     .empty{
       text-align:center;
@@ -647,12 +659,12 @@
         <div class="value" id="overdueFollowups">0</div>
       </div>
       <div class="stat">
-        <div class="label">High Priority</div>
-        <div class="value" id="highPriorityCount">0</div>
+        <div class="label">Open Complaints</div>
+        <div class="value" id="openComplaintsCount">0</div>
       </div>
       <div class="stat">
-        <div class="label">Pending Follow-ups</div>
-        <div class="value" id="pendingFollowups">0</div>
+        <div class="label">Solved Complaints</div>
+        <div class="value" id="solvedComplaintsCount">0</div>
       </div>
     </div>
 
@@ -663,7 +675,7 @@
           <div class="panel-header">
             <div>
               <h2 id="formTitle">Create CRM Customer</h2>
-              <p id="formSubtitle">Add customer, interests, follow-up and notes</p>
+              <p id="formSubtitle">Add customer, enquiry, complaint, follow-up and solution tracking</p>
             </div>
             <div class="badge" id="modeBadge">CREATE MODE</div>
           </div>
@@ -717,6 +729,52 @@
                   <input type="date" id="nextFollowupDate" style="text-transform:none;">
                 </div>
 
+                <div class="field">
+                  <label for="crmType">CRM Type</label>
+                  <select id="crmType">
+                    <option value="LEAD">LEAD</option>
+                    <option value="ENQUIRY">ENQUIRY</option>
+                    <option value="COMPLAINT">COMPLAINT</option>
+                    <option value="SERVICE">SERVICE</option>
+                    <option value="FOLLOW-UP">FOLLOW-UP</option>
+                  </select>
+                </div>
+
+                <div class="field">
+                  <label for="complaintStatus">Complaint Status</label>
+                  <select id="complaintStatus">
+                    <option value="OPEN">OPEN</option>
+                    <option value="IN PROGRESS">IN PROGRESS</option>
+                    <option value="SOLVED">SOLVED</option>
+                    <option value="CLOSED">CLOSED</option>
+                  </select>
+                </div>
+
+                <div class="field full">
+                  <label for="complaintTitle">Complaint / Enquiry Title</label>
+                  <input type="text" id="complaintTitle" placeholder="EXAMPLE: FAN NOT WORKING / CUSTOMER ASKED FOR CHIMNEY DEMO">
+                </div>
+
+                <div class="field">
+                  <label for="complaintOpenDate">Complaint Open Date</label>
+                  <input type="date" id="complaintOpenDate" style="text-transform:none;">
+                </div>
+
+                <div class="field">
+                  <label for="assignedTo">Assigned To</label>
+                  <input type="text" id="assignedTo" placeholder="STAFF NAME / TECHNICIAN">
+                </div>
+
+                <div class="field">
+                  <label for="lastContactDate">Last Contact Date</label>
+                  <input type="date" id="lastContactDate" style="text-transform:none;">
+                </div>
+
+                <div class="field">
+                  <label for="complaintSolvedDate">Solved Date</label>
+                  <input type="date" id="complaintSolvedDate" style="text-transform:none;">
+                </div>
+
                 <div class="field full">
                   <label>Customer Interest Categories</label>
                   <div class="checkbox-grid">
@@ -734,8 +792,14 @@
                 </div>
 
                 <div class="field full">
-                  <label for="customerNotes">Notes / Requirement / Enquiry</label>
-                  <textarea id="customerNotes" placeholder="ENTER CUSTOMER REQUIREMENT, PRODUCT INTEREST, SITE DETAILS, FOLLOW-UP REMARKS"></textarea>
+                  <label for="customerNotes">Notes / Requirement / Complaint Details</label>
+                  <textarea id="customerNotes" placeholder="ENTER CUSTOMER REQUIREMENT, ISSUE DETAILS, SITE DETAILS, FOLLOW-UP REMARKS"></textarea>
+                </div>
+
+                <div class="field full">
+                  <label for="solutionNotes">Solution / Action Taken</label>
+                  <textarea id="solutionNotes" placeholder="ENTER WHAT WAS DONE, SPARE CHANGED, VISIT DETAILS, FINAL SOLUTION"></textarea>
+                  <div class="helper">Use the Solve button later to mark issue as solved instantly.</div>
                 </div>
               </div>
 
@@ -751,7 +815,7 @@
           <div class="panel-header">
             <div>
               <h2>Today / Pending Follow-ups</h2>
-              <p>Quick view of customer reminders</p>
+              <p>Quick view of customer reminders, complaints and pending actions</p>
             </div>
           </div>
           <div class="panel-body">
@@ -767,7 +831,7 @@
         <div class="panel-header">
           <div>
             <h2>CRM Customer List</h2>
-            <p>Search, filter, edit, delete and review customer interests</p>
+            <p>Search, filter, edit, solve, reopen and review customer complaints professionally</p>
           </div>
         </div>
 
@@ -776,8 +840,8 @@
             <button class="chip active" data-quick="ALL">ALL</button>
             <button class="chip" data-quick="TODAY">TODAY FOLLOW-UP</button>
             <button class="chip" data-quick="OVERDUE">OVERDUE</button>
-            <button class="chip" data-quick="HIGH">HIGH PRIORITY</button>
-            <button class="chip" data-quick="NOFOLLOW">NO FOLLOW-UP DATE</button>
+            <button class="chip" data-quick="OPENCOMPLAINT">OPEN COMPLAINT</button>
+            <button class="chip" data-quick="SOLVED">SOLVED</button>
           </div>
 
           <div class="toolbar">
@@ -790,6 +854,13 @@
               <option value="HIGH">HIGH</option>
             </select>
             <input type="text" id="interestFilter" placeholder="SEARCH INTEREST...">
+            <select id="statusFilter">
+              <option value="">ALL STATUS</option>
+              <option value="OPEN">OPEN</option>
+              <option value="IN PROGRESS">IN PROGRESS</option>
+              <option value="SOLVED">SOLVED</option>
+              <option value="CLOSED">CLOSED</option>
+            </select>
             <input type="text" id="addressFilter" placeholder="SEARCH ADDRESS...">
           </div>
 
@@ -802,15 +873,17 @@
                   <th>Mobile</th>
                   <th>Salesman</th>
                   <th>Address</th>
+                  <th>Type</th>
+                  <th>Status</th>
                   <th>Priority</th>
                   <th>Next Follow-up</th>
                   <th>Interest</th>
-                  <th>Notes</th>
+                  <th>Complaint / Notes</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody id="customerTableBody">
-                <tr><td colspan="10" class="empty">Loading CRM customers...</td></tr>
+                <tr><td colspan="12" class="empty">Loading CRM customers...</td></tr>
               </tbody>
             </table>
           </div>
@@ -822,7 +895,7 @@
         <div class="panel-header">
           <div>
             <h2>Customer Profile</h2>
-            <p>CRM details + billing history</p>
+            <p>CRM details, complaint tracker + billing history</p>
           </div>
         </div>
         <div class="panel-body" id="profilePanel">
@@ -863,11 +936,20 @@
     const priority = document.getElementById("priority");
     const nextFollowupDate = document.getElementById("nextFollowupDate");
     const customerNotes = document.getElementById("customerNotes");
+    const solutionNotes = document.getElementById("solutionNotes");
+    const crmType = document.getElementById("crmType");
+    const complaintStatus = document.getElementById("complaintStatus");
+    const complaintTitle = document.getElementById("complaintTitle");
+    const complaintOpenDate = document.getElementById("complaintOpenDate");
+    const assignedTo = document.getElementById("assignedTo");
+    const lastContactDate = document.getElementById("lastContactDate");
+    const complaintSolvedDate = document.getElementById("complaintSolvedDate");
 
     const searchInput = document.getElementById("searchInput");
     const salesmanFilter = document.getElementById("salesmanFilter");
     const priorityFilter = document.getElementById("priorityFilter");
     const interestFilter = document.getElementById("interestFilter");
+    const statusFilter = document.getElementById("statusFilter");
     const addressFilter = document.getElementById("addressFilter");
 
     const customerTableBody = document.getElementById("customerTableBody");
@@ -878,8 +960,8 @@
     const filteredCustomers = document.getElementById("filteredCustomers");
     const todayFollowups = document.getElementById("todayFollowups");
     const overdueFollowups = document.getElementById("overdueFollowups");
-    const highPriorityCount = document.getElementById("highPriorityCount");
-    const pendingFollowups = document.getElementById("pendingFollowups");
+    const openComplaintsCount = document.getElementById("openComplaintsCount");
+    const solvedComplaintsCount = document.getElementById("solvedComplaintsCount");
 
     const formTitle = document.getElementById("formTitle");
     const formSubtitle = document.getElementById("formSubtitle");
@@ -909,6 +991,7 @@
       salesmanFilter.addEventListener("input", renderCustomers);
       priorityFilter.addEventListener("change", renderCustomers);
       interestFilter.addEventListener("input", renderCustomers);
+      statusFilter.addEventListener("change", renderCustomers);
       addressFilter.addEventListener("input", renderCustomers);
 
       document.querySelectorAll(".chip").forEach(chip => {
@@ -931,6 +1014,57 @@
           try { el.setSelectionRange(start, end); } catch (_) {}
         });
       });
+    }
+
+
+    function defaultMeta() {
+      return {
+        entry_type: "LEAD",
+        complaint_status: "OPEN",
+        complaint_title: "",
+        complaint_open_date: "",
+        complaint_solved_date: "",
+        solution_notes: "",
+        assigned_to: "",
+        last_contact_date: ""
+      };
+    }
+
+    function parseNotes(raw) {
+      const text = String(raw || "");
+      const marker = "[[CRM_META_V1]]";
+      const idx = text.indexOf(marker);
+      if (idx === -1) return { visible: text.trim(), meta: defaultMeta() };
+      const visible = text.slice(0, idx).trim();
+      const metaText = text.slice(idx + marker.length).trim();
+      try {
+        const meta = { ...defaultMeta(), ...(JSON.parse(metaText) || {}) };
+        return { visible, meta };
+      } catch (_) {
+        return { visible: text.trim(), meta: defaultMeta() };
+      }
+    }
+
+    function buildNotes(visible, meta) {
+      const cleanMeta = { ...defaultMeta(), ...(meta || {}) };
+      return `${String(visible || "").trim()}\n\n[[CRM_META_V1]]${JSON.stringify(cleanMeta)}`.trim();
+    }
+
+    function getMeta(row) {
+      return parseNotes(row?.notes).meta;
+    }
+
+    function getVisibleNotes(row) {
+      return parseNotes(row?.notes).visible;
+    }
+
+    function statusClass(status) {
+      const s = normalize(status);
+      if (s === "OPEN") return "status-open";
+      if (s === "IN PROGRESS") return "status-progress";
+      if (s === "SOLVED") return "status-solved";
+      if (s === "CLOSED") return "status-closed";
+      return "badge-soft";
     }
 
     function showStatus(message, type="success") {
@@ -976,13 +1110,21 @@
       editingId = null;
       form.reset();
       setSelectedInterests([]);
+      crmType.value = "LEAD";
+      complaintStatus.value = "OPEN";
+      complaintOpenDate.value = todayStr();
+      complaintSolvedDate.value = "";
+      lastContactDate.value = todayStr();
+      solutionNotes.value = "";
+      complaintTitle.value = "";
+      assignedTo.value = "";
       setMode("create");
       hideStatus();
       customerName.focus();
     }
 
     async function loadCustomers() {
-      customerTableBody.innerHTML = `<tr><td colspan="10" class="empty">Loading CRM customers...</td></tr>`;
+      customerTableBody.innerHTML = `<tr><td colspan="12" class="empty">Loading CRM customers...</td></tr>`;
 
       const { data, error } = await sb
         .from(TABLE_NAME)
@@ -995,7 +1137,7 @@
           "crm_customers (id, name, mobile, salesman, address, gst_number, state_code, priority, next_followup_date, interests, notes, created_at)",
           "error"
         );
-        customerTableBody.innerHTML = `<tr><td colspan="10" class="empty">Error loading CRM customers</td></tr>`;
+        customerTableBody.innerHTML = `<tr><td colspan="12" class="empty">Error loading CRM customers</td></tr>`;
         followupList.innerHTML = `<div class="empty">Error loading follow-ups</div>`;
         return;
       }
@@ -1015,10 +1157,14 @@
       const today = todayStr();
 
       totalCustomers.textContent = customers.length;
-      highPriorityCount.textContent = customers.filter(c => normalize(c.priority) === "HIGH").length;
       todayFollowups.textContent = customers.filter(c => String(c.next_followup_date || "") === today).length;
       overdueFollowups.textContent = customers.filter(c => c.next_followup_date && String(c.next_followup_date) < today).length;
-      pendingFollowups.textContent = customers.filter(c => !!c.next_followup_date).length;
+      openComplaintsCount.textContent = customers.filter(c => {
+        const meta = getMeta(c);
+        return normalize(meta.entry_type) === "COMPLAINT" && ["OPEN", "IN PROGRESS"].includes(normalize(meta.complaint_status));
+      }).length;
+      solvedComplaintsCount.textContent = customers.filter(c => normalize(getMeta(c).complaint_status) === "SOLVED").length;
+      filteredCustomers.textContent = customers.length;
     }
 
     function applyQuickFilter(list) {
@@ -1030,11 +1176,14 @@
       if (quickFilter === "OVERDUE") {
         return list.filter(c => c.next_followup_date && String(c.next_followup_date) < today);
       }
-      if (quickFilter === "HIGH") {
-        return list.filter(c => normalize(c.priority) === "HIGH");
+      if (quickFilter === "OPENCOMPLAINT") {
+        return list.filter(c => {
+          const meta = getMeta(c);
+          return normalize(meta.entry_type) === "COMPLAINT" && ["OPEN", "IN PROGRESS"].includes(normalize(meta.complaint_status));
+        });
       }
-      if (quickFilter === "NOFOLLOW") {
-        return list.filter(c => !c.next_followup_date);
+      if (quickFilter === "SOLVED") {
+        return list.filter(c => normalize(getMeta(c).complaint_status) === "SOLVED");
       }
       return list;
     }
@@ -1044,15 +1193,19 @@
       const sm = normalize(salesmanFilter.value);
       const pr = normalize(priorityFilter.value);
       const interest = normalize(interestFilter.value);
+      const st = normalize(statusFilter.value);
       const addr = normalize(addressFilter.value);
 
       let filtered = customers.filter(c => {
+        const meta = getMeta(c);
         const interests = Array.isArray(c.interests) ? c.interests.join(" ") : String(c.interests || "");
+        const visibleNotes = getVisibleNotes(c);
         return (
-          (!term || normalize(c.name).includes(term) || normalize(c.mobile).includes(term)) &&
-          (!sm || normalize(c.salesman).includes(sm)) &&
+          (!term || normalize(c.name).includes(term) || normalize(c.mobile).includes(term) || normalize(meta.complaint_title).includes(term) || normalize(visibleNotes).includes(term)) &&
+          (!sm || normalize(c.salesman).includes(sm) || normalize(meta.assigned_to).includes(sm)) &&
           (!pr || normalize(c.priority) === pr) &&
           (!interest || normalize(interests).includes(interest)) &&
+          (!st || normalize(meta.complaint_status) === st) &&
           (!addr || normalize(c.address).includes(addr))
         );
       });
@@ -1062,12 +1215,14 @@
       filteredCustomers.textContent = filtered.length;
 
       if (!filtered.length) {
-        customerTableBody.innerHTML = `<tr><td colspan="10" class="empty">No CRM customers found</td></tr>`;
+        customerTableBody.innerHTML = `<tr><td colspan="12" class="empty">No CRM customers found</td></tr>`;
         return;
       }
 
       customerTableBody.innerHTML = filtered.map(c => {
         const interests = Array.isArray(c.interests) ? c.interests : [];
+        const meta = getMeta(c);
+        const visibleNotes = getVisibleNotes(c);
         const pClass = normalize(c.priority) === "HIGH"
           ? "priority-high"
           : normalize(c.priority) === "MEDIUM"
@@ -1081,16 +1236,24 @@
             <td>${c.id ?? ""}</td>
             <td>${escapeHtml(normalize(c.name))}</td>
             <td>${escapeHtml(normalize(c.mobile))}</td>
-            <td>${escapeHtml(normalize(c.salesman))}</td>
+            <td>${escapeHtml(normalize(c.salesman || meta.assigned_to))}</td>
             <td>${escapeHtml(normalize(c.address))}</td>
+            <td><span class="badge badge-purple">${escapeHtml(normalize(meta.entry_type || "LEAD"))}</span></td>
+            <td><span class="badge ${statusClass(meta.complaint_status)}">${escapeHtml(normalize(meta.complaint_status || "OPEN"))}</span></td>
             <td><span class="badge ${pClass}">${escapeHtml(normalize(c.priority || "LOW"))}</span></td>
             <td>${escapeHtml(String(c.next_followup_date || ""))}</td>
             <td>${interests.length ? interests.map(i => `<span class="badge">${escapeHtml(normalize(i))}</span>`).join("") : ""}</td>
-            <td>${escapeHtml(normalize(c.notes)).slice(0, 120)}</td>
+            <td>
+              <div style="font-weight:800;">${escapeHtml(normalize(meta.complaint_title || "-"))}</div>
+              <div style="margin-top:4px;color:#64748b;font-size:12px;line-height:1.45;">${escapeHtml(normalize(visibleNotes)).slice(0, 110)}</div>
+            </td>
             <td>
               <div class="table-actions">
                 <button class="mini-btn mini-view" onclick="openProfile(${c.id})">View</button>
                 <button class="mini-btn mini-edit" onclick="editCustomer(${c.id})">Edit</button>
+                ${["SOLVED","CLOSED"].includes(normalize(meta.complaint_status))
+                  ? `<button class="mini-btn mini-progress" onclick="reopenComplaint(${c.id})">Reopen</button>`
+                  : `<button class="mini-btn mini-solve" onclick="solveComplaint(${c.id})">Solve</button>`}
                 <button class="mini-btn mini-delete" onclick="deleteCustomer(${c.id}, '${escapeJs(normalize(c.name))}')">Delete</button>
               </div>
             </td>
@@ -1103,8 +1266,8 @@
       const today = todayStr();
 
       const list = customers
-        .filter(c => c.next_followup_date)
-        .sort((a, b) => String(a.next_followup_date).localeCompare(String(b.next_followup_date)));
+        .filter(c => c.next_followup_date || ["OPEN", "IN PROGRESS"].includes(normalize(getMeta(c).complaint_status)))
+        .sort((a, b) => String(a.next_followup_date || "9999-12-31").localeCompare(String(b.next_followup_date || "9999-12-31")));
 
       if (!list.length) {
         followupList.innerHTML = `<div class="empty">No follow-ups available</div>`;
@@ -1112,6 +1275,7 @@
       }
 
       followupList.innerHTML = list.slice(0, 15).map(c => {
+        const meta = getMeta(c);
         const pClass = normalize(c.priority) === "HIGH"
           ? "priority-high"
           : normalize(c.priority) === "MEDIUM"
@@ -1128,15 +1292,25 @@
                 <div class="followup-name">${escapeHtml(normalize(c.name))}</div>
                 <div class="followup-meta">
                   MOBILE: ${escapeHtml(normalize(c.mobile))} |
-                  SALESMAN: ${escapeHtml(normalize(c.salesman))} |
+                  TYPE: ${escapeHtml(normalize(meta.entry_type || "LEAD"))} |
+                  STATUS: ${escapeHtml(normalize(meta.complaint_status || "OPEN"))} |
                   DATE: ${escapeHtml(String(c.next_followup_date || ""))}
                   ${isToday ? ' | TODAY' : ''}
                   ${isOverdue ? ' | OVERDUE' : ''}
                 </div>
               </div>
-              <span class="badge ${pClass}">${escapeHtml(normalize(c.priority || "LOW"))}</span>
+              <div>
+                <span class="badge ${statusClass(meta.complaint_status)}">${escapeHtml(normalize(meta.complaint_status || "OPEN"))}</span>
+                <span class="badge ${pClass}">${escapeHtml(normalize(c.priority || "LOW"))}</span>
+              </div>
             </div>
-            <div class="followup-note">${escapeHtml(normalize(c.notes)).slice(0, 180) || "NO NOTES"}</div>
+            <div class="followup-note">${escapeHtml(normalize(meta.complaint_title || getVisibleNotes(c) || "NO NOTES" )).slice(0, 180)}</div>
+            <div class="table-actions" style="margin-top:10px;">
+              <button class="mini-btn mini-view" onclick="openProfile(${c.id})">Open</button>
+              ${["SOLVED","CLOSED"].includes(normalize(meta.complaint_status))
+                ? `<button class="mini-btn mini-progress" onclick="reopenComplaint(${c.id})">Reopen</button>`
+                : `<button class="mini-btn mini-solve" onclick="solveComplaint(${c.id})">Solve</button>`}
+            </div>
           </div>
         `;
       }).join("");
@@ -1156,7 +1330,16 @@
         priority: normalize(priority.value || "LOW"),
         next_followup_date: nextFollowupDate.value || null,
         interests: getSelectedInterests(),
-        notes: normalize(customerNotes.value)
+        notes: buildNotes(normalize(customerNotes.value), {
+          entry_type: normalize(crmType.value || "LEAD"),
+          complaint_status: normalize(complaintStatus.value || "OPEN"),
+          complaint_title: normalize(complaintTitle.value),
+          complaint_open_date: complaintOpenDate.value || "",
+          complaint_solved_date: complaintSolvedDate.value || "",
+          solution_notes: normalize(solutionNotes.value),
+          assigned_to: normalize(assignedTo.value),
+          last_contact_date: lastContactDate.value || ""
+        })
       };
 
       if (!payload.name || !payload.mobile) {
@@ -1211,7 +1394,17 @@
       stateCode.value = normalize(row.state_code);
       priority.value = normalize(row.priority || "LOW");
       nextFollowupDate.value = row.next_followup_date || "";
-      customerNotes.value = normalize(row.notes);
+      const parsed = parseNotes(row.notes);
+      const meta = parsed.meta;
+      customerNotes.value = normalize(parsed.visible);
+      solutionNotes.value = normalize(meta.solution_notes);
+      crmType.value = normalize(meta.entry_type || "LEAD");
+      complaintStatus.value = normalize(meta.complaint_status || "OPEN");
+      complaintTitle.value = normalize(meta.complaint_title);
+      complaintOpenDate.value = meta.complaint_open_date || "";
+      assignedTo.value = normalize(meta.assigned_to);
+      lastContactDate.value = meta.last_contact_date || "";
+      complaintSolvedDate.value = meta.complaint_solved_date || "";
       setSelectedInterests(Array.isArray(row.interests) ? row.interests.map(normalize) : []);
 
       setMode("edit");
@@ -1256,6 +1449,8 @@
       const salesItems = await loadRecentSalesItemsByMobile(row.mobile);
 
       const interests = Array.isArray(row.interests) ? row.interests : [];
+      const meta = getMeta(row);
+      const visibleNotes = getVisibleNotes(row);
       const pClass = normalize(row.priority) === "HIGH"
         ? "priority-high"
         : normalize(row.priority) === "MEDIUM"
@@ -1269,13 +1464,40 @@
             <div class="profile-meta">
               <div><b>MOBILE:</b> ${escapeHtml(normalize(row.mobile))}</div>
               <div><b>SALESMAN:</b> ${escapeHtml(normalize(row.salesman))}</div>
+              <div><b>ASSIGNED TO:</b> ${escapeHtml(normalize(meta.assigned_to))}</div>
               <div><b>ADDRESS:</b> ${escapeHtml(normalize(row.address))}</div>
               <div><b>GST:</b> ${escapeHtml(normalize(row.gst_number))}</div>
               <div><b>STATE:</b> ${escapeHtml(normalize(row.state_code))}</div>
             </div>
             <div style="margin-top:10px;">
+              <span class="badge badge-purple">${escapeHtml(normalize(meta.entry_type || "LEAD"))}</span>
+              <span class="badge ${statusClass(meta.complaint_status)}">${escapeHtml(normalize(meta.complaint_status || "OPEN"))}</span>
               <span class="badge ${pClass}">${escapeHtml(normalize(row.priority || "LOW"))}</span>
               ${row.next_followup_date ? `<span class="badge badge-soft">FOLLOW-UP: ${escapeHtml(String(row.next_followup_date))}</span>` : ""}
+            </div>
+          </div>
+
+          <div class="sub-panel">
+            <div class="sub-head">COMPLAINT / ENQUIRY SUMMARY</div>
+            <div class="sub-body">
+              <div class="metric-grid">
+                <div class="metric">
+                  <div class="m-label">TITLE</div>
+                  <div class="m-value" style="font-size:16px;">${escapeHtml(normalize(meta.complaint_title || "-"))}</div>
+                </div>
+                <div class="metric">
+                  <div class="m-label">STATUS</div>
+                  <div class="m-value" style="font-size:16px;">${escapeHtml(normalize(meta.complaint_status || "OPEN"))}</div>
+                </div>
+                <div class="metric">
+                  <div class="m-label">OPEN DATE</div>
+                  <div class="m-value" style="font-size:16px;">${escapeHtml(meta.complaint_open_date || "-")}</div>
+                </div>
+                <div class="metric">
+                  <div class="m-label">SOLVED DATE</div>
+                  <div class="m-value" style="font-size:16px;">${escapeHtml(meta.complaint_solved_date || "-")}</div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -1287,9 +1509,28 @@
           </div>
 
           <div class="sub-panel">
-            <div class="sub-head">CRM NOTES</div>
+            <div class="sub-head">CRM TIMELINE</div>
             <div class="sub-body">
-              <div class="note-box">${escapeHtml(normalize(row.notes) || "NO NOTES AVAILABLE")}</div>
+              <div class="timeline">
+                <div class="timeline-item">
+                  <div class="line1">Customer Requirement / Complaint</div>
+                  <div class="line2">${escapeHtml(normalize(visibleNotes || "NO NOTES AVAILABLE"))}</div>
+                </div>
+                <div class="timeline-item">
+                  <div class="line1">Solution / Action Taken</div>
+                  <div class="line2">${escapeHtml(normalize(meta.solution_notes || "NO SOLUTION ADDED YET"))}</div>
+                </div>
+                <div class="timeline-item">
+                  <div class="line1">Last Contact</div>
+                  <div class="line2">${escapeHtml(meta.last_contact_date || "-")}</div>
+                </div>
+              </div>
+              <div class="table-actions" style="margin-top:12px;">
+                ${["SOLVED","CLOSED"].includes(normalize(meta.complaint_status))
+                  ? `<button class="mini-btn mini-progress" onclick="reopenComplaint(${row.id})">Reopen Complaint</button>`
+                  : `<button class="mini-btn mini-solve" onclick="solveComplaint(${row.id})">Mark as Solved</button>`}
+                <button class="mini-btn mini-edit" onclick="editCustomer(${row.id})">Edit Profile</button>
+              </div>
             </div>
           </div>
 
@@ -1404,6 +1645,54 @@
       }
     }
 
+
+    async function solveComplaint(id) {
+      const row = customers.find(x => Number(x.id) === Number(id));
+      if (!row) return;
+
+      const parsed = parseNotes(row.notes);
+      const meta = { ...parsed.meta, complaint_status: "SOLVED", complaint_solved_date: todayStr(), last_contact_date: todayStr() };
+      const solutionText = prompt("ENTER SOLUTION / ACTION TAKEN", meta.solution_notes || "ISSUE SOLVED");
+      if (solutionText === null) return;
+      meta.solution_notes = normalize(solutionText || "ISSUE SOLVED");
+
+      const { error } = await sb
+        .from(TABLE_NAME)
+        .update({ notes: buildNotes(parsed.visible, meta), next_followup_date: null })
+        .eq("id", id);
+
+      if (error) {
+        showStatus(error.message || "FAILED TO MARK AS SOLVED.", "error");
+        return;
+      }
+
+      showStatus("COMPLAINT MARKED AS SOLVED SUCCESSFULLY.", "success");
+      await loadCustomers();
+      await openProfile(id);
+    }
+
+    async function reopenComplaint(id) {
+      const row = customers.find(x => Number(x.id) === Number(id));
+      if (!row) return;
+
+      const parsed = parseNotes(row.notes);
+      const meta = { ...parsed.meta, complaint_status: "OPEN", complaint_solved_date: "", last_contact_date: todayStr() };
+
+      const { error } = await sb
+        .from(TABLE_NAME)
+        .update({ notes: buildNotes(parsed.visible, meta) })
+        .eq("id", id);
+
+      if (error) {
+        showStatus(error.message || "FAILED TO REOPEN COMPLAINT.", "error");
+        return;
+      }
+
+      showStatus("COMPLAINT REOPENED SUCCESSFULLY.", "success");
+      await loadCustomers();
+      await openProfile(id);
+    }
+
     function escapeHtml(value) {
       return String(value)
         .replace(/&/g, "&amp;")
@@ -1420,6 +1709,8 @@
     window.editCustomer = editCustomer;
     window.deleteCustomer = deleteCustomer;
     window.openProfile = openProfile;
+    window.solveComplaint = solveComplaint;
+    window.reopenComplaint = reopenComplaint;
   </script>
 </body>
 </html>

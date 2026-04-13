@@ -1101,7 +1101,6 @@
         let query = sb
             .from("cash_transactions")
             .select("id, txn_date, voucher_no, txn_type, party_name, amount, remarks, approval_status, approved_by, approved_at, reference_id, reference_type")
-            .neq("reference_type", "customer_advance")
             .order("txn_date", { ascending: false })
             .order("id", { ascending: false })
             .limit(100);
@@ -1127,7 +1126,7 @@
             return;
         }
 
-        const rows = data || [];
+        const rows = (data || []).filter(row => row.reference_type !== "customer_advance");
         const linkedIds = rows.filter(r => r.reference_type === "sales_credit" && r.reference_id).map(r => r.reference_id);
         let salesMap = {};
 

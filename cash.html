@@ -983,7 +983,7 @@
             let savedPartyName = party;
             let referenceId = null;
             let referenceType = null;
-            let approvalStatus = "approved";
+            let approvalStatus = (type === "payment") ? "pending" : "approved";
             let finalRemarks = note || null;
 
             if(selectedCustomerAutoAllocation){
@@ -996,7 +996,7 @@
                 savedPartyName = selectedCreditBill.customer_name || party;
                 referenceId = selectedCreditBill.sales_id;
                 referenceType = "sales_credit";
-                approvalStatus = (type === "receipt") ? "pending" : "approved";
+                approvalStatus = (type === "receipt") ? "pending" : "pending";
             }
 
             const partyId = await ensurePartyExists(savedPartyName);
@@ -1153,7 +1153,15 @@
             let approveCell = "-";
 
             if(row.txn_type === "payment"){
-                approveCell = `<span class="status-badge status-not-needed">Not Needed</span>`;
+                if(row.approval_status === "approved"){
+                    approveCell = `<span class="status-badge status-approved">Approved</span>`;
+                } else if(row.approval_status === "rejected"){
+                    approveCell = `<span class="status-badge status-rejected">Rejected</span>`;
+                } else if(canApprove){
+                    approveCell = `<button class="accept-btn" onclick="approveTransaction(${row.id})">Accept</button>`;
+                } else {
+                    approveCell = `<span class="status-badge status-pending">Pending</span>`;
+                }
             } else if(["sales_credit", "customer_credit_auto"].includes(row.reference_type)){
                 if(row.approval_status === "approved"){
                     approveCell = `<span class="status-badge status-approved">Approved</span>`;
@@ -1219,31 +1227,36 @@
             .replaceAll("'", "&#039;");
     }
 
-    async function approveCreditReceipt(id) {
+    async function approveTransaction(id) {
         const role = (localStorage.getItem("role") || "staff").toLowerCase();
         const username = localStorage.getItem("username") || localStorage.getItem("staff_name") || "Unknown";
 
         if (!["admin", "manager", "owner"].includes(role)) {
-            alert("Only admin, manager, or owner can approve credit receipts.");
+            alert("Only admin, manager, or owner can approve transactions.");
             return;
         }
 
-        const ok = confirm("Do you want to approve this credit receipt?");
+        const ok = confirm("Do you want to approve this transaction?");
         if (!ok) return;
 
         const { data: txRow, error: txErr } = await sb
             .from("cash_transactions")
-            .select("id, voucher_no, txn_date, party_id, party_name, amount, remarks, reference_id, reference_type, approval_status")
+            .select("id, voucher_no, txn_date, txn_type, party_id, party_name, amount, remarks, reference_id, reference_type, approval_status")
             .eq("id", id)
             .maybeSingle();
 
         if (txErr || !txRow) {
-            alert("Unable to load receipt record.");
+            alert("Unable to load transaction record.");
             return;
         }
 
         if (txRow.approval_status === "approved") {
-            alert("This receipt is already approved.");
+            alert("This transaction is already approved.");
+            return;
+        }
+
+        if (txRow.txn_type === "payment") {
+            await approvePaymentTransaction(txRow, username);
             return;
         }
 
@@ -1257,7 +1270,43 @@
             return;
         }
 
-        alert("This receipt is not linked to a credit bill.");
+        const { error: txUpdErr } = await sb
+            .from("cash_transactions")
+            .update({
+                approval_status: "approved",
+                approved_by: username,
+                approved_at: new Date().toISOString()
+            })
+            .eq("id", txRow.id);
+
+        if (txUpdErr) {
+            alert("Approval failed: " + txUpdErr.message);
+            return;
+        }
+
+        alert("Transaction approved successfully");
+        await loadTransactions(searchParty.value.trim());
+    }
+
+
+    async function approvePaymentTransaction(txRow, username){
+        const { error: txUpdErr } = await sb
+            .from("cash_transactions")
+            .update({
+                approval_status: "approved",
+                approved_by: username,
+                approved_at: new Date().toISOString()
+            })
+            .eq("id", txRow.id)
+            .eq("txn_type", "payment");
+
+        if (txUpdErr) {
+            alert("Approval failed: " + txUpdErr.message);
+            return;
+        }
+
+        alert("Payment approved successfully");
+        await loadTransactions(searchParty.value.trim());
     }
 
     async function approveSingleBillReceipt(txRow, username){
@@ -1409,7 +1458,7 @@
         await loadTransactions(searchParty.value.trim());
     }
 
-    window.approveCreditReceipt = approveCreditReceipt;
+    window.approveTransaction = approveTransaction;
 
     function setupEnterNavigation(){
         const orderedFields = [txnType, txnDate, partyName, amount, remarks, saveBtn];

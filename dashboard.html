@@ -1277,57 +1277,12 @@
         </div>
       </section>
 
-      <section class="list-grid">
-        <div class="list-card">
-          <h3 class="section-title">Dashboard Rules</h3>
-          <div class="info-list">
-            <div class="info-row">
-              <div class="label">Sales counted in Today Sales</div>
-              <div class="value">Cash bills only</div>
-            </div>
-            <div class="info-row">
-              <div class="label">Credit bills</div>
-              <div class="value">Separate orange card, excluded from balance</div>
-            </div>
-            <div class="info-row">
-              <div class="label">Receipt & Payment</div>
-              <div class="value">Only approved lines if approval is needed</div>
-            </div>
-            <div class="info-row">
-              <div class="label">Sales Return effect</div>
-              <div class="value">Only approved returns reduce balance</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="list-card">
-          <h3 class="section-title">Backend Notes You Need</h3>
-          <div class="info-list">
-            <div class="info-row">
-              <div class="label">sales_details</div>
-              <div class="value">Need a sale_type like CASH / CREDIT</div>
-            </div>
-            <div class="info-row">
-              <div class="label">Dashboard RPC</div>
-              <div class="value">Should return today_credit_sales also</div>
-            </div>
-            <div class="info-row">
-              <div class="label">Receipt / Payment logic</div>
-              <div class="value">Apply approval filtering for lines needing approval</div>
-            </div>
-            <div class="info-row">
-              <div class="label">Cash closing table</div>
-              <div class="value">daily_cash_closing recommended</div>
-            </div>
-          </div>
-        </div>
-      </section>
     </main>
 
   </div>
 
   <div class="action-bar">
-    <button class="action-blue" type="button" onclick="window.location.href='sales.html'">🧾 Sales</button>
+    <button class="action-blue" type="button" onclick="window.location.href='newsoq.html'">🧾 Sales</button>
     <button class="action-green" type="button" onclick="window.location.href='paymentreceipt.html?type=receipt'">💰 Receipt</button>
     <button class="action-violet" type="button" id="bottomCloseCashBtn">🔒 Close Cash</button>
     <button class="action-amber" type="button" onclick="window.location.href='credit_dashboard.html'">🟠 Credit</button>
@@ -1335,7 +1290,7 @@
   </div>
 
   <div class="fab-menu" id="fabMenu">
-    <button type="button" onclick="go('sales.html')">🧾 Open Sales</button>
+    <button type="button" onclick="go('newsoq.html')">🧾 Open Sales</button>
     <button type="button" onclick="go('paymentreceipt.html?type=receipt')">💰 New Receipt</button>
     <button type="button" onclick="go('purchasenew.html')">📦 New Purchase</button>
     <button type="button" onclick="go('report.html')">📊 Open Reports</button>

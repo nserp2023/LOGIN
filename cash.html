@@ -202,7 +202,7 @@
 
     .search-box{
         display:grid;
-        grid-template-columns:2fr 1fr 1fr auto;
+        grid-template-columns:2fr 1fr 1fr 1fr auto;
         gap:10px;
         align-items:end;
     }
@@ -325,6 +325,48 @@
         font-weight:700;
     }
 
+    .pending-row{
+        background:#fff7ed;
+    }
+
+    .approved-row{
+        background:#f0fdf4;
+    }
+
+    .rejected-row{
+        background:#fef2f2;
+    }
+
+    .reject-btn{
+        background:#dc2626;
+        color:#fff;
+        border:none;
+        padding:8px 12px;
+        border-radius:8px;
+        font-size:13px;
+        font-weight:700;
+        cursor:pointer;
+        min-height:auto;
+        width:auto;
+    }
+
+    .reject-btn:hover{
+        opacity:0.95;
+    }
+
+    .action-wrap{
+        display:flex;
+        gap:6px;
+        flex-wrap:wrap;
+    }
+
+    .approval-meta{
+        font-size:11px;
+        color:#64748b;
+        margin-top:4px;
+        line-height:1.35;
+    }
+
     @media (max-width: 900px){
         .grid{
             grid-template-columns:repeat(2, 1fr);
@@ -443,6 +485,16 @@
             </div>
 
             <div class="field">
+                <label for="searchStatus">Status</label>
+                <select id="searchStatus" name="searchStatus">
+                    <option value="">All</option>
+                    <option value="pending">Pending</option>
+                    <option value="approved">Approved</option>
+                    <option value="rejected">Rejected</option>
+                </select>
+            </div>
+
+            <div class="field">
                 <button class="btn-primary" id="searchBtn" type="button">Search</button>
             </div>
         </div>
@@ -458,7 +510,7 @@
                         <th>Linked Bill</th>
                         <th class="amount">Amount</th>
                         <th>Remarks</th>
-                        <th>Approve</th>
+                        <th>Approval</th>
                     </tr>
                 </thead>
                 <tbody id="resultsBody">
@@ -498,6 +550,7 @@
     const searchParty = document.getElementById("searchParty");
     const searchType = document.getElementById("searchType");
     const searchDate = document.getElementById("searchDate");
+    const searchStatus = document.getElementById("searchStatus");
     const searchBtn = document.getElementById("searchBtn");
     const resultsBody = document.getElementById("resultsBody");
 
@@ -983,8 +1036,16 @@
             let savedPartyName = party;
             let referenceId = null;
             let referenceType = null;
-            let approvalStatus = (type === "payment") ? "pending" : "approved";
+            let approvalStatus = "approved";
             let finalRemarks = note || null;
+
+            if (type === "payment") {
+                approvalStatus = "pending";
+            }
+
+            if (selectedCreditBill || selectedCustomerAutoAllocation) {
+                approvalStatus = "pending";
+            }
 
             if(selectedCustomerAutoAllocation){
                 savedPartyName = selectedCustomerAutoAllocation.customer_name || party;
@@ -1096,6 +1157,9 @@
     searchDate.addEventListener("change", () => {
         loadTransactions(searchParty.value.trim());
     });
+    searchStatus.addEventListener("change", () => {
+        loadTransactions(searchParty.value.trim());
+    });
 
     async function loadTransactions(nameFilter = ""){
         let query = sb
@@ -1108,6 +1172,7 @@
         const partySearchValue = (nameFilter || searchParty.value || "").trim();
         const typeValue = searchType.value;
         const dateValue = searchDate.value;
+        const statusValue = searchStatus.value;
 
         if(partySearchValue){
             query = query.ilike("party_name", `%${partySearchValue}%`);
@@ -1117,6 +1182,9 @@
         }
         if(dateValue){
             query = query.eq("txn_date", dateValue);
+        }
+        if(statusValue){
+            query = query.eq("approval_status", statusValue);
         }
 
         const { data, error } = await query;
@@ -1152,25 +1220,38 @@
             const parsedRemark = parseAutoAllocationRemark(row.remarks || "");
             let approveCell = "-";
 
-            if(row.txn_type === "payment"){
-                if(row.approval_status === "approved"){
-                    approveCell = `<span class="status-badge status-approved">Approved</span>`;
-                } else if(row.approval_status === "rejected"){
-                    approveCell = `<span class="status-badge status-rejected">Rejected</span>`;
+            const status = (row.approval_status || "").toLowerCase();
+            let rowClass = "";
+            if(status === "pending") rowClass = "pending-row";
+            else if(status === "approved") rowClass = "approved-row";
+            else if(status === "rejected") rowClass = "rejected-row";
+
+            const approvalMeta = row.approved_by || row.approved_at
+                ? `<div class="approval-meta">
+                        ${row.approved_by ? `By: ${escapeHtml(row.approved_by)}` : ""}
+                        ${row.approved_at ? `<br>At: ${escapeHtml(formatDateTime(row.approved_at))}` : ""}
+                   </div>`
+                : "";
+
+            const needsApproval =
+                row.txn_type === "payment" ||
+                ["sales_credit", "customer_credit_auto"].includes(row.reference_type);
+
+            if(needsApproval){
+                if(status === "approved"){
+                    approveCell = `<span class="status-badge status-approved">Approved</span>${approvalMeta}`;
+                } else if(status === "rejected"){
+                    approveCell = `<span class="status-badge status-rejected">Rejected</span>${approvalMeta}`;
                 } else if(canApprove){
-                    approveCell = `<button class="accept-btn" onclick="approveTransaction(${row.id})">Accept</button>`;
+                    approveCell = `
+                        <div class="action-wrap">
+                            <button class="accept-btn" onclick="approveTransaction(${row.id})">Accept</button>
+                            <button class="reject-btn" onclick="rejectTransaction(${row.id})">Reject</button>
+                        </div>
+                        ${approvalMeta}
+                    `;
                 } else {
-                    approveCell = `<span class="status-badge status-pending">Pending</span>`;
-                }
-            } else if(["sales_credit", "customer_credit_auto"].includes(row.reference_type)){
-                if(row.approval_status === "approved"){
-                    approveCell = `<span class="status-badge status-approved">Approved</span>`;
-                } else if(row.approval_status === "rejected"){
-                    approveCell = `<span class="status-badge status-rejected">Rejected</span>`;
-                } else if(canApprove){
-                    approveCell = `<button class="accept-btn" onclick="approveCreditReceipt(${row.id})">Accept</button>`;
-                } else {
-                    approveCell = `<span class="status-badge status-pending">Pending</span>`;
+                    approveCell = `<span class="status-badge status-pending">Pending</span>${approvalMeta}`;
                 }
             } else {
                 approveCell = `<span class="status-badge status-not-needed">Not Needed</span>`;
@@ -1184,10 +1265,12 @@
             }
 
             const remarkText = parsedRemark.cleanRemarks || "";
-            const advanceText = parsedRemark.advance_amount > 0 ? `<div class="small">Advance kept: ₹${Number(parsedRemark.advance_amount).toFixed(2)}</div>` : "";
+            const advanceText = parsedRemark.advance_amount > 0
+                ? `<div class="small">Advance kept: ₹${Number(parsedRemark.advance_amount).toFixed(2)}</div>`
+                : "";
 
             return `
-                <tr>
+                <tr class="${rowClass}">
                     <td>${formatDate(row.txn_date)}</td>
                     <td>${escapeHtml(row.voucher_no || "")}</td>
                     <td><span class="${row.txn_type}">${escapeHtml(row.txn_type || "")}</span></td>
@@ -1206,6 +1289,13 @@
         const d = new Date(dateStr);
         if(isNaN(d)) return dateStr;
         return d.toLocaleDateString("en-GB");
+    }
+
+    function formatDateTime(dateStr){
+        if(!dateStr) return "";
+        const d = new Date(dateStr);
+        if(isNaN(d)) return dateStr;
+        return d.toLocaleString("en-GB");
     }
 
     function formatBillNo(series, number){
@@ -1250,8 +1340,13 @@
             return;
         }
 
-        if (txRow.approval_status === "approved") {
+        if ((txRow.approval_status || "").toLowerCase() === "approved") {
             alert("This transaction is already approved.");
+            return;
+        }
+
+        if ((txRow.approval_status || "").toLowerCase() === "rejected") {
+            alert("Rejected transaction cannot be approved directly.");
             return;
         }
 
@@ -1458,7 +1553,70 @@
         await loadTransactions(searchParty.value.trim());
     }
 
+    async function rejectTransaction(id){
+        const role = (localStorage.getItem("role") || "staff").toLowerCase();
+        const username = localStorage.getItem("username") || localStorage.getItem("staff_name") || "Unknown";
+
+        if(!["admin", "manager", "owner"].includes(role)){
+            alert("Only admin, manager, or owner can reject transactions.");
+            return;
+        }
+
+        const reason = prompt("Enter reject reason:");
+        if(reason === null) return;
+
+        const cleanReason = reason.trim();
+        if(!cleanReason){
+            alert("Reject reason is required.");
+            return;
+        }
+
+        const { data: txRow, error: txErr } = await sb
+            .from("cash_transactions")
+            .select("id, approval_status, remarks")
+            .eq("id", id)
+            .maybeSingle();
+
+        if(txErr || !txRow){
+            alert("Unable to load transaction.");
+            return;
+        }
+
+        if((txRow.approval_status || "").toLowerCase() === "approved"){
+            alert("Already approved transaction cannot be rejected.");
+            return;
+        }
+
+        if((txRow.approval_status || "").toLowerCase() === "rejected"){
+            alert("This transaction is already rejected.");
+            return;
+        }
+
+        const updatedRemarks = [txRow.remarks || "", `REJECT_REASON: ${cleanReason}`]
+            .filter(Boolean)
+            .join(" | ");
+
+        const { error } = await sb
+            .from("cash_transactions")
+            .update({
+                approval_status: "rejected",
+                approved_by: username,
+                approved_at: new Date().toISOString(),
+                remarks: updatedRemarks
+            })
+            .eq("id", id);
+
+        if(error){
+            alert("Reject failed: " + error.message);
+            return;
+        }
+
+        alert("Transaction rejected successfully");
+        await loadTransactions(searchParty.value.trim());
+    }
+
     window.approveTransaction = approveTransaction;
+    window.rejectTransaction = rejectTransaction;
 
     function setupEnterNavigation(){
         const orderedFields = [txnType, txnDate, partyName, amount, remarks, saveBtn];

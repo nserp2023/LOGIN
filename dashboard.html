@@ -1,1278 +1,1866 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" href="favicon.ico" type="image/x-icon" />
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
+  <link rel="manifest" href="site.webmanifest" />
+  <title>VAJRA Dashboard Ultra Pro</title>
 
-  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
-
-  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
-
-  <link rel="manifest" href="site.webmanifest">
-  <title>Dashboard</title>
-  <link rel="stylesheet" href="style.css">
   <style>
-    /* Scope dashboard styles */
-.dashboard-page {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-  background: url("background.jpg") no-repeat center center fixed;
-  background-size: cover;
-}
-
-/* Gradient overlay */
-.dashboard-page::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    rgba(0, 0, 0, 0.6) 0%,
-    rgba(0, 0, 0, 0.3) 40%,
-    rgba(0, 0, 0, 0.15) 100%
-  );
-  z-index: 0;
-}
-
-/* Ensure content sits above overlay */
-.main-content,
-.sidebar,
-.topbar,
-.cards,
-.banner {
-  position: relative;
-  z-index: 1;
-}
-
-/* Sidebar */
-.sidebar {
-  position: fixed;
-  left: 0;
-  top: 0;
-  width: 260px;
-  height: 100vh;
-  background: rgba(45, 55, 72, 0.95);
-  color: #fff;
-  backdrop-filter: saturate(120%) blur(4px);
-  transform: translateX(-260px);
-  transition: transform 0.25s ease;
-  overflow-y: auto;
-  z-index: 1000;
-  padding-top: 60px;
-}
-.sidebar.active {
-  transform: translateX(0);
-}
-.toggle-btn {
-  position: fixed;
-  top: 12px;
-  left: 12px;
-  background: #2d3748;
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  padding: 12px 14px;
-  cursor: pointer;
-  z-index: 1100;
-  font-size: 1rem;
-}
-
-/* Navigation list */
-.nav-list {
-  list-style: none;
-  margin: 0;
-  padding: 0 8px 24px 8px;
-}
-.nav-list > li {
-  margin: 6px 0;
-  border-radius: 6px;
-}
-.nav-list a {
-  color: #fff;
-  text-decoration: none;
-  display: block;
-  padding: 12px 16px;
-  border-radius: 6px;
-  font-size: 1rem;
-}
-.nav-list a:hover {
-  background: rgba(255, 255, 255, 0.15);
-}
-
-/* Submenu */
-.has-submenu > .menu-link::after {
-  content: "▸";
-  float: right;
-  opacity: 0.8;
-  transition: transform 0.2s ease;
-}
-.has-submenu.open > .menu-link::after {
-  transform: rotate(90deg);
-}
-.submenu {
-  display: none;
-  list-style: none;
-  padding-left: 12px;
-  margin: 4px 0 8px 8px;
-  border-left: 2px solid rgba(255, 255, 255, 0.15);
-}
-.has-submenu.open > .submenu {
-  display: block;
-}
-.submenu li a {
-  padding: 10px 14px;
-  font-size: 0.95rem;
-  opacity: 0.95;
-}
-
-/* Main content */
-.main-content {
-  flex: 1;
-  margin-left: 20px;
-  padding: 20px;
-  min-height: 100vh;
-}
-.topbar {
-  background: #2d3748;
-  color: #fff;
-  padding: 14px 18px;
-  border-radius: 8px;
-  font-size: 1rem;
-}
-
-/* Cards */
-.cards {
-  display: flex;
-  gap: 1rem;
-  margin-top: 1rem;
-  flex-wrap: wrap;
-}
-.card {
-  background: #fff;
-  padding: 1.2rem;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-  flex: 1 1 220px;
-  text-align: center;
-}
-
-/* Tables */
-.dashboard-table {
-  width: 100%;
-  border-collapse: collapse;
-  background: #fff;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-  font-size: 0.95rem;
-}
-.dashboard-table th,
-.dashboard-table td {
-  padding: 12px;
-  border-bottom: 1px solid #eee;
-  text-align: center;
-}
-.dashboard-table th {
-  background: #2d3748;
-  color: #fff;
-}
-.dashboard-table tbody tr:hover {
-  background-color: #f1f5f9;
-  transition: background-color 0.2s ease;
-}
-.dashboard-table tbody tr.selected {
-  background-color: #e0f2fe;
-}
-
-/* Forms */
-.sales-form,
-.inline-form {
-  display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-.sales-form label,
-.inline-form label {
-  font-weight: bold;
-  margin-bottom: 4px;
-}
-.sales-form input,
-.inline-form input,
-.inline-form select {
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 1rem;
-}
-
-/* Buttons */
-.save-btn {
-  margin-top: 1rem;
-  padding: 12px 18px;
-  background: #4facfe;
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 1rem;
-}
-.save-btn:hover {
-  background: #00c6fb;
-}
-
-/* Banner messages */
-.banner {
-  padding: 12px;
-  margin: 10px 0;
-  border-radius: 4px;
-  font-weight: bold;
-  text-align: center;
-  display: none;
-  font-size: 0.95rem;
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .sidebar {
-    width: 220px;
-    transform: translateX(-220px);
-  }
-  .main-content {
-    margin-left: 0;
-    padding: 16px;
-  }
-  .cards {
-    flex-direction: column;
-  }
-  .card {
-    flex: 1 1 100%;
-  }
-  .dashboard-table th,
-  .dashboard-table td {
-    padding: 8px;
-    font-size: 0.85rem;
-  }
-}
-
-@media (max-width: 480px) {
-  .toggle-btn {
-    padding: 10px;
-    font-size: 0.9rem;
-  }
-  .nav-list a {
-    padding: 10px 12px;
-    font-size: 0.9rem;
-  }
-  .save-btn {
-    width: 100%;
-    padding: 14px;
-    font-size: 1rem;
-  }
-  .sales-form,
-  .inline-form {
-    flex-direction: column;
-  }
-}
-
-/* Glassmorphism effect for cards */
-.card {
-  background: rgba(255, 255, 255, 0.25);
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-  backdrop-filter: blur(12px) saturate(120%);
-  -webkit-backdrop-filter: blur(12px) saturate(120%);
-  padding: 1.5rem;
-  flex: 1 1 220px;
-  text-align: center;
-  color: #000000;
-}
-
-/* Glassmorphism for topbar */
-.topbar {
-  background: rgba(45, 55, 72, 0.6);
-  backdrop-filter: blur(10px) saturate(120%);
-  -webkit-backdrop-filter: blur(10px) saturate(120%);
-  color: #fff;
-  padding: 14px 18px;
-  border-radius: 12px;
-}
-
-/* Glassmorphism for sidebar */
-.sidebar {
-  background: rgba(45, 55, 72, 0.65);
-  backdrop-filter: blur(10px) saturate(120%);
-  -webkit-backdrop-filter: blur(10px) saturate(120%);
-  color: #fff;
-}
-
-.card {
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
-}
-.card:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
-}
-
-.save-btn,
-.dashboard-table td button {
-  transition: transform 0.15s ease, background-color 0.25s ease;
-}
-.save-btn:active,
-.dashboard-table td button:active {
-  transform: scale(0.96);
-}
-.sidebar {
-  transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-}
-.nav-list a {
-  transition: background 0.25s ease, color 0.25s ease;
-}
-.nav-list a:hover {
-  background: rgba(255,255,255,0.2);
-  color: #e0f2fe;
-}
-.dashboard-table tbody tr {
-  transition: background-color 0.2s ease, transform 0.2s ease;
-}
-.dashboard-table tbody tr:hover {
-  transform: scale(1.01);
-}
-/* Shimmer animation */
-@keyframes shimmer {
-  0% { background-position: -200px 0; }
-  100% { background-position: 200px 0; }
-}
-
-.card.loading {
-  position: relative;
-  overflow: hidden;
-  background: #f6f7f8;
-  background-image: linear-gradient(
-    to right,
-    #f6f7f8 0%,
-    #edeef1 20%,
-    #f6f7f8 40%,
-    #f6f7f8 100%
-  );
-  background-repeat: no-repeat;
-  background-size: 800px 100%;
-  animation: shimmer 1.5s infinite linear;
-}
-/* Spinner */
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.spinner {
-  width: 28px;
-  height: 28px;
-  border: 3px solid rgba(0,0,0,0.1);
-  border-top-color: #4facfe;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  margin: auto;
-}
-.fade-in {
-  animation: fadeIn 0.4s ease forwards;
-}
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-@media (max-width: 768px) {
-  .sidebar {
-    width: 80%;
-    max-width: 280px;
-    transform: translateX(-100%);
-  }
-  .sidebar.active {
-    transform: translateX(0);
-  }
-  .main-content {
-    margin-left: 0;
-    padding: 16px;
-  }
-}
-@media (max-width: 768px) {
-  .cards {
-    flex-direction: column;
-  }
-  .card {
-    flex: 1 1 100%;
-    margin-bottom: 1rem;
-  }
-}
-@media (max-width: 600px) {
-  .dashboard-table {
-    display: block;
-    overflow-x: auto;
-    white-space: nowrap;
-  }
-  .dashboard-table th,
-  .dashboard-table td {
-    padding: 8px;
-    font-size: 0.85rem;
-  }
-}
-@media (max-width: 480px) {
-  .sales-form,
-  .inline-form {
-    flex-direction: column;
-  }
-  .sales-form input,
-  .inline-form input,
-  .inline-form select {
-    width: 100%;
-  }
-  .save-btn {
-    width: 100%;
-    padding: 14px;
-  }
-}
-.toggle-btn,
-.save-btn,
-.dashboard-table td button {
-  min-height: 44px;
-  padding: 12px 16px;
-  font-size: 1rem;
-}
-/* Sticky action bar */
-.action-bar {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  background: rgba(45, 55, 72, 0.95);
-  backdrop-filter: blur(8px) saturate(120%);
-  -webkit-backdrop-filter: blur(8px) saturate(120%);
-  display: flex;
-  justify-content: space-around;
-  align-items: center;
-  padding: 12px;
-  z-index: 1200;
-}
-
-/* Buttons inside bar */
-.action-bar button {
-  flex: 1;
-  margin: 0 6px;
-  padding: 14px;
-  border: none;
-  border-radius: 8px;
-  font-size: 1rem;
-  cursor: pointer;
-  color: #fff;
-  transition: background 0.25s ease, transform 0.15s ease;
-}
-
-.action-bar button.save {
-  background: #4facfe;
-}
-.action-bar button.save:hover {
-  background: #00c6fb;
-}
-.action-bar button.add {
-  background: #38a169;
-}
-.action-bar button.add:hover {
-  background: #2f855a;
-}
-
-/* Mobile adjustments */
-@media (max-width: 480px) {
-  .action-bar {
-    padding: 10px;
-  }
-  .action-bar button {
-    font-size: 0.95rem;
-    padding: 12px;
-  }
-}
-
-body.dashboard-page {
-  margin: 0;
-  font-family: 'Segoe UI', Arial, sans-serif;
-  background: url("background.jpg") no-repeat center center fixed;
-  color: #1e293b;
-}
-
-.sidebar {
-  width: 260px;
-  background: #0f172a;
-  color: #fff;
-  min-height: 100vh;
-  position: fixed;
-  left: 0;
-  top: 0;
-  overflow-y: auto;
-  transition: transform 0.3s ease;
-  z-index: 1000;
-}
-
-.sidebar .toggle-btn {
-  background: transparent;
-  color: #fff;
-  border: none;
-  font-size: 22px;
-  padding: 15px;
-  cursor: pointer;
-  display: none;
-}
-
-.nav-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.nav-list li a,
-.menu-link {
-  display: block;
-  color: #fff;
-  text-decoration: none;
-  padding: 12px 18px;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
-}
-
-.nav-list li a:hover,
-.menu-link:hover {
-  background: #1e293b;
-}
-
-.submenu {
-  display: none;
-  background: #172554;
-  padding-left: 0;
-}
-
-.has-submenu.open .submenu {
-  display: block;
-}
-
-.main-content {
-  margin-left: 260px;
-  padding: 18px;
-  transition: margin-left 0.3s ease;
-}
-
-.topbar {
-  background: #fff;
-  padding: 14px 18px;
-  border-radius: 14px;
-  box-shadow: 0 8px 18px rgba(0,0,0,0.06);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.topbar-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.topbar-right {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.topbar h1 {
-  margin: 0;
-  font-size: 22px;
-}
-
-.mobile-menu-btn {
-  display: none;
-  border: none;
-  background: #2563eb;
-  color: #fff;
-  padding: 10px 12px;
-  border-radius: 10px;
-  font-size: 18px;
-  cursor: pointer;
-}
-
-.role-badge {
-  background: #dbeafe;
-  color: #1d4ed8;
-  padding: 8px 12px;
-  border-radius: 999px;
-  font-weight: 700;
-  font-size: 13px;
-}
-
-.backup-btn {
-  border: none;
-  background: linear-gradient(135deg, #0f766e, #0ea5e9);
-  color: #fff;
-  width: 42px;
-  height: 42px;
-  border-radius: 12px;
-  font-size: 18px;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 6px 16px rgba(0,0,0,0.12);
-  transition: transform 0.15s ease, box-shadow 0.2s ease, opacity 0.2s ease;
-}
-
-.backup-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 20px rgba(0,0,0,0.16);
-}
-
-.backup-btn:active {
-  transform: scale(0.96);
-}
-
-.backup-btn:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-
-.backup-status {
-  font-size: 12px;
-  color: #1e293b;
-  font-weight: 700;
-  min-width: 90px;
-  text-align: right;
-}
-
-.user-info {
-  margin-top: 16px;
-  background: #fff;
-  border-radius: 14px;
-  padding: 14px 18px;
-  box-shadow: 0 8px 18px rgba(0,0,0,0.06);
-}
-
-.summary-grid {
-  margin-top: 18px;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 14px;
-}
-
-.summary-card {
-  background: #fff;
-  padding: 18px;
-  border-radius: 14px;
-  box-shadow: 0 8px 18px rgba(0,0,0,0.06);
-}
-
-.balance-card {
-  background: linear-gradient(135deg, #2563eb, #1d4ed8);
-  color: #fff;
-}
-
-.summary-title {
-  font-size: 14px;
-  opacity: 0.9;
-  margin-bottom: 8px;
-}
-
-.summary-value {
-  font-size: 28px;
-  font-weight: 800;
-}
-
-.summary-note {
-  margin-top: 8px;
-  font-size: 12px;
-  opacity: 0.9;
-}
-
-.cards {
-  margin-top: 18px;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 14px;
-}
-
-.card {
-  background: #fff;
-  border-radius: 14px;
-  padding: 22px 16px;
-  text-align: center;
-  font-weight: 700;
-  cursor: pointer;
-  box-shadow: 0 8px 18px rgba(0,0,0,0.06);
-  transition: transform 0.2s ease, background 0.2s ease;
-}
-
-.card:hover {
-  transform: translateY(-2px);
-  background: #eff6ff;
-}
-
-.overlay {
-  display: none;
-}
-
-@media (max-width: 1024px) {
-  .cards {
-    grid-template-columns: repeat(3, 1fr);
-  }
-
-  .summary-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 768px) {
-  .sidebar {
-    transform: translateX(-100%);
-  }
-
-  .sidebar.mobile-open {
-    transform: translateX(0);
-  }
-
-  .main-content {
-    margin-left: 0;
-    padding: 12px;
-  }
-
-  .mobile-menu-btn {
-    display: inline-block;
-  }
-
-  .overlay.show {
-    display: block;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.35);
-    z-index: 999;
-  }
-
-  .summary-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .cards {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .topbar h1 {
-    font-size: 18px;
-  }
-
-  .summary-value {
-    font-size: 24px;
-  }
-
-  .backup-status {
-    min-width: auto;
-    text-align: left;
-  }
-}
-
-@media (max-width: 480px) {
-  .cards {
-    grid-template-columns: 1fr;
-  }
-
-  .card {
-    padding: 18px 14px;
-    font-size: 15px;
-  }
-}
+    :root{
+      --bg1:#06111f;
+      --bg2:#0d1b2a;
+      --panel:rgba(10,18,32,.76);
+      --panel-2:rgba(255,255,255,.08);
+      --stroke:rgba(255,255,255,.08);
+      --text:#eaf2ff;
+      --muted:#a8b7d1;
+      --blue:#2f7cff;
+      --blue2:#52a8ff;
+      --green:#11b981;
+      --green2:#34d399;
+      --red:#ef4444;
+      --red2:#fb7185;
+      --amber:#f59e0b;
+      --amber2:#fbbf24;
+      --violet:#7c3aed;
+      --cyan:#06b6d4;
+      --shadow:0 16px 40px rgba(0,0,0,.28);
+      --radius:20px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      min-height: 100%;
+      font-family: "Segoe UI", Arial, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top right, rgba(82,168,255,.14), transparent 22%),
+        radial-gradient(circle at top left, rgba(239,68,68,.10), transparent 18%),
+        linear-gradient(135deg, var(--bg1), var(--bg2));
+    }
+
+    body.dashboard-page {
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .dashboard-shell {
+      display: flex;
+      min-height: 100vh;
+      position: relative;
+    }
+
+    .overlay {
+      display: none;
+    }
+
+    .sidebar {
+      width: 280px;
+      background: linear-gradient(180deg, rgba(6,16,30,.96), rgba(9,20,38,.92));
+      border-right: 1px solid var(--stroke);
+      box-shadow: var(--shadow);
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      z-index: 1100;
+      overflow-y: auto;
+      backdrop-filter: blur(16px);
+      transition: transform .28s ease;
+    }
+
+    .sidebar-header {
+      padding: 18px 18px 10px;
+      border-bottom: 1px solid rgba(255,255,255,.05);
+      position: sticky;
+      top: 0;
+      background: rgba(6,16,30,.92);
+      backdrop-filter: blur(14px);
+      z-index: 2;
+    }
+
+    .brand-mini {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #ff7b7b 0%, #ff2d2d 48%, #8d0000 100%);
+      box-shadow: 0 0 10px #ff2d2d, 0 0 20px rgba(255,45,45,.7);
+      flex: 0 0 auto;
+    }
+
+    .brand-text-small {
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: 1.2px;
+      color: #f8fbff;
+    }
+
+    .sidebar-section-title {
+      padding: 16px 20px 10px;
+      color: var(--muted);
+      font-size: 11px;
+      letter-spacing: 1.6px;
+      text-transform: uppercase;
+    }
+
+    .nav-list, .submenu {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .nav-list > li {
+      margin: 4px 10px;
+    }
+
+    .nav-list a,
+    .menu-link {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--text);
+      text-decoration: none;
+      padding: 13px 14px;
+      border-radius: 14px;
+      border: 1px solid transparent;
+      transition: .18s ease;
+      font-weight: 600;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .nav-list a:hover,
+    .menu-link:hover {
+      background: rgba(255,255,255,.06);
+      border-color: rgba(255,255,255,.06);
+      transform: translateX(2px);
+    }
+
+    .menu-link::after {
+      content: "▸";
+      opacity: .75;
+      transition: transform .18s ease;
+    }
+
+    .has-submenu.open > .menu-link::after {
+      transform: rotate(90deg);
+    }
+
+    .submenu {
+      display: none;
+      margin-top: 6px;
+      padding-left: 10px;
+      border-left: 1px solid rgba(255,255,255,.06);
+    }
+
+    .has-submenu.open > .submenu {
+      display: block;
+    }
+
+    .submenu li {
+      margin: 4px 0 4px 10px;
+    }
+
+    .submenu a {
+      font-size: 14px;
+      color: #d7e6ff;
+      padding: 10px 12px;
+    }
+
+    .main-content {
+      flex: 1;
+      margin-left: 0;
+      padding: 18px;
+      padding-bottom: 92px;
+      min-width: 0;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 18px 20px;
+      border-radius: 24px;
+      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.06));
+      border: 1px solid rgba(255,255,255,.08);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .topbar::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 12% 50%, rgba(255,45,45,.15), transparent 20%),
+        radial-gradient(circle at 28% 40%, rgba(82,168,255,.15), transparent 24%);
+      pointer-events: none;
+    }
+
+    .topbar-left,
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      position: relative;
+      z-index: 1;
+      flex-wrap: wrap;
+    }
+
+    .mobile-menu-btn,
+    .header-action-btn,
+    .backup-btn,
+    .close-cash-btn {
+      border: none;
+      outline: none;
+      cursor: pointer;
+      border-radius: 14px;
+      color: white;
+      min-height: 44px;
+      padding: 12px 14px;
+      font-size: 15px;
+      font-weight: 700;
+      transition: transform .16s ease, box-shadow .18s ease, opacity .18s ease;
+      box-shadow: 0 10px 24px rgba(0,0,0,.18);
+    }
+
+    .mobile-menu-btn:hover,
+    .header-action-btn:hover,
+    .backup-btn:hover,
+    .close-cash-btn:hover {
+      transform: translateY(-1px);
+    }
+
+    .mobile-menu-btn {
+      display: none;
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    }
+
+    .backup-btn {
+      background: linear-gradient(135deg, #0f766e, #0ea5e9);
+      width: 46px;
+      padding-inline: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    .close-cash-btn {
+      background: linear-gradient(135deg, #7c3aed, #5b21b6);
+      white-space: nowrap;
+    }
+
+    .backup-btn:disabled,
+    .close-cash-btn:disabled {
+      opacity: .72;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .backup-status {
+      min-width: 110px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      text-align: right;
+    }
+
+    .vajra-title {
+      margin: 0;
+      font-size: 28px;
+      line-height: 1.1;
+      font-weight: 900;
+      letter-spacing: 1.5px;
+      color: #ffffff;
+      text-transform: uppercase;
+      text-shadow:
+        0 0 4px rgba(255,255,255,.85),
+        0 0 10px rgba(82,168,255,.55),
+        0 0 20px rgba(82,168,255,.35);
+    }
+
+    .vajra-v {
+      display: inline-block;
+      color: #ff3b3b;
+      font-size: 1.22em;
+      margin-right: 1px;
+      text-shadow:
+        0 0 4px rgba(255,170,170,.95),
+        0 0 14px rgba(255,59,59,.9),
+        0 0 28px rgba(255,59,59,.55);
+    }
+
+    .title-sub {
+      margin-top: 6px;
+      font-size: 12px;
+      color: #c7d4ea;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+    }
+
+    .role-badge {
+      padding: 10px 14px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 800;
+      color: #dbeafe;
+      background: rgba(59,130,246,.18);
+      border: 1px solid rgba(96,165,250,.25);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.02);
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.4fr .85fr;
+      gap: 18px;
+      margin-top: 18px;
+    }
+
+    .hero-panel,
+    .mini-panel,
+    .summary-card,
+    .card,
+    .user-info,
+    .closing-panel,
+    .list-card {
+      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.06));
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(16px);
+    }
+
+    .hero-panel {
+      padding: 22px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-panel::after {
+      content: "";
+      position: absolute;
+      right: -30px;
+      top: -30px;
+      width: 180px;
+      height: 180px;
+      background: radial-gradient(circle, rgba(82,168,255,.22), transparent 65%);
+      pointer-events: none;
+    }
+
+    .hero-topline {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: #d7e6ff;
+      font-weight: 800;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      padding: 9px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.06);
+    }
+
+    .hero-main {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      margin-top: 18px;
+      align-items: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .hero-balance-title {
+      font-size: 14px;
+      color: #c7d4ea;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .hero-balance-value {
+      font-size: clamp(34px, 5vw, 52px);
+      font-weight: 900;
+      letter-spacing: -.5px;
+      line-height: 1;
+    }
+
+    .hero-balance-note {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+      max-width: 650px;
+    }
+
+    .hero-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    .hero-tag {
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.06);
+      min-width: 120px;
+    }
+
+    .hero-tag-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--muted);
+      margin-bottom: 4px;
+      font-weight: 800;
+    }
+
+    .hero-tag-value {
+      font-size: 18px;
+      font-weight: 900;
+      color: white;
+    }
+
+    .mini-stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .mini-panel {
+      padding: 18px;
+    }
+
+    .mini-panel-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+    }
+
+    .mini-panel .big-value {
+      font-size: 28px;
+      font-weight: 900;
+      color: white;
+    }
+
+    .mini-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 12px;
+      font-size: 14px;
+      color: #dbe7fb;
+    }
+
+    .status-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 12px;
+      padding: 9px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+      background: rgba(245,158,11,.12);
+      color: #fde68a;
+      border: 1px solid rgba(245,158,11,.2);
+    }
+
+    .user-info {
+      margin-top: 18px;
+      padding: 18px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .welcome-wrap h2 {
+      margin: 0;
+      font-size: 20px;
+      line-height: 1.2;
+    }
+
+    .welcome-wrap p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .today-chip {
+      padding: 10px 14px;
+      border-radius: 14px;
+      font-size: 13px;
+      font-weight: 800;
+      color: #cffafe;
+      background: rgba(6,182,212,.12);
+      border: 1px solid rgba(6,182,212,.18);
+    }
+
+    .summary-grid {
+      margin-top: 18px;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .summary-card {
+      padding: 18px;
+      position: relative;
+      overflow: hidden;
+      transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+    }
+
+    .summary-card:hover,
+    .card:hover,
+    .list-card:hover,
+    .closing-panel:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 20px 46px rgba(0,0,0,.32);
+      border-color: rgba(255,255,255,.12);
+    }
+
+    .summary-card::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto auto 0;
+      height: 4px;
+      width: 100%;
+      background: rgba(255,255,255,.35);
+      opacity: .75;
+    }
+
+    .summary-card.balance-card::before { background: linear-gradient(90deg, #2563eb, #60a5fa); }
+    .summary-card.cash-sales-card::before { background: linear-gradient(90deg, #0ea5e9, #38bdf8); }
+    .summary-card.credit-sales-card::before { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+    .summary-card.receipt-card::before { background: linear-gradient(90deg, #10b981, #34d399); }
+    .summary-card.return-card::before { background: linear-gradient(90deg, #fb7185, #ef4444); }
+    .summary-card.payment-card::before { background: linear-gradient(90deg, #f43f5e, #e11d48); }
+    .summary-card.pending-card::before { background: linear-gradient(90deg, #8b5cf6, #a78bfa); }
+    .summary-card.close-card::before { background: linear-gradient(90deg, #14b8a6, #06b6d4); }
+
+    .summary-title {
+      font-size: 13px;
+      color: var(--muted);
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .9px;
+      margin-bottom: 10px;
+    }
+
+    .summary-value {
+      font-size: 30px;
+      line-height: 1;
+      font-weight: 900;
+      color: white;
+      letter-spacing: -.4px;
+    }
+
+    .summary-note {
+      margin-top: 10px;
+      font-size: 12px;
+      line-height: 1.45;
+      color: #c5d2e7;
+    }
+
+    .summary-subline {
+      margin-top: 8px;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      color: #d5e2f6;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .cards-wrap {
+      margin-top: 18px;
+      display: grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap: 18px;
+    }
+
+    .cards-panel,
+    .closing-panel {
+      padding: 18px;
+    }
+
+    .section-title {
+      margin: 0 0 14px;
+      font-size: 16px;
+      font-weight: 900;
+      letter-spacing: .4px;
+      color: white;
+    }
+
+    .section-sub {
+      margin: -6px 0 16px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .card {
+      padding: 20px 14px;
+      text-align: center;
+      cursor: pointer;
+      transition: transform .18s ease, background .18s ease, border-color .18s ease;
+      min-height: 108px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 15px;
+      line-height: 1.35;
+      color: white;
+    }
+
+    .card:hover {
+      background: linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,.08));
+    }
+
+    .card-icon {
+      display: block;
+      font-size: 22px;
+      margin-bottom: 8px;
+    }
+
+    .closing-grid {
+      display: grid;
+      gap: 14px;
+    }
+
+    .cash-box {
+      padding: 14px;
+      border-radius: 18px;
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.06);
+    }
+
+    .cash-box-label {
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .cash-box-value {
+      font-size: 26px;
+      font-weight: 900;
+      color: white;
+    }
+
+    .cash-box-note {
+      margin-top: 8px;
+      color: #c5d2e7;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .cash-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .primary-btn,
+    .secondary-btn {
+      border: none;
+      border-radius: 14px;
+      padding: 14px 16px;
+      font-size: 14px;
+      font-weight: 800;
+      cursor: pointer;
+      color: white;
+      transition: transform .16s ease, opacity .16s ease;
+    }
+
+    .primary-btn:hover,
+    .secondary-btn:hover {
+      transform: translateY(-1px);
+    }
+
+    .primary-btn {
+      background: linear-gradient(135deg, #7c3aed, #5b21b6);
+    }
+
+    .secondary-btn {
+      background: linear-gradient(135deg, #0f766e, #0891b2);
+    }
+
+    .list-grid {
+      margin-top: 18px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+
+    .list-card {
+      padding: 18px;
+    }
+
+    .info-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.05);
+    }
+
+    .info-row .label {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .info-row .value {
+      color: white;
+      font-size: 14px;
+      font-weight: 800;
+      text-align: right;
+    }
+
+    .action-bar {
+      position: fixed;
+      left: 18px;
+      right: 18px;
+      bottom: 14px;
+      z-index: 1200;
+      padding: 10px;
+      border-radius: 22px;
+      background: rgba(7,16,30,.86);
+      border: 1px solid rgba(255,255,255,.08);
+      backdrop-filter: blur(18px);
+      box-shadow: var(--shadow);
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .action-bar button {
+      border: none;
+      border-radius: 16px;
+      min-height: 52px;
+      font-size: 14px;
+      font-weight: 800;
+      color: white;
+      cursor: pointer;
+      transition: transform .16s ease, opacity .16s ease;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.05);
+    }
+
+    .action-bar button:hover {
+      transform: translateY(-1px);
+    }
+
+    .action-blue { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
+    .action-green { background: linear-gradient(135deg, #059669, #10b981); }
+    .action-violet { background: linear-gradient(135deg, #7c3aed, #5b21b6); }
+    .action-amber { background: linear-gradient(135deg, #d97706, #f59e0b); }
+    .action-cyan { background: linear-gradient(135deg, #0891b2, #06b6d4); }
+
+
+    .top-nav {
+      display: flex;
+      gap: 10px;
+      margin-top: 16px;
+      padding: 12px;
+      border-radius: 22px;
+      background: linear-gradient(180deg, rgba(255,255,255,.09), rgba(255,255,255,.05));
+      border: 1px solid rgba(255,255,255,.08);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(16px);
+      overflow-x: auto;
+      scrollbar-width: thin;
+    }
+
+    .top-nav button {
+      border: none;
+      min-height: 46px;
+      padding: 12px 16px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, rgba(15,23,42,.95), rgba(30,41,59,.95));
+      color: white;
+      font-size: 14px;
+      font-weight: 800;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: transform .16s ease, background .16s ease, box-shadow .16s ease;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.05);
+    }
+
+    .top-nav button:hover {
+      transform: translateY(-1px);
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    }
+
+    .command-strip {
+      margin-top: 18px;
+      display: grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap: 18px;
+    }
+
+    .command-panel,
+    .health-panel {
+      padding: 18px;
+      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.06));
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(16px);
+    }
+
+    .command-actions {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .command-btn {
+      border: none;
+      border-radius: 18px;
+      padding: 16px 12px;
+      min-height: 82px;
+      color: white;
+      cursor: pointer;
+      text-align: left;
+      font-weight: 800;
+      font-size: 14px;
+      transition: transform .16s ease, opacity .16s ease;
+      box-shadow: 0 10px 26px rgba(0,0,0,.16);
+    }
+
+    .command-btn:hover { transform: translateY(-2px); }
+    .command-btn.blue { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
+    .command-btn.green { background: linear-gradient(135deg, #059669, #10b981); }
+    .command-btn.amber { background: linear-gradient(135deg, #d97706, #f59e0b); }
+    .command-btn.violet { background: linear-gradient(135deg, #7c3aed, #5b21b6); }
+
+    .command-btn small {
+      display: block;
+      margin-top: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      color: rgba(255,255,255,.82);
+    }
+
+    .health-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .health-tile {
+      padding: 14px;
+      border-radius: 18px;
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.06);
+    }
+
+    .health-tile .label {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .health-tile .value {
+      color: white;
+      font-size: 24px;
+      font-weight: 900;
+      line-height: 1;
+    }
+
+    .health-tile .note {
+      color: #c5d2e7;
+      font-size: 12px;
+      margin-top: 8px;
+      line-height: 1.45;
+    }
+
+    .fab {
+      position: fixed;
+      right: 20px;
+      bottom: 86px;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #7c3aed, #5b21b6);
+      color: #fff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 30px;
+      font-weight: 900;
+      cursor: pointer;
+      z-index: 1300;
+      box-shadow: 0 16px 32px rgba(0,0,0,.32);
+      user-select: none;
+    }
+
+    .fab-menu {
+      position: fixed;
+      right: 20px;
+      bottom: 156px;
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 1300;
+    }
+
+    .fab-menu button {
+      border: none;
+      border-radius: 14px;
+      min-height: 44px;
+      padding: 10px 14px;
+      color: white;
+      font-size: 14px;
+      font-weight: 800;
+      cursor: pointer;
+      text-align: left;
+      background: linear-gradient(135deg, rgba(15,23,42,.98), rgba(30,41,59,.98));
+      box-shadow: 0 10px 26px rgba(0,0,0,.28);
+    }
+
+    .fab-menu.show {
+      display: flex;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    @media (max-width: 1320px) {
+      .summary-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+      .cards {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+      .cards-wrap,
+      .hero-grid,
+      .list-grid,
+      .command-strip {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 1024px) {
+      .summary-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .action-bar {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 860px) {
+      .sidebar {
+        transform: translateX(-100%);
+      }
+      .sidebar.mobile-open {
+        transform: translateX(0);
+      }
+      .main-content {
+        margin-left: 0;
+        padding: 14px;
+        padding-bottom: 110px;
+      }
+      .mobile-menu-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .overlay.show {
+        display: block;
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        background: rgba(0,0,0,.45);
+      }
+      .cards {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .topbar {
+        border-radius: 20px;
+      }
+      .vajra-title {
+        font-size: 22px;
+      }
+      .hero-balance-value {
+        font-size: 34px;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .summary-grid,
+      .cards,
+      .list-grid,
+      .cash-actions,
+      .action-bar,
+      .command-actions,
+      .health-grid {
+        grid-template-columns: 1fr;
+      }
+      .topbar-right,
+      .topbar-left,
+      .hero-main,
+      .user-info {
+        align-items: stretch;
+      }
+      .backup-status {
+        min-width: 0;
+        text-align: left;
+      }
+      .summary-value {
+        font-size: 26px;
+      }
+      .card {
+        min-height: 88px;
+      }
+    }
   </style>
 </head>
 <body class="dashboard-page">
+  <div class="dashboard-shell">
 
-  <aside id="sidebar" class="sidebar">
-    <button class="toggle-btn" id="toggleBtn" aria-label="Toggle sidebar">☰</button>
 
-    <ul class="nav-list">
-      <li><a href="#">🏠 Home</a></li>
+    <main class="main-content">
+      <nav class="topbar">
+        <div class="topbar-left">
+          <div>
+            <h1 class="vajra-title"><span class="vajra-v">V</span>AJRA LIGHTS &amp; ELECTRICALS</h1>
+            <div class="title-sub">Dashboard V2 • Full Screen Command Center • Approval Aware</div>
+          </div>
+        </div>
 
-      <li class="has-submenu">
-        <a href="#" class="menu-link">💳 Billing</a>
-        <ul class="submenu">
-          <li><a href="sales.html">Sales</a></li>
-          <li><a href="sales_return.html">Sales Return</a></li>
-          <li><a href="soq.html">Quotation</a></li>
-          <li><a href="#">Sales Order</a></li>
-          <li><a href="#">Transfer Out</a></li>
-        </ul>
-      </li>
+        <div class="topbar-right">
+          <span id="backupStatus" class="backup-status"></span>
+          <button id="closeCashTopBtn" class="close-cash-btn" type="button">🔒 Close My Cash</button>
+          <button id="backupBtn" class="backup-btn" title="Full Backup to Excel" aria-label="Full Backup to Excel" type="button">💾</button>
+          <span id="userRoleBadge" class="role-badge">Staff</span>
+        </div>
+      
+      </nav>
 
-      <li class="has-submenu">
-        <a href="#" class="menu-link">📦 Purchase</a>
-        <ul class="submenu">
-          <li><a href="purchasenew.html">Purchase</a></li>
-          <li><a href="#">Purchase Return</a></li>
-          <li><a href="#">Transfer In</a></li>
-          <li><a href="#">Manufacture</a></li>
-        </ul>
-      </li>
+      <section class="top-nav" aria-label="Quick Navigation">
+        <button type="button" onclick="go('sales.html')">🧾 Sales</button>
+        <button type="button" onclick="go('newsoq.html')">⚖️ Quotation</button>
+        <button type="button" onclick="go('paymentreceipt.html?type=receipt')">💰 Receipt</button>
+        <button type="button" onclick="go('paymentreceipt.html?type=payment')">💸 Payment</button>
+        <button type="button" onclick="go('purchasenew.html')">📦 Purchase</button>
+        <button type="button" onclick="go('report.html')">📊 Reports</button>
+        <button type="button" onclick="go('stockledger.html')">🏷️ Stock</button>
+        <button type="button" onclick="go('crm.html')">🛠 CRM</button>
+        <button type="button" onclick="go('user_accessibility.html')">👤 Profile</button>
+      </section>
 
-      <li class="has-submenu">
-        <a href="#" class="menu-link">💸 Cash Out</a>
-        <ul class="submenu">
-          <li><a href="paymentreceipt.html?type=payment">Payment</a></li>
-          <li><a href="#">Credit Note</a></li>
-        </ul>
-      </li>
+      <section class="command-strip">
+        <div class="command-panel">
+          <h3 class="section-title">V2 Command Center</h3>
+          <div class="section-sub">Fast app-style actions for billing, cash control, collections, and daily checking.</div>
+          <div class="command-actions">
+            <button class="command-btn blue" type="button" onclick="go('newsoq.html')">🧾 Create Bill<small>Open sales / quotation screen</small></button>
+            <button class="command-btn green" type="button" onclick="go('paymentreceipt.html?type=receipt')">💰 Add Receipt<small>Capture incoming cash quickly</small></button>
+            <button class="command-btn amber" type="button" onclick="go('credit_dashboard.html')">🟠 Credit Follow-up<small>Track unpaid bills separately</small></button>
+            <button class="command-btn violet" type="button" onclick="closeTodayCash()">🔒 Close Staff Cash<small>Save handover amount before staff leaves</small></button>
+          </div>
+        </div>
 
-      <li class="has-submenu">
-        <a href="#" class="menu-link">💰 Cash In</a>
-        <ul class="submenu">
-          <li><a href="paymentreceipt.html?type=receipt">Receipt</a></li>
-          <li><a href="#">Debit Note</a></li>
-        </ul>
-      </li>
+        <div class="health-panel">
+          <h3 class="section-title">Business Health Snapshot</h3>
+          <div class="section-sub">A cleaner high-level view for faster checking without opening reports first.</div>
+          <div class="health-grid">
+            <div class="health-tile">
+              <div class="label">Cash Strength</div>
+              <div class="value" id="cashStrengthText">Stable</div>
+              <div class="note">Based on current approved daily cash flow.</div>
+            </div>
+            <div class="health-tile">
+              <div class="label">Credit Pressure</div>
+              <div class="value" id="creditPressureText">Low</div>
+              <div class="note">Moves depending on today’s credit sales.</div>
+            </div>
+            <div class="health-tile">
+              <div class="label">Approval Queue</div>
+              <div class="value" id="approvalQueueText">Clear</div>
+              <div class="note">Checks pending payment and sales return approvals.</div>
+            </div>
+            <div class="health-tile">
+              <div class="label">Closing Readiness</div>
+              <div class="value" id="closingReadinessText">Ready</div>
+              <div class="note">Shows whether staff cash can be closed safely now.</div>
+            </div>
+          </div>
+        </div>
+      </section>
 
-      <li class="has-submenu">
-        <a href="#" class="menu-link">📊 Reports</a>
-        <ul class="submenu">
-          <li><a href="report.html">Sales Report</a></li>
-          <li><a href="sales_return_report.html">Sales Return Report</a></li>
-          <li><a href="#">Quotation Report</a></li>
-          <li><a href="#">Sales Order Report</a></li>
-          <li><a href="#">Transfer Out Report</a></li>
-          <li><a href="purchase_report.html">Purchase Report</a></li>
-          <li><a href="#">Purchase Return Report</a></li>
-          <li><a href="#">Transfer In Report</a></li>
-          <li><a href="#">Manufacture Report</a></li>
-          <li><a href="payment_report.html">Payment Report</a></li>
-          <li><a href="#">Credit Note Report</a></li>
-          <li><a href="receipt_report.html">Receipt Report</a></li>
-          <li><a href="#">Debit Note Report</a></li>
-          <li><a href="stockledger.html">Stock Report</a></li>
-        </ul>
-      </li>
+      <section class="hero-grid">
 
-      <li class="has-submenu">
-        <a href="#" class="menu-link">📝 Create</a>
-        <ul class="submenu" id="createMenu">
-          <li><a href="customer.html">Customer</a></li>
-          <li><a href="customer-list.html">Customer List</a></li>
-          <li><a href="supplier.html">Supplier</a></li>
-          <li><a href="supplier_list.html">Supplier List</a></li>
-          <li><a href="products.html">Products</a></li>
-          <li><a href="hsn.html">HSN</a></li>
-        </ul>
-      </li>
+        <div class="hero-panel">
+          <div class="hero-topline">⚡ Live business pulse for today</div>
 
-      <li><a href="#" id="logout">🚪 Logout</a></li>
-    </ul>
-  </aside>
+          <div class="hero-main">
+            <div>
+              <div class="hero-balance-title">Today's Balance</div>
+              <div class="hero-balance-value" id="todayBalance">₹ 0.00</div>
+              <div class="hero-balance-note">
+                Cash Sales + Approved Receipt - Approved Sales Return - Approved Payment.
+                Credit sales are shown separately and are not included in today's cash balance.
+              </div>
+            </div>
 
-  <main class="main-content">
-    <nav class="topbar">
-      <div class="topbar-left">
-        <button class="mobile-menu-btn" id="mobileMenuBtn">☰</button>
-        <h1>RIYARIN BILLING</h1>
-      </div>
-      <div class="topbar-right">
-        <span id="backupStatus" class="backup-status"></span>
-        <button id="backupBtn" class="backup-btn" title="Full Backup to Excel" aria-label="Full Backup to Excel">💾</button>
-        <span id="userRoleBadge" class="role-badge">Staff</span>
-      </div>
-    </nav>
+            <div class="hero-tags">
+              <div class="hero-tag">
+                <div class="hero-tag-label">Cash Sales</div>
+                <div class="hero-tag-value" id="todaySalesHero">₹ 0.00</div>
+              </div>
+              <div class="hero-tag">
+                <div class="hero-tag-label">Credit Sales</div>
+                <div class="hero-tag-value" id="todayCreditSalesHero">₹ 0.00</div>
+              </div>
+              <div class="hero-tag">
+                <div class="hero-tag-label">Pending</div>
+                <div class="hero-tag-value" id="pendingApprovalsHero">0</div>
+              </div>
+            </div>
+          </div>
+        </div>
 
-    <section class="user-info">
-      <p id="welcome"></p>
-    </section>
+        <div class="mini-stack">
+          <div class="mini-panel">
+            <div class="mini-panel-title">Approval Watch</div>
+            <div class="big-value" id="pendingApprovalsMini">0</div>
+            <div class="mini-row">
+              <span>Pending Payment</span>
+              <strong id="pendingPaymentsText">0</strong>
+            </div>
+            <div class="mini-row">
+              <span>Pending Return</span>
+              <strong id="pendingReturnsText">0</strong>
+            </div>
+            <div class="status-chip">Only approved lines affect dashboard totals</div>
+          </div>
 
-    <section class="summary-grid">
-      <div class="summary-card balance-card">
-        <div class="summary-title">Today's Balance</div>
-        <div class="summary-value" id="todayBalance">₹ 0.00</div>
-        <div class="summary-note">Sales + Receipt - Approved Sales Return - Approved Payment</div>
-      </div>
+          <div class="mini-panel">
+            <div class="mini-panel-title">Cash Closing Snapshot</div>
+            <div class="big-value" id="lastClosingAmount">₹ 0.00</div>
+            <div class="mini-row">
+              <span>Last Closed By</span>
+              <strong id="lastClosedBy">—</strong>
+            </div>
+            <div class="mini-row">
+              <span>Closed At</span>
+              <strong id="lastClosedAt">—</strong>
+            </div>
+            <div class="status-chip" id="closingStatusChip">No closing yet today</div>
+          </div>
+        </div>
+      </section>
 
-      <div class="summary-card">
-        <div class="summary-title">Today's Sales</div>
-        <div class="summary-value" id="todaySales">₹ 0.00</div>
-      </div>
+      <section class="user-info">
+        <div class="welcome-wrap">
+          <h2 id="welcomeHeading">Welcome</h2>
+          <p id="welcome">Loading user information...</p>
+        </div>
+        <div class="today-chip" id="todayChip">Today</div>
+      </section>
 
-      <div class="summary-card">
-        <div class="summary-title">Today's Receipt</div>
-        <div class="summary-value" id="todayReceipt">₹ 0.00</div>
-      </div>
+      <section class="summary-grid">
+        <div class="summary-card balance-card">
+          <div class="summary-title">Today's Balance</div>
+          <div class="summary-value" id="todayBalanceCard">₹ 0.00</div>
+          <div class="summary-note">Real cash position based on approved transactions only.</div>
+        </div>
 
-      <div class="summary-card">
-        <div class="summary-title">Approved Sales Return</div>
-        <div class="summary-value" id="todaySalesReturn">₹ 0.00</div>
-      </div>
+        <div class="summary-card cash-sales-card">
+          <div class="summary-title">Cash Sales</div>
+          <div class="summary-value" id="todaySales">₹ 0.00</div>
+          <div class="summary-note">Only cash bills are counted here.</div>
+        </div>
 
-      <div class="summary-card">
-        <div class="summary-title">Approved Payment</div>
-        <div class="summary-value" id="todayPayment">₹ 0.00</div>
-      </div>
+        <div class="summary-card credit-sales-card">
+          <div class="summary-title">Credit Sales</div>
+          <div class="summary-value" id="todayCreditSales">₹ 0.00</div>
+          <div class="summary-note">Shown separately in a different color and excluded from today's balance.</div>
+        </div>
 
-      <div class="summary-card">
-        <div class="summary-title">Pending Approvals</div>
-        <div class="summary-value" id="pendingApprovals">0</div>
-      </div>
-    </section>
+        <div class="summary-card receipt-card">
+          <div class="summary-title">Approved Receipt</div>
+          <div class="summary-value" id="todayReceipt">₹ 0.00</div>
+          <div class="summary-note">Only approved receipt lines that need approval should affect this.</div>
+        </div>
 
-    <section class="cards">
-      <div class="card" onclick="window.location.href='newsoq.html'">🧾 SALES / QUOTATION</div>
-      <div class="card" onclick="window.location.href='sales_return_report.html'">🧾 Sales Return</div>
-      <div class="card" onclick="window.location.href='quocom.html'">🧾 QUOTATION COMPARISON</div>
-      <div class="card" onclick="window.location.href='purchase_report.html'">📦📊 Purchase</div>
-      <div class="card" onclick="window.location.href='barcode.html'">🏷️ Barcode</div>
-      <div class="card" onclick="window.location.href='cash.html'">💸 Payment / Receipt</div>
-      <div class="card" onclick="window.location.href='stockledger.html'">📊 Stock Report</div>
-      <div class="card" onclick="window.location.href='hsn.html'">📊 HSN Codes</div>
-      <div class="card" onclick="window.location.href='customer_manager.html'">📝 Customer</div>
-      <div class="card" onclick="window.location.href='credit_dashboard.html'">📝 CREDIT BILLS</div>
-      <div class="card" onclick="window.location.href='history.html'">📝 Customer History</div>
-      <div class="card" onclick="window.location.href='gstreport.html'">📝 GST Report</div>
-      <div class="card" onclick="window.location.href='gstbillwise.html'">📊 GST Bill-wise Report</div>
-      <div class="card" onclick="window.location.href='crm.html'">📝 CRM</div>
-      <div class="card" onclick="window.location.href='users.html'">⚙️ USER SETTINGS</div>
-      <div class="card" onclick="window.location.href='user_accessibility.html'">👤 PROFILE</div>
-      <div class="card" onclick="window.location.href='credit_dashboard.html'">💾 CREDIT DASHBOARD TEST</div>
-      <div class="card" onclick="window.location.href='credit_report.html'">💾 CREDIT REPORT TEST</div>
-      <div class="card" onclick="window.location.href='customer_ledger.html'">💾 CUSTOMER LEDGER TEST</div>
+        <div class="summary-card return-card">
+          <div class="summary-title">Approved Sales Return</div>
+          <div class="summary-value" id="todaySalesReturn">₹ 0.00</div>
+          <div class="summary-note">Unapproved returns stay out of the dashboard calculation.</div>
+        </div>
 
-    </section>
-  </main>
+        <div class="summary-card payment-card">
+          <div class="summary-title">Approved Payment</div>
+          <div class="summary-value" id="todayPayment">₹ 0.00</div>
+          <div class="summary-note">Only approved payment lines reduce today's balance.</div>
+        </div>
 
-  <div id="overlay" class="overlay"></div>
+        <div class="summary-card pending-card">
+          <div class="summary-title">Pending Approvals</div>
+          <div class="summary-value" id="pendingApprovals">0</div>
+          <div class="summary-subline">
+            <span>Payments: <strong id="pendingPayments">0</strong></span>
+            <span>Returns: <strong id="pendingReturns">0</strong></span>
+          </div>
+        </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-<script src="supabaseClient.js"></script>
-<script src="page_permissions.js"></script>
-<script>
-    const sb = window.sbcc; // supabase client from supabaseClient.js
+        <div class="summary-card close-card">
+          <div class="summary-title">Cash To Be Closed</div>
+          <div class="summary-value" id="cashToClose">₹ 0.00</div>
+          <div class="summary-note">Use this when staff leaves before shop close. Save the cash amount safely for later account checking.</div>
+        </div>
+      </section>
 
-document.addEventListener("DOMContentLoaded", async () => {
-  setupSidebar();
+      <section class="cards-wrap">
+        <div class="cards-panel">
+          <h3 class="section-title">Quick Access</h3>
+          <div class="section-sub">Fast actions for your daily billing, cash, reports, and control pages.</div>
 
-  const profile = await getLoggedInProfile();
-  if (!profile) return;
+          <div class="cards">
+            <div class="card" onclick="window.location.href='newsoq.html'"><div><span class="card-icon">🧾</span>SALES / QUOTATION</div></div>
+            <div class="card" onclick="window.location.href='sales_return_report.html'"><div><span class="card-icon">↩️</span>Sales Return</div></div>
+            <div class="card" onclick="window.location.href='quocom.html'"><div><span class="card-icon">⚖️</span>Quotation Comparison</div></div>
+            <div class="card" onclick="window.location.href='purchase_report.html'"><div><span class="card-icon">📦</span>Purchase</div></div>
+            <div class="card" onclick="window.location.href='barcode.html'"><div><span class="card-icon">🏷️</span>Barcode</div></div>
+            <div class="card" onclick="window.location.href='cash.html'"><div><span class="card-icon">💸</span>Payment / Receipt</div></div>
+            <div class="card" onclick="window.location.href='stockledger.html'"><div><span class="card-icon">📊</span>Stock Report</div></div>
+            <div class="card" onclick="window.location.href='hsn.html'"><div><span class="card-icon">🧾</span>HSN Codes</div></div>
+            <div class="card" onclick="window.location.href='customer_manager.html'"><div><span class="card-icon">👥</span>Customer</div></div>
+            <div class="card" onclick="window.location.href='credit_dashboard.html'"><div><span class="card-icon">🟠</span>Credit Bills</div></div>
+            <div class="card" onclick="window.location.href='history.html'"><div><span class="card-icon">🕘</span>Customer History</div></div>
+            <div class="card" onclick="window.location.href='gstreport.html'"><div><span class="card-icon">📑</span>GST Report</div></div>
+            <div class="card" onclick="window.location.href='gstbillwise.html'"><div><span class="card-icon">📘</span>GST Bill-wise</div></div>
+            <div class="card" onclick="window.location.href='crm.html'"><div><span class="card-icon">🛠️</span>CRM</div></div>
+            <div class="card" onclick="window.location.href='users.html'"><div><span class="card-icon">⚙️</span>User Settings</div></div>
+            <div class="card" onclick="window.location.href='user_accessibility.html'"><div><span class="card-icon">👤</span>Profile</div></div>
+          </div>
+        </div>
 
-  loadUserInfo(); // already uses localStorage
-  applyRolePermissions();
-  setupBackupButton();
+        <div class="closing-panel">
+          <h3 class="section-title">Staff Cash Closing Control</h3>
+          <div class="section-sub">When staff leaves early, close and store the amount here. Later you can compare physical cash and system totals wisely.</div>
 
-  await loadTodayDashboardSummary();
-});
+          <div class="closing-grid">
+            <div class="cash-box">
+              <div class="cash-box-label">System Expected Cash</div>
+              <div class="cash-box-value" id="systemExpectedCash">₹ 0.00</div>
+              <div class="cash-box-note">This is based on today's approved dashboard cash flow.</div>
+            </div>
 
-// ===============================
-// ===============================
+            <div class="cash-box">
+              <div class="cash-box-label">Last Saved Cash Closing</div>
+              <div class="cash-box-value" id="savedClosingCash">₹ 0.00</div>
+              <div class="cash-box-note" id="savedClosingNote">No cash closing saved today.</div>
+            </div>
 
-// ===============================
-// 👤 LOAD USER INFO
-// ===============================
-async function loadUserInfo() {
-  const username = localStorage.getItem("username") || "User";
-  const role = localStorage.getItem("role") || "PENDING";
+            <div class="cash-actions">
+              <button type="button" class="primary-btn" id="closeCashBtn">🔒 Save Staff Cash Closing</button>
+              <button type="button" class="secondary-btn" id="refreshSummaryBtn">🔄 Refresh Dashboard</button>
+            </div>
+          </div>
+        </div>
+      </section>
 
-  const welcomeEl = document.getElementById("welcome");
-  const roleBadgeEl = document.getElementById("userRoleBadge");
+      <section class="list-grid">
+        <div class="list-card">
+          <h3 class="section-title">Dashboard Rules</h3>
+          <div class="info-list">
+            <div class="info-row">
+              <div class="label">Sales counted in Today Sales</div>
+              <div class="value">Cash bills only</div>
+            </div>
+            <div class="info-row">
+              <div class="label">Credit bills</div>
+              <div class="value">Separate orange card, excluded from balance</div>
+            </div>
+            <div class="info-row">
+              <div class="label">Receipt & Payment</div>
+              <div class="value">Only approved lines if approval is needed</div>
+            </div>
+            <div class="info-row">
+              <div class="label">Sales Return effect</div>
+              <div class="value">Only approved returns reduce balance</div>
+            </div>
+          </div>
+        </div>
 
-  if (welcomeEl) {
-    welcomeEl.innerText = `Welcome, ${username}`;
-  }
+        <div class="list-card">
+          <h3 class="section-title">Backend Notes You Need</h3>
+          <div class="info-list">
+            <div class="info-row">
+              <div class="label">sales_details</div>
+              <div class="value">Need a sale_type like CASH / CREDIT</div>
+            </div>
+            <div class="info-row">
+              <div class="label">Dashboard RPC</div>
+              <div class="value">Should return today_credit_sales also</div>
+            </div>
+            <div class="info-row">
+              <div class="label">Receipt / Payment logic</div>
+              <div class="value">Apply approval filtering for lines needing approval</div>
+            </div>
+            <div class="info-row">
+              <div class="label">Cash closing table</div>
+              <div class="value">daily_cash_closing recommended</div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
 
-  const formattedRole = role
-    .toLowerCase()
-    .replace(/\b\w/g, c => c.toUpperCase());
+  </div>
 
-  if (roleBadgeEl) {
-    roleBadgeEl.innerText = formattedRole;
-  }
-}
+  <div class="action-bar">
+    <button class="action-blue" type="button" onclick="window.location.href='sales.html'">🧾 Sales</button>
+    <button class="action-green" type="button" onclick="window.location.href='paymentreceipt.html?type=receipt'">💰 Receipt</button>
+    <button class="action-violet" type="button" id="bottomCloseCashBtn">🔒 Close Cash</button>
+    <button class="action-amber" type="button" onclick="window.location.href='credit_dashboard.html'">🟠 Credit</button>
+    <button class="action-cyan" type="button" onclick="window.location.href='report.html'">📊 Reports</button>
+  </div>
 
-// ===============================
-// 🔥 ROLE PERMISSIONS
-// ===============================
-function applyRolePermissions() {
-  const role = (localStorage.getItem("role") || "").toUpperCase();
+  <div class="fab-menu" id="fabMenu">
+    <button type="button" onclick="go('sales.html')">🧾 Open Sales</button>
+    <button type="button" onclick="go('paymentreceipt.html?type=receipt')">💰 New Receipt</button>
+    <button type="button" onclick="go('purchasenew.html')">📦 New Purchase</button>
+    <button type="button" onclick="go('report.html')">📊 Open Reports</button>
+  </div>
+  <div class="fab" id="fabBtn" title="Quick Actions" aria-label="Quick Actions">＋</div>
 
-  if (role !== "OWNER" && role !== "ADMIN") {
-    const userSettingsCard = document.querySelector('[onclick*="users.html"]');
-    if (userSettingsCard) userSettingsCard.style.display = "none";
-  }
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <script src="supabaseClient.js"></script>
+  <script src="page_permissions.js"></script>
 
-  if (!["OWNER", "ADMIN", "MANAGER"].includes(role)) {
-    const createMenu = document.getElementById("createMenu");
-    if (createMenu && createMenu.parentElement) {
-      createMenu.parentElement.style.display = "none";
-    }
-  }
+  <script>
+    const sb = window.sbcc;
 
-  if (!["OWNER", "ADMIN", "MANAGER", "SALES & PURCHASE"].includes(role)) {
-    document.querySelectorAll('[href="purchasenew.html"]').forEach(el => {
-      if (el.parentElement) el.parentElement.style.display = "none";
-    });
-  }
-
-  if (role === "SALES MAN") {
-    document.querySelectorAll(".has-submenu").forEach(menu => {
-      if (menu.innerText.includes("Reports")) {
-        menu.style.display = "none";
+    document.addEventListener("DOMContentLoaded", async () => {
+      if (!sb) {
+        alert("Supabase client not loaded. Check supabaseClient.js");
+        return;
       }
-    });
-  }
-}
-
-// ===============================
-// 🚪 LOGOUT
-// ===============================
-document.getElementById("logout")?.addEventListener("click", async (e) => {
-  e.preventDefault();
-  await sb.auth.signOut();
-  localStorage.clear();
-  window.location.href = "index.html";
-});
-
-// ===============================
-// 📂 SIDEBAR
-// ===============================
-function setupSidebar() {
-  document.querySelectorAll(".has-submenu > .menu-link").forEach(link => {
-    link.addEventListener("click", function(e) {
-      e.preventDefault();
-      this.parentElement.classList.toggle("open");
-    });
-  });
-
-  const mobileMenuBtn = document.getElementById("mobileMenuBtn");
-  const sidebar = document.getElementById("sidebar");
-  const overlay = document.getElementById("overlay");
-
-  mobileMenuBtn?.addEventListener("click", () => {
-    sidebar?.classList.toggle("mobile-open");
-    overlay?.classList.toggle("show");
-  });
-
-  overlay?.addEventListener("click", () => {
-    sidebar?.classList.remove("mobile-open");
-    overlay?.classList.remove("show");
-  });
-}
-
-// ===============================
-// 💾 FULL BACKUP TO EXCEL
-// ===============================
-function setupBackupButton() {
-  const btn = document.getElementById("backupBtn");
-  if (btn) {
-    btn.addEventListener("click", handleFullBackup);
-  }
-}
-
-async function handleFullBackup() {
-  const btn = document.getElementById("backupBtn");
-  const role = (localStorage.getItem("role") || "").toUpperCase();
-
-  if (!["OWNER", "ADMIN", "MANAGER"].includes(role)) {
-    alert("Backup allowed only for Owner / Admin / Manager.");
-    return;
-  }
-
-  if (!window.XLSX) {
-    alert("Excel library not loaded.");
-    return;
-  }
-
-  try {
-    if (btn) {
-      btn.disabled = true;
-      btn.textContent = "⏳";
-    }
-
-    setBackupStatus("Finding tables...");
-
-    const tablesToBackup = await getAllPublicTables();
-
-    if (!tablesToBackup.length) {
-      throw new Error("No public tables found for backup.");
-    }
-
-    const workbook = XLSX.utils.book_new();
-
-    for (let i = 0; i < tablesToBackup.length; i++) {
-      const tableName = tablesToBackup[i];
-      setBackupStatus(`Backup ${i + 1}/${tablesToBackup.length}: ${tableName}`);
 
       try {
-        const rows = await fetchAllRowsFromTable(tableName);
-        const safeRows = Array.isArray(rows) && rows.length
-          ? rows
-          : [{ info: "No data" }];
+        const profile = await getLoggedInProfile();
+        if (!profile) return;
 
-        const worksheet = XLSX.utils.json_to_sheet(safeRows);
-        autoFitColumns(worksheet, safeRows);
-        XLSX.utils.book_append_sheet(workbook, worksheet, safeSheetName(tableName));
-      } catch (tableErr) {
-        console.error(`Backup failed for table ${tableName}:`, tableErr);
+        setupTodayChip();
+        loadUserInfo();
+        applyRolePermissions();
+        setupFab();
+        setupBackupButton();
+        setupCashClosingButtons();
 
-        const errorRows = [{
-          error: `Failed to backup table ${tableName}`,
-          details: tableErr.message || String(tableErr)
-        }];
+        await loadTodayDashboardSummary();
+        await loadLatestCashClosing();
+      } catch (err) {
+        console.error(err);
+        alert("Dashboard failed to load.");
+      }
+    });
 
-        const errorSheet = XLSX.utils.json_to_sheet(errorRows);
-        autoFitColumns(errorSheet, errorRows);
-        XLSX.utils.book_append_sheet(workbook, errorSheet, safeSheetName(tableName));
+    function setupTodayChip() {
+      const el = document.getElementById("todayChip");
+      if (!el) return;
+      const now = new Date();
+      const formatted = now.toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric"
+      });
+      el.innerText = "Today • " + formatted;
+    }
+
+    async function loadUserInfo() {
+      const username = localStorage.getItem("username") || "User";
+      const role = localStorage.getItem("role") || "PENDING";
+
+      const welcomeEl = document.getElementById("welcome");
+      const welcomeHeading = document.getElementById("welcomeHeading");
+      const roleBadgeEl = document.getElementById("userRoleBadge");
+
+      if (welcomeHeading) {
+        welcomeHeading.innerText = `Welcome, ${username}`;
+      }
+
+      if (welcomeEl) {
+        welcomeEl.innerText = `Role: ${role}. This dashboard is now optimized for approval-aware cash control and separate credit sales tracking.`;
+      }
+
+      const formattedRole = role.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+
+      if (roleBadgeEl) {
+        roleBadgeEl.innerText = formattedRole;
       }
     }
 
-    const fileName = `supabase_full_backup_${getDateTimeStamp()}.xlsx`;
-    XLSX.writeFile(workbook, fileName);
+    function applyRolePermissions() {
+      const role = (localStorage.getItem("role") || "").toUpperCase();
 
-    setBackupStatus("Backup done");
-    setTimeout(() => setBackupStatus(""), 4000);
-  } catch (err) {
-    console.error("Backup failed:", err);
-    alert("Backup failed: " + (err.message || String(err)));
-    setBackupStatus("Backup failed");
-  } finally {
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = "💾";
-    }
-  }
-}
+      if (role !== "OWNER" && role !== "ADMIN") {
+        const userSettingsCard = document.querySelector('[onclick*="users.html"]');
+        if (userSettingsCard) userSettingsCard.style.display = "none";
+      }
 
-async function getAllPublicTables() {
-  const { data, error } = await sb.rpc("get_public_table_names");
+      if (!["OWNER", "ADMIN", "MANAGER"].includes(role)) {
+        const createMenu = document.getElementById("createMenu");
+        if (createMenu && createMenu.parentElement) {
+          createMenu.parentElement.style.display = "none";
+        }
+      }
 
-  if (error) {
-    throw new Error("Could not fetch public table names: " + error.message);
-  }
+      if (!["OWNER", "ADMIN", "MANAGER", "SALES & PURCHASE"].includes(role)) {
+        document.querySelectorAll('[href="purchasenew.html"]').forEach(el => {
+          if (el.parentElement) el.parentElement.style.display = "none";
+        });
+      }
 
-  if (!Array.isArray(data)) return [];
-
-  return data
-    .map(row => row.table_name)
-    .filter(Boolean);
-}
-
-async function fetchAllRowsFromTable(tableName) {
-  const pageSize = 1000;
-  let from = 0;
-  let allRows = [];
-
-  while (true) {
-    const { data, error } = await sb
-      .from(tableName)
-      .select("*")
-      .range(from, from + pageSize - 1);
-
-    if (error) {
-      throw new Error(`${tableName}: ${error.message}`);
+      if (role === "SALES MAN") {
+        document.querySelectorAll(".has-submenu").forEach(menu => {
+          if (menu.innerText.includes("Reports")) {
+            menu.style.display = "none";
+          }
+        });
+      }
     }
 
-    if (Array.isArray(data) && data.length) {
-      allRows = allRows.concat(data);
-    }
-
-    if (!data || data.length < pageSize) {
-      break;
-    }
-
-    from += pageSize;
-  }
-
-  return allRows;
-}
-
-function safeSheetName(name) {
-  return String(name).replace(/[\\\/\?\*\[\]\:]/g, "_").slice(0, 31);
-}
-
-function autoFitColumns(worksheet, rows) {
-  if (!rows || !rows.length) return;
-
-  const headers = Object.keys(rows[0]);
-  const colWidths = headers.map(header => ({
-    wch: Math.max(12, String(header).length + 2)
-  }));
-
-  rows.forEach(row => {
-    headers.forEach((header, index) => {
-      const value = row && row[header] != null ? String(row[header]) : "";
-      colWidths[index].wch = Math.min(
-        50,
-        Math.max(colWidths[index].wch, value.length + 2)
-      );
+    document.getElementById("logout")?.addEventListener("click", async (e) => {
+      e.preventDefault();
+      try {
+        await sb.auth.signOut();
+      } catch (err) {
+        console.error("Logout error:", err);
+      }
+      localStorage.clear();
+      window.location.href = "index.html";
     });
-  });
 
-  worksheet["!cols"] = colWidths;
-}
 
-function getDateTimeStamp() {
-  const now = new Date();
-  const yyyy = now.getFullYear();
-  const mm = String(now.getMonth() + 1).padStart(2, "0");
-  const dd = String(now.getDate()).padStart(2, "0");
-  const hh = String(now.getHours()).padStart(2, "0");
-  const mi = String(now.getMinutes()).padStart(2, "0");
-  const ss = String(now.getSeconds()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}_${hh}-${mi}-${ss}`;
-}
 
-function setBackupStatus(text) {
-  const el = document.getElementById("backupStatus");
-  if (el) el.innerText = text || "";
-}
-
-// ===============================
-// 💰 DASHBOARD SUMMARY (RPC BASED)
-// ===============================
-async function loadTodayDashboardSummary() {
-  try {
-    const { data, error } = await sb.rpc("get_today_dashboard_summary");
-
-    if (error) {
-      console.error("Dashboard summary RPC error:", error);
-      alert("Failed to load today's dashboard summary.");
-      return;
+    function go(page) {
+      window.location.href = page;
     }
 
-    const row = Array.isArray(data) ? data[0] : data;
+    function setupFab() {
+      const fabBtn = document.getElementById("fabBtn");
+      const fabMenu = document.getElementById("fabMenu");
 
-    const todaySales = Number(row?.today_sales || 0);
-    const todayReceipt = Number(row?.today_receipt || 0);
-    const todaySalesReturn = Number(row?.today_sales_return || 0);
-    const todayPayment = Number(row?.today_payment || 0);
-    const pendingPayments = Number(row?.pending_payments || 0);
-    const pendingReturns = Number(row?.pending_returns || 0);
-    const todayBalance = Number(row?.today_balance || 0);
+      fabBtn?.addEventListener("click", () => {
+        fabMenu?.classList.toggle("show");
+      });
 
-    setText("todaySales", formatCurrency(todaySales));
-    setText("todayReceipt", formatCurrency(todayReceipt));
-    setText("todaySalesReturn", formatCurrency(todaySalesReturn));
-    setText("todayPayment", formatCurrency(todayPayment));
-    setText("todayBalance", formatCurrency(todayBalance));
-    setText("pendingApprovals", pendingPayments + pendingReturns);
-  } catch (err) {
-    console.error("loadTodayDashboardSummary error:", err);
-    alert("Unexpected error while loading dashboard.");
-  }
-}
+      document.addEventListener("click", (e) => {
+        if (!fabMenu || !fabBtn) return;
+        if (fabMenu.contains(e.target) || fabBtn.contains(e.target)) return;
+        fabMenu.classList.remove("show");
+      });
+    }
 
-// ===============================
-// 🧰 HELPERS
-// ===============================
-function setText(id, value) {
-  const el = document.getElementById(id);
-  if (el) el.innerText = value;
-}
+    function updateV2HealthStatus(todayBalance, todayCreditSales, pendingCount) {
+      setText("cashStrengthText", todayBalance > 0 ? "Strong" : todayBalance < 0 ? "Tight" : "Stable");
+      setText("creditPressureText", todayCreditSales > 0 ? (todayCreditSales >= 50000 ? "High" : "Medium") : "Low");
+      setText("approvalQueueText", pendingCount > 0 ? `${pendingCount} Pending` : "Clear");
+      setText("closingReadinessText", todayBalance > 0 ? "Ready" : "Check");
+    }
 
-function formatCurrency(value) {
-  return `₹ ${Number(value || 0).toFixed(2)}`;
-}
-</script>
+
+    function setupBackupButton() {
+      const btn = document.getElementById("backupBtn");
+      if (btn) btn.addEventListener("click", handleFullBackup);
+    }
+
+    async function handleFullBackup() {
+      const btn = document.getElementById("backupBtn");
+      const role = (localStorage.getItem("role") || "").toUpperCase();
+
+      if (!["OWNER", "ADMIN", "MANAGER"].includes(role)) {
+        alert("Backup allowed only for Owner / Admin / Manager.");
+        return;
+      }
+
+      if (!window.XLSX) {
+        alert("Excel library not loaded.");
+        return;
+      }
+
+      try {
+        if (btn) {
+          btn.disabled = true;
+          btn.textContent = "⏳";
+        }
+
+        setBackupStatus("Finding tables...");
+        const tablesToBackup = await getAllPublicTables();
+
+        if (!tablesToBackup.length) {
+          throw new Error("No public tables found for backup.");
+        }
+
+        const workbook = XLSX.utils.book_new();
+
+        for (let i = 0; i < tablesToBackup.length; i++) {
+          const tableName = tablesToBackup[i];
+          setBackupStatus(`Backup ${i + 1}/${tablesToBackup.length}: ${tableName}`);
+
+          try {
+            const rows = await fetchAllRowsFromTable(tableName);
+            const safeRows = Array.isArray(rows) && rows.length ? rows : [{ info: "No data" }];
+
+            const worksheet = XLSX.utils.json_to_sheet(safeRows);
+            autoFitColumns(worksheet, safeRows);
+            XLSX.utils.book_append_sheet(workbook, worksheet, safeSheetName(tableName));
+          } catch (tableErr) {
+            console.error(`Backup failed for table ${tableName}:`, tableErr);
+            const errorRows = [{
+              error: `Failed to backup table ${tableName}`,
+              details: tableErr.message || String(tableErr)
+            }];
+            const errorSheet = XLSX.utils.json_to_sheet(errorRows);
+            autoFitColumns(errorSheet, errorRows);
+            XLSX.utils.book_append_sheet(workbook, errorSheet, safeSheetName(tableName));
+          }
+        }
+
+        const fileName = `supabase_full_backup_${getDateTimeStamp()}.xlsx`;
+        XLSX.writeFile(workbook, fileName);
+
+        setBackupStatus("Backup done");
+        setTimeout(() => setBackupStatus(""), 4000);
+      } catch (err) {
+        console.error("Backup failed:", err);
+        alert("Backup failed: " + (err.message || String(err)));
+        setBackupStatus("Backup failed");
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "💾";
+        }
+      }
+    }
+
+    async function getAllPublicTables() {
+      const { data, error } = await sb.rpc("get_public_table_names");
+      if (error) {
+        throw new Error("Could not fetch public table names: " + error.message);
+      }
+      if (!Array.isArray(data)) return [];
+      return data.map(row => row.table_name).filter(Boolean);
+    }
+
+    async function fetchAllRowsFromTable(tableName) {
+      const pageSize = 1000;
+      let from = 0;
+      let allRows = [];
+
+      while (true) {
+        const { data, error } = await sb
+          .from(tableName)
+          .select("*")
+          .range(from, from + pageSize - 1);
+
+        if (error) {
+          throw new Error(`${tableName}: ${error.message}`);
+        }
+
+        if (Array.isArray(data) && data.length) {
+          allRows = allRows.concat(data);
+        }
+
+        if (!data || data.length < pageSize) break;
+        from += pageSize;
+      }
+
+      return allRows;
+    }
+
+    function safeSheetName(name) {
+      return String(name).replace(/[\\\/\?\*\[\]\:]/g, "_").slice(0, 31);
+    }
+
+    function autoFitColumns(worksheet, rows) {
+      if (!rows || !rows.length) return;
+      const headers = Object.keys(rows[0]);
+      const colWidths = headers.map(header => ({ wch: Math.max(12, String(header).length + 2) }));
+
+      rows.forEach(row => {
+        headers.forEach((header, index) => {
+          const value = row && row[header] != null ? String(row[header]) : "";
+          colWidths[index].wch = Math.min(50, Math.max(colWidths[index].wch, value.length + 2));
+        });
+      });
+
+      worksheet["!cols"] = colWidths;
+    }
+
+    function getDateTimeStamp() {
+      const now = new Date();
+      const yyyy = now.getFullYear();
+      const mm = String(now.getMonth() + 1).padStart(2, "0");
+      const dd = String(now.getDate()).padStart(2, "0");
+      const hh = String(now.getHours()).padStart(2, "0");
+      const mi = String(now.getMinutes()).padStart(2, "0");
+      const ss = String(now.getSeconds()).padStart(2, "0");
+      return `${yyyy}-${mm}-${dd}_${hh}-${mi}-${ss}`;
+    }
+
+    function setBackupStatus(text) {
+      const el = document.getElementById("backupStatus");
+      if (el) el.innerText = text || "";
+    }
+
+    async function loadTodayDashboardSummary() {
+      try {
+        const { data, error } = await sb.rpc("get_today_dashboard_summary");
+
+        if (error) {
+          console.error("Dashboard summary RPC error:", error);
+          alert("Failed to load today's dashboard summary.");
+          return;
+        }
+
+        const row = Array.isArray(data) ? data[0] : (data || {});
+
+        const todaySales = Number(
+          row?.today_cash_sales ??
+          row?.cash_sales ??
+          row?.today_sales_cash ??
+          row?.today_sales ??
+          0
+        );
+
+        const todayCreditSales = Number(
+          row?.today_credit_sales ??
+          row?.credit_sales ??
+          0
+        );
+
+        const todayReceipt = Number(row?.today_receipt || 0);
+        const todaySalesReturn = Number(row?.today_sales_return || 0);
+        const todayPayment = Number(row?.today_payment || 0);
+        const pendingPayments = Number(row?.pending_payments || 0);
+        const pendingReturns = Number(row?.pending_returns || 0);
+
+        const todayBalance = Number(
+          row?.today_balance ??
+          (todaySales + todayReceipt - todaySalesReturn - todayPayment)
+        );
+
+        setText("todaySales", formatCurrency(todaySales));
+        setText("todaySalesHero", formatCurrency(todaySales));
+        setText("todayCreditSales", formatCurrency(todayCreditSales));
+        setText("todayCreditSalesHero", formatCurrency(todayCreditSales));
+        setText("todayReceipt", formatCurrency(todayReceipt));
+        setText("todaySalesReturn", formatCurrency(todaySalesReturn));
+        setText("todayPayment", formatCurrency(todayPayment));
+        setText("todayBalance", formatCurrency(todayBalance));
+        setText("todayBalanceCard", formatCurrency(todayBalance));
+        setText("pendingApprovals", pendingPayments + pendingReturns);
+        setText("pendingApprovalsHero", String(pendingPayments + pendingReturns));
+        setText("pendingApprovalsMini", String(pendingPayments + pendingReturns));
+        setText("pendingPayments", String(pendingPayments));
+        setText("pendingReturns", String(pendingReturns));
+        setText("pendingPaymentsText", String(pendingPayments));
+        setText("pendingReturnsText", String(pendingReturns));
+        setText("cashToClose", formatCurrency(todayBalance));
+        setText("systemExpectedCash", formatCurrency(todayBalance));
+        updateV2HealthStatus(todayBalance, todayCreditSales, pendingPayments + pendingReturns);
+      } catch (err) {
+        console.error("loadTodayDashboardSummary error:", err);
+        alert("Unexpected error while loading dashboard.");
+      }
+    }
+
+    function setupCashClosingButtons() {
+      document.getElementById("closeCashBtn")?.addEventListener("click", closeTodayCash);
+      document.getElementById("closeCashTopBtn")?.addEventListener("click", closeTodayCash);
+      document.getElementById("bottomCloseCashBtn")?.addEventListener("click", closeTodayCash);
+      document.getElementById("refreshSummaryBtn")?.addEventListener("click", async () => {
+        await loadTodayDashboardSummary();
+        await loadLatestCashClosing();
+      });
+    }
+
+    async function closeTodayCash() {
+      try {
+        const amountText = prompt("Enter today's staff closing cash amount");
+        if (amountText === null) return;
+
+        const amount = Number(String(amountText).replace(/,/g, "").trim());
+
+        if (!Number.isFinite(amount) || amount < 0) {
+          alert("Please enter a valid cash amount.");
+          return;
+        }
+
+        const notes = prompt("Enter note if needed (staff name / timing / remarks)") || "";
+        const userRes = await sb.auth.getUser();
+        const user = userRes?.data?.user;
+
+        if (!user) {
+          alert("User not found. Please login again.");
+          return;
+        }
+
+        const payload = {
+          user_id: user.id,
+          closing_amount: amount,
+          notes: notes
+        };
+
+        let insertError = null;
+
+        const directInsert = await sb.from("daily_cash_closing").insert([payload]).select().maybeSingle();
+        if (directInsert.error) {
+          insertError = directInsert.error;
+        }
+
+        if (insertError) {
+          const rpcTry = await sb.rpc("save_daily_cash_closing", {
+            p_closing_amount: amount,
+            p_notes: notes
+          });
+
+          if (rpcTry.error) {
+            console.error("Cash closing save error:", insertError, rpcTry.error);
+            alert(
+              "Could not save cash closing. Create table daily_cash_closing or RPC save_daily_cash_closing first."
+            );
+            return;
+          }
+        }
+
+        alert("Cash closing saved successfully.");
+        await loadLatestCashClosing();
+      } catch (err) {
+        console.error("closeTodayCash error:", err);
+        alert("Failed to save cash closing.");
+      }
+    }
+
+    async function loadLatestCashClosing() {
+      try {
+        const today = new Date();
+        const start = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0).toISOString();
+        const end = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999).toISOString();
+
+        const { data, error } = await sb
+          .from("daily_cash_closing")
+          .select("*")
+          .gte("closing_time", start)
+          .lte("closing_time", end)
+          .order("closing_time", { ascending: false })
+          .limit(1);
+
+        if (error) {
+          console.warn("Cash closing table not available or query failed:", error.message);
+          setText("lastClosingAmount", "₹ 0.00");
+          setText("savedClosingCash", "₹ 0.00");
+          setText("lastClosedBy", "—");
+          setText("lastClosedAt", "—");
+          setText("savedClosingNote", "No cash closing saved today or table not created yet.");
+          setText("closingStatusChip", "Create daily_cash_closing table to use this feature");
+          return;
+        }
+
+        const row = Array.isArray(data) ? data[0] : null;
+
+        if (!row) {
+          setText("lastClosingAmount", "₹ 0.00");
+          setText("savedClosingCash", "₹ 0.00");
+          setText("lastClosedBy", "—");
+          setText("lastClosedAt", "—");
+          setText("savedClosingNote", "No cash closing saved today.");
+          setText("closingStatusChip", "No closing yet today");
+          return;
+        }
+
+        const amount = Number(row.closing_amount || 0);
+        const closeTime = row.closing_time ? new Date(row.closing_time) : null;
+        const timeText = closeTime
+          ? closeTime.toLocaleString("en-IN", {
+              day: "2-digit",
+              month: "short",
+              hour: "2-digit",
+              minute: "2-digit"
+            })
+          : "—";
+
+        setText("lastClosingAmount", formatCurrency(amount));
+        setText("savedClosingCash", formatCurrency(amount));
+        setText("lastClosedBy", row.user_id ? String(row.user_id).slice(0, 8) + "..." : "—");
+        setText("lastClosedAt", timeText);
+        setText("savedClosingNote", row.notes ? `Note: ${row.notes}` : "Cash closing saved successfully.");
+        setText("closingStatusChip", "Latest staff closing saved");
+      } catch (err) {
+        console.error("loadLatestCashClosing error:", err);
+      }
+    }
+
+    function setText(id, value) {
+      const el = document.getElementById(id);
+      if (el) el.innerText = value;
+    }
+
+    function formatCurrency(value) {
+      return `₹ ${Number(value || 0).toFixed(2)}`;
+    }
+  </script>
 </body>
 </html>

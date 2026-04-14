@@ -1096,17 +1096,17 @@
       p2.value   = item.price2 || 0;
       p3.value   = item.price3 || 0;
 
-      const basePurchase = Number(item.purchase_price || item.landing || 0);
+      const baseLanding = Number(item.landing || item.purchase_price_gst || item.purchase_price || 0);
 
-      if (basePurchase > 0) {
-        p1p.value = item.price1 ? (((Number(item.price1) / basePurchase) - 1) * 100).toFixed(2) : "";
-        p2p.value = item.price2 ? (((Number(item.price2) / basePurchase) - 1) * 100).toFixed(2) : "";
-        p3p.value = item.price3 ? (((Number(item.price3) / basePurchase) - 1) * 100).toFixed(2) : "";
-      } else {
-        p1p.value = "";
-        p2p.value = "";
-        p3p.value = "";
-      }
+if (baseLanding > 0) {
+  p1p.value = item.price1 ? (((Number(item.price1) / baseLanding) - 1) * 100).toFixed(2) : "";
+  p2p.value = item.price2 ? (((Number(item.price2) / baseLanding) - 1) * 100).toFixed(2) : "";
+  p3p.value = item.price3 ? (((Number(item.price3) / baseLanding) - 1) * 100).toFixed(2) : "";
+} else {
+  p1p.value = "";
+  p2p.value = "";
+  p3p.value = "";
+}
 
       calculateRow(row);
     }
@@ -1280,9 +1280,9 @@
         landing.value = purchG.value;
       }
 
-      syncTier(p1p, p1, p1g, Gp, purch.value);
-      syncTier(p2p, p2, p2g, Gp, purch.value);
-      syncTier(p3p, p3, p3g, Gp, purch.value);
+      syncTier(p1p, p1, p1g, Gp, landing.value);
+      syncTier(p2p, p2, p2g, Gp, landing.value);
+      syncTier(p3p, p3, p3g, Gp, landing.value);
 
       maybeEnableSave();
       updatePayableFromItems();

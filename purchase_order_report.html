@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Purchase Order Report - VAJRA</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabaseClient.js"></script>
+  <script src="page_permissions.js"></script>
+  <script src="common-ui.js"></script>
+  <style>
+    :root{
+      --bg:#f6f8fc;
+      --panel:#fff;
+      --line:#dbe4f0;
+      --text:#0f172a;
+      --muted:#64748b;
+      --blue:#2563eb;
+      --green:#16a34a;
+      --orange:#ea580c;
+      --red:#dc2626;
+      --head:#eef4fb;
+      --shadow:0 10px 30px rgba(15,23,42,.08);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);font-family:Segoe UI,Roboto,Arial,sans-serif;color:var(--text);padding:18px}
+    .wrap{max-width:1600px;margin:0 auto}
+    .top{display:flex;justify-content:space-between;align-items:end;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+    .top h1{margin:0;font-size:28px}
+    .top small{color:var(--muted)}
+    .panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:14px;margin-bottom:12px}
+    .filters{display:grid;grid-template-columns:repeat(6,minmax(140px,1fr));gap:10px}
+    .field{display:flex;flex-direction:column}
+    .field label{font-size:12px;font-weight:800;color:#475569;margin-bottom:6px;text-transform:uppercase}
+    .field input,.field select{
+      height:40px;border:1px solid var(--line);border-radius:10px;padding:0 12px;background:#fff;outline:none
+    }
+    .field input:focus,.field select:focus{border-color:#93c5fd;box-shadow:0 0 0 3px rgba(37,99,235,.10)}
+    .btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+    .btn{border:none;border-radius:12px;padding:11px 18px;font-weight:800;cursor:pointer}
+    .btn.primary{background:#2563eb;color:#fff}
+    .btn.gray{background:#f1f5f9;color:#334155}
+    .btn.warn{background:#fff7ed;color:#9a3412}
+    .btn.danger{background:#fef2f2;color:#b91c1c}
+    .cards{display:flex;gap:12px;flex-wrap:wrap}
+    .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 14px;min-width:180px}
+    .card span{display:block;font-size:11px;color:var(--muted);text-transform:uppercase;font-weight:800}
+    .card strong{font-size:24px}
+    .table-wrap{overflow:auto;border:1px solid var(--line);border-radius:14px;background:#fff}
+    table{width:100%;border-collapse:collapse;min-width:1400px}
+    thead{background:var(--head);position:sticky;top:0;z-index:2}
+    th,td{padding:10px 8px;border-bottom:1px solid #edf2f7;font-size:13px;text-align:left}
+    th{font-size:12px;text-transform:uppercase;color:#334155}
+    tr:hover td{background:#f8fbff}
+    .badge{display:inline-block;padding:6px 10px;border-radius:999px;font-size:11px;font-weight:800}
+    .pending{background:#fff7ed;color:#9a3412}
+    .partial{background:#eff6ff;color:#1d4ed8}
+    .received,.completed{background:#f0fdf4;color:#166534}
+    .cancelled{background:#fef2f2;color:#991b1b}
+    @media print{
+      .no-print{display:none !important}
+      body{padding:0;background:#fff}
+      .panel{box-shadow:none}
+    }
+    @media (max-width:1100px){
+      .filters{grid-template-columns:repeat(2,minmax(140px,1fr))}
+    }
+    @media (max-width:700px){
+      .filters{grid-template-columns:1fr}
+      .btn{width:100%}
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div>
+      <h1>Purchase Order Report</h1>
+      <small>Shows order quantity, received quantity, pending quantity, print, cancel, and status from manual purchase deduction flow.</small>
+    </div>
+  </div>
+
+  <div class="panel no-print">
+    <div class="filters">
+      <div class="field">
+        <label>From Date</label>
+        <input type="date" id="fromDate">
+      </div>
+      <div class="field">
+        <label>To Date</label>
+        <input type="date" id="toDate">
+      </div>
+      <div class="field">
+        <label>Supplier</label>
+        <input id="supplierFilter" placeholder="Supplier name">
+      </div>
+      <div class="field">
+        <label>Item</label>
+        <input id="itemFilter" placeholder="Item code or name">
+      </div>
+      <div class="field">
+        <label>Status</label>
+        <select id="statusFilter">
+          <option value="">ALL</option>
+          <option value="PENDING">PENDING</option>
+          <option value="PARTIAL">PARTIAL</option>
+          <option value="RECEIVED">RECEIVED</option>
+          <option value="COMPLETED">COMPLETED</option>
+          <option value="CANCELLED">CANCELLED</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Only Pending</label>
+        <select id="pendingOnly">
+          <option value="NO">NO</option>
+          <option value="YES">YES</option>
+        </select>
+      </div>
+    </div>
+    <div class="btns">
+      <button class="btn primary" onclick="loadReport()">Load Report</button>
+      <button class="btn gray" onclick="resetFilters()">Reset</button>
+      <button class="btn warn" onclick="window.print()">Print</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="cards">
+      <div class="card"><span>Total Rows</span><strong id="cRows">0</strong></div>
+      <div class="card"><span>Total Ordered Qty</span><strong id="cOrdered">0</strong></div>
+      <div class="card"><span>Total Received Qty</span><strong id="cReceived">0</strong></div>
+      <div class="card"><span>Total Pending Qty</span><strong id="cPending">0</strong></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>PO No</th>
+            <th>Date</th>
+            <th>Supplier</th>
+            <th>Item Code</th>
+            <th>Item Name</th>
+            <th>Ordered</th>
+            <th>Received</th>
+            <th>Pending</th>
+            <th>Price</th>
+            <th>Item Status</th>
+            <th>PO Status</th>
+            <th>Remark</th>
+            <th class="no-print">Action</th>
+          </tr>
+        </thead>
+        <tbody id="reportBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+const sb = window.sbcc;
+let currentRows = [];
+
+document.addEventListener("DOMContentLoaded", async () => {
+  if (typeof requirePageAccess === "function") {
+    const ok = await requirePageAccess("purchase");
+    if (!ok) return;
+  }
+  const today = new Date().toISOString().slice(0,10);
+  document.getElementById("fromDate").value = today.slice(0,8) + "01";
+  document.getElementById("toDate").value = today;
+  await loadReport();
+});
+
+function badgeClass(v){
+  const s = String(v || "").toLowerCase();
+  if (s === "pending") return "badge pending";
+  if (s === "partial") return "badge partial";
+  if (s === "received") return "badge received";
+  if (s === "completed") return "badge completed";
+  if (s === "cancelled") return "badge cancelled";
+  return "badge";
+}
+
+function resetFilters(){
+  document.getElementById("supplierFilter").value = "";
+  document.getElementById("itemFilter").value = "";
+  document.getElementById("statusFilter").value = "";
+  document.getElementById("pendingOnly").value = "NO";
+  loadReport();
+}
+
+async function loadReport(){
+  let query = sb
+    .from("purchase_order_report_view")
+    .select("*")
+    .order("purchase_order_id", { ascending:false });
+
+  const fromDate = document.getElementById("fromDate").value;
+  const toDate = document.getElementById("toDate").value;
+  const supplier = document.getElementById("supplierFilter").value.trim();
+  const item = document.getElementById("itemFilter").value.trim();
+  const status = document.getElementById("statusFilter").value;
+  const pendingOnly = document.getElementById("pendingOnly").value;
+
+  if (fromDate) query = query.gte("order_date", fromDate);
+  if (toDate) query = query.lte("order_date", toDate);
+  if (supplier) query = query.ilike("supplier_name", "%" + supplier + "%");
+  if (item) query = query.or(`item_code.ilike.%${item}%,item_name.ilike.%${item}%`);
+  if (status) query = query.or(`item_status.eq.${status},po_status.eq.${status}`);
+  if (pendingOnly === "YES") query = query.gt("pending_qty", 0).eq("is_cancelled", false);
+
+  const { data, error } = await query;
+  if (error) {
+    console.error(error);
+    document.getElementById("reportBody").innerHTML = `<tr><td colspan="13">Error loading report: ${error.message}</td></tr>`;
+    return;
+  }
+
+  currentRows = data || [];
+  renderReport();
+}
+
+function renderReport(){
+  const body = document.getElementById("reportBody");
+  body.innerHTML = "";
+
+  if (!currentRows.length) {
+    body.innerHTML = `<tr><td colspan="13">No rows found.</td></tr>`;
+    setCards([]);
+    return;
+  }
+
+  for (const r of currentRows) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>PO-${r.po_number}</td>
+      <td>${r.order_date || ""}</td>
+      <td>${r.supplier_name || ""}</td>
+      <td>${r.item_code || ""}</td>
+      <td>${r.item_name || ""}</td>
+      <td>${Number(r.quantity || 0).toFixed(2)}</td>
+      <td>${Number(r.received_qty || 0).toFixed(2)}</td>
+      <td>${Number(r.pending_qty || 0).toFixed(2)}</td>
+      <td>${r.price == null ? "" : Number(r.price).toFixed(2)}</td>
+      <td><span class="${badgeClass(r.item_status)}">${r.item_status || ""}</span></td>
+      <td><span class="${badgeClass(r.po_status)}">${r.po_status || ""}</span></td>
+      <td>${r.item_remark || r.po_remark || ""}</td>
+      <td class="no-print">
+        <button class="btn gray" onclick="printSingle(${r.purchase_order_id})">Print</button>
+        <button class="btn danger" onclick="cancelPO(${r.purchase_order_id})">Cancel</button>
+      </td>
+    `;
+    body.appendChild(tr);
+  }
+
+  setCards(currentRows);
+}
+
+function setCards(rows){
+  const sum = rows.reduce((a,r) => {
+    a.rows += 1;
+    a

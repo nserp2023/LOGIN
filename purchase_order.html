@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Purchase Order - VAJRA LIGHTS</title>
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+  <script src="supabaseClient.js"></script>
+  <script src="page_permissions.js"></script>
+  <script src="common-ui.js"></script>
+  <style>
+    :root{
+      --bg:#f4f7fb;
+      --card:#ffffff;
+      --card2:#f9fbff;
+      --text:#14213d;
+      --muted:#5f6f8b;
+      --line:#d9e2ef;
+      --line2:#e9eef6;
+      --primary:#2563eb;
+      --primary2:#1d4ed8;
+      --ok:#16a34a;
+      --warn:#d97706;
+      --danger:#dc2626;
+      --shadow:0 12px 32px rgba(24,39,75,.10);
+      --radius:16px;
+      --radius-sm:10px;
+      --row-h:42px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      background:linear-gradient(180deg,#f7faff 0%,#eef4fb 100%);
+      color:var(--text);
+      font:14px/1.4 "Segoe UI",system-ui,-apple-system,sans-serif;
+    }
+    .wrap{
+      max-width:1600px;
+      margin:0 auto;
+      padding:18px 14px 120px;
+    }
+    .topbar{
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-end;
+      gap:12px;
+      flex-wrap:wrap;
+      margin-bottom:14px;
+    }
+    .brand h1{
+      margin:0;
+      font-size:26px;
+      letter-spacing:.2px;
+    }
+    .brand small{
+      color:var(--muted);
+      font-size:13px;
+    }
+    .chips{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .chip{
+      background:#fff;
+      border:1px solid var(--line);
+      border-radius:999px;
+      padding:8px 12px;
+      color:#3b4d69;
+      box-shadow:var(--shadow);
+      font-size:12px;
+      font-weight:700;
+    }
+
+    .panel{
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:14px;
+      margin-bottom:12px;
+    }
+    .panel-head{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      flex-wrap:wrap;
+      margin-bottom:12px;
+    }
+    .panel-head h2{
+      margin:0;
+      font-size:17px;
+    }
+    .panel-head small{
+      color:var(--muted);
+      display:block;
+      margin-top:3px;
+    }
+
+    .row{
+      display:grid;
+      gap:10px;
+      grid-auto-flow:column;
+      grid-auto-columns:minmax(140px,1fr);
+      overflow-x:auto;
+      padding-bottom:2px;
+    }
+    .field{
+      display:flex;
+      flex-direction:column;
+      position:relative;
+      min-width:140px;
+    }
+    .field label{
+      font-size:12px;
+      color:var(--muted);
+      font-weight:700;
+      margin-bottom:6px;
+      text-transform:uppercase;
+      letter-spacing:.04em;
+    }
+    .field input, .field textarea, .field select, .grid input, .grid select{
+      width:100%;
+      min-height:var(--row-h);
+      border:1px solid var(--line);
+      border-radius:var(--radius-sm);
+      background:#fff;
+      color:var(--text);
+      padding:10px 12px;
+      outline:none;
+      transition:.15s;
+      font:inherit;
+    }
+    .field textarea{
+      min-height:84px;
+      resize:vertical;
+    }
+    .field input:focus, .field textarea:focus, .field select:focus,
+    .grid input:focus, .grid select:focus{
+      border-color:#7aa8ff;
+      box-shadow:0 0 0 3px rgba(37,99,235,.12);
+    }
+    .readonly{
+      background:#f3f6fb !important;
+      color:#42526b !important;
+      font-weight:700;
+    }
+
+    .status-badge{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      height:42px;
+      border-radius:12px;
+      padding:0 14px;
+      font-weight:800;
+      border:1px solid var(--line);
+      background:#f8fbff;
+    }
+    .status-PENDING{color:var(--warn); background:#fff8eb; border-color:#f3d49c}
+    .status-PARTIAL{color:#a16207; background:#fff7d6; border-color:#ead488}
+    .status-COMPLETED,.status-RECEIVED{color:var(--ok); background:#ecfdf3; border-color:#b7efcc}
+    .status-CANCELLED{color:var(--danger); background:#fff1f2; border-color:#f4b2b8}
+
+    .table-shell{
+      overflow:auto;
+      border:1px solid var(--line2);
+      border-radius:14px;
+      background:var(--card2);
+      padding:10px;
+    }
+    .grid{
+      display:grid;
+      grid-template-columns:
+        70px
+        120px
+        260px
+        90px
+        110px
+        180px
+        110px
+        110px
+        110px
+        120px
+        56px;
+      gap:10px;
+      align-items:center;
+      min-width:1350px;
+    }
+    .grid.hdr{
+      position:sticky;
+      top:0;
+      z-index:2;
+      background:linear-gradient(180deg,#f9fbff 0%,#f5f9ff 100%);
+      border-bottom:1px solid var(--line);
+      padding:0 0 10px;
+      margin-bottom:10px;
+    }
+    .grid.hdr > div{
+      font-size:12px;
+      color:#52637e;
+      font-weight:800;
+      text-transform:uppercase;
+      padding:0 4px;
+    }
+    #items .grid{
+      background:#fff;
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:10px;
+      margin-bottom:10px;
+    }
+    #items .grid:nth-child(even){background:#fbfdff}
+    .cell-muted{
+      text-align:center;
+      font-weight:700;
+      color:#5b6e8a;
+      background:#f3f7fc;
+      border:1px solid var(--line);
+      min-height:42px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      border-radius:10px;
+      padding:0 8px;
+    }
+
+    .btns{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .btn{
+      height:42px;
+      padding:0 16px;
+      border:none;
+      border-radius:12px;
+      cursor:pointer;
+      font-weight:800;
+      letter-spacing:.2px;
+      box-shadow:0 8px 18px rgba(37,99,235,.08);
+    }
+    .btn.primary{background:linear-gradient(180deg,var(--primary),var(--primary2)); color:#fff}
+    .btn.soft{background:#eef4ff; color:#1e4db7; border:1px solid #cdddff}
+    .btn.warn{background:#fff3e8; color:#b45309; border:1px solid #ffd2a8}
+    .btn.danger{background:#fff1f2; color:#b91c1c; border:1px solid #f4b3b9}
+    .btn.gray{background:#fff; color:#42526b; border:1px solid var(--line)}
+
+    .statusline{
+      margin-top:10px;
+      min-height:42px;
+      border:1px solid var(--line);
+      border-radius:12px;
+      background:#f8fbff;
+      padding:10px 12px;
+      color:#4d617d;
+      font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+      display:flex;
+      align-items:center;
+    }
+
+    .dropdown{
+      position:absolute;
+      z-index:99;
+      left:0;
+      right:auto;
+      top:100%;
+      margin-top:4px;
+      min-width:760px;
+      max-width:min(1000px,calc(100vw - 30px));
+      max-height:280px;
+      overflow:auto;
+      background:#fff;
+      border:1px solid #cfdcf0;
+      border-radius:12px;
+      box-shadow:0 16px 35px rgba(20,33,61,.15);
+    }
+    .opt{
+      display:grid;
+      grid-template-columns:140px 1fr 110px 110px;
+      gap:10px;
+      padding:10px 12px;
+      border-bottom:1px solid #eef2f7;
+      cursor:pointer;
+    }
+    .opt:hover{background:#f5f9ff}
+    .muted{color:#70829d; font-size:12px}
+
+    .sticky{
+      position:fixed;
+      left:0; right:0; bottom:0;
+      background:rgba(255,255,255,.94);
+      backdrop-filter:blur(8px);
+      border-top:1px solid var(--line);
+      box-shadow:0 -10px 28px rgba(24,39,75,.08);
+      padding:10px 14px;
+      z-index:100;
+    }
+    .sticky-inner{
+      max-width:1600px;
+      margin:0 auto;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .sticky-note{
+      color:var(--muted);
+      font-size:12px;
+      font-weight:700;
+    }
+
+    @media print{
+      .sticky,.btns,.statusline,.chips{display:none !important}
+      body{background:#fff}
+      .wrap{padding:0}
+      .panel{box-shadow:none;border:1px solid #ccc}
+    }
+
+    @media (max-width:900px){
+      .wrap{padding:10px 8px 120px}
+      .btn{width:100%}
+      .sticky-inner{flex-direction:column;align-items:stretch}
+      .btns{width:100%}
+      .row{grid-auto-columns:minmax(220px,1fr)}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="brand">
+        <h1>Purchase Order</h1>
+        <small>New items + old items • no stock effect • manual purchase later auto-updates PO report</small>
+      </div>
+      <div class="chips">
+        <div class="chip">Light Pro UI</div>
+        <div class="chip">Manual Purchase Compatible</div>
+        <div class="chip">Pending Tracking</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div>
+          <h2>Order Header</h2>
+          <small>Create purchase order separately. Purchase entry remains manual.</small>
+        </div>
+        <div id="poStatusBadge" class="status-badge status-PENDING">PENDING</div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label>PO Number</label>
+          <input id="poNumber" class="readonly" readonly>
+        </div>
+        <div class="field">
+          <label>Order Date</label>
+          <input id="orderDate" type="date">
+        </div>
+        <div class="field">
+          <label>Supplier GST</label>
+          <input id="supplierGst" autocomplete="off">
+        </div>
+        <div class="field">
+          <label>Supplier Name</label>
+          <input id="supplierName" autocomplete="off">
+        </div>
+        <div class="field">
+          <label>Supplier Address</label>
+          <input id="supplierAddress" autocomplete="off">
+        </div>
+        <div class="field">
+          <label>Header Remark</label>
+          <input id="headerRemark">
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div>
+          <h2>Order Items</h2>
+          <small>Type existing item or brand new item. New items are not saved into stock master.</small>
+        </div>
+        <div class="btns">
+          <button class="btn gray" id="addRowTop">+ Add Row</button>
+          <button class="btn soft" id="printTop">Print</button>
+          <button class="btn primary" id="saveTop">Save Purchase Order</button>
+        </div>
+      </div>
+
+      <div class="table-shell">
+        <div class="grid hdr">
+          <div>#</div>
+          <div>Item Code</div>
+          <div>Item Name</div>
+          <div>Qty</div>
+          <div>Price</div>
+          <div>Remark</div>
+          <div>Received</div>
+          <div>Pending</div>
+          <div>Status</div>
+          <div>Type</div>
+          <div></div>
+        </div>
+        <div id="items"></div>
+      </div>
+
+      <div class="statusline" id="saveStatus">READY</div>
+    </div>
+  </div>
+
+  <div class="sticky">
+    <div class="sticky-inner">
+      <div class="sticky-note">Enter = next field • Shift+Enter = previous • Purchase remains manual • Report auto-updates when purchase is saved</div>
+      <div class="btns">
+        <button class="btn gray" id="addRowBottom">+ Add Row</button>
+        <button class="btn soft" id="printBottom">Print</button>
+        <button class="btn primary" id="saveBottom">Save Purchase Order</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const sb = window.sbcc;
+    let stockData = [];
+    let currentRowId = 0;
+    let dropdown = null;
+
+    const byId = id => document.getElementById(id);
+    const num = v => (v === "" || v == null ? 0 : Number(v));
+    const fmt2 = v => Number(v || 0).toFixed(2);
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      const ok = await requirePageAccess("purchase");
+      if (!ok) return;
+
+      byId("orderDate").valueAsDate = new Date();
+      await loadStockData();
+      await loadNextPONumber();
+      addRow();
+
+      byId("addRowTop").onclick = addRow;
+      byId("addRowBottom").onclick = addRow;
+      byId("printTop").onclick = () => window.print();
+      byId("printBottom").onclick = () => window.print();
+      byId("saveTop").onclick = savePO;
+      byId("saveBottom").onclick = savePO;
+    });
+
+    async function loadNextPONumber(){
+      const { data, error } = await sb
+        .from("purchase_order_details")
+        .select("po_number")
+        .order("po_number", { ascending:false })
+        .limit(1);
+
+      if(error){
+        byId("poNumber").value = "PO-1";
+        return;
+      }
+
+      let next = 1;
+      if(data && data.length){
+        const raw = String(data[0].po_number || "");
+        const n = parseInt(raw.replace(/[^0-9]/g,"")) || 0;
+        next = n + 1;
+      }
+      byId("poNumber").value = "PO-" + next;
+    }
+
+    async function loadStockData(){
+      let all = [];
+      let from = 0;
+      const size = 1000;
+      let keep = true;
+
+      while(keep){
+        const { data, error } = await sb
+          .from("stock_balance_view")
+          .select("item_code,item_name,balance")
+          .range(from, from + size - 1);
+
+        if(error){
+          console.error(error);
+          break;
+        }
+        if(data && data.length){
+          all = all.concat(data);
+          from += size;
+          if(data.length < size) keep = false;
+        }else{
+          keep = false;
+        }
+      }
+
+      stockData = all;
+    }
+
+    function addRow(prefill = {}){
+      const id = currentRowId++;
+      const wrap = document.createElement("div");
+      wrap.className = "grid";
+      wrap.id = "row_" + id;
+      wrap.innerHTML = `
+        <div class="cell-muted">${id + 1}</div>
+        <div class="field">
+          <input class="item-code" value="${prefill.item_code || ""}" autocomplete="off">
+        </div>
+        <div class="field">
+          <input class="item-name" value="${prefill.item_name || ""}" autocomplete="off">
+        </div>
+        <div class="field">
+          <input class="qty" type="number" step="0.01" value="${prefill.quantity || 1}">
+        </div>
+        <div class="field">
+          <input class="price" type="number" step="0.01" value="${prefill.price ?? ""}">
+        </div>
+        <div class="field">
+          <input class="remark" value="${prefill.remark || ""}">
+        </div>
+        <div class="cell-muted received">${fmt2(prefill.received_qty || 0)}</div>
+        <div class="cell-muted pending">${fmt2((prefill.quantity || 1) - (prefill.received_qty || 0))}</div>
+        <div class="cell-muted row-status">${prefill.status || "PENDING"}</div>
+        <div class="cell-muted row-type">${prefill.is_new_item ? "NEW" : "STOCK"}</div>
+        <div><button class="btn danger" type="button">×</button></div>
+      `;
+      byId("items").appendChild(wrap);
+
+      const codeInp = wrap.querySelector(".item-code");
+      const nameInp = wrap.querySelector(".item-name");
+      const qtyInp = wrap.querySelector(".qty");
+      const delBtn = wrap.querySelector(".btn.danger");
+
+      delBtn.onclick = () => wrap.remove();
+
+      codeInp.addEventListener("input", () => showItemDropdown(codeInp, "item_code", item => fillRowFromStock(wrap, item)));
+      nameInp.addEventListener("input", () => showItemDropdown(nameInp, "item_name", item => fillRowFromStock(wrap, item)));
+
+      [codeInp,nameInp,qtyInp,wrap.querySelector(".price"),wrap.querySelector(".remark")].forEach((el, idx, arr) => {
+        el.addEventListener("keydown", e => {
+          if(e.key === "Enter" && !e.shiftKey){
+            e.preventDefault();
+            if(arr[idx+1]) arr[idx+1].focus();
+            else addRow();
+          } else if(e.key === "Enter" && e.shiftKey){
+            e.preventDefault();
+            if(arr[idx-1]) arr[idx-1].focus();
+          }
+        });
+      });
+    }
+
+    function normalize(v){
+      return String(v || "").toLowerCase().trim();
+    }
+
+    function searchStock(query, field){
+      const q = normalize(query);
+      if(!q) return [];
+      return stockData.filter(x => normalize(x[field]).includes(q) || normalize(x.item_code).includes(q) || normalize(x.item_name).includes(q)).slice(0, 30);
+    }
+
+    function showItemDropdown(anchor, field, onPick){
+      hideDropdown();
+      const items = searchStock(anchor.value, field);
+      if(!items.length) return;
+
+      dropdown = document.createElement("div");
+      dropdown.className = "dropdown";
+
+      items.forEach(it => {
+        const opt = document.createElement("div");
+        opt.className = "opt";
+        opt.innerHTML = `
+          <div class="muted">${it.item_code || ""}</div>
+          <div>${it.item_name || ""}</div>
+          <div class="muted">Stock: ${fmt2(it.balance || 0)}</div>
+          <div class="muted">Existing</div>
+        `;
+        opt.onclick = () => {
+          onPick(it);
+          hideDropdown();
+        };
+        dropdown.appendChild(opt);
+      });
+
+      anchor.parentElement.appendChild(dropdown);
+    }
+
+    function hideDropdown(){
+      if(dropdown){
+        dropdown.remove();
+        dropdown = null;
+      }
+    }
+
+    document.addEventListener("click", e => {
+      if(dropdown && !dropdown.contains(e.target)) hideDropdown();
+    });
+
+    function fillRowFromStock(row, item){
+      row.querySelector(".item-code").value = item.item_code || "";
+      row.querySelector(".item-name").value = item.item_name || "";
+      row.querySelector(".row-type").textContent = "STOCK";
+    }
+
+    function collectRows(){
+      const rows = [];
+      document.querySelectorAll("#items .grid").forEach(row => {
+        const item_code = row.querySelector(".item-code").value.trim();
+        const item_name = row.querySelector(".item-name").value.trim();
+        const quantity = num(row.querySelector(".qty").value);
+        const priceRaw = row.querySelector(".price").value;
+        const remark = row.querySelector(".remark").value.trim();
+
+        if(!item_name && !item_code) return;
+        rows.push({
+          item_code: item_code || null,
+          item_name: item_name || item_code || "",
+          is_new_item: !item_code,
+          quantity,
+          price: priceRaw === "" ? null : num(priceRaw),
+          remark
+        });
+      });
+      return rows;
+    }
+
+    async function savePO(){
+      try{
+        hideDropdown();
+        const po_number = byId("poNumber").value.trim();
+        const order_date = byId("orderDate").value;
+        const supplier_gst = byId("supplierGst").value.trim();
+        const supplier_name = byId("supplierName").value.trim();
+        const supplier_address = byId("supplierAddress").value.trim();
+        const remark = byId("headerRemark").value.trim();
+
+        const items = collectRows();
+
+        if(!supplier_name){
+          setStatus("Supplier name is required.", true);
+          byId("supplierName").focus();
+          return;
+        }
+        if(!items.length){
+          setStatus("At least one item is required.", true);
+          return;
+        }
+        if(items.some(x => !x.item_name || x.quantity <= 0)){
+          setStatus("Each item needs item name and quantity greater than 0.", true);
+          return;
+        }
+
+        const { data: authData } = await sb.auth.getUser();
+        const created_by = authData?.user?.email || "";
+
+        const { data: header, error: headErr } = await sb
+          .from("purchase_order_details")
+          .insert([{
+            po_number,
+            order_date,
+            supplier_name,
+            supplier_gst,
+            supplier_address,
+            remark,
+            status: "PENDING",
+            created_by
+          }])
+          .select()
+          .single();
+
+        if(headErr) throw headErr;
+
+        const itemPayload = items.map(x => ({
+          purchase_order_id: header.id,
+          item_code: x.item_code,
+          item_name: x.item_name,
+          is_new_item: x.is_new_item,
+          quantity: x.quantity,
+          received_qty: 0,
+          price: x.price,
+          remark: x.remark,
+          status: "PENDING"
+        }));
+
+        const { error: itemErr } = await sb
+          .from("purchase_order_item_details")
+          .insert(itemPayload);
+
+        if(itemErr) throw itemErr;
+
+        setStatus("Purchase order saved successfully.");
+        byId("poStatusBadge").textContent = "PENDING";
+        byId("poStatusBadge").className = "status-badge status-PENDING";
+        await loadNextPONumber();
+        byId("supplierGst").value = "";
+        byId("supplierName").value = "";
+        byId("supplierAddress").value = "";
+        byId("headerRemark").value = "";
+        byId("orderDate").valueAsDate = new Date();
+        byId("items").innerHTML = "";
+        currentRowId = 0;
+        addRow();
+      }catch(err){
+        console.error(err);
+        setStatus("Save failed: " + err.message, true);
+      }
+    }
+
+    function setStatus(msg, isErr = false){
+      const el = byId("saveStatus");
+      el.textContent = msg;
+      el.style.color = isErr ? "#b91c1c" : "#35507a";
+      el.style.background = isErr ? "#fff1f2" : "#f8fbff";
+      el.style.borderColor = isErr ? "#f2b8c0" : "#d9e2ef";
+    }
+  </script>
+</body>
+</html>

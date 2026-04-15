@@ -3,487 +3,214 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" href="favicon.ico" type="image/x-icon">
-
-<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
-
-<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
-<script src="common-ui.js"></script>
-<link rel="manifest" href="site.webmanifest">
-  <title>Purchase Modify</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+  <script src="common-ui.js"></script>
+  <link rel="manifest" href="site.webmanifest">
+  <title>Purchase Edit Pro</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root{
-      --bg:#0b1020;
-      --bg-soft:#11182c;
-      --panel:#131c31;
-      --panel-2:#18233b;
-      --panel-3:#0f1728;
-      --text:#e8eefc;
-      --text-soft:#b9c5dd;
-      --muted:#8fa1bf;
-      --border:#263552;
-      --border-soft:#1e2b45;
-      --accent:#60a5fa;
-      --accent-2:#38bdf8;
-      --ok:#22c55e;
-      --warn:#f59e0b;
-      --err:#f43f5e;
-      --shadow:0 12px 30px rgba(0,0,0,.28);
-      --focus:0 0 0 3px rgba(96,165,250,.18);
+      --bg:#f5f8fd;
+      --panel:#ffffff;
+      --panel-2:#f8fbff;
+      --text:#142033;
+      --text-soft:#51627f;
+      --muted:#6b7b96;
+      --border:#d7e2f0;
+      --border-soft:#e7eef7;
+      --line:#edf3fb;
+      --ok:#16a34a;
+      --warn:#d97706;
+      --err:#e11d48;
+      --accent:#2563eb;
+      --accent-2:#1d4ed8;
+      --shadow:0 14px 34px rgba(15,23,42,.08);
+      --focus:0 0 0 4px rgba(37,99,235,.12);
       --row-h:42px;
-      --radius:14px;
-      --radius-sm:10px;
+      --radius:16px;
+      --radius-sm:12px;
       --mono:ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
     }
-
     *{box-sizing:border-box}
-
     html,body{
       margin:0;
       min-height:100%;
       background:
-        radial-gradient(circle at top left, rgba(56,189,248,.08), transparent 28%),
-        radial-gradient(circle at top right, rgba(96,165,250,.08), transparent 24%),
-        linear-gradient(180deg, #09101d 0%, #0b1020 100%);
+        radial-gradient(circle at top left, rgba(37,99,235,.06), transparent 28%),
+        radial-gradient(circle at top right, rgba(56,189,248,.06), transparent 24%),
+        linear-gradient(180deg, #f8fbff 0%, #eef5fc 100%);
       color:var(--text);
       font:14px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
     }
-
-    body{
-      padding:20px 0 150px;
-    }
-
-    #items{
-      padding-bottom:140px;
-    }
-
-    .wrap{
-      max-width:1600px;
-      margin:0 auto;
-      padding:0 18px 24px;
-    }
-
+    body{ padding:20px 0 150px; }
+    #items{ padding-bottom:140px; }
+    .wrap{ max-width:1680px; margin:0 auto; padding:0 18px 24px; }
     .page-top{
-      display:flex;
-      align-items:flex-end;
-      justify-content:space-between;
-      gap:16px;
-      margin-bottom:16px;
-      flex-wrap:wrap;
+      display:flex; align-items:flex-end; justify-content:space-between;
+      gap:16px; margin-bottom:16px; flex-wrap:wrap;
     }
-
-    .title{
-      display:flex;
-      flex-direction:column;
-      gap:4px;
-    }
-
-    .title h1{
-      margin:0;
-      font-size:24px;
-      font-weight:700;
-      letter-spacing:.2px;
-      color:#f8fbff;
-    }
-
-    .title span{
-      color:var(--text-soft);
-      font-size:13px;
-    }
-
-    .page-badges{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-    }
-
+    .title{ display:flex; flex-direction:column; gap:4px; }
+    .title h1{ margin:0; font-size:26px; font-weight:800; letter-spacing:.2px; color:#0f172a; }
+    .title span{ color:var(--text-soft); font-size:13px; }
+    .page-badges{ display:flex; gap:10px; flex-wrap:wrap; }
     .badge{
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      padding:8px 12px;
-      border-radius:999px;
-      border:1px solid var(--border);
-      background:rgba(19,28,49,.92);
-      color:var(--text-soft);
-      font-size:12px;
-      box-shadow:var(--shadow);
+      display:inline-flex; align-items:center; gap:8px; padding:8px 12px;
+      border-radius:999px; border:1px solid var(--border);
+      background:#fff; color:var(--text-soft); font-size:12px; box-shadow:var(--shadow);
     }
-
     .panel{
-      background:linear-gradient(180deg, rgba(19,28,49,.98), rgba(14,22,39,.98));
+      background:linear-gradient(180deg, rgba(255,255,255,.98), rgba(248,251,255,.98));
       border:1px solid var(--border);
       border-radius:var(--radius);
       box-shadow:var(--shadow);
       padding:14px;
-      backdrop-filter: blur(6px);
+      backdrop-filter: blur(4px);
     }
-
-    .panel + .panel{
-      margin-top:12px;
-    }
-
+    .panel + .panel{ margin-top:12px; }
     .panel-head{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      margin-bottom:12px;
-      flex-wrap:wrap;
+      display:flex; align-items:center; justify-content:space-between;
+      gap:12px; margin-bottom:12px; flex-wrap:wrap;
     }
-
-    .panel-title{
-      display:flex;
-      flex-direction:column;
-      gap:2px;
-    }
-
-    .panel-title h2{
-      margin:0;
-      font-size:16px;
-      font-weight:700;
-      color:#f5f8ff;
-    }
-
-    .panel-title small{
-      color:var(--muted);
-      font-size:12px;
-    }
-
+    .panel-title{ display:flex; flex-direction:column; gap:2px; }
+    .panel-title h2{ margin:0; font-size:16px; font-weight:800; color:#0f172a; }
+    .panel-title small{ color:var(--muted); font-size:12px; }
     .row{
+      display:grid; gap:10px; align-items:end; grid-auto-flow:column;
+      grid-auto-columns:minmax(125px, 1fr); overflow-x:auto; padding-bottom:4px; scrollbar-width:thin;
+    }
+    .search-row{
       display:grid;
-      gap:10px;
-      align-items:end;
-      grid-auto-flow:column;
-      grid-auto-columns:minmax(125px, 1fr);
-      overflow-x:auto;
-      padding-bottom:4px;
-      scrollbar-width:thin;
+      grid-template-columns:minmax(170px,1.1fr) minmax(170px,1.1fr) minmax(140px,.8fr) minmax(140px,.8fr) auto auto auto;
+      gap:10px; align-items:end;
     }
-
-    .row::-webkit-scrollbar,
-    .table-container::-webkit-scrollbar,
-    .dropdown::-webkit-scrollbar{
-      height:10px;
-      width:10px;
+    .row::-webkit-scrollbar,.table-container::-webkit-scrollbar,.dropdown::-webkit-scrollbar{ height:10px; width:10px; }
+    .row::-webkit-scrollbar-thumb,.table-container::-webkit-scrollbar-thumb,.dropdown::-webkit-scrollbar-thumb{
+      background:#b8c9df; border-radius:999px;
     }
-
-    .row::-webkit-scrollbar-thumb,
-    .table-container::-webkit-scrollbar-thumb,
-    .dropdown::-webkit-scrollbar-thumb{
-      background:#2e4268;
-      border-radius:999px;
-    }
-
-    .field{
-      display:flex;
-      flex-direction:column;
-      min-width:125px;
-      position:relative;
-    }
-
+    .field{ display:flex; flex-direction:column; min-width:125px; position:relative; }
     .field label{
-      color:var(--muted);
-      font-size:12px;
-      font-weight:600;
-      margin-bottom:6px;
-      letter-spacing:.02em;
+      color:var(--muted); font-size:12px; font-weight:700; margin-bottom:6px; letter-spacing:.02em;
     }
-
-    .field input,
-    .grid input{
-      height:var(--row-h);
-      padding:0 12px;
-      border-radius:var(--radius-sm);
-      border:1px solid var(--border);
-      background:linear-gradient(180deg, #0f1728, #0c1424);
-      color:var(--text);
-      outline:none;
-      transition:border-color .15s, box-shadow .15s, background .15s, opacity .15s;
+    .field input,.grid input,.grid select{
+      height:var(--row-h); padding:0 12px; border-radius:var(--radius-sm);
+      border:1px solid var(--border); background:#fff; color:var(--text); outline:none;
+      transition:border-color .15s, box-shadow .15s, background .15s, transform .04s, opacity .15s;
     }
-
-    .field input::placeholder,
-    .grid input::placeholder{
-      color:#7083a7;
+    .field input::placeholder,.grid input::placeholder{ color:#8ba0be; }
+    .field input:focus,.grid input:focus,.grid select:focus{
+      border-color:#5b8cff; box-shadow:var(--focus); background:#fff;
     }
-
-    .field input:focus,
-    .grid input:focus{
-      border-color:#5ea0ff;
-      box-shadow:var(--focus);
-      background:#101a2d;
-    }
-
     .readonly{
-      background:linear-gradient(180deg, #0c1320, #0a101b) !important;
-      color:#d8e3f8 !important;
+      background:linear-gradient(180deg, #f6f9fe, #f1f6fc) !important;
+      color:#334155 !important;
     }
-
     .table-container{
-      overflow:auto;
-      width:100%;
-      border:1px solid var(--border-soft);
-      border-radius:12px;
-      background:rgba(9,15,28,.45);
-      padding:10px;
+      overflow:auto; width:100%; border:1px solid var(--border-soft);
+      border-radius:14px; background:rgba(249,252,255,.95); padding:10px;
     }
-
     .grid{
       display:grid;
       grid-template-columns:
-        90px
-        120px
-        160px
-        220px
-        80px
-        100px
-        80px
-        110px
-        80px
-        120px
-        120px
-        130px
-        130px
-        90px
-        120px
-        130px
-        90px
-        120px
-        130px
-        90px
-        120px
-        130px;
-      gap:10px;
-      align-items:center;
-      min-width:2400px;
-      margin-bottom:10px;
+        90px 120px 160px 240px 140px 80px 100px 80px 110px 80px 120px 120px
+        130px 130px 90px 120px 130px 90px 120px 130px 90px 120px 130px;
+      gap:10px; align-items:center; min-width:2580px; margin-bottom:10px;
     }
-
-    .grid:last-child{
-      margin-bottom:0;
-    }
-
+    .grid:last-child{ margin-bottom:0; }
     .hdr{
-      position:sticky;
-      top:0;
-      z-index:5;
-      padding-bottom:8px;
-      margin-bottom:12px;
-      background:linear-gradient(180deg, rgba(16,24,42,.98), rgba(16,24,42,.95));
+      position:sticky; top:0; z-index:5; padding-bottom:8px; margin-bottom:12px;
+      background:linear-gradient(180deg, rgba(250,252,255,.99), rgba(245,249,255,.98));
       border-bottom:1px solid var(--border);
     }
-
     .hdr > div{
-      color:#9eb0cf;
-      font-size:12px;
-      font-weight:700;
-      text-transform:uppercase;
-      letter-spacing:.03em;
-      padding:0 4px;
+      color:#4b5f7d; font-size:12px; font-weight:800; text-transform:uppercase;
+      letter-spacing:.03em; padding:0 4px;
     }
-
-    .grid input{
-      font-size:13px;
-    }
-
+    .grid input,.grid select{ font-size:13px; }
     #items .grid{
-      padding:10px;
-      border:1px solid rgba(38,53,82,.85);
-      border-radius:12px;
-      background:linear-gradient(180deg, rgba(17,24,41,.72), rgba(11,17,31,.72));
+      padding:10px; border:1px solid #dde7f3; border-radius:14px;
+      background:linear-gradient(180deg, rgba(255,255,255,.95), rgba(247,250,255,.95));
     }
-
-    #items .grid:nth-child(odd){
-      background:linear-gradient(180deg, rgba(17,24,41,.82), rgba(11,17,31,.82));
-    }
-
-    #items .grid:nth-child(even){
-      background:linear-gradient(180deg, rgba(21,30,49,.82), rgba(12,20,36,.82));
-    }
-
-    #items .grid:hover{
-      border-color:#325086;
-      background:linear-gradient(180deg, rgba(22,34,58,.95), rgba(14,24,42,.95));
-    }
-
-    .items-disabled{
-      opacity:.48;
-      pointer-events:none;
-      filter:grayscale(.1);
-    }
-
-    .actions{
-      display:flex;
-      justify-content:flex-end;
-      gap:12px;
-      margin-top:16px;
-      flex-wrap:wrap;
-    }
-
+    #items .grid:nth-child(odd){ background:linear-gradient(180deg, rgba(255,255,255,.98), rgba(248,251,255,.98)); }
+    #items .grid:nth-child(even){ background:linear-gradient(180deg, rgba(250,252,255,.98), rgba(245,249,255,.98)); }
+    #items .grid:hover{ border-color:#b9d0ef; background:linear-gradient(180deg, rgba(255,255,255,1), rgba(246,250,255,1)); }
+    .items-disabled{ opacity:.52; pointer-events:none; filter:grayscale(.08); }
+    .actions{ display:flex; justify-content:flex-end; gap:12px; margin-top:16px; flex-wrap:wrap; }
     .btn{
-      height:44px;
-      padding:0 18px;
-      border-radius:12px;
-      border:1px solid var(--border);
-      background:linear-gradient(180deg, #1b2944, #13203a);
-      color:#edf4ff;
-      cursor:pointer;
-      font-weight:700;
-      letter-spacing:.15px;
-      transition:transform .06s, filter .15s, border-color .15s, box-shadow .15s, opacity .15s;
-      box-shadow:0 8px 18px rgba(0,0,0,.18);
+      height:44px; padding:0 18px; border-radius:12px; border:1px solid var(--border);
+      background:linear-gradient(180deg, #ffffff, #f3f7fd); color:#0f172a; cursor:pointer;
+      font-weight:800; letter-spacing:.15px; transition:transform .06s, filter .15s, border-color .15s, box-shadow .15s, opacity .15s;
+      box-shadow:0 10px 20px rgba(15,23,42,.06);
     }
-
-    .btn:hover{
-      filter:brightness(1.06);
-      border-color:#3b5f99;
-    }
-
-    .btn:active{
-      transform:translateY(1px);
-    }
-
+    .btn:hover{ filter:brightness(1.01); border-color:#afc7ea; }
+    .btn:active{ transform:translateY(1px); }
     .btn.primary{
-      background:linear-gradient(180deg, #3b82f6, #2563eb);
-      border-color:#2563eb;
-      color:#fff;
+      background:linear-gradient(180deg, var(--accent), var(--accent-2));
+      border-color:var(--accent-2); color:#fff;
     }
-
-    .btn.primary:hover{
-      border-color:#4f8fff;
+    .btn.danger{
+      background:linear-gradient(180deg, #fff4f6, #ffe6ec); color:#9f1239; border-color:#fecdd3;
     }
-
+    .btn.ok{
+      background:linear-gradient(180deg, #ecfdf3, #dcfce7); color:#166534; border-color:#bbf7d0;
+    }
     .btn:disabled{
-      opacity:.45;
-      cursor:not-allowed;
-      filter:none;
-      transform:none;
-      box-shadow:none;
+      opacity:.45; cursor:not-allowed; filter:none; transform:none; box-shadow:none;
     }
-
     .status{
-      margin-top:10px;
-      padding:10px 12px;
-      border-radius:12px;
-      background:rgba(10,16,28,.55);
-      border:1px solid var(--border-soft);
-      font:12px var(--mono);
-      color:var(--muted);
-      min-height:40px;
-      display:flex;
-      align-items:center;
+      margin-top:10px; padding:10px 12px; border-radius:12px; background:#f8fbff;
+      border:1px solid var(--border-soft); font:12px var(--mono); color:var(--muted);
+      min-height:40px; display:flex; align-items:center;
     }
-
-    .ok{color:var(--ok)}
-    .warn{color:var(--warn)}
-    .err{color:var(--err)}
-
+    .ok{color:var(--ok)} .warn{color:var(--warn)} .err{color:var(--err)}
     .shake{animation:shake .25s linear 1}
     @keyframes shake{
-      0%{transform:translateX(0)}
-      25%{transform:translateX(-4px)}
-      50%{transform:translateX(4px)}
-      75%{transform:translateX(-3px)}
-      100%{transform:translateX(0)}
+      0%{transform:translateX(0)} 25%{transform:translateX(-4px)} 50%{transform:translateX(4px)}
+      75%{transform:translateX(-3px)} 100%{transform:translateX(0)}
     }
-
     .dropdown{
-      position:absolute;
-      z-index:50;
-      background:linear-gradient(180deg, #111a2e, #0c1423);
-      border:1px solid #33486f;
-      border-radius:12px;
-      box-shadow:0 18px 30px rgba(0,0,0,.38);
-      min-width:320px;
-      max-height:260px;
-      overflow:auto;
-      backdrop-filter:blur(10px);
+      position:absolute; z-index:50; background:#fff; border:1px solid #bfd3ee; border-radius:12px;
+      box-shadow:0 18px 30px rgba(15,23,42,.12); min-width:320px; max-height:260px; overflow:auto;
     }
-
-    .dropdown .opt{
-      padding:10px 12px;
-      border-bottom:1px solid rgba(38,53,82,.65);
-    }
-
-    .dropdown .opt:last-child{
-      border-bottom:none;
-    }
-
-    .dropdown .opt:hover{
-      background:#17233b;
-      cursor:pointer;
-    }
-
-    .dropdown .opt.item-opt{
-      display:grid;
-      grid-template-columns:140px 1fr 100px 120px;
-      gap:10px;
-    }
-
-    .dropdown .opt.supplier-opt{
-      display:grid;
-      grid-template-columns:180px 1fr 1.2fr;
-      gap:10px;
-    }
-
-    .dropdown .muted{
-      color:var(--muted);
-      font:12px var(--mono);
-    }
-
+    .dropdown .opt{ padding:10px 12px; border-bottom:1px solid #ebf2fb; }
+    .dropdown .opt:last-child{ border-bottom:none; }
+    .dropdown .opt:hover{ background:#f3f8ff; cursor:pointer; }
+    .dropdown .opt.item-opt{ display:grid; grid-template-columns:140px 1fr 140px 100px 120px; gap:10px; }
+    .dropdown .opt.supplier-opt{ display:grid; grid-template-columns:180px 1fr 1.2fr; gap:10px; }
+    .dropdown .opt.purchase-opt{ display:grid; grid-template-columns:180px 170px 140px 1fr 130px; gap:10px; }
+    .dropdown .muted{ color:var(--muted); font:12px var(--mono); }
     .spacer{height:12px}
-
     .error-tip{
-      position:absolute;
-      left:0;
-      top:100%;
-      margin-top:6px;
-      background:#2a0f18;
-      color:#ffd6df;
-      border:1px solid #ef476f;
-      padding:7px 9px;
-      border-radius:10px;
-      font-size:12px;
-      white-space:nowrap;
-      z-index:60;
-      box-shadow:0 10px 18px rgba(0,0,0,.28);
+      position:absolute; left:0; top:100%; margin-top:6px; background:#fff1f2; color:#9f1239;
+      border:1px solid #fecdd3; padding:7px 9px; border-radius:10px; font-size:12px; white-space:nowrap; z-index:60;
+      box-shadow:0 10px 18px rgba(15,23,42,.08);
     }
-
     .sticky-bar{
-      position:fixed;
-      left:0;
-      right:0;
-      bottom:0;
-      z-index:100;
-      padding:10px 14px;
-      background:rgba(8,13,24,.86);
-      backdrop-filter:blur(10px);
-      border-top:1px solid rgba(51,72,111,.7);
-      box-shadow:0 -10px 30px rgba(0,0,0,.28);
+      position:fixed; left:0; right:0; bottom:0; z-index:100; padding:10px 14px; background:rgba(255,255,255,.92);
+      backdrop-filter:blur(10px); border-top:1px solid rgba(191,211,238,.9); box-shadow:0 -10px 30px rgba(15,23,42,.08);
     }
-
     .sticky-inner{
-      max-width:1600px;
-      margin:0 auto;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      flex-wrap:wrap;
+      max-width:1680px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
     }
-
-    .sticky-note{
-      color:var(--text-soft);
-      font-size:12px;
+    .sticky-note{ color:var(--text-soft); font-size:12px; }
+    .sticky-actions{ display:flex; gap:12px; flex-wrap:wrap; }
+    .summary-grid{
+      display:grid; grid-template-columns:repeat(5, minmax(140px, 1fr)); gap:10px;
     }
-
-    .sticky-actions{
-      display:flex;
-      gap:12px;
-      flex-wrap:wrap;
+    .summary-card{
+      background:linear-gradient(180deg, #ffffff, #f6faff);
+      border:1px solid var(--border); border-radius:14px; padding:12px;
     }
-
+    .summary-card small{ display:block; color:var(--muted); font-size:12px; margin-bottom:6px; font-weight:700; }
+    .summary-card strong{ font-size:20px; color:#0f172a; }
+    .load-note{
+      padding:10px 12px; border-radius:12px; background:#eff6ff; border:1px solid #bfdbfe; color:#1d4ed8; font-size:12px;
+    }
+    @media (max-width: 1100px){
+      .search-row{ grid-template-columns:1fr 1fr; }
+      .summary-grid{ grid-template-columns:1fr 1fr; }
+    }
     @media (max-width: 900px){
       .wrap{padding:0 10px 18px}
       .panel{padding:12px}
@@ -491,16 +218,10 @@
       .btn{width:100%}
       .actions{justify-content:stretch}
       .actions .btn{flex:1 1 100%}
-      .sticky-inner{
-        flex-direction:column;
-        align-items:stretch;
-      }
-      .sticky-actions .btn{
-        flex:1 1 100%;
-      }
-      body{
-        padding-bottom:140px;
-      }
+      .sticky-inner{ flex-direction:column; align-items:stretch; }
+      .sticky-actions .btn{ flex:1 1 100%; }
+      body{ padding-bottom:160px; }
+      .summary-grid{ grid-template-columns:1fr; }
     }
   </style>
 </head>
@@ -508,13 +229,55 @@
   <div class="wrap">
     <div class="page-top">
       <div class="title">
-        <h1>Purchase Modify</h1>
-        <span>Edit saved purchase entries with the same behavior as purchase.html</span>
+        <h1>Purchase Edit Pro</h1>
+        <span>Load any saved purchase, edit safely, reverse old stock, and apply the new values.</span>
       </div>
       <div class="page-badges">
-        <div class="badge">Edit Mode</div>
-        <div class="badge">Barcode Enabled</div>
-        <div class="badge">Early Duplicate Warning</div>
+        <div class="badge">Ultra Pro Edit Mode</div>
+        <div class="badge">Safe Stock Reverse + Reapply</div>
+        <div class="badge">Invoice Duplicate Smart Check</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title">
+          <h2>Load Saved Purchase</h2>
+          <small>Search by purchase number, invoice number, GST, or supplier name.</small>
+        </div>
+      </div>
+
+      <div class="search-row">
+        <div class="field"><label>Purchase number</label><input id="loadPurchaseNumber" placeholder="PN-20260415-12345" autocomplete="off" /></div>
+        <div class="field"><label>Invoice number</label><input id="loadInvoiceNumber" placeholder="Invoice number" autocomplete="off" /></div>
+        <div class="field"><label>GST number</label><input id="loadGstNumber" placeholder="GST number" autocomplete="off" /></div>
+        <div class="field"><label>Supplier name</label><input id="loadSupplierName" placeholder="Supplier name" autocomplete="off" /></div>
+        <button class="btn primary" id="searchPurchaseBtn">Search Purchase</button>
+        <button class="btn ok" id="loadExactBtn">Load Exact</button>
+        <button class="btn" id="resetEditorBtn">Reset Editor</button>
+      </div>
+
+      <div class="load-note" id="loadNote">
+        Tip: type one strong key like purchase number or invoice number, then choose from dropdown.
+      </div>
+      <div class="status" id="searchStatus"></div>
+    </div>
+
+    <div class="spacer"></div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title">
+          <h2>Edit Summary</h2>
+          <small>Shows the purchase currently loaded into edit mode.</small>
+        </div>
+      </div>
+      <div class="summary-grid">
+        <div class="summary-card"><small>Mode</small><strong id="modeLabel">NEW LOAD REQUIRED</strong></div>
+        <div class="summary-card"><small>Loaded Purchase</small><strong id="loadedPurchaseNumber">-</strong></div>
+        <div class="summary-card"><small>Original Item Lines</small><strong id="originalLineCount">0</strong></div>
+        <div class="summary-card"><small>Original Payable</small><strong id="originalPayable">0.00</strong></div>
+        <div class="summary-card"><small>Current Edit Payable</small><strong id="currentPayableCard">0.00</strong></div>
       </div>
     </div>
 
@@ -522,13 +285,13 @@
       <div class="panel-head">
         <div class="panel-title">
           <h2>Invoice Details</h2>
-          <small>Modify GST, supplier, invoice number, and date. Duplicate invoice is checked before item entry.</small>
+          <small>Edit the saved purchase header. Duplicate check excludes the currently loaded purchase.</small>
         </div>
       </div>
 
       <div class="row" id="invoiceRow">
         <div class="field"><label>Purchase number</label><input id="purchaseNumber" class="readonly" readonly /></div>
-        <div class="field"><label>Bill date</label><input id="billDate" class="readonly" readonly /></div>
+        <div class="field"><label>Bill date</label><input id="billDate" type="date" /></div>
         <div class="field"><label>GST number</label><input id="gstNumber" autocomplete="off" /></div>
         <div class="field"><label>Supplier name</label><input id="supplierName" autocomplete="off" /></div>
         <div class="field"><label>Supplier address</label><input id="supplierAddress" autocomplete="off" /></div>
@@ -547,7 +310,7 @@
       <div class="panel-head">
         <div class="panel-title">
           <h2>Purchase Items</h2>
-          <small>Item search and stock view use stock_balance_view, same behavior as sales</small>
+          <small>Load old items, change anything, add rows, delete rows, and update safely.</small>
         </div>
       </div>
 
@@ -557,6 +320,7 @@
           <div>Item code</div>
           <div>Barcode</div>
           <div>Item name</div>
+          <div>Department</div>
           <div>Qty</div>
           <div>Price</div>
           <div>Disc%</div>
@@ -582,7 +346,8 @@
 
       <div class="actions">
         <button class="btn" id="addRowBtn">+ Add row</button>
-        <button class="btn primary" id="saveBtn" disabled>Save & Update</button>
+        <button class="btn danger" id="deleteRowBtn">Delete last row</button>
+        <button class="btn primary" id="updateBtn" disabled>Update Purchase</button>
       </div>
     </div>
 
@@ -592,11 +357,12 @@
   <div class="sticky-bar">
     <div class="sticky-inner">
       <div class="sticky-note">
-        Enter = next field, Shift+Enter = previous, Arrow keys = vertical movement. Duplicate invoice blocks item entry.
+        Load purchase first → edit → update. Enter = next field, Shift+Enter = previous, Arrow keys = vertical movement.
       </div>
       <div class="sticky-actions">
         <button class="btn" id="addRowBtnSticky">+ Add row</button>
-        <button class="btn primary" id="saveBtnSticky">Save & Update</button>
+        <button class="btn danger" id="deleteRowBtnSticky">Delete last row</button>
+        <button class="btn primary" id="updateBtnSticky">Update Purchase</button>
       </div>
     </div>
   </div>
@@ -606,24 +372,26 @@
   <script src="page_permissions.js"></script>
   <script>
     const sb = window.sbcc;
-
     document.addEventListener("DOMContentLoaded", async () => {
       const ok = await requirePageAccess("purchase");
       if (!ok) return;
     });
 
-    const fmt2 = v => (isFinite(v) ? Number(v).toFixed(2) : "");
+    const fmt2 = v => (isFinite(v) ? Number(v).toFixed(2) : "0.00");
     const num = v => (v === "" || v == null ? 0 : Number(v));
+    const todayISO = () => new Date().toISOString().slice(0,10);
     const byId = id => document.getElementById(id);
-    const urlParams = new URLSearchParams(window.location.search);
-    const editId = urlParams.get("edit");
 
     let activeIndex = -1;
     let dropdown;
-    let originalItems = [];
-    let editingPurchaseId = null;
     let stockData = [];
+    let isLoadedForEdit = false;
     let duplicateInvoiceFound = false;
+    let loadedPurchaseId = null;
+    let loadedPurchaseNumber = "";
+    let originalPurchaseHeader = null;
+    let originalItemsSnapshot = [];
+    let currentSearchRows = [];
 
     document.addEventListener("input", function(e){
       if(e.target.tagName === "INPUT" && e.target.type === "text"){
@@ -631,34 +399,27 @@
       }
     });
 
-    function syncStickySaveState(){
-      const mainSave = byId("saveBtn");
-      const stickySave = byId("saveBtnSticky");
-      if(mainSave && stickySave){
-        stickySave.disabled = mainSave.disabled;
-      }
+    function syncStickyUpdateState(){
+      const main = byId("updateBtn");
+      const sticky = byId("updateBtnSticky");
+      if(main && sticky) sticky.disabled = main.disabled;
     }
 
     function setItemsEnabled(enabled){
       const panel = byId("itemsPanel");
       const addRowBtn = byId("addRowBtn");
       const addRowBtnSticky = byId("addRowBtnSticky");
-      const saveBtn = byId("saveBtn");
+      const delRowBtn = byId("deleteRowBtn");
+      const delRowBtnSticky = byId("deleteRowBtnSticky");
+      const updateBtn = byId("updateBtn");
 
-      if(enabled){
-        panel.classList.remove("items-disabled");
-      } else {
-        panel.classList.add("items-disabled");
-      }
-
+      panel.classList.toggle("items-disabled", !enabled);
       addRowBtn.disabled = !enabled;
       addRowBtnSticky.disabled = !enabled;
-
-      if(!enabled){
-        saveBtn.disabled = true;
-      }
-
-      syncStickySaveState();
+      delRowBtn.disabled = !enabled;
+      delRowBtnSticky.disabled = !enabled;
+      if(!enabled) updateBtn.disabled = true;
+      syncStickyUpdateState();
     }
 
     function normalizeSearchText(value) {
@@ -696,18 +457,23 @@
         }
       }
 
-      stockData = allItems;
+      stockData = allItems.map(item => ({
+        ...item,
+        department: String(item.department || "").toUpperCase()
+      }));
     }
 
-    function searchStock(query, field) {
+    function searchStock(query, field, selectedDepartment = "") {
       if (!query) return [];
-
       const normalizedQuery = normalizeSearchText(query);
       if (!normalizedQuery) return [];
 
       const terms = normalizedQuery.split(" ").filter(Boolean);
+      const deptFilter = String(selectedDepartment || "").trim().toUpperCase();
 
       const scored = stockData.map(item => {
+        if (deptFilter && String(item.department || "").toUpperCase() !== deptFilter) return null;
+
         const codeRaw = String(item.item_code || "");
         const nameRaw = String(item.item_name || "");
         const barcodeRaw = String(item.barcode || "");
@@ -754,30 +520,37 @@
       return scored.slice(0, 40).map(x => x.item);
     }
 
-    function showDropdown(anchorInput, items, onPick){
+    function showDropdown(anchorInput, items, onPick, type = "item"){
       hideDropdown();
 
       const rect = anchorInput.getBoundingClientRect();
-      const isSupplierDropdown = items.length && items[0].gst_number !== undefined;
-
       dropdown = document.createElement("div");
       dropdown.className = "dropdown";
       document.body.appendChild(dropdown);
 
       items.forEach((it) => {
         const opt = document.createElement("div");
-        opt.className = "opt " + (isSupplierDropdown ? "supplier-opt" : "item-opt");
+        opt.className = "opt " + (type === "supplier" ? "supplier-opt" : type === "purchase" ? "purchase-opt" : "item-opt");
 
-        if (isSupplierDropdown) {
+        if (type === "supplier") {
           opt.innerHTML = `
             <div class="muted">${it.gst_number ?? ""}</div>
             <div>${it.name ?? ""}</div>
             <div class="muted">${it.address ?? ""}</div>
           `;
+        } else if(type === "purchase") {
+          opt.innerHTML = `
+            <div class="muted">${it.purchase_number ?? ""}</div>
+            <div class="muted">${it.invoice_number ?? ""}</div>
+            <div class="muted">${it.invoice_date ?? ""}</div>
+            <div>${it.supplier_name ?? ""}</div>
+            <div class="muted">${fmt2(it.payable ?? 0)}</div>
+          `;
         } else {
           opt.innerHTML = `
             <div class="muted">${it.item_code ?? ""}</div>
             <div>${it.item_name ?? ""}</div>
+            <div class="muted">${it.department || ""}</div>
             <div class="muted">Stock: ${fmt2(it.balance ?? 0)}</div>
             <div class="muted">${fmt2(it.price1 ?? 0)} / ${fmt2(it.landing ?? 0)}</div>
           `;
@@ -791,21 +564,16 @@
         dropdown.appendChild(opt);
       });
 
-      const rowHeight = isSupplierDropdown ? 40 : 42;
+      const rowHeight = 42;
       const dropdownHeight = Math.min(260, items.length * rowHeight);
       const spaceBelow = window.innerHeight - rect.bottom;
       const spaceAbove = rect.top;
+      let top = (spaceBelow < dropdownHeight && spaceAbove > dropdownHeight)
+        ? window.scrollY + rect.top - dropdownHeight - 6
+        : window.scrollY + rect.bottom + 4;
 
-      let top;
-      if(spaceBelow < dropdownHeight && spaceAbove > dropdownHeight){
-        top = window.scrollY + rect.top - dropdownHeight - 6;
-      } else {
-        top = window.scrollY + rect.bottom + 4;
-      }
-
-      let minWidth = Math.max(rect.width, 700);
+      let minWidth = Math.max(rect.width, type === "purchase" ? 920 : 820);
       let left = window.scrollX + rect.left;
-
       if(left + minWidth > window.innerWidth - 10){
         left = Math.max(10, window.innerWidth - minWidth - 10);
       }
@@ -820,22 +588,13 @@
       anchorInput.onkeydown = (e) => {
         const opts = dropdown.querySelectorAll(".opt");
         if(!opts.length) return;
-
         if(e.key === "ArrowDown"){
-          e.preventDefault();
-          activeIndex = (activeIndex + 1) % opts.length;
-          highlightOption();
-        }
-        else if(e.key === "ArrowUp"){
-          e.preventDefault();
-          activeIndex = (activeIndex - 1 + opts.length) % opts.length;
-          highlightOption();
-        }
-        else if(e.key === "Enter"){
-          e.preventDefault();
-          opts[activeIndex]?.click();
-        }
-        else if(e.key === "Escape"){
+          e.preventDefault(); activeIndex = (activeIndex + 1) % opts.length; highlightOption();
+        } else if(e.key === "ArrowUp"){
+          e.preventDefault(); activeIndex = (activeIndex - 1 + opts.length) % opts.length; highlightOption();
+        } else if(e.key === "Enter"){
+          e.preventDefault(); opts[activeIndex]?.click();
+        } else if(e.key === "Escape"){
           hideDropdown();
         }
       };
@@ -845,24 +604,16 @@
       if(!dropdown) return;
       const opts = dropdown.querySelectorAll(".opt");
       opts.forEach((opt, i) => {
-        opt.style.background = (i === activeIndex) ? "#1b2130" : "";
-        if(i === activeIndex){
-          opt.scrollIntoView({ block: "nearest" });
-        }
+        opt.style.background = (i === activeIndex) ? "#f3f8ff" : "";
+        if(i === activeIndex) opt.scrollIntoView({ block: "nearest" });
       });
     }
 
     function hideDropdown(){
-      if(dropdown){
-        dropdown.remove();
-        dropdown = null;
-      }
+      if(dropdown){ dropdown.remove(); dropdown=null; }
     }
 
-    document.addEventListener("click", e => {
-      if(dropdown && !dropdown.contains(e.target)) hideDropdown();
-    });
-
+    document.addEventListener("click", e=>{ if(dropdown && !dropdown.contains(e.target)) hideDropdown(); });
     window.addEventListener("resize", hideDropdown);
     window.addEventListener("scroll", hideDropdown, true);
 
@@ -872,17 +623,13 @@
       t.textContent = msg;
       input.parentElement.appendChild(t);
       input.classList.add("shake");
-      setTimeout(() => {
-        t.remove();
-        input.classList.remove("shake");
-      }, 1600);
+      setTimeout(()=>{ t.remove(); input.classList.remove("shake"); }, 1800);
     }
 
     async function ensureSupplierExists() {
       const gst = byId("gstNumber").value.trim();
       const name = byId("supplierName").value.trim();
       const address = byId("supplierAddress").value.trim();
-
       if (!gst || !name) return;
 
       const { data: existingByGst } = await sb
@@ -898,71 +645,15 @@
         if ((existing.address || "") !== address) updatePayload.address = address;
 
         if (Object.keys(updatePayload).length) {
-          await sb
-            .from("suppliers")
-            .update(updatePayload)
-            .eq("supplier_id", existing.supplier_id);
+          await sb.from("suppliers").update(updatePayload).eq("supplier_id", existing.supplier_id);
         }
         return;
       }
 
-      await sb.from("suppliers").insert({
-        gst_number: gst,
-        name: name,
-        address: address
-      });
+      await sb.from("suppliers").insert({ gst_number: gst, name: name, address: address });
     }
 
-    async function checkDuplicateInvoice() {
-      const gst = byId("gstNumber").value.trim();
-      const invoiceNumber = byId("invoiceNumber").value.trim();
-      const invoiceDate = byId("invoiceDate").value;
-      const status = byId("invoiceStatus");
-
-      if (!gst || !invoiceNumber || !invoiceDate) {
-        duplicateInvoiceFound = false;
-        setItemsEnabled(false);
-        status.innerHTML = `<span class="warn">Enter GST number, invoice number, and invoice date first.</span>`;
-        return false;
-      }
-
-      let query = sb
-        .from("purchase_details")
-        .select("id, purchase_number, invoice_number, invoice_date, gst_number")
-        .eq("gst_number", gst)
-        .eq("invoice_number", invoiceNumber)
-        .eq("invoice_date", invoiceDate);
-
-      if (editingPurchaseId) {
-        query = query.neq("id", editingPurchaseId);
-      }
-
-      const { data, error } = await query.limit(1);
-
-      if (error) {
-        console.error("Duplicate check error:", error);
-        duplicateInvoiceFound = false;
-        setItemsEnabled(false);
-        status.innerHTML = `<span class="err">Unable to verify duplicate invoice.</span>`;
-        return false;
-      }
-
-      if (data && data.length) {
-        duplicateInvoiceFound = true;
-        setItemsEnabled(false);
-        status.innerHTML = `<span class="err">Duplicate invoice found for this GST + invoice number + invoice date. Item entry stopped.</span>`;
-        tip(byId("invoiceNumber"), "Duplicate invoice already exists");
-        return true;
-      }
-
-      duplicateInvoiceFound = false;
-      setItemsEnabled(true);
-      status.innerHTML = `<span class="ok">Invoice looks unique. You can edit items.</span>`;
-      maybeEnableSave();
-      return false;
-    }
-
-    async function initInvoice(){
+    async function initSupplierDropdowns(){
       byId("gstNumber").addEventListener("input", async (e)=>{
         const q = e.target.value.trim();
         if(q.length >= 2){
@@ -977,13 +668,11 @@
               byId("supplierName").value = pick.name || "";
               byId("supplierAddress").value = pick.address || "";
               checkDuplicateInvoice();
-            });
+            }, "supplier");
           } else {
             hideDropdown();
           }
-        } else {
-          hideDropdown();
-        }
+        } else hideDropdown();
         await checkDuplicateInvoice();
       });
 
@@ -1001,387 +690,310 @@
               byId("gstNumber").value = pick.gst_number || "";
               byId("supplierAddress").value = pick.address || "";
               checkDuplicateInvoice();
-            });
-          } else {
-            hideDropdown();
-          }
-        } else {
-          hideDropdown();
-        }
+            }, "supplier");
+          } else hideDropdown();
+        } else hideDropdown();
       });
 
       byId("supplierAddress").addEventListener("input", function(){
         this.value = this.value.toUpperCase();
       });
+    }
 
-      byId("invoiceNumber").addEventListener("input", checkDuplicateInvoice);
-      byId("invoiceDate").addEventListener("change", checkDuplicateInvoice);
-      byId("gstNumber").addEventListener("blur", checkDuplicateInvoice);
-      byId("invoiceNumber").addEventListener("blur", checkDuplicateInvoice);
-      byId("invoiceDate").addEventListener("blur", checkDuplicateInvoice);
+    async function checkDuplicateInvoice() {
+      const gst = byId("gstNumber").value.trim();
+      const invoiceNumber = byId("invoiceNumber").value.trim();
+      const invoiceDate = byId("invoiceDate").value;
+      const status = byId("invoiceStatus");
 
-      ["invoiceAmount","roundOff","payable"].forEach(id => {
-        byId(id).addEventListener("input", validateInvoiceTotals);
-      });
+      if (!gst || !invoiceNumber || !invoiceDate) {
+        duplicateInvoiceFound = false;
+        status.innerHTML = `<span class="warn">Load a purchase, then keep GST number, invoice number, and invoice date valid.</span>`;
+        maybeEnableUpdate();
+        return false;
+      }
+
+      let query = sb
+        .from("purchase_details")
+        .select("id, purchase_number, invoice_number, invoice_date, gst_number")
+        .eq("gst_number", gst)
+        .eq("invoice_number", invoiceNumber)
+        .eq("invoice_date", invoiceDate);
+
+      if (loadedPurchaseId) query = query.neq("id", loadedPurchaseId);
+
+      const { data, error } = await query.limit(1);
+
+      if (error) {
+        console.error("Duplicate check error:", error);
+        duplicateInvoiceFound = false;
+        status.innerHTML = `<span class="err">Unable to verify duplicate invoice.</span>`;
+        maybeEnableUpdate();
+        return false;
+      }
+
+      if (data && data.length) {
+        duplicateInvoiceFound = true;
+        status.innerHTML = `<span class="err">Another purchase already uses this GST + invoice number + invoice date.</span>`;
+        tip(byId("invoiceNumber"), "Duplicate invoice already exists in another purchase");
+        maybeEnableUpdate();
+        return true;
+      }
+
+      duplicateInvoiceFound = false;
+      status.innerHTML = `<span class="ok">Invoice is valid for edit update.</span>`;
+      maybeEnableUpdate();
+      return false;
     }
 
     function validateInvoiceTotals(){
-      if (duplicateInvoiceFound) {
-        byId("saveBtn").disabled = true;
-        syncStickySaveState();
-        return;
-      }
-
       const amt = num(byId("invoiceAmount").value);
       const ro  = num(byId("roundOff").value);
       const pay = num(byId("payable").value);
-      const hasHeaderReady = byId("gstNumber").value.trim() && byId("invoiceNumber").value.trim() && byId("invoiceDate").value;
-
-      if (!hasHeaderReady) {
-        byId("saveBtn").disabled = true;
-        syncStickySaveState();
-        return;
-      }
-
       if(amt === ro + pay){
-        maybeEnableSave();
-      } else {
-        byId("saveBtn").disabled = true;
-        syncStickySaveState();
+        maybeEnableUpdate();
+      }else{
+        byId("updateBtn").disabled = true;
+        syncStickyUpdateState();
       }
-    }
-
-    function focusAndSelect(input){
-      if(!input) return;
-      input.focus();
-      setTimeout(() => input.select(), 0);
     }
 
     let rowCount = 0;
+    function enforceUppercase(el) {
+      el.addEventListener("input", function() { this.value = this.value.toUpperCase(); });
+    }
+
+    function removeRow(row){
+      if(!row) return;
+      row.remove();
+      maybeEnableUpdate();
+      updatePayableFromItems();
+      ensureAtLeastOneRow();
+    }
+
+    function addDeleteControl(row){
+      const fields = row.querySelectorAll("input, select");
+      if(!fields.length) return;
+      const target = fields[2];
+      target.addEventListener("dblclick", ()=> removeRow(row));
+      target.title = "Double click barcode to remove this row";
+    }
 
     function fillRowFromStock(row, item){
-      row.querySelector('[data-field="hsn"]').value = item.hsn_code || '';
-      row.querySelector('[data-field="code"]').value = item.item_code || '';
-      row.querySelector('[data-field="barcode"]').value = item.barcode || item.item_code || '';
-      row.querySelector('[data-field="name"]').value = item.item_name || '';
-      row.querySelector('[data-field="gst"]').value = item.gst_percent || 0;
+      const all = row.querySelectorAll("input, select");
+      const [hsn, code, barcode, name, department, qty, price, disc, total, gstp, totalG, purch, purchG, landing, p1p, p1, p1g, p2p, p2, p2g, p3p, p3, p3g] = all;
 
-      const purchaseBase = item.purchase_price || item.landing || 0;
-      row.querySelector('[data-field="price"]').value = purchaseBase;
-      row.querySelector('[data-field="purch"]').value = purchaseBase;
+      code.value    = item.item_code || "";
+      barcode.value = item.barcode || item.item_code || "";
+      name.value    = item.item_name || "";
+      hsn.value     = item.hsn_code || "";
+      department.value = String(item.department || "").toUpperCase();
+      gstp.value    = item.gst_percent || "";
 
-      const purchaseWithGst = item.purchase_price_gst || (Number(purchaseBase) * (1 + (Number(item.gst_percent || 0) / 100)));
-      row.querySelector('[data-field="purchG"]').value = fmt2(purchaseWithGst);
+      price.value   = item.purchase_price || item.landing || 0;
+      purch.value   = item.purchase_price || item.landing || 0;
+      purchG.value  = item.purchase_price_gst || ((Number(item.purchase_price || item.landing || 0) * (1 + (Number(item.gst_percent || 0)/100))).toFixed(2));
 
-      const landingInput = row.querySelector('[data-field="landing"]');
-      if(landingInput.dataset.manual !== "true"){
-        landingInput.value = item.landing || fmt2(purchaseWithGst);
+      if(landing.dataset.userOverride !== "1"){
+        landing.value = item.landing || purchG.value || 0;
       }
 
-      row.querySelector('[data-field="price1"]').value = item.price1 || 0;
-      row.querySelector('[data-field="price2"]').value = item.price2 || 0;
-      row.querySelector('[data-field="price3"]').value = item.price3 || 0;
+      p1.value = item.price1 || 0;
+      p2.value = item.price2 || 0;
+      p3.value = item.price3 || 0;
 
+      const baseLanding = Number(item.landing || item.purchase_price_gst || item.purchase_price || 0);
+      if (baseLanding > 0) {
+        p1p.value = item.price1 ? (((Number(item.price1) / baseLanding) - 1) * 100).toFixed(2) : "";
+        p2p.value = item.price2 ? (((Number(item.price2) / baseLanding) - 1) * 100).toFixed(2) : "";
+        p3p.value = item.price3 ? (((Number(item.price3) / baseLanding) - 1) * 100).toFixed(2) : "";
+      } else {
+        p1p.value = "";
+        p2p.value = "";
+        p3p.value = "";
+      }
+
+      if(!qty.value) qty.value = 1;
       calculateRow(row);
     }
 
-    function newItemRow(item = null){
-      if (duplicateInvoiceFound) return null;
-
+    function newItemRow(prefill={}){
       rowCount++;
       const wrap = document.createElement("div");
       wrap.className = "grid";
       wrap.dataset.row = rowCount;
 
-      wrap.innerHTML = `
-        <input data-field="hsn" value="${item?.hsn_code || ''}">
-        <input data-field="code" value="${item?.item_code || ''}">
-        <input data-field="barcode" value="${item?.barcode || ''}">
-        <input data-field="name" value="${item?.item_name || ''}">
-        <input data-field="qty" type="number" value="${item?.quantity || ''}">
-        <input data-field="price" type="number" value="${item?.price || ''}">
-        <input data-field="disc" type="number" value="${item?.discount_percent || ''}">
-        <input data-field="total" class="readonly" readonly>
-        <input data-field="gst" type="number" value="${item?.gst_percent || ''}">
-        <input data-field="totalgst" class="readonly" readonly>
-        <input data-field="purch" type="number" value="${item?.purchase_price || ''}">
-        <input data-field="purchG" type="number" value="${item?.purchase_price_gst || ''}">
-        <input data-field="landing" type="number" value="${item?.landing || ''}">
-        <input data-field="price1p" type="number" value="${item?.price1_percent || ''}">
-        <input data-field="price1" type="number" value="${item?.price1 || ''}">
-        <input data-field="price1g" type="number" value="${item?.price1_gst || ''}">
-        <input data-field="price2p" type="number" value="${item?.price2_percent || ''}">
-        <input data-field="price2" type="number" value="${item?.price2 || ''}">
-        <input data-field="price2g" type="number" value="${item?.price2_gst || ''}">
-        <input data-field="price3p" type="number" value="${item?.price3_percent || ''}">
-        <input data-field="price3" type="number" value="${item?.price3 || ''}">
-        <input data-field="price3g" type="number" value="${item?.price3_gst || ''}">
-      `;
+      const mk = (ph, val="")=>{
+        const i = document.createElement("input");
+        i.placeholder = ph;
+        if(val!==undefined && val!=="") i.value = val;
+        enforceUppercase(i);
+        return i;
+      };
+
+      const mkDept = () => {
+        const s = document.createElement("select");
+        s.innerHTML = `
+          <option value="">SELECT</option>
+          <option value="ELECTRICAL">ELECTRICAL</option>
+          <option value="PLUMBING">PLUMBING</option>
+          <option value="INTERLOCK">INTERLOCK</option>
+        `;
+        return s;
+      };
+
+      const hsn = mk("HSN", prefill.hsn_code ?? "");
+      const code = mk("Code", prefill.item_code ?? "");
+      const barcode = mk("Barcode", prefill.barcode ?? "");
+      const name = mk("Name", prefill.item_name ?? "");
+      const department = mkDept();
+      const qty = mk("Qty", prefill.quantity ?? "");
+      const price = mk("Price", prefill.price ?? prefill.purchase_price ?? "");
+      const disc = mk("Disc%", prefill.discount_percent ?? "");
+      const total = mk("Total"); total.classList.add("readonly"); total.readOnly = true;
+      const gstp = mk("GST%", prefill.gst_percent ?? "");
+      const totalG = mk("Total+GST"); totalG.classList.add("readonly"); totalG.readOnly = true;
+      const purch = mk("Purchase", prefill.purchase_price ?? "");
+      const purchG = mk("Purchase+GST", prefill.purchase_price_gst ?? ""); purchG.classList.add("readonly"); purchG.readOnly = true;
+      const landing = mk("Landing", prefill.landing ?? "");
+      const p1p = mk("P1%", prefill.price1_percent ?? "");
+      const p1 = mk("P1", prefill.price1 ?? "");
+      const p1g = mk("P1+GST", prefill.price1_gst ?? "");
+      const p2p = mk("P2%", prefill.price2_percent ?? "");
+      const p2 = mk("P2", prefill.price2 ?? "");
+      const p2g = mk("P2+GST", prefill.price2_gst ?? "");
+      const p3p = mk("P3%", prefill.price3_percent ?? "");
+      const p3 = mk("P3", prefill.price3 ?? "");
+      const p3g = mk("P3+GST", prefill.price3_gst ?? "");
+
+      department.value = String(prefill.department || "").toUpperCase();
+
+      [hsn,code,barcode,name,department,qty,price,disc,total,gstp,totalG,purch,purchG,landing,p1p,p1,p1g,p2p,p2,p2g,p3p,p3,p3g]
+        .forEach(el=>wrap.appendChild(el));
 
       byId("items").appendChild(wrap);
+      addDeleteControl(wrap);
 
-      setTimeout(() => {
-        wrap.scrollIntoView({
-          behavior: "smooth",
-          block: "center"
-        });
-      }, 60);
+      code.addEventListener("input", (e) => {
+        const q = e.target.value.trim();
+        if(q.length < 1){ hideDropdown(); return; }
+        const matches = searchStock(q, "item_code", department.value);
+        if(!matches.length) return hideDropdown();
+        showDropdown(e.target, matches, (pick) => fillRowFromStock(wrap, pick), "item");
+      });
 
-      enableNavigation(wrap);
+      name.addEventListener("input", (e) => {
+        const q = e.target.value.trim();
+        if(q.length < 1){ hideDropdown(); return; }
+        const matches = searchStock(q, "item_name", department.value);
+        if(!matches.length) return hideDropdown();
+        showDropdown(e.target, matches, (pick) => fillRowFromStock(wrap, pick), "item");
+      });
+
+      code.addEventListener("change", () => {
+        const codeVal = normalizeSearchText(code.value);
+        const item = stockData.find(i => normalizeSearchText(i.item_code || "") === codeVal);
+        if(item) fillRowFromStock(wrap, item);
+      });
+
+      [qty,price,disc,gstp,landing,p1p,p1,p1g,p2p,p2,p2g,p3p,p3,p3g].forEach(el=>{
+        el.addEventListener("input", () => calculateRow(wrap));
+      });
+
+      department.addEventListener("change", () => {
+        const rawCode = normalizeSearchText(code.value);
+        if(rawCode){
+          const item = stockData.find(i => normalizeSearchText(i.item_code || "") === rawCode);
+          if(item && !department.value){
+            department.value = String(item.department || "").toUpperCase();
+          }
+        }
+      });
+
+      landing.addEventListener("input", ()=>{ landing.dataset.userOverride = "1"; });
+
+      p3g.addEventListener("keydown", (e)=>{
+        if(e.key === "Enter"){
+          const newRow = newItemRow();
+          setTimeout(() => {
+            newRow.scrollIntoView({ behavior: "smooth", block: "center" });
+            const firstInput = newRow.querySelector("input, select");
+            if(firstInput){ firstInput.focus(); if(firstInput.select) firstInput.select(); }
+          }, 60);
+        }
+      });
+
       calculateRow(wrap);
       return wrap;
     }
 
-    function enableNavigation(row){
-      const inputs = [...row.querySelectorAll("input")];
-
-      inputs.forEach((input, colIndex) => {
-        input.addEventListener("keydown", async (e) => {
-          const inputs = Array.from(row.querySelectorAll("input"));
-          const currentCol = inputs.indexOf(input);
-
-          if(e.key === "Enter"){
-            e.preventDefault();
-            const field = input.dataset.field;
-
-            if(field === "code"){
-              const q = normalizeSearchText(input.value.trim());
-              const match = stockData.find(i => normalizeSearchText(i.item_code || "") === q);
-              if(match) fillRowFromStock(row, match);
-            } else if(field === "name"){
-              const q = input.value.trim();
-              const matches = searchStock(q, "item_name");
-              if(matches.length) fillRowFromStock(row, matches[0]);
-            }
-
-            calculateRow(row);
-
-            if(e.shiftKey){
-              if(inputs[currentCol - 1]) focusAndSelect(inputs[currentCol - 1]);
-            } else {
-              if(inputs[currentCol + 1]){
-                focusAndSelect(inputs[currentCol + 1]);
-              } else {
-                const created = newItemRow();
-                if (!created) return;
-                const firstInput = created.querySelectorAll("input")[0];
-                focusAndSelect(firstInput);
-              }
-            }
-          }
-
-          if(e.key === "ArrowRight"){
-            e.preventDefault();
-            if(inputs[currentCol + 1]) focusAndSelect(inputs[currentCol + 1]);
-          }
-
-          if(e.key === "ArrowLeft"){
-            e.preventDefault();
-            if(inputs[currentCol - 1]) focusAndSelect(inputs[currentCol - 1]);
-          }
-
-          if(e.key === "ArrowDown"){
-            e.preventDefault();
-            const rows = Array.from(document.querySelectorAll("#items .grid"));
-            const rowIndex = rows.indexOf(row);
-            if(rows[rowIndex + 1]){
-              const target = rows[rowIndex + 1].querySelectorAll("input")[currentCol];
-              focusAndSelect(target);
-            }
-          }
-
-          if(e.key === "ArrowUp"){
-            e.preventDefault();
-            const rows = Array.from(document.querySelectorAll("#items .grid"));
-            const rowIndex = rows.indexOf(row);
-            if(rows[rowIndex - 1]){
-              const target = rows[rowIndex - 1].querySelectorAll("input")[currentCol];
-              focusAndSelect(target);
-            }
-          }
-
-          if(e.ctrlKey && e.key === "Delete"){
-            e.preventDefault();
-            row.remove();
-            updateInvoiceTotals();
-            maybeEnableSave();
-          }
-        });
-
-        input.addEventListener("blur", () => {
-          calculateRow(row);
-        });
-
-        input.addEventListener("input", () => {
-          calculateRow(row);
-        });
-      });
-
-      const landingInput = row.querySelector('[data-field="landing"]');
-      const purchInput = row.querySelector('[data-field="purch"]');
-
-      landingInput.addEventListener("input", function(){
-        this.dataset.manual = "true";
-      });
-
-      purchInput.addEventListener("input", function(){
-        delete landingInput.dataset.manual;
-        calculateRow(row);
-      });
-
-      const codeInput = row.querySelector('[data-field="code"]');
-      const nameInput = row.querySelector('[data-field="name"]');
-
-      codeInput.addEventListener("input", async (e) => {
-        const q = e.target.value.trim();
-        if(q.length < 1) return hideDropdown();
-
-        const matches = searchStock(q, "item_code");
-        if(!matches.length) return hideDropdown();
-
-        showDropdown(e.target, matches, (pick) => {
-          fillRowFromStock(row, pick);
-        });
-      });
-
-      nameInput.addEventListener("input", async (e) => {
-        const q = e.target.value.trim();
-        if(q.length < 1) return hideDropdown();
-
-        const matches = searchStock(q, "item_name");
-        if(!matches.length) return hideDropdown();
-
-        showDropdown(e.target, matches, (pick) => {
-          fillRowFromStock(row, pick);
-        });
-      });
-
-      const hsnInput = row.querySelector('[data-field="hsn"]');
-      hsnInput.addEventListener("blur", async () => {
-        const h = hsnInput.value.trim();
-        if(!h) return;
-
-        const { data } = await sb
-          .from("hsn_codes")
-          .select("gst_percent")
-          .eq("hsn_code", h)
-          .limit(1);
-
-        if(data && data.length){
-          row.querySelector('[data-field="gst"]').value = data[0].gst_percent ?? "";
-          calculateRow(row);
-        }
-      });
-    }
-
     function calculateRow(row){
-      const qty   = Number(row.querySelector('[data-field="qty"]').value) || 0;
-      const price = Number(row.querySelector('[data-field="price"]').value) || 0;
-      const disc  = Number(row.querySelector('[data-field="disc"]').value) || 0;
-      const gst   = Number(row.querySelector('[data-field="gst"]').value) || 0;
+      const all = row.querySelectorAll("input, select");
+      const [hsn, code, barcode, name, department, qty, price, disc, total, gstp, totalG, purch, purchG, landing, p1p, p1, p1g, p2p, p2, p2g, p3p, p3, p3g] = all;
 
-      let total = qty * price;
-      if(disc > 0){
-        total -= (total * disc / 100);
-      }
+      const Q = num(qty.value);
+      const P = num(price.value);
+      const Dp = num(disc.value);
+      const Gp = num(gstp.value);
 
-      const totalWithGST = total + (total * gst / 100);
+      const gross = Q * P;
+      const discAmt = gross * (Dp/100);
+      const tot = gross - discAmt;
+      total.value = fmt2(tot);
 
-      row.querySelector('[data-field="total"]').value = total.toFixed(2);
-      row.querySelector('[data-field="totalgst"]').value = totalWithGST.toFixed(2);
+      const gstAmt = tot * (Gp/100);
+      totalG.value = fmt2(tot + gstAmt);
 
-      let purchasePrice = price;
-      if(disc > 0){
-        purchasePrice -= (price * disc / 100);
-      }
+      const unitDisc = P * (Dp/100);
+      const purchaseUnit = P - unitDisc;
+      purch.value = fmt2(purchaseUnit);
 
-      row.querySelector('[data-field="purch"]').value = purchasePrice.toFixed(2);
+      const unitGst = purchaseUnit * (Gp/100);
+      purchG.value = fmt2(purchaseUnit + unitGst);
 
-      const purchaseGST = purchasePrice + (purchasePrice * gst / 100);
-      row.querySelector('[data-field="purchG"]').value = purchaseGST.toFixed(2);
+      if(landing.dataset.userOverride !== "1") landing.value = purchG.value;
 
-      const landingInput = row.querySelector('[data-field="landing"]');
-      let landing;
+      syncTier(p1p, p1, p1g, Gp, landing.value);
+      syncTier(p2p, p2, p2g, Gp, landing.value);
+      syncTier(p3p, p3, p3g, Gp, landing.value);
 
-      if(landingInput.dataset.manual === "true"){
-        landing = Number(landingInput.value) || 0;
-      } else {
-        landing = purchaseGST;
-        landingInput.value = landing.toFixed(2);
-      }
-
-      function calcSelling(percentField, priceField, priceGField){
-        const percent = Number(row.querySelector(percentField).value) || 0;
-        const sell = landing + (landing * percent / 100);
-        const sellG = sell + (sell * gst / 100);
-
-        row.querySelector(priceField).value = sell.toFixed(2);
-        row.querySelector(priceGField).value = sellG.toFixed(2);
-      }
-
-      calcSelling('[data-field="price1p"]','[data-field="price1"]','[data-field="price1g"]');
-      calcSelling('[data-field="price2p"]','[data-field="price2"]','[data-field="price2g"]');
-      calcSelling('[data-field="price3p"]','[data-field="price3"]','[data-field="price3g"]');
-
-      updateInvoiceTotals();
+      updatePayableFromItems();
+      maybeEnableUpdate();
     }
 
-    function updateInvoiceTotals(){
-      const rows = [...document.querySelectorAll("#items .grid")];
-      let grand = 0;
+    function syncTier(pctEl, baseEl, gstEl, gstPercent, unitBaseValue){
+      const pct = num(pctEl.value);
+      const base = num(baseEl.value);
+      const gst = num(gstEl.value);
+      const unitBase = num(unitBaseValue);
 
-      rows.forEach(r => {
-        grand += Number(r.querySelector('[data-field="totalgst"]').value) || 0;
-      });
+      const active = document.activeElement;
+      const fromPct = active === pctEl;
+      const fromBase = active === baseEl;
+      const fromGst = active === gstEl;
 
-      byId("payable").value = grand.toFixed(2);
-      const roundOff = parseFloat(byId("roundOff").value) || 0;
-      byId("invoiceAmount").value = (grand + roundOff).toFixed(2);
-
-      maybeEnableSave();
-    }
-
-    async function loadPurchaseForEdit(id){
-      const { data: purchase } = await sb
-        .from("purchase_details")
-        .select("*")
-        .eq("id", id)
-        .single();
-
-      if(!purchase){
-        alert("Purchase not found");
-        return;
+      if(fromPct){
+        const b = unitBase * (1 + pct/100);
+        baseEl.value = fmt2(b);
+        gstEl.value = fmt2(b * (1 + gstPercent/100));
+      }else if(fromBase){
+        const p = unitBase ? ((base/unitBase)-1)*100 : 0;
+        pctEl.value = fmt2(p);
+        gstEl.value = fmt2(base * (1 + gstPercent/100));
+      }else if(fromGst){
+        const b = gst / (1 + gstPercent/100);
+        baseEl.value = fmt2(b);
+        const p = unitBase ? ((b/unitBase)-1)*100 : 0;
+        pctEl.value = fmt2(p);
+      }else{
+        if(pctEl.value !== ""){
+          const b = unitBase * (1 + pct/100);
+          baseEl.value = fmt2(b);
+          gstEl.value = fmt2(b * (1 + gstPercent/100));
+        }else if(baseEl.value !== ""){
+          gstEl.value = fmt2(base * (1 + gstPercent/100));
+        }
       }
-
-      editingPurchaseId = purchase.id;
-
-      byId("purchaseNumber").value = purchase.purchase_number || "";
-      byId("billDate").value = purchase.bill_date || "";
-      byId("gstNumber").value = purchase.gst_number || "";
-      byId("supplierName").value = purchase.supplier_name || "";
-      byId("supplierAddress").value = purchase.address || purchase.supplier_address || "";
-      byId("invoiceNumber").value = purchase.invoice_number || "";
-      byId("invoiceDate").value = purchase.invoice_date || "";
-      byId("invoiceAmount").value = purchase.invoice_amount || "";
-      byId("roundOff").value = purchase.round_off || "";
-      byId("payable").value = purchase.payable || "";
-
-      const { data: items } = await sb
-        .from("purchase_item_details")
-        .select("*")
-        .eq("purchase_id", id);
-
-      byId("items").innerHTML = "";
-      originalItems = items || [];
-
-      if(originalItems.length){
-        originalItems.forEach(it => newItemRow(it));
-      } else {
-        newItemRow();
-      }
-
-      await checkDuplicateInvoice();
-      maybeEnableSave();
     }
 
     function collectInvoice(){
@@ -1392,28 +1004,30 @@
         supplier_name: byId("supplierName").value.trim(),
         address: byId("supplierAddress").value.trim(),
         invoice_number: byId("invoiceNumber").value.trim(),
-        invoice_date: byId("invoiceDate").value,
+        invoice_date: byId("invoiceDate").value || todayISO(),
         invoice_amount: num(byId("invoiceAmount").value),
         round_off: num(byId("roundOff").value),
-        payable: num(byId("payable").value)
+        payable: num(byId("payable").value),
       };
     }
 
     function collectItems(){
       const rows = [...byId("items").querySelectorAll(".grid")];
-      return rows.map(r => {
-        const inputs = [...r.querySelectorAll("input")].map(i => i.value);
-        const [hsn,code,barcode,name,qty,price,disc,total,gstp,totalG,purch,purchG,landing,p1p,p1,p1g,p2p,p2,p2g,p3p,p3,p3g] = inputs;
-
+      return rows.map(r=>{
+        const fields = [...r.querySelectorAll("input, select")].map(i=>i.value);
+        const [hsn, code, barcode, name, department, qty, price, disc, total, gstp, totalG, purch, purchG, landing, p1p, p1, p1g, p2p, p2, p2g, p3p, p3, p3g] = fields;
         return {
           hsn_code: hsn,
           item_code: code,
-          barcode: barcode,
+          barcode: barcode || code,
           item_name: name,
+          department: String(department || "").toUpperCase(),
           quantity: num(qty),
           price: num(price),
           discount_percent: num(disc),
+          total: num(total),
           gst_percent: num(gstp),
+          total_gst: num(totalG),
           purchase_price: num(purch),
           purchase_price_gst: num(purchG),
           landing: num(landing),
@@ -1425,112 +1039,291 @@
           price2_gst: num(p2g),
           price3_percent: num(p3p),
           price3: num(p3),
-          price3_gst: num(p3g)
+          price3_gst: num(p3g),
         };
-      }).filter(i => i.item_code || i.item_name || i.barcode);
+      }).filter(it => it.item_code || it.item_name || it.barcode);
     }
 
-    function maybeEnableSave(){
+    function maybeEnableUpdate(){
       const inv = collectInvoice();
-      const hasItems = collectItems().length > 0;
       const okTotals = inv.invoice_amount === inv.round_off + inv.payable;
-      const headerReady = inv.gst_number && inv.invoice_number && inv.invoice_date;
-
-      byId("saveBtn").disabled = !(headerReady && !duplicateInvoiceFound && inv.supplier_name && hasItems && okTotals);
-      syncStickySaveState();
+      const hasItems = collectItems().length > 0;
+      const headerReady = inv.gst_number && inv.invoice_number && inv.invoice_date && inv.supplier_name;
+      byId("updateBtn").disabled = !(isLoadedForEdit && !duplicateInvoiceFound && headerReady && okTotals && hasItems);
+      syncStickyUpdateState();
+      byId("currentPayableCard").textContent = fmt2(inv.payable);
     }
 
-    async function saveAll(){
-      const status = byId("saveStatus");
+    function updatePayableFromItems() {
+      const items = collectItems();
+      const sum = items.reduce((acc, it) => acc + it.total_gst, 0);
+      byId("payable").value = fmt2(sum);
+      updateRoundOff();
+      updateInvoiceAmount();
+      validateInvoiceTotals();
+      byId("currentPayableCard").textContent = fmt2(sum);
+    }
 
-      const isDup = await checkDuplicateInvoice();
-      if (isDup) {
-        status.innerHTML = `<span class="err">Duplicate invoice found. Save stopped.</span>`;
+    function updateInvoiceAmount() {
+      const payable = parseFloat(byId("payable").value) || 0;
+      const roundOff = parseFloat(byId("roundOff").value) || 0;
+      const invoiceAmount = payable + roundOff;
+      byId("invoiceAmount").value = fmt2(invoiceAmount);
+    }
+
+    function updateRoundOff() {
+      const payable = parseFloat(byId("payable").value) || 0;
+      const rounded = Math.round(payable);
+      const roundOff = rounded - payable;
+      byId("roundOff").value = fmt2(roundOff);
+      updateInvoiceAmount();
+    }
+
+    function ensureAtLeastOneRow(){
+      if(!byId("items").querySelector(".grid")) newItemRow();
+    }
+
+    function clearEditor(){
+      loadedPurchaseId = null;
+      loadedPurchaseNumber = "";
+      originalPurchaseHeader = null;
+      originalItemsSnapshot = [];
+      isLoadedForEdit = false;
+      duplicateInvoiceFound = false;
+      rowCount = 0;
+
+      byId("purchaseNumber").value = "";
+      byId("billDate").value = todayISO();
+      byId("gstNumber").value = "";
+      byId("supplierName").value = "";
+      byId("supplierAddress").value = "";
+      byId("invoiceNumber").value = "";
+      byId("invoiceDate").value = todayISO();
+      byId("invoiceAmount").value = "";
+      byId("roundOff").value = "";
+      byId("payable").value = "";
+      byId("items").innerHTML = "";
+      byId("loadedPurchaseNumber").textContent = "-";
+      byId("originalLineCount").textContent = "0";
+      byId("originalPayable").textContent = "0.00";
+      byId("currentPayableCard").textContent = "0.00";
+      byId("modeLabel").textContent = "NEW LOAD REQUIRED";
+      byId("invoiceStatus").innerHTML = `<span class="warn">Search and load a saved purchase to begin editing.</span>`;
+      byId("saveStatus").textContent = "";
+      setItemsEnabled(false);
+      ensureAtLeastOneRow();
+      maybeEnableUpdate();
+    }
+
+    function fillHeader(inv){
+      byId("purchaseNumber").value = inv.purchase_number || "";
+      byId("billDate").value = inv.bill_date || todayISO();
+      byId("gstNumber").value = inv.gst_number || "";
+      byId("supplierName").value = inv.supplier_name || "";
+      byId("supplierAddress").value = inv.address || "";
+      byId("invoiceNumber").value = inv.invoice_number || "";
+      byId("invoiceDate").value = inv.invoice_date || todayISO();
+      byId("invoiceAmount").value = fmt2(inv.invoice_amount || 0);
+      byId("roundOff").value = fmt2(inv.round_off || 0);
+      byId("payable").value = fmt2(inv.payable || 0);
+    }
+
+    async function searchSavedPurchases() {
+      const purchaseNo = byId("loadPurchaseNumber").value.trim();
+      const invoiceNo = byId("loadInvoiceNumber").value.trim();
+      const gst = byId("loadGstNumber").value.trim();
+      const supplier = byId("loadSupplierName").value.trim();
+      const status = byId("searchStatus");
+
+      if(!purchaseNo && !invoiceNo && !gst && !supplier){
+        status.innerHTML = `<span class="warn">Enter at least one search value.</span>`;
+        return [];
+      }
+
+      let query = sb
+        .from("purchase_details")
+        .select("id,purchase_number,bill_date,gst_number,supplier_name,address,invoice_number,invoice_date,invoice_amount,round_off,payable")
+        .order("id", { ascending: false })
+        .limit(20);
+
+      if (purchaseNo) query = query.ilike("purchase_number", `%${purchaseNo}%`);
+      if (invoiceNo) query = query.ilike("invoice_number", `%${invoiceNo}%`);
+      if (gst) query = query.ilike("gst_number", `%${gst}%`);
+      if (supplier) query = query.ilike("supplier_name", `%${supplier}%`);
+
+      const { data, error } = await query;
+      if(error){
+        console.error(error);
+        status.innerHTML = `<span class="err">Search failed: ${error.message}</span>`;
+        return [];
+      }
+
+      currentSearchRows = data || [];
+      if(!currentSearchRows.length){
+        status.innerHTML = `<span class="warn">No saved purchase found.</span>`;
+        return [];
+      }
+
+      status.innerHTML = `<span class="ok">${currentSearchRows.length} purchase result(s) found. Choose from dropdown or click Load Exact.</span>`;
+      return currentSearchRows;
+    }
+
+    async function loadPurchaseById(purchaseId){
+      const status = byId("saveStatus");
+      status.textContent = "Loading purchase...";
+
+      const { data: header, error: e1 } = await sb
+        .from("purchase_details")
+        .select("*")
+        .eq("id", purchaseId)
+        .single();
+
+      if(e1 || !header){
+        status.innerHTML = `<span class="err">Unable to load purchase header.</span>`;
         return;
       }
 
-      status.innerHTML = "Saving...";
-      byId("saveBtn").disabled = true;
-      syncStickySaveState();
+      const { data: items, error: e2 } = await sb
+        .from("purchase_item_details")
+        .select("*")
+        .eq("purchase_id", purchaseId)
+        .order("id", { ascending: true });
 
-      const inv = collectInvoice();
-      const items = collectItems();
+      if(e2){
+        status.innerHTML = `<span class="err">Unable to load purchase items.</span>`;
+        return;
+      }
 
-      await ensureSupplierExists();
+      loadedPurchaseId = header.id;
+      loadedPurchaseNumber = header.purchase_number || "";
+      originalPurchaseHeader = JSON.parse(JSON.stringify(header));
+      originalItemsSnapshot = JSON.parse(JSON.stringify(items || []));
+      isLoadedForEdit = true;
 
-      let purchase_id;
+      fillHeader(header);
+      byId("items").innerHTML = "";
+      rowCount = 0;
+      (items || []).forEach(it => newItemRow(it));
+      ensureAtLeastOneRow();
 
-      if(editingPurchaseId){
-        const { error } = await sb
-          .from("purchase_details")
-          .update(inv)
-          .eq("id", editingPurchaseId);
+      setItemsEnabled(true);
+      byId("modeLabel").textContent = "EDIT MODE ACTIVE";
+      byId("loadedPurchaseNumber").textContent = header.purchase_number || "-";
+      byId("originalLineCount").textContent = String((items || []).length);
+      byId("originalPayable").textContent = fmt2(header.payable || 0);
+      byId("currentPayableCard").textContent = fmt2(header.payable || 0);
+      byId("invoiceStatus").innerHTML = `<span class="ok">Loaded purchase successfully. You can now edit and update.</span>`;
+      status.innerHTML = `<span class="ok">Purchase loaded for edit.</span>`;
+      await checkDuplicateInvoice();
+      maybeEnableUpdate();
+    }
 
-        if(error){
-          status.innerHTML = `<span class="err">${error.message}</span>`;
-          byId("saveBtn").disabled = false;
-          syncStickySaveState();
-          return;
-        }
+    async function loadExactPurchase(){
+      const purchaseNo = byId("loadPurchaseNumber").value.trim();
+      const invoiceNo = byId("loadInvoiceNumber").value.trim();
+      const gst = byId("loadGstNumber").value.trim();
+      const supplier = byId("loadSupplierName").value.trim();
+      const status = byId("searchStatus");
 
-        purchase_id = editingPurchaseId;
-      } else {
+      if(purchaseNo){
         const { data, error } = await sb
           .from("purchase_details")
-          .insert(inv)
-          .select("id")
-          .single();
+          .select("id,purchase_number,invoice_number,invoice_date,supplier_name,payable")
+          .eq("purchase_number", purchaseNo)
+          .limit(2);
 
         if(error){
-          status.innerHTML = `<span class="err">${error.message}</span>`;
-          byId("saveBtn").disabled = false;
-          syncStickySaveState();
+          status.innerHTML = `<span class="err">Exact load failed: ${error.message}</span>`;
           return;
         }
-
-        purchase_id = data.id;
-      }
-
-      if(editingPurchaseId){
-        for(const old of originalItems){
-          const { data: stock } = await sb
-            .from("stock_items")
-            .select("quantity")
-            .eq("item_code", old.item_code)
-            .single();
-
-          if(stock){
-            await sb
-              .from("stock_items")
-              .update({ quantity: (stock.quantity || 0) - (old.quantity || 0) })
-              .eq("item_code", old.item_code);
-          }
+        if(data?.length === 1){
+          await loadPurchaseById(data[0].id);
+          return;
         }
-
-        await sb
-          .from("purchase_item_details")
-          .delete()
-          .eq("purchase_id", editingPurchaseId);
       }
 
-      for(const it of items){
-        const { data: stock } = await sb
+      const rows = await searchSavedPurchases();
+      if(rows.length === 1){
+        await loadPurchaseById(rows[0].id);
+        return;
+      }
+
+      if(rows.length > 1){
+        const anchor = byId("loadPurchaseNumber").value.trim() ? byId("loadPurchaseNumber")
+          : byId("loadInvoiceNumber").value.trim() ? byId("loadInvoiceNumber")
+          : byId("loadGstNumber").value.trim() ? byId("loadGstNumber")
+          : byId("loadSupplierName");
+        showDropdown(anchor, rows, async (pick)=>{ await loadPurchaseById(pick.id); }, "purchase");
+      } else {
+        status.innerHTML = `<span class="warn">No exact purchase could be loaded.</span>`;
+      }
+    }
+
+    async function reverseOldStock(oldItems){
+      const grouped = {};
+      for(const it of oldItems){
+        const code = String(it.item_code || "").trim();
+        if(!code) continue;
+        grouped[code] = (grouped[code] || 0) + num(it.quantity);
+      }
+
+      for(const [item_code, qty] of Object.entries(grouped)){
+        const { data: existing, error } = await sb
           .from("stock_items")
           .select("quantity")
-          .eq("item_code", it.item_code)
-          .single();
+          .eq("item_code", item_code)
+          .maybeSingle();
 
-        const currentQty = stock?.quantity || 0;
+        if(error){
+          console.error("Reverse stock read error", item_code, error);
+          throw new Error(`Unable to read stock for ${item_code}`);
+        }
 
-        await sb.from("stock_items").upsert({
-          item_code: it.item_code,
+        const currentQty = num(existing?.quantity);
+        const newQty = Math.max(0, currentQty - qty);
+
+        const { error: updateError } = await sb
+          .from("stock_items")
+          .update({ quantity: newQty })
+          .eq("item_code", item_code);
+
+        if(updateError){
+          console.error("Reverse stock update error", item_code, updateError);
+          throw new Error(`Unable to reverse stock for ${item_code}`);
+        }
+      }
+    }
+
+    async function applyNewStock(newItems){
+      for (const it of newItems) {
+        const code = String(it.item_code || "").trim();
+        if(!code) continue;
+
+        const { data: existing, error: readErr } = await sb
+          .from("stock_items")
+          .select("*")
+          .eq("item_code", code)
+          .maybeSingle();
+
+        if(readErr){
+          console.error("Stock update read error:", readErr);
+          throw new Error(`Unable to read stock item ${code}`);
+        }
+
+        const currentQty = num(existing?.quantity);
+        const newQty = currentQty + num(it.quantity);
+
+        const stockPayload = {
+          item_code: code,
           item_name: it.item_name,
           barcode: it.barcode,
           hsn_code: it.hsn_code,
-          quantity: currentQty + it.quantity,
+          department: it.department,
+          quantity: newQty,
           purchase_price: it.purchase_price,
           purchase_price_gst: it.purchase_price_gst,
           gst_percent: it.gst_percent,
+          landing: it.landing,
           price1_percent: it.price1_percent,
           price1: it.price1,
           price1_gst: it.price1_gst,
@@ -1539,74 +1332,183 @@
           price2_gst: it.price2_gst,
           price3_percent: it.price3_percent,
           price3: it.price3,
-          price3_gst: it.price3_gst,
-          landing: it.landing
-        }, { onConflict: "item_code" });
+          price3_gst: it.price3_gst
+        };
+
+        const { error: upsertErr } = await sb
+          .from("stock_items")
+          .upsert(stockPayload, { onConflict: "item_code" });
+
+        if(upsertErr){
+          console.error("Stock upsert error:", upsertErr);
+          throw new Error(`Unable to apply stock for ${code}`);
+        }
       }
+    }
 
-      const itemRows = items.map(it => ({
-        purchase_id,
-        hsn_code: it.hsn_code,
-        item_code: it.item_code,
-        barcode: it.barcode,
-        item_name: it.item_name,
-        quantity: it.quantity,
-        price: it.price,
-        discount_percent: it.discount_percent,
-        purchase_price: it.purchase_price,
-        purchase_price_gst: it.purchase_price_gst,
-        landing: it.landing,
-        price1_percent: it.price1_percent,
-        price1: it.price1,
-        price1_gst: it.price1_gst,
-        price2_percent: it.price2_percent,
-        price2: it.price2,
-        price2_gst: it.price2_gst,
-        price3_percent: it.price3_percent,
-        price3: it.price3,
-        price3_gst: it.price3_gst
-      }));
-
-      const { error: itemErr } = await sb
-        .from("purchase_item_details")
-        .insert(itemRows);
-
-      if(itemErr){
-        status.innerHTML = `<span class="err">${itemErr.message}</span>`;
-        byId("saveBtn").disabled = false;
-        syncStickySaveState();
+    async function updatePurchase(){
+      const status = byId("saveStatus");
+      if(!isLoadedForEdit || !loadedPurchaseId){
+        status.innerHTML = `<span class="err">Load a purchase first.</span>`;
         return;
       }
 
-      status.innerHTML = `<span class="ok">Saved Successfully</span>`;
-      originalItems = collectItems();
-      duplicateInvoiceFound = false;
-      await checkDuplicateInvoice();
+      const dup = await checkDuplicateInvoice();
+      if(dup){
+        status.innerHTML = `<span class="err">Duplicate invoice exists in another purchase. Update stopped.</span>`;
+        return;
+      }
+
+      const inv = collectInvoice();
+      const items = collectItems();
+
+      if(!items.length){
+        status.innerHTML = `<span class="err">At least one item row is required.</span>`;
+        return;
+      }
+
+      status.textContent = "Updating purchase safely...";
+      byId("updateBtn").disabled = true;
+      syncStickyUpdateState();
+
+      try {
+        await ensureSupplierExists();
+
+        const { error: headerErr } = await sb
+          .from("purchase_details")
+          .update({
+            bill_date: inv.bill_date,
+            gst_number: inv.gst_number,
+            supplier_name: inv.supplier_name,
+            address: inv.address,
+            invoice_number: inv.invoice_number,
+            invoice_date: inv.invoice_date,
+            invoice_amount: inv.invoice_amount,
+            round_off: inv.round_off,
+            payable: inv.payable
+          })
+          .eq("id", loadedPurchaseId);
+
+        if(headerErr) throw new Error(headerErr.message);
+
+        await reverseOldStock(originalItemsSnapshot);
+
+        const { error: delErr } = await sb
+          .from("purchase_item_details")
+          .delete()
+          .eq("purchase_id", loadedPurchaseId);
+
+        if(delErr) throw new Error(delErr.message);
+
+        const pidRows = items.map(it => ({
+          purchase_id: loadedPurchaseId,
+          hsn_code: it.hsn_code,
+          item_code: it.item_code,
+          barcode: it.barcode,
+          item_name: it.item_name,
+          department: it.department,
+          quantity: it.quantity,
+          price: it.price,
+          discount_percent: it.discount_percent,
+          purchase_price: it.purchase_price,
+          purchase_price_gst: it.purchase_price_gst,
+          landing: it.landing,
+          price1_percent: it.price1_percent,
+          price1: it.price1,
+          price1_gst: it.price1_gst,
+          price2_percent: it.price2_percent,
+          price2: it.price2,
+          price2_gst: it.price2_gst,
+          price3_percent: it.price3_percent,
+          price3: it.price3,
+          price3_gst: it.price3_gst
+        }));
+
+        const { error: itemErr } = await sb.from("purchase_item_details").insert(pidRows);
+        if(itemErr) throw new Error(itemErr.message);
+
+        await applyNewStock(items);
+
+        originalPurchaseHeader = { ...originalPurchaseHeader, ...inv };
+        originalItemsSnapshot = JSON.parse(JSON.stringify(pidRows));
+        byId("originalLineCount").textContent = String(pidRows.length);
+        byId("originalPayable").textContent = fmt2(inv.payable);
+        byId("currentPayableCard").textContent = fmt2(inv.payable);
+        status.innerHTML = `<span class="ok">Purchase updated successfully. Old stock reversed and new stock applied.</span>`;
+        await checkDuplicateInvoice();
+        maybeEnableUpdate();
+      } catch (err) {
+        console.error(err);
+        status.innerHTML = `<span class="err">Update failed: ${err.message}</span>`;
+      } finally {
+        maybeEnableUpdate();
+      }
+    }
+
+    function bindLoadSearchEvents(){
+      ["loadPurchaseNumber","loadInvoiceNumber","loadGstNumber","loadSupplierName"].forEach(id=>{
+        byId(id).addEventListener("input", async (e)=>{
+          const q = e.target.value.trim();
+          if(q.length < 2) return;
+          const rows = await searchSavedPurchases();
+          if(rows.length){
+            showDropdown(e.target, rows, async (pick)=>{ await loadPurchaseById(pick.id); }, "purchase");
+          }
+        });
+      });
+
+      byId("searchPurchaseBtn").addEventListener("click", async ()=>{
+        const rows = await searchSavedPurchases();
+        const anchor = byId("loadPurchaseNumber").value.trim() ? byId("loadPurchaseNumber")
+          : byId("loadInvoiceNumber").value.trim() ? byId("loadInvoiceNumber")
+          : byId("loadGstNumber").value.trim() ? byId("loadGstNumber")
+          : byId("loadSupplierName");
+        if(rows.length) showDropdown(anchor, rows, async (pick)=>{ await loadPurchaseById(pick.id); }, "purchase");
+      });
+
+      byId("loadExactBtn").addEventListener("click", loadExactPurchase);
+      byId("resetEditorBtn").addEventListener("click", clearEditor);
+    }
+
+    function bindHeaderEvents(){
+      byId("invoiceNumber").addEventListener("input", checkDuplicateInvoice);
+      byId("invoiceDate").addEventListener("change", checkDuplicateInvoice);
+      byId("gstNumber").addEventListener("blur", checkDuplicateInvoice);
+      byId("invoiceNumber").addEventListener("blur", checkDuplicateInvoice);
+      byId("invoiceDate").addEventListener("blur", checkDuplicateInvoice);
+
+      ["invoiceAmount","roundOff","payable","billDate"].forEach(id=>{
+        byId(id).addEventListener("input", validateInvoiceTotals);
+        byId(id).addEventListener("change", validateInvoiceTotals);
+      });
+
+      byId("roundOff").addEventListener("input", updateInvoiceAmount);
     }
 
     document.addEventListener("keydown", function(e){
       const headerInputs = Array.from(document.querySelectorAll("#invoiceRow input"));
-      const itemInputs = Array.from(document.querySelectorAll("#items input"));
+      const itemInputs = Array.from(document.querySelectorAll("#items input, #items select"));
       const allInputs = headerInputs.concat(itemInputs);
-
       const current = document.activeElement;
       const idx = allInputs.indexOf(current);
 
       if(idx >= 0){
-        const colsPerItemRow = 22;
+        const colsPerItemRow = 23;
+        function focusAndSelect(el){
+          if(!el) return;
+          el.focus();
+          setTimeout(() => { if(el.select) el.select(); }, 0);
+        }
 
-        if(e.key === "Enter" && !current.closest("#items")){
+        if(e.key === "Enter"){
           e.preventDefault();
-          if(e.shiftKey){
-            focusAndSelect(allInputs[idx - 1]);
-          } else {
-            focusAndSelect(allInputs[idx + 1]);
-          }
+          if(e.shiftKey) focusAndSelect(allInputs[idx - 1]);
+          else focusAndSelect(allInputs[idx + 1]);
         }
 
         if(e.key === "ArrowDown"){
+          e.preventDefault();
           if(idx >= headerInputs.length){
-            e.preventDefault();
             const colIndex = (idx - headerInputs.length) % colsPerItemRow;
             const rowIndex = Math.floor((idx - headerInputs.length) / colsPerItemRow);
             const nextRowIndex = rowIndex + 1;
@@ -1616,53 +1518,46 @@
         }
 
         if(e.key === "ArrowUp"){
-          if(idx >= headerInputs.length){
-            e.preventDefault();
-            if(idx < headerInputs.length + colsPerItemRow){
-              const colIndex = (idx - headerInputs.length) % colsPerItemRow;
-              focusAndSelect(headerInputs[colIndex]);
-            } else {
-              const colIndex = (idx - headerInputs.length) % colsPerItemRow;
-              const rowIndex = Math.floor((idx - headerInputs.length) / colsPerItemRow);
-              const prevRowIndex = rowIndex - 1;
-              if(prevRowIndex >= 0){
-                const target = itemInputs[prevRowIndex * colsPerItemRow + colIndex];
-                focusAndSelect(target);
-              }
+          e.preventDefault();
+          if(idx >= headerInputs.length && idx < headerInputs.length + colsPerItemRow){
+            const colIndex = (idx - headerInputs.length) % colsPerItemRow;
+            focusAndSelect(headerInputs[colIndex]);
+          } else if(idx >= headerInputs.length){
+            const colIndex = (idx - headerInputs.length) % colsPerItemRow;
+            const rowIndex = Math.floor((idx - headerInputs.length) / colsPerItemRow);
+            const prevRowIndex = rowIndex - 1;
+            if(prevRowIndex >= 0){
+              const target = itemInputs[prevRowIndex * colsPerItemRow + colIndex];
+              focusAndSelect(target);
             }
           }
         }
       }
     });
 
-    byId("roundOff").addEventListener("input", () => {
-      const payable = parseFloat(byId("payable").value) || 0;
-      const roundOff = parseFloat(byId("roundOff").value) || 0;
-      byId("invoiceAmount").value = fmt2(payable + roundOff);
-      validateInvoiceTotals();
-    });
-
     (async function(){
-      await initInvoice();
       await loadStockData();
+      await initSupplierDropdowns();
+      bindLoadSearchEvents();
+      bindHeaderEvents();
 
-      if(editId){
-        await loadPurchaseForEdit(editId);
-      } else {
-        alert("No purchase edit id found");
-        setItemsEnabled(false);
-        byId("invoiceStatus").innerHTML = `<span class="warn">Enter GST number, invoice number, and invoice date first.</span>`;
-        newItemRow();
-      }
+      clearEditor();
 
-      byId("addRowBtn").addEventListener("click", () => newItemRow());
-      byId("addRowBtnSticky").addEventListener("click", () => newItemRow());
-      byId("saveBtn").addEventListener("click", saveAll);
-      byId("saveBtnSticky").addEventListener("click", () => {
-        if(!byId("saveBtnSticky").disabled) saveAll();
+      byId("addRowBtn").addEventListener("click", ()=>{ if(isLoadedForEdit) newItemRow(); });
+      byId("addRowBtnSticky").addEventListener("click", ()=>{ if(isLoadedForEdit) newItemRow(); });
+      byId("deleteRowBtn").addEventListener("click", ()=>{
+        if(!isLoadedForEdit) return;
+        const rows = byId("items").querySelectorAll(".grid");
+        if(rows.length) removeRow(rows[rows.length - 1]);
       });
-
-      syncStickySaveState();
+      byId("deleteRowBtnSticky").addEventListener("click", ()=>{
+        if(!isLoadedForEdit) return;
+        const rows = byId("items").querySelectorAll(".grid");
+        if(rows.length) removeRow(rows[rows.length - 1]);
+      });
+      byId("updateBtn").addEventListener("click", updatePurchase);
+      byId("updateBtnSticky").addEventListener("click", ()=>{ if(!byId("updateBtnSticky").disabled) updatePurchase(); });
+      syncStickyUpdateState();
     })();
   </script>
 </body>

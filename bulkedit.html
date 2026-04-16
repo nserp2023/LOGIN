@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bulk Sales Edit - VAJRA</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root{
+      --bg:#eef2f7;
+      --card:#ffffff;
+      --line:#dbe3ef;
+      --text:#18212f;
+      --muted:#66758a;
+      --head:#111827;
+      --head2:#25324a;
+      --blue:#2563eb;
+      --green:#059669;
+      --red:#dc2626;
+      --amber:#d97706;
+      --soft-red:#fff1f2;
+      --soft-green:#ecfdf5;
+      --soft-yellow:#fff7ed;
+      --shadow:0 10px 30px rgba(15,23,42,.08);
+      --radius:18px;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;background:var(--bg);font-family:Arial,Helvetica,sans-serif;color:var(--text)}
+    .wrap{max-width:1700px;margin:0 auto;padding:18px}
+    .hero{
+      background:linear-gradient(135deg,var(--head),var(--head2));
+      color:#fff;border-radius:24px;padding:18px 22px;box-shadow:var(--shadow);margin-bottom:16px
+    }
+    .hero h1{margin:0;font-size:28px;letter-spacing:.5px}
+    .hero p{margin:6px 0 0;font-size:14px;opacity:.9}
+    .toolbar{
+      position:sticky;top:0;z-index:50;background:rgba(238,242,247,.94);backdrop-filter:blur(8px);
+      padding:8px 0 14px;margin-bottom:8px
+    }
+    .toolbar-card{
+      background:var(--card);border:1px solid var(--line);border-radius:22px;padding:16px;box-shadow:var(--shadow)
+    }
+    .grid{display:grid;grid-template-columns:repeat(7,minmax(120px,1fr));gap:12px;align-items:end}
+    .field label{display:block;font-size:12px;font-weight:700;margin:0 0 6px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+    .field input,.field select,.field button{
+      width:100%;height:46px;border-radius:12px;border:1px solid var(--line);padding:0 12px;font-size:14px;background:#fff;color:var(--text)
+    }
+    .field button{font-weight:800;cursor:pointer;border:none}
+    .btn-blue{background:var(--blue)!important;color:#fff!important}
+    .btn-dark{background:var(--head)!important;color:#fff!important}
+    .btn-green{background:var(--green)!important;color:#fff!important}
+    .stats{display:flex;gap:12px;flex-wrap:wrap;margin-top:14px}
+    .stat{background:#f8fafc;border:1px solid var(--line);border-radius:14px;padding:10px 14px;min-width:180px}
+    .stat .k{font-size:12px;color:var(--muted);font-weight:700;text-transform:uppercase}
+    .stat .v{font-size:20px;font-weight:800;margin-top:4px}
+    .summary-strip{margin:14px 0 10px;color:var(--muted);font-size:13px;font-weight:700}
+    .bill-card{background:var(--card);border:1px solid var(--line);border-radius:22px;overflow:hidden;box-shadow:var(--shadow);margin-bottom:18px}
+    .bill-head{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:16px 18px;background:linear-gradient(135deg,#0f172a,#334155);color:#fff}
+    .bill-title{font-size:20px;font-weight:900}
+    .bill-sub{font-size:13px;opacity:.92;margin-top:6px;line-height:1.5}
+    .bill-total{text-align:right}
+    .bill-total .amt{font-size:24px;font-weight:900}
+    .bill-total .note{font-size:12px;opacity:.9;margin-top:4px}
+    .bill-body{padding:14px}
+    .table-wrap{overflow:auto;border:1px solid var(--line);border-radius:16px}
+    table{width:100%;border-collapse:separate;border-spacing:0;min-width:1400px}
+    th,td{padding:10px 8px;border-bottom:1px solid var(--line);font-size:13px;vertical-align:middle;background:#fff}
+    th{position:sticky;top:0;background:#f8fafc;color:#334155;font-size:12px;text-transform:uppercase;letter-spacing:.4px;z-index:2}
+    tr:last-child td{border-bottom:none}
+    .cell-input{width:100%;height:38px;border:1px solid var(--line);border-radius:10px;padding:0 10px;font-size:13px}
+    .num{text-align:right}
+    .center{text-align:center}
+    .row-negative td{background:var(--soft-yellow)}
+    .row-zero td{background:#f8fafc;color:#94a3b8}
+    .tag{display:inline-block;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:800}
+    .tag-neg{background:#fff1f2;color:#b91c1c}
+    .tag-ok{background:#ecfdf5;color:#047857}
+    .tag-zero{background:#eef2ff;color:#4338ca}
+    .bill-footer{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 16px;background:#f8fafc;border-top:1px solid var(--line)}
+    .bill-footer .mini{font-size:12px;color:var(--muted);font-weight:700}
+    .msg{padding:14px 16px;border-radius:16px;border:1px solid var(--line);background:#fff;color:var(--muted);box-shadow:var(--shadow)}
+    .warn{background:var(--soft-yellow);border-color:#fed7aa;color:#9a3412}
+    .success{background:var(--soft-green);border-color:#a7f3d0;color:#065f46}
+    .error{background:var(--soft-red);border-color:#fecdd3;color:#991b1b}
+    .hidden{display:none}
+    @media (max-width:1200px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media (max-width:700px){.grid{grid-template-columns:1fr}.hero h1{font-size:22px}.bill-title{font-size:18px}.bill-total .amt{font-size:20px}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hero">
+      <h1>VAJRA BULK SALES EDIT</h1>
+      <p>Load bills by date and salesman, change top price type, auto-adjust negative stock item quantities, and save all as edited bills.</p>
+    </div>
+
+    <div class="toolbar">
+      <div class="toolbar-card">
+        <div class="grid">
+          <div class="field">
+            <label>From Date</label>
+            <input type="date" id="fromDate" />
+          </div>
+          <div class="field">
+            <label>To Date</label>
+            <input type="date" id="toDate" />
+          </div>
+          <div class="field">
+            <label>Salesman</label>
+            <select id="salesmanSelect">
+              <option value="">ALL SALESMEN</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Price Type</label>
+            <select id="priceTypeSelect">
+              <option value="price1_gst">PRICE 1 + GST</option>
+              <option value="price2_gst">PRICE 2 + GST</option>
+              <option value="price3_gst" selected>PRICE 3 + GST</option>
+              <option value="price1">PRICE 1</option>
+              <option value="price2">PRICE 2</option>
+              <option value="price3">PRICE 3</option>
+            </select>
+          </div>
+          <div class="field"><label>&nbsp;</label><button class="btn-blue" id="loadBtn">LOAD BILLS</button></div>
+          <div class="field"><label>&nbsp;</label><button class="btn-dark" id="adjustBtn">ADJUST QUANTITY</button></div>
+          <div class="field"><label>&nbsp;</label><button class="btn-green" id="saveBtn">SAVE ALL</button></div>
+        </div>
+
+        <div class="stats">
+          <div class="stat"><div class="k">Loaded Bills</div><div class="v" id="statBills">0</div></div>
+          <div class="stat"><div class="k">Loaded Items</div><div class="v" id="statItems">0</div></div>
+          <div class="stat"><div class="k">Bills Total</div><div class="v" id="statTotal">₹ 0.00</div></div>
+          <div class="stat"><div class="k">Zero Qty Rows</div><div class="v" id="statZero">0</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="messageBox" class="msg hidden"></div>
+    <div class="summary-strip" id="summaryStrip">No bills loaded.</div>
+    <div id="billsRoot"></div>
+  </div>
+
+<script>
+  // ==============================
+  //  SET YOUR SUPABASE VALUES HERE
+  // ==============================
+  const supabaseUrl = "https://kzxwjujjvnehhthazicc.supabase.co";
+  const supabaseKey = "sb_publishable_Iu3sQGl9gq_VsVYxR3j_7g_SLvgqp_9";
+  const sb = supabase.createClient(supabaseUrl, supabaseKey);
+
+  let loadedBills = [];
+
+  const els = {
+    fromDate: document.getElementById('fromDate'),
+    toDate: document.getElementById('toDate'),
+    salesmanSelect: document.getElementById('salesmanSelect'),
+    priceTypeSelect: document.getElementById('priceTypeSelect'),
+    loadBtn: document.getElementById('loadBtn'),
+    adjustBtn: document.getElementById('adjustBtn'),
+    saveBtn: document.getElementById('saveBtn'),
+    billsRoot: document.getElementById('billsRoot'),
+    messageBox: document.getElementById('messageBox'),
+    summaryStrip: document.getElementById('summaryStrip'),
+    statBills: document.getElementById('statBills'),
+    statItems: document.getElementById('statItems'),
+    statTotal: document.getElementById('statTotal'),
+    statZero: document.getElementById('statZero')
+  };
+
+  function showMessage(text, type=''){
+    els.messageBox.className = 'msg';
+    if(type) els.messageBox.classList.add(type);
+    els.messageBox.textContent = text;
+    els.messageBox.classList.remove('hidden');
+  }
+
+  function clearMessage(){
+    els.messageBox.className = 'msg hidden';
+    els.messageBox.textContent = '';
+  }
+
+  function n(v){ return Number(v || 0); }
+  function fmt(v){ return n(v).toFixed(2); }
+  function money(v){ return '₹ ' + n(v).toFixed(2); }
+  function esc(v){ return String(v ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+  function setTodayDefaults(){
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth()+1).padStart(2,'0');
+    const dd = String(now.getDate()).padStart(2,'0');
+    const today = `${yyyy}-${mm}-${dd}`;
+    els.fromDate.value = today;
+    els.toDate.value = today;
+  }
+
+  async function loadSalesmen(){
+    const { data, error } = await sb
+      .from('sales_details')
+      .select('salesman')
+      .not('salesman','is',null)
+      .neq('salesman','');
+
+    if(error){
+      showMessage('Could not load salesman list: ' + error.message, 'warn');
+      return;
+    }
+
+    const names = [...new Set((data || []).map(r => (r.salesman || '').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+    els.salesmanSelect.innerHTML = '<option value="">ALL SALESMEN</option>';
+    names.forEach(name => {
+      const op = document.createElement('option');
+      op.value = name;
+      op.textContent = name;
+      els.salesmanSelect.appendChild(op);
+    });
+  }
+
+  async function loadBills(){
+    clearMessage();
+    const fromDate = els.fromDate.value;
+    const toDate = els.toDate.value;
+    const salesman = els.salesmanSelect.value;
+
+    if(!fromDate || !toDate){
+      showMessage('Please select From Date and To Date.', 'warn');
+      return;
+    }
+
+    els.loadBtn.disabled = true;
+    els.loadBtn.textContent = 'LOADING...';
+
+    const { data, error } = await sb.rpc('get_bulk_sales_bills', {
+      p_from_date: fromDate,
+      p_to_date: toDate,
+      p_salesman: salesman
+    });
+
+    els.loadBtn.disabled = false;
+    els.loadBtn.textContent = 'LOAD BILLS';
+
+    if(error){
+      showMessage('Load failed: ' + error.message, 'error');
+      return;
+    }
+
+    const grouped = {};
+    (data || []).forEach(row => {
+      const sid = row.sales_id;
+      if(!grouped[sid]){
+        grouped[sid] = {
+          sales_id: sid,
+          sales_number: row.sales_number,
+          series_code: row.series_code || '',
+          bill_date: row.bill_date || '',
+          customer_name: row.customer_name || '',
+          customer_mobile: row.customer_mobile || '',
+          address: row.address || '',
+          salesman: row.salesman || '',
+          items: []
+        };
+      }
+      grouped[sid].items.push({
+        item_id: row.item_id,
+        item_code: row.item_code || '',
+        item_name: row.item_name || '',
+        quantity: n(row.quantity),
+        old_quantity: n(row.quantity),
+        price: n(row.price),
+        old_price: n(row.price),
+        gst_percent: n(row.gst_percent),
+        hsn_code: row.hsn_code || '',
+        balance_qty: n(row.balance_qty),
+        landing: n(row.landing),
+        price1: n(row.price1),
+        price1_gst: n(row.price1_gst),
+        price2: n(row.price2),
+        price2_gst: n(row.price2_gst),
+        price3: n(row.price3),
+        price3_gst: n(row.price3_gst)
+      });
+    });
+
+    loadedBills = Object.values(grouped).sort((a,b)=> {
+      if(a.bill_date === b.bill_date) return n(a.sales_number) - n(b.sales_number);
+      return String(a.bill_date).localeCompare(String(b.bill_date));
+    });
+
+    applyPriceType(false);
+    renderAll();
+
+    if(!loadedBills.length){
+      showMessage('No bills found for selected date range and salesman.', 'warn');
+    } else {
+      showMessage(`${loadedBills.length} bill(s) loaded successfully.`, 'success');
+    }
+  }
+
+  function applyPriceType(reRender=true){
+    const key = els.priceTypeSelect.value;
+    loadedBills.forEach(bill => {
+      bill.items.forEach(item => {
+        item.price = n(item[key]);
+      });
+    });
+    if(reRender) renderAll();
+  }
+
+  function recalcBillTotal(bill){
+    return bill.items.reduce((sum, item) => sum + (n(item.quantity) * n(item.price)), 0);
+  }
+
+  function getAllStats(){
+    let itemCount = 0, total = 0, zeroCount = 0;
+    loadedBills.forEach(bill => {
+      itemCount += bill.items.length;
+      total += recalcBillTotal(bill);
+      zeroCount += bill.items.filter(x => n(x.quantity) <= 0).length;
+    });
+    return { billCount: loadedBills.length, itemCount, total, zeroCount };
+  }
+
+  function statusTag(balance){
+    if(n(balance) < 0) return '<span class="tag tag-neg">NEGATIVE STOCK</span>';
+    if(n(balance) === 0) return '<span class="tag tag-zero">ZERO BALANCE</span>';
+    return '<span class="tag tag-ok">POSITIVE BALANCE</span>';
+  }
+
+  function renderAll(){
+    const stats = getAllStats();
+    els.statBills.textContent = String(stats.billCount);
+    els.statItems.textContent = String(stats.itemCount);
+    els.statTotal.textContent = money(stats.total);
+    els.statZero.textContent = String(stats.zeroCount);
+
+    if(!loadedBills.length){
+      els.summaryStrip.textContent = 'No bills loaded.';
+      els.billsRoot.innerHTML = '<div class="msg">Load bills to start bulk editing.</div>';
+      return;
+    }
+
+    els.summaryStrip.textContent = `${stats.billCount} bill(s), ${stats.itemCount} row(s), ${stats.zeroCount} row(s) with quantity 0. Rows with quantity 0 will not be saved.`;
+
+    els.billsRoot.innerHTML = loadedBills.map((bill, billIndex) => {
+      const total = recalcBillTotal(bill);
+      const liveRows = bill.items.filter(x => n(x.quantity) > 0).length;
+      const zeroRows = bill.items.filter(x => n(x.quantity) <= 0).length;
+      return `
+        <div class="bill-card">
+          <div class="bill-head">
+            <div>
+              <div class="bill-title">${esc(bill.series_code)}-${esc(bill.sales_number)}</div>
+              <div class="bill-sub">
+                Date: ${esc(bill.bill_date)}<br>
+                Customer: ${esc(bill.customer_name)} ${bill.customer_mobile ? '| ' + esc(bill.customer_mobile) : ''}<br>
+                Salesman: ${esc(bill.salesman)} ${bill.address ? '| ' + esc(bill.address) : ''}
+              </div>
+            </div>
+            <div class="bill-total">
+              <div class="amt">${money(total)}</div>
+              <div class="note">Live rows: ${liveRows} | Zero rows: ${zeroRows}</div>
+            </div>
+          </div>
+
+          <div class="bill-body">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Status</th>
+                    <th>Item Code</th>
+                    <th>Item Name</th>
+                    <th>Old Qty</th>
+                    <th>Qty</th>
+                    <th>Balance</th>
+                    <th>GST %</th>
+                    <th>Landing</th>
+                    <th>P1</th>
+                    <th>P1+GST</th>
+                    <th>P2</th>
+                    <th>P2+GST</th>
+                    <th>P3</th>
+                    <th>P3+GST</th>
+                    <th>Price</th>
+                    <th>Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${bill.items.map((item, itemIndex) => {
+                    const rowClass = n(item.quantity) <= 0 ? 'row-zero' : (n(item.balance_qty) < 0 ? 'row-negative' : '');
+                    const amt = n(item.quantity) * n(item.price);
+                    return `
+                      <tr class="${rowClass}">
+                        <td class="center">${itemIndex + 1}</td>
+                        <td>${statusTag(item.balance_qty)}</td>
+                        <td>${esc(item.item_code)}</td>
+                        <td>${esc(item.item_name)}</td>
+                        <td class="num">${fmt(item.old_quantity)}</td>
+                        <td>
+                          <input class="cell-input num" type="number" min="0" step="0.01" value="${fmt(item.quantity)}"
+                                 oninput="updateQty(${billIndex},${itemIndex},this.value)">
+                        </td>
+                        <td class="num">${fmt(item.balance_qty)}</td>
+                        <td class="num">${fmt(item.gst_percent)}</td>
+                        <td class="num">${fmt(item.landing)}</td>
+                        <td class="num">${fmt(item.price1)}</td>
+                        <td class="num">${fmt(item.price1_gst)}</td>
+                        <td class="num">${fmt(item.price2)}</td>
+                        <td class="num">${fmt(item.price2_gst)}</td>
+                        <td class="num">${fmt(item.price3)}</td>
+                        <td class="num">${fmt(item.price3_gst)}</td>
+                        <td>
+                          <input class="cell-input num" type="number" min="0" step="0.01" value="${fmt(item.price)}"
+                                 oninput="updatePrice(${billIndex},${itemIndex},this.value)">
+                        </td>
+                        <td class="num">${fmt(amt)}</td>
+                      </tr>
+                    `;
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="bill-footer">
+            <div class="mini">Bill total: <b>${money(total)}</b></div>
+            <div class="mini">Rows with qty 0 are kept visible for checking, but they will be skipped during save.</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function updateQty(billIndex, itemIndex, value){
+    const val = Math.max(0, n(value));
+    loadedBills[billIndex].items[itemIndex].quantity = val;
+    renderAll();
+  }
+  window.updateQty = updateQty;
+
+  function updatePrice(billIndex, itemIndex, value){
+    const val = Math.max(0, n(value));
+    loadedBills[billIndex].items[itemIndex].price = val;
+    renderAll();
+  }
+  window.updatePrice = updatePrice;
+
+  function adjustQuantities(){
+    clearMessage();
+    if(!loadedBills.length){
+      showMessage('Load bills first.', 'warn');
+      return;
+    }
+
+    const groups = {};
+
+    loadedBills.forEach((bill, billIndex) => {
+      bill.items.forEach((item, itemIndex) => {
+        const code = (item.item_code || '').trim();
+        if(!code) return;
+
+        if(!groups[code]){
+          groups[code] = {
+            balance: n(item.balance_qty),
+            rows: []
+          };
+        }
+
+        groups[code].rows.push({
+          billIndex,
+          itemIndex,
+          billDate: bill.bill_date || '',
+          salesNumber: n(bill.sales_number),
+          salesId: n(bill.sales_id)
+        });
+      });
+    });
+
+    let adjustedRows = 0;
+    let touchedItems = 0;
+
+    Object.keys(groups).forEach(code => {
+      const group = groups[code];
+      if(n(group.balance) >= 0) return;
+
+      let shortage = Math.abs(n(group.balance));
+      touchedItems++;
+
+      // latest bills first - usually better for correction
+      group.rows.sort((a,b) => {
+        if(a.billDate === b.billDate) return b.salesId - a.salesId;
+        return String(b.billDate).localeCompare(String(a.billDate));
+      });
+
+      for(const row of group.rows){
+        if(shortage <= 0) break;
+        const item = loadedBills[row.billIndex].items[row.itemIndex];
+        const currentQty = n(item.quantity);
+        if(currentQty <= 0) continue;
+
+        const reducible = Math.min(currentQty, shortage);
+        if(reducible > 0){
+          item.quantity = currentQty - reducible;
+          shortage -= reducible;
+          adjustedRows++;
+        }
+      }
+    });
+
+    renderAll();
+    showMessage(`Adjustment complete. Changed ${adjustedRows} row(s) across ${touchedItems} item group(s). Quantity never went below 0.`, 'success');
+  }
+
+  async function saveAll(){
+    clearMessage();
+    if(!loadedBills.length){
+      showMessage('No bills loaded.', 'warn');
+      return;
+    }
+
+    const skippedBills = [];
+    const payload = loadedBills
+      .map(bill => {
+        const liveItems = bill.items
+          .filter(item => n(item.quantity) > 0)
+          .map(item => ({
+            item_code: item.item_code || '',
+            item_name: item.item_name || '',
+            quantity: n(item.quantity),
+            price: n(item.price),
+            gst_percent: n(item.gst_percent),
+            hsn_code: item.hsn_code || ''
+          }));
+
+        if(!liveItems.length){
+          skippedBills.push(`${bill.series_code || ''}-${bill.sales_number || ''}`);
+          return null;
+        }
+
+        return {
+          sales_id: n(bill.sales_id),
+          items: liveItems
+        };
+      })
+      .filter(Boolean);
+
+    if(!payload.length){
+      showMessage('All loaded bills became zero-qty bills, so nothing was saved.', 'warn');
+      return;
+    }
+
+    els.saveBtn.disabled = true;
+    els.saveBtn.textContent = 'SAVING...';
+
+    const { data, error } = await sb.rpc('save_bulk_sales_edit', {
+      p_bills: payload
+    });
+
+    els.saveBtn.disabled = false;
+    els.saveBtn.textContent = 'SAVE ALL';
+
+    if(error){
+      showMessage('Save failed: ' + error.message, 'error');
+      return;
+    }
+
+    let msg = 'Bulk save completed successfully.';
+    if(skippedBills.length){
+      msg += ' Skipped zero-item bills: ' + skippedBills.join(', ');
+    }
+    if(data && data.message){
+      msg = data.message + (skippedBills.length ? (' Skipped zero-item bills: ' + skippedBills.join(', ')) : '');
+    }
+    showMessage(msg, 'success');
+    await loadBills();
+  }
+
+  els.loadBtn.addEventListener('click', loadBills);
+  els.adjustBtn.addEventListener('click', adjustQuantities);
+  els.saveBtn.addEventListener('click', saveAll);
+  els.priceTypeSelect.addEventListener('change', () => applyPriceType(true));
+
+  setTodayDefaults();
+  loadSalesmen();
+  renderAll();
+</script>
+</body>
+</html>

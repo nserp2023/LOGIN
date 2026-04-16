@@ -1218,7 +1218,7 @@
         <div class="summary-card close-card">
           <div class="summary-title">Cash To Be Closed</div>
           <div class="summary-value" id="cashToClose">₹ 0.00</div>
-          <div class="summary-note">Use this when staff leaves before shop close. Save the cash amount safely for later account checking.</div>
+          <div class="summary-note">Use this when cashier leaves shop.</div>
         </div>
       </section>
 
@@ -1249,7 +1249,7 @@
 
         <div class="closing-panel">
           <h3 class="section-title">Counter Cash Closing Control</h3>
-          <div class="section-sub">When staff leaves early, close and store the amount here. Later you can compare physical cash and system totals wisely.</div>
+          <div class="section-sub">When cashier leaves early, close and store the amount here. Later you can compare physical cash and system totals wisely.</div>
 
           <div class="closing-grid">
             <div class="cash-box">
@@ -1648,7 +1648,7 @@
 
     async function closeTodayCash() {
       try {
-        const amountText = prompt("Enter today's staff closing cash amount");
+        const amountText = prompt("Enter today's closing cash amount");
         if (amountText === null) return;
 
         const amount = Number(String(amountText).replace(/,/g, "").trim());
@@ -1658,7 +1658,7 @@
           return;
         }
 
-        const notes = prompt("Enter note if needed (staff name / timing / remarks)") || "";
+        const notes = prompt("Enter note if needed (difference / timing / remarks)") || "";
         const userRes = await sb.auth.getUser();
         const user = userRes?.data?.user;
 
@@ -1756,7 +1756,7 @@
         setText("lastClosedBy", row.user_id ? String(row.user_id).slice(0, 8) + "..." : "—");
         setText("lastClosedAt", timeText);
         setText("savedClosingNote", row.notes ? `Note: ${row.notes}` : "Cash closing saved successfully.");
-        setText("closingStatusChip", "Latest staff closing saved");
+        setText("closingStatusChip", "Latest closing amount saved");
       } catch (err) {
         console.error("loadLatestCashClosing error:", err);
       }

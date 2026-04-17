@@ -293,6 +293,66 @@
             width: 350px;
         }
 
+
+        .stock-warning-overlay{
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(15, 23, 42, 0.28);
+            backdrop-filter: blur(4px);
+            z-index: 20000;
+            padding: 20px;
+        }
+
+        .stock-warning-overlay.show{
+            display: flex;
+        }
+
+        .stock-warning-box{
+            width: min(92vw, 460px);
+            border-radius: 18px;
+            border: 1px solid rgba(248, 113, 113, 0.38);
+            background: rgba(127, 29, 29, 0.22);
+            box-shadow: 0 20px 60px rgba(127, 29, 29, 0.28);
+            backdrop-filter: blur(16px);
+            color: #fff5f5;
+            padding: 22px 20px;
+            text-align: center;
+        }
+
+        .stock-warning-box h3{
+            margin: 0 0 10px;
+            color: #fecaca;
+            font-size: 24px;
+            letter-spacing: 0.6px;
+        }
+
+        .stock-warning-box p{
+            margin: 0;
+            color: #ffe4e6;
+            font-size: 15px;
+            line-height: 1.55;
+            white-space: pre-line;
+        }
+
+        .stock-warning-actions{
+            margin-top: 16px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .stock-warning-btn{
+            border: none;
+            border-radius: 10px;
+            padding: 10px 24px;
+            background: #ef4444;
+            color: white;
+            font-weight: 800;
+            cursor: pointer;
+        }
+
         @media print {
             .footer-section, .autocomplete-list, button { display: none !important; }
             .container { box-shadow: none; border: none; height: auto; }
@@ -757,6 +817,17 @@
     </div>
 </div>
 
+
+<div id="stock_warning_overlay" class="stock-warning-overlay" tabindex="-1" aria-hidden="true">
+    <div class="stock-warning-box" role="alertdialog" aria-modal="true" aria-labelledby="stock_warning_title" aria-describedby="stock_warning_message">
+        <h3 id="stock_warning_title">NO STOCK WARNING</h3>
+        <p id="stock_warning_message">Selected quantity is more than available stock.</p>
+        <div class="stock-warning-actions">
+            <button type="button" class="stock-warning-btn" id="stock_warning_ok_btn">OK</button>
+        </div>
+    </div>
+</div>
+
 <script>
     // --- 1. SUPABASE CONNECTION ---
     const sb = window.sbcc; // supabase client from supabaseClient.js
@@ -833,6 +904,10 @@
             if (paid > total) paid = total;
             paidEl.value = paid ? paid.toFixed(2) : "0.00";
             syncPaymentUI();
+            closeStockWarning();
+            document.querySelectorAll("#bill_body tr").forEach(row => {
+                applyItemRestriction(row);
+            });
         });
 
         const params = new URLSearchParams(window.location.search);
@@ -919,6 +994,109 @@
 
     function getGrandTotalAmount() {
         return parseFloat((document.getElementById('display_grand_total').innerText || '₹0').replace('₹','')) || 0;
+    }
+
+    let stockWarningReturnFocus = null;
+    let stockWarningOpen = false;
+
+    function isSalesMode(){
+        return (document.getElementById("doc_type")?.value || "") === "sales";
+    }
+
+    function parseStockBalance(value){
+        const num = parseFloat(value);
+        return Number.isFinite(num) ? num : 0;
+    }
+
+    function getRowRawItem(row){
+        if(!row) return null;
+        const raw = row.querySelector('.raw-data')?.value || "";
+        if(!raw) return null;
+        try{
+            return JSON.parse(raw);
+        }catch(_err){
+            return null;
+        }
+    }
+
+    function getAvailableStockForRow(row){
+        const rawItem = getRowRawItem(row);
+        return parseStockBalance(rawItem?.balance);
+    }
+
+    function getQtyInputValue(row){
+        return parseFloat(row?.querySelector('.qty-inp')?.value) || 0;
+    }
+
+    function hideAllItemDropdowns(){
+        document.querySelectorAll('.autocomplete-list').forEach(list => {
+            list.style.display = 'none';
+            list.removeAttribute("data-open");
+        });
+    }
+
+    function showStockWarning(message, focusEl){
+        const overlay = document.getElementById('stock_warning_overlay');
+        const msg = document.getElementById('stock_warning_message');
+        if(!overlay || !msg) return;
+
+        msg.textContent = message || "Selected quantity is more than available stock.";
+        stockWarningReturnFocus = focusEl || null;
+        stockWarningOpen = true;
+        overlay.classList.add('show');
+        overlay.setAttribute('aria-hidden', 'false');
+        hideAllItemDropdowns();
+
+        setTimeout(() => {
+            overlay.focus();
+        }, 0);
+    }
+
+    function closeStockWarning(){
+        const overlay = document.getElementById('stock_warning_overlay');
+        if(!overlay) return;
+
+        overlay.classList.remove('show');
+        overlay.setAttribute('aria-hidden', 'true');
+        stockWarningOpen = false;
+
+        const focusEl = stockWarningReturnFocus;
+        stockWarningReturnFocus = null;
+
+        if(focusEl){
+            setTimeout(() => {
+                focusEl.focus();
+                if(typeof focusEl.select === "function") focusEl.select();
+            }, 0);
+        }
+    }
+
+    function validateSalesRowQty(row, opts = {}){
+        if(!row || !isSalesMode()) return true;
+
+        const code = (row.querySelector('.code-inp')?.value || "").trim();
+        const name = (row.querySelector('.name-inp')?.value || "").trim();
+        const qtyInput = row.querySelector('.qty-inp');
+        const qty = getQtyInputValue(row);
+        const available = getAvailableStockForRow(row);
+
+        if(!code && !name) return true;
+
+        if(available <= 0){
+            if(opts.showWarning !== false){
+                showStockWarning(`${name || code} has no stock.`, qtyInput);
+            }
+            return false;
+        }
+
+        if(qty > available){
+            if(opts.showWarning !== false){
+                showStockWarning(`${name || code} available stock is ${available}. Entered qty is ${qty}.`, qtyInput);
+            }
+            return false;
+        }
+
+        return true;
     }
 
     function syncPaymentUI() {
@@ -1074,7 +1252,13 @@ const stockSelect = canSeeLandingColumn
     }
 
     function getDepartmentFilteredStockData() {
-        return stockData.filter(item => itemMatchesDepartment(item));
+        let items = stockData.filter(item => itemMatchesDepartment(item));
+
+        if(isSalesMode()){
+            items = items.filter(item => parseStockBalance(item.balance) > 0);
+        }
+
+        return items;
     }
 
     function searchStock(query, field) {
@@ -1417,7 +1601,8 @@ ${data.map((c, idx) => `
             const item = stockData.find(
                 i =>
                     normalizeSearchText(i.item_code || "") === code &&
-                    itemMatchesDepartment(i)
+                    itemMatchesDepartment(i) &&
+                    (!isSalesMode() || parseStockBalance(i.balance) > 0)
             );
 
             if(item){
@@ -1441,7 +1626,8 @@ ${data.map((c, idx) => `
             const item = stockData.find(
                 i =>
                     normalizeSearchText(i.item_code || "") === code &&
-                    itemMatchesDepartment(i)
+                    itemMatchesDepartment(i) &&
+                    (!isSalesMode() || parseStockBalance(i.balance) > 0)
             );
 
             if(item){
@@ -1472,11 +1658,21 @@ ${data.map((c, idx) => `
 
         attachSearch(nameInp, `list_name_${id}`, 'item_name');
 
-        qtyInp.addEventListener('input', () => calcForward(id));
+        qtyInp.addEventListener('input', () => {
+            calcForward(id);
+            applyItemRestriction(row);
+        });
+        qtyInp.addEventListener('blur', () => {
+            validateSalesRowQty(row);
+            applyItemRestriction(row);
+        });
         discInp.addEventListener('input', () => calcForward(id));
         priceInp.addEventListener('input', () => calcForward(id));
         priceGstInp.addEventListener('input', () => calcReverse(id));
-        typeInp.addEventListener('change', () => updatePriceFromType(id));
+        typeInp.addEventListener('change', () => {
+            updatePriceFromType(id);
+            applyItemRestriction(row);
+        });
     }
 
     async function fillItem(id, item) {
@@ -1542,6 +1738,11 @@ ${data.map((c, idx) => `
             if (landingInp) {
                 landingInp.value = parseFloat((freshStock && 'landing' in freshStock ? freshStock.landing : item.landing) || 0).toFixed(2);
             }
+        }
+
+        applyItemRestriction(row);
+        if(isSalesMode()){
+            validateSalesRowQty(row, { showWarning: false });
         }
     }
 
@@ -1913,6 +2114,13 @@ function calcTotal() {
     }
 
     document.getElementById('bill_body').addEventListener('keydown', function(e){
+        if(stockWarningOpen && (e.key === 'Enter' || e.key === 'Escape' || e.key === 'NumpadEnter')){
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            closeStockWarning();
+            return;
+        }
+
         const input = e.target.closest('.row-inp');
         if(!input) return;
 
@@ -1956,6 +2164,19 @@ function calcTotal() {
 
         if(input.type === 'number' && (e.key === 'ArrowUp' || e.key === 'ArrowDown')){
             e.preventDefault();
+        }
+
+        if(
+            e.key === 'Enter' &&
+            input.classList.contains('qty-inp') &&
+            isSalesMode()
+        ){
+            const ok = validateSalesRowQty(row);
+            if(!ok){
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                return;
+            }
         }
 
         handleExcelNav(e);
@@ -2517,6 +2738,18 @@ const balanceAmount = Math.max(0, roundedTotal - paidAmount);
                     if (!qty || qty <= 0) {
                         throw new Error("Invalid quantity entered for item: " + code);
                     }
+
+                    if(docType === "sales"){
+                        const availableStock = getAvailableStockForRow(row);
+                        if(availableStock <= 0){
+                            showStockWarning(`${row.querySelector('.name-inp')?.value || code} has no stock.`, row.querySelector('.qty-inp'));
+                            throw new Error("No stock for item: " + code);
+                        }
+                        if(qty > availableStock){
+                            showStockWarning(`${row.querySelector('.name-inp')?.value || code} available stock is ${availableStock}. Entered qty is ${qty}.`, row.querySelector('.qty-inp'));
+                            throw new Error("Entered qty is more than available stock for item: " + code);
+                        }
+                    }
                     
                     let idField;
                     if(docType==="quotation") idField="quotation_id";
@@ -2719,19 +2952,46 @@ const balanceAmount = Math.max(0, roundedTotal - paidAmount);
         const selectedDept = getSelectedDepartment();
         const nameInp = row.querySelector('.name-inp');
         const codeInp = row.querySelector('.code-inp');
+        const qtyInp = row.querySelector('.qty-inp');
 
         if(!nameInp || !codeInp) return;
 
-        if(!selectedDept || selectedDept === "ALL"){
-            nameInp.style.backgroundColor = "";
-            codeInp.style.backgroundColor = "";
-            nameInp.title = "ALL ITEMS";
-            codeInp.title = "ALL ITEMS";
-        } else {
+        const hasDeptFilter = !!selectedDept && selectedDept !== "ALL";
+        const available = getAvailableStockForRow(row);
+        const qty = getQtyInputValue(row);
+        const showSalesWarning = isSalesMode() && !!(getRowRawItem(row)) && (available <= 0 || qty > available);
+
+        if(showSalesWarning){
+            nameInp.style.backgroundColor = "rgba(239, 68, 68, 0.10)";
+            codeInp.style.backgroundColor = "rgba(239, 68, 68, 0.10)";
+            if(qtyInp) qtyInp.style.backgroundColor = "rgba(239, 68, 68, 0.16)";
+
+            if(available <= 0){
+                nameInp.title = "NO STOCK";
+                codeInp.title = "NO STOCK";
+                if(qtyInp) qtyInp.title = "NO STOCK";
+            }else{
+                nameInp.title = `AVAILABLE STOCK: ${available}`;
+                codeInp.title = `AVAILABLE STOCK: ${available}`;
+                if(qtyInp) qtyInp.title = `AVAILABLE STOCK: ${available}`;
+            }
+            return;
+        }
+
+        if(hasDeptFilter){
             nameInp.style.backgroundColor = "rgba(37, 99, 235, 0.10)";
             codeInp.style.backgroundColor = "rgba(37, 99, 235, 0.10)";
+            if(qtyInp) qtyInp.style.backgroundColor = "";
             nameInp.title = `ONLY ${selectedDept} ITEMS`;
             codeInp.title = `ONLY ${selectedDept} ITEMS`;
+            if(qtyInp) qtyInp.title = "";
+        } else {
+            nameInp.style.backgroundColor = "";
+            codeInp.style.backgroundColor = "";
+            if(qtyInp) qtyInp.style.backgroundColor = "";
+            nameInp.title = "ALL ITEMS";
+            codeInp.title = "ALL ITEMS";
+            if(qtyInp) qtyInp.title = "";
         }
     }
 
@@ -3148,6 +3408,31 @@ async function handleBarcodeValue(code) {
     qtyInp.value = 1;
     calcForward(rid);
 }    
+    const stockWarningOverlay = document.getElementById('stock_warning_overlay');
+    const stockWarningOkBtn = document.getElementById('stock_warning_ok_btn');
+
+    if(stockWarningOkBtn){
+        stockWarningOkBtn.addEventListener('click', closeStockWarning);
+    }
+
+    if(stockWarningOverlay){
+        stockWarningOverlay.addEventListener('mousedown', (e) => {
+            if(e.target === stockWarningOverlay){
+                closeStockWarning();
+            }
+        });
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if(!stockWarningOpen) return;
+        if(e.key === 'Enter' || e.key === 'Escape' || e.key === 'NumpadEnter'){
+            e.preventDefault();
+            e.stopPropagation();
+            closeStockWarning();
+        }
+    }, true);
+
+
 </script>
 </body>
 </html>

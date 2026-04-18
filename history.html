@@ -6,6 +6,7 @@
   <title>VAJRA | Customer History Next Level</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabaseClient.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 
   <style>
     :root {
@@ -117,6 +118,29 @@
     .stat .v { font-size: 1.62rem; font-weight: 900; }
     .stat .f { color: #cbd7ec; font-size: .85rem; }
 
+    .chart-grid {
+      display:grid;
+      grid-template-columns:1.35fr .85fr;
+      gap:16px;
+      padding:0 18px 18px;
+    }
+    .chart-grid .card {
+      position: relative;
+      overflow: hidden;
+    }
+    .chart-grid .card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at top right, rgba(114,163,255,.10), transparent 30%),
+        radial-gradient(circle at bottom left, rgba(83,221,255,.08), transparent 28%);
+      pointer-events: none;
+    }
+    .chart-grid .panel-title {
+      text-shadow: 0 0 14px rgba(114,163,255,.18);
+    }
+
     .subgrid { display: grid; grid-template-columns: 1.15fr .85fr; gap: 16px; padding: 0 18px 18px; }
     .card {
       border: 1px solid var(--line); border-radius: 22px;
@@ -203,6 +227,11 @@
       .stats, .aging-grid, .subgrid { grid-template-columns: repeat(2, minmax(0,1fr)); }
       .history-list { max-height: none; }
     }
+    @media (max-width: 1100px) {
+      .chart-grid {
+        grid-template-columns: 1fr !important;
+      }
+    }
     @media (max-width: 760px) {
       .app { width: min(100vw - 10px, 100%); }
       .topbar { padding: 14px; border-radius: 18px; top: 4px; }
@@ -213,7 +242,7 @@
       .btn { flex: 1 1 auto; }
     }
     @media print {
-      .topbar, .left-panel, .toolbar, .stack-actions, .entry-actions, .suggestions, .toast, .loading { display: none !important; }
+      .topbar, .left-panel, .toolbar, .stack-actions, .entry-actions, .suggestions, .toast, .loading, .chart-grid { display: none !important; }
       .app { width: 100%; margin: 0; }
       body { background: #fff; color: #000; }
       .panel, .card, .entry, .stat, .aging-card { box-shadow: none; background: #fff; color: #000; border-color: #d9d9d9; }
@@ -325,6 +354,46 @@
           </div>
         </div>
 
+        <div class="chart-grid">
+          <div class="card">
+            <div class="card-head">
+              <div>
+                <div class="panel-title">Customer Trend Analytics</div>
+                <div class="panel-sub">Sales, receipts, and returns over time</div>
+              </div>
+            </div>
+            <div class="card-body">
+              <div id="trendChart" style="height:320px;"></div>
+            </div>
+          </div>
+
+          <div style="display:grid;gap:16px;">
+            <div class="card">
+              <div class="card-head">
+                <div>
+                  <div class="panel-title">Transaction Mix</div>
+                  <div class="panel-sub">Sales vs receipts vs returns</div>
+                </div>
+              </div>
+              <div class="card-body">
+                <div id="mixChart" style="height:230px;"></div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-head">
+                <div>
+                  <div class="panel-title">Aging View</div>
+                  <div class="panel-sub">Outstanding grouped by age bucket</div>
+                </div>
+              </div>
+              <div class="card-body">
+                <div id="agingChart" style="height:220px;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="subgrid">
           <div class="card">
             <div class="card-head">
@@ -423,6 +492,10 @@
       raw: { sales: [], receipts: [], returns: [], payments: [] },
       detailsCache: {}
     };
+
+    let trendChart = null;
+    let mixChart = null;
+    let agingChart = null;
 
     const sb =
       window.sbcc ||
@@ -615,6 +688,198 @@
       };
     }
 
+    function groupHistoryByDate() {
+      const map = {};
+
+      state.raw.sales.forEach(s => {
+        const d = s.bill_date || (s.created_at ? String(s.created_at).slice(0, 10) : null);
+        if (!d) return;
+        if (!map[d]) map[d] = { sales: 0, receipts: 0, returns: 0 };
+        map[d].sales += Number(s.payable ?? s.invoice_amount ?? 0);
+      });
+
+      state.raw.receipts.forEach(r => {
+        const d = r.txn_date || (r.created_at ? String(r.created_at).slice(0, 10) : null);
+        if (!d) return;
+        if (!map[d]) map[d] = { sales: 0, receipts: 0, returns: 0 };
+        map[d].receipts += Number(r.amount || 0);
+      });
+
+      state.raw.returns.forEach(r => {
+        const d = r.return_date || (r.created_at ? String(r.created_at).slice(0, 10) : null);
+        if (!d) return;
+        if (!map[d]) map[d] = { sales: 0, receipts: 0, returns: 0 };
+        map[d].returns += Number(r.total_return_amount || 0);
+      });
+
+      const dates = Object.keys(map).sort();
+      return {
+        dates,
+        sales: dates.map(d => Number((map[d].sales || 0).toFixed(2))),
+        receipts: dates.map(d => Number((map[d].receipts || 0).toFixed(2))),
+        returns: dates.map(d => Number((map[d].returns || 0).toFixed(2)))
+      };
+    }
+
+    function getAgingValues() {
+      const buckets = { a0: 0, a30: 0, a60: 0, a90: 0 };
+
+      state.raw.sales
+        .filter(s => String(s.payment_type || '').toUpperCase().includes('CREDIT'))
+        .forEach(s => {
+          const amt = Number(s.payable ?? s.invoice_amount ?? 0);
+          const age = daysBetween(s.bill_date || (s.created_at ? String(s.created_at).slice(0, 10) : ''));
+          if (age <= 30) buckets.a0 += amt;
+          else if (age <= 60) buckets.a30 += amt;
+          else if (age <= 90) buckets.a60 += amt;
+          else buckets.a90 += amt;
+        });
+
+      return buckets;
+    }
+
+    function destroyCharts() {
+      if (trendChart) { trendChart.destroy(); trendChart = null; }
+      if (mixChart) { mixChart.destroy(); mixChart = null; }
+      if (agingChart) { agingChart.destroy(); agingChart = null; }
+    }
+
+    function renderCharts() {
+      if (!window.ApexCharts) return;
+
+      destroyCharts();
+
+      const trend = groupHistoryByDate();
+
+      trendChart = new ApexCharts(document.querySelector("#trendChart"), {
+        chart: {
+          type: 'area',
+          height: 320,
+          toolbar: { show: false },
+          background: 'transparent'
+        },
+        theme: { mode: 'dark' },
+        series: [
+          { name: 'Sales', data: trend.sales },
+          { name: 'Receipts', data: trend.receipts },
+          { name: 'Returns', data: trend.returns }
+        ],
+        stroke: { curve: 'smooth', width: 3 },
+        dataLabels: { enabled: false },
+        fill: {
+          type: 'gradient',
+          gradient: {
+            shadeIntensity: 1,
+            opacityFrom: 0.30,
+            opacityTo: 0.04
+          }
+        },
+        legend: { position: 'top', labels: { colors: '#cdd9ee' } },
+        xaxis: {
+          categories: trend.dates,
+          labels: { rotate: -45, style: { colors: '#9eb0ce' } }
+        },
+        yaxis: {
+          labels: {
+            style: { colors: '#9eb0ce' },
+            formatter: (v) => '₹' + Number(v || 0).toLocaleString('en-IN')
+          }
+        },
+        grid: { borderColor: 'rgba(255,255,255,.08)' },
+        tooltip: {
+          theme: 'dark',
+          y: { formatter: (v) => money(v) }
+        }
+      });
+
+      const totalSales = state.raw.sales.reduce((a,b) => a + Number(b.payable ?? b.invoice_amount ?? 0), 0);
+      const totalReceipts = state.raw.receipts.reduce((a,b) => a + Number(b.amount || 0), 0);
+      const totalReturns = state.raw.returns.reduce((a,b) => a + Number(b.total_return_amount || 0), 0);
+
+      mixChart = new ApexCharts(document.querySelector("#mixChart"), {
+        chart: {
+          type: 'donut',
+          height: 230,
+          background: 'transparent'
+        },
+        theme: { mode: 'dark' },
+        labels: ['Sales', 'Receipts', 'Returns'],
+        series: [totalSales, totalReceipts, totalReturns],
+        legend: {
+          position: 'bottom',
+          labels: { colors: '#cdd9ee' }
+        },
+        dataLabels: {
+          enabled: true,
+          formatter: (val) => `${val.toFixed(0)}%`
+        },
+        plotOptions: {
+          pie: {
+            donut: {
+              size: '62%',
+              labels: {
+                show: true,
+                total: {
+                  show: true,
+                  label: 'Total',
+                  color: '#cdd9ee',
+                  formatter: () => money(totalSales + totalReceipts + totalReturns)
+                }
+              }
+            }
+          }
+        },
+        tooltip: {
+          theme: 'dark',
+          y: { formatter: (v) => money(v) }
+        }
+      });
+
+      const aging = getAgingValues();
+
+      agingChart = new ApexCharts(document.querySelector("#agingChart"), {
+        chart: {
+          type: 'bar',
+          height: 220,
+          toolbar: { show: false },
+          background: 'transparent'
+        },
+        theme: { mode: 'dark' },
+        series: [{
+          name: 'Outstanding',
+          data: [aging.a0, aging.a30, aging.a60, aging.a90]
+        }],
+        plotOptions: {
+          bar: {
+            borderRadius: 10,
+            distributed: true,
+            columnWidth: '52%'
+          }
+        },
+        dataLabels: { enabled: false },
+        xaxis: {
+          categories: ['0-30', '31-60', '61-90', '90+'],
+          labels: { style: { colors: '#9eb0ce' } }
+        },
+        yaxis: {
+          labels: {
+            style: { colors: '#9eb0ce' },
+            formatter: (v) => '₹' + Number(v || 0).toLocaleString('en-IN')
+          }
+        },
+        legend: { show: false },
+        grid: { borderColor: 'rgba(255,255,255,.08)' },
+        tooltip: {
+          theme: 'dark',
+          y: { formatter: (v) => money(v) }
+        }
+      });
+
+      trendChart.render();
+      mixChart.render();
+      agingChart.render();
+    }
+
     async function loadHistory() {
       if (!state.selectedCustomer) return showToast('Please select a customer first.', 'err');
       if (!sb) return showToast('Supabase client not configured.', 'err');
@@ -732,6 +997,7 @@
         renderHistory();
         renderLedger();
         renderAging();
+        renderCharts();
 
         $('statusPill').textContent = 'Status: Loaded';
         $('countPill').textContent = `Transactions: ${state.history.length}`;
@@ -1145,6 +1411,8 @@
       state.ledger = [];
       state.raw = { sales: [], receipts: [], returns: [], payments: [] };
       state.detailsCache = {};
+
+      destroyCharts();
 
       $('customerSearch').value = '';
       $('historyFilter').value = 'all';

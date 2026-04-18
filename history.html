@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>VAJRA | Customer History Next Level</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-      <script src="supabaseClient.js"></script>
+  <script src="supabaseClient.js"></script>
 
   <style>
     :root {
@@ -414,6 +414,7 @@
 
   <script>
     const $ = (id) => document.getElementById(id);
+
     const state = {
       selectedCustomer: null,
       activeTab: 'all',
@@ -423,9 +424,13 @@
       detailsCache: {}
     };
 
-    const sb = window.sbcc || ((SUPABASE_URL && SUPABASE_KEY && window.supabase?.createClient)
-      ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
-      : null);
+    const sb =
+      window.sbcc ||
+      ((typeof SUPABASE_URL !== 'undefined' &&
+        typeof SUPABASE_KEY !== 'undefined' &&
+        window.supabase?.createClient)
+        ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
+        : null);
 
     function showToast(msg, mode='ok') {
       const el = $('toast');
@@ -435,23 +440,33 @@
       clearTimeout(showToast.timer);
       showToast.timer = setTimeout(() => el.style.display = 'none', 2800);
     }
-    function setLoading(show) { $('loading').style.display = show ? 'flex' : 'none'; }
+
+    function setLoading(show) {
+      $('loading').style.display = show ? 'flex' : 'none';
+    }
+
     function money(v) {
       const n = Number(v || 0);
       return `₹${n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
+
     function fmtDate(d) {
       if (!d) return '—';
       const dt = new Date(d);
       if (Number.isNaN(dt.getTime())) return d;
       return dt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
     }
+
     function fmtDateTime(d) {
       if (!d) return '—';
       const dt = new Date(d);
       if (Number.isNaN(dt.getTime())) return d;
-      return dt.toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+      return dt.toLocaleString('en-IN', {
+        day: '2-digit', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+      });
     }
+
     function esc(text='') {
       return String(text)
         .replaceAll('&','&amp;')
@@ -460,6 +475,7 @@
         .replaceAll('"','&quot;')
         .replaceAll("'", '&#39;');
     }
+
     function daysBetween(dateStr) {
       if (!dateStr) return 0;
       const today = new Date();
@@ -467,6 +483,7 @@
       const diff = today.getTime() - dt.getTime();
       return Math.max(0, Math.floor(diff / 86400000));
     }
+
     function defaultDates() {
       const today = new Date();
       const from = new Date();
@@ -475,13 +492,27 @@
       $('toDate').value = today.toISOString().slice(0,10);
     }
 
+    function dedupeById(rows, keyField = 'id') {
+      const map = new Map();
+      (rows || []).forEach(r => {
+        if (r && r[keyField] != null) map.set(String(r[keyField]), r);
+      });
+      return [...map.values()];
+    }
+
     function updateCustomerCard(cust) {
       $('pillCustomer').textContent = `Customer: ${cust?.name || '—'}`;
       $('pillMobile').textContent = `Mobile: ${cust?.mobile || '—'}`;
+
       if (!cust) {
-        $('customerCard').innerHTML = `<div class="customer-name">No customer selected</div><div class="customer-meta"><div>Search and select a customer to begin.</div></div>`;
+        $('customerCard').innerHTML = `
+          <div class="customer-name">No customer selected</div>
+          <div class="customer-meta">
+            <div>Search and select a customer to begin.</div>
+          </div>`;
         return;
       }
+
       $('customerCard').innerHTML = `
         <div class="customer-name">${esc(cust.name || 'Unnamed Customer')}</div>
         <div class="customer-meta">
@@ -494,16 +525,56 @@
 
     async function searchCustomers(q) {
       if (!sb) throw new Error('Supabase client not found. Use window.sbcc or SUPABASE_URL / SUPABASE_KEY.');
-      let query = sb.from('customers').select('customer_id,name,mobile,address,gst_number').order('name').limit(25);
-      const numeric = /^\d+$/.test(q.trim());
-      if (numeric) {
-        query = query.or(`mobile.ilike.%${q}%,customer_id.eq.${q}`);
+
+      const txt = String(q || '').trim();
+      if (!txt) return [];
+
+      let rows = [];
+
+      if (/^\d+$/.test(txt)) {
+        const [{ data: byMobile, error: e1 }, { data: byId, error: e2 }] = await Promise.all([
+          sb.from('customers')
+            .select('customer_id,name,mobile,address,gst_number')
+            .ilike('mobile', `%${txt}%`)
+            .order('name')
+            .limit(25),
+
+          sb.from('customers')
+            .select('customer_id,name,mobile,address,gst_number')
+            .eq('customer_id', Number(txt))
+            .limit(5)
+        ]);
+
+        if (e1) throw e1;
+        if (e2) throw e2;
+
+        const map = new Map();
+        [...(byMobile || []), ...(byId || [])].forEach(r => map.set(String(r.customer_id), r));
+        rows = [...map.values()].slice(0, 25);
       } else {
-        query = query.or(`name.ilike.%${q}%,mobile.ilike.%${q}%`);
+        const [r1, r2] = await Promise.all([
+          sb.from('customers')
+            .select('customer_id,name,mobile,address,gst_number')
+            .ilike('name', `%${txt}%`)
+            .order('name')
+            .limit(25),
+
+          sb.from('customers')
+            .select('customer_id,name,mobile,address,gst_number')
+            .ilike('mobile', `%${txt}%`)
+            .order('name')
+            .limit(25)
+        ]);
+
+        if (r1.error) throw r1.error;
+        if (r2.error) throw r2.error;
+
+        const map = new Map();
+        [...(r1.data || []), ...(r2.data || [])].forEach(r => map.set(String(r.customer_id), r));
+        rows = [...map.values()].slice(0, 25);
       }
-      const { data, error } = await query;
-      if (error) throw error;
-      return data || [];
+
+      return rows;
     }
 
     function renderSuggestions(rows) {
@@ -513,13 +584,16 @@
         box.innerHTML = '';
         return;
       }
+
       box.innerHTML = rows.map((r, i) => `
         <div class="suggestion" data-index="${i}">
           <div class="s1">${esc(r.name || 'Unnamed Customer')}</div>
           <div class="s2">ID: ${esc(r.customer_id || '—')} · Mobile: ${esc(r.mobile || '—')}</div>
           <div class="s2">${esc(r.address || 'No address')}</div>
         </div>`).join('');
+
       box.style.display = 'block';
+
       [...box.querySelectorAll('.suggestion')].forEach(el => {
         el.onclick = () => {
           const item = rows[Number(el.dataset.index)];
@@ -533,53 +607,116 @@
 
     function customerClauses() {
       const c = state.selectedCustomer;
-      if (!c) return [];
-      const arr = [];
-      if (c.name) arr.push(`customer_name.ilike.%${c.name}%`);
-      if (c.mobile) arr.push(`customer_mobile.ilike.%${c.mobile}%`);
-      return arr;
+      if (!c) return { name: '', mobile: '' };
+
+      return {
+        name: String(c.name || '').trim(),
+        mobile: String(c.mobile || '').trim()
+      };
     }
 
     async function loadHistory() {
       if (!state.selectedCustomer) return showToast('Please select a customer first.', 'err');
       if (!sb) return showToast('Supabase client not configured.', 'err');
+
       setLoading(true);
+
       try {
-        const c = state.selectedCustomer;
         const from = $('fromDate').value || null;
         const to = $('toDate').value || null;
-        const clauses = customerClauses().join(',');
+        const { name, mobile } = customerClauses();
 
-        let salesQ = sb.from('sales_details')
-          .select('id,sales_number,bill_date,customer_name,customer_mobile,invoice_amount,payable,round_off,series_code,payment_type,created_at,address,salesman,created_by')
-          .order('bill_date', { ascending: false }).order('id', { ascending: false });
-        if (clauses) salesQ = salesQ.or(clauses);
-        if (from) salesQ = salesQ.gte('bill_date', from);
-        if (to) salesQ = salesQ.lte('bill_date', to);
+        const applyDateRange = (q, col) => {
+          if (from) q = q.gte(col, from);
+          if (to) q = q.lte(col, to);
+          return q;
+        };
 
-        let returnQ = sb.from('sales_return_details')
-          .select('id,return_number,return_date,original_sales_id,customer_name,customer_mobile,total_return_amount,created_at,approval_status,approved_by,approved_at,is_accepted,accepted_at,accepted_by,approval_note')
-          .order('return_date', { ascending: false }).order('id', { ascending: false });
-        if (clauses) returnQ = returnQ.or(clauses);
-        if (from) returnQ = returnQ.gte('return_date', from);
-        if (to) returnQ = returnQ.lte('return_date', to);
+        async function fetchSales() {
+          const queries = [];
 
-        let cashQ = sb.from('cash_transactions').select('*').order('txn_date', { ascending: false }).order('id', { ascending: false });
-        const cashClauses = [];
-        if (c.name) cashClauses.push(`party_name.ilike.%${c.name}%`);
-        if (c.mobile) cashClauses.push(`party_mobile.ilike.%${c.mobile}%`);
-        if (c.mobile) cashClauses.push(`reference_mobile.ilike.%${c.mobile}%`);
-        if (cashClauses.length) cashQ = cashQ.or(cashClauses.join(','));
-        if (from) cashQ = cashQ.gte('txn_date', from);
-        if (to) cashQ = cashQ.lte('txn_date', to);
+          if (mobile) {
+            let q = sb.from('sales_details')
+              .select('id,sales_number,bill_date,customer_name,customer_mobile,invoice_amount,payable,round_off,series_code,payment_type,created_at,address,salesman,created_by')
+              .eq('customer_mobile', mobile)
+              .order('bill_date', { ascending: false })
+              .order('id', { ascending: false });
+            queries.push(applyDateRange(q, 'bill_date'));
+          }
 
-        const [{ data: sales, error: salesErr }, { data: returns, error: retErr }, { data: cash, error: cashErr }] = await Promise.all([salesQ, returnQ, cashQ]);
-        if (salesErr) throw salesErr;
-        if (retErr) throw retErr;
-        if (cashErr) throw cashErr;
+          if (name) {
+            let q = sb.from('sales_details')
+              .select('id,sales_number,bill_date,customer_name,customer_mobile,invoice_amount,payable,round_off,series_code,payment_type,created_at,address,salesman,created_by')
+              .ilike('customer_name', `%${name}%`)
+              .order('bill_date', { ascending: false })
+              .order('id', { ascending: false });
+            queries.push(applyDateRange(q, 'bill_date'));
+          }
+
+          if (!queries.length) return [];
+
+          const results = await Promise.all(queries);
+          results.forEach(r => { if (r.error) throw r.error; });
+          return dedupeById(results.flatMap(r => r.data || []), 'id');
+        }
+
+        async function fetchReturns() {
+          const queries = [];
+
+          if (mobile) {
+            let q = sb.from('sales_return_details')
+              .select('id,return_number,return_date,original_sales_id,customer_name,customer_mobile,total_return_amount,created_at,approval_status,approved_by,approved_at,is_accepted,accepted_at,accepted_by,approval_note')
+              .eq('customer_mobile', mobile)
+              .order('return_date', { ascending: false })
+              .order('id', { ascending: false });
+            queries.push(applyDateRange(q, 'return_date'));
+          }
+
+          if (name) {
+            let q = sb.from('sales_return_details')
+              .select('id,return_number,return_date,original_sales_id,customer_name,customer_mobile,total_return_amount,created_at,approval_status,approved_by,approved_at,is_accepted,accepted_at,accepted_by,approval_note')
+              .ilike('customer_name', `%${name}%`)
+              .order('return_date', { ascending: false })
+              .order('id', { ascending: false });
+            queries.push(applyDateRange(q, 'return_date'));
+          }
+
+          if (!queries.length) return [];
+
+          const results = await Promise.all(queries);
+          results.forEach(r => { if (r.error) throw r.error; });
+          return dedupeById(results.flatMap(r => r.data || []), 'id');
+        }
+
+        async function fetchCash() {
+          const queries = [];
+
+          if (name) {
+            let q = sb.from('cash_transactions')
+              .select('*')
+              .ilike('party_name', `%${name}%`)
+              .order('txn_date', { ascending: false })
+              .order('id', { ascending: false });
+
+            queries.push(applyDateRange(q, 'txn_date'));
+          }
+
+          if (!queries.length) return [];
+
+          const results = await Promise.all(queries);
+          results.forEach(r => { if (r.error) throw r.error; });
+          return dedupeById(results.flatMap(r => r.data || []), 'id');
+        }
+
+        const [sales, returns, cash] = await Promise.all([
+          fetchSales(),
+          fetchReturns(),
+          fetchCash()
+        ]);
 
         const receipts = [];
         const payments = [];
+
         (cash || []).forEach(r => {
           const kind = String(r.txn_type || '').toLowerCase();
           if (kind === 'receipt') receipts.push(r);
@@ -587,18 +724,22 @@
         });
 
         state.raw = { sales: sales || [], receipts, returns: returns || [], payments };
+        state.detailsCache = {};
+
         buildHistory();
         buildLedger();
         updateSummary();
         renderHistory();
         renderLedger();
         renderAging();
+
         $('statusPill').textContent = 'Status: Loaded';
         $('countPill').textContent = `Transactions: ${state.history.length}`;
         $('periodPill').textContent = `Period: ${from || 'Start'} to ${to || 'Today'}`;
+
         showToast('Customer history loaded.');
       } catch (err) {
-        console.error(err);
+        console.error('loadHistory failed:', err);
         showToast(err.message || 'Failed to load history.', 'err');
       } finally {
         setLoading(false);
@@ -607,17 +748,19 @@
 
     function buildHistory() {
       const sales = state.raw.sales.map(s => ({
-        type: 'sale', id: s.id,
+        type: 'sale',
+        id: s.id,
         sortDate: s.bill_date || s.created_at,
         amount: Number(s.payable ?? s.invoice_amount ?? 0),
         title: `${s.series_code || ''}-${s.sales_number || s.id}`.replace(/^-/, ''),
-        subTitle: `Sales Bill`,
+        subTitle: 'Sales Bill',
         note: `${s.customer_name || ''}${s.address ? ` · ${s.address}` : ''}`,
         raw: s
       }));
 
       const returns = state.raw.returns.map(r => ({
-        type: 'return', id: r.id,
+        type: 'return',
+        id: r.id,
         sortDate: r.return_date || r.created_at,
         amount: -Math.abs(Number(r.total_return_amount || 0)),
         title: `SR-${r.return_number || r.id}`,
@@ -627,22 +770,24 @@
       }));
 
       const receipts = state.raw.receipts.map(r => ({
-        type: 'receipt', id: r.id,
+        type: 'receipt',
+        id: r.id,
         sortDate: r.txn_date || r.created_at,
         amount: -Math.abs(Number(r.amount || 0)),
         title: `Receipt ${r.voucher_no || r.id}`,
         subTitle: `${r.party_name || ''}`,
-        note: `${r.note || r.description || r.payment_mode || 'Receipt entry'}`,
+        note: `${r.remarks || 'Receipt entry'}`,
         raw: r
       }));
 
       const payments = state.raw.payments.map(r => ({
-        type: 'payment', id: r.id,
+        type: 'payment',
+        id: r.id,
         sortDate: r.txn_date || r.created_at,
         amount: Number(r.amount || 0),
         title: `Payment ${r.voucher_no || r.id}`,
         subTitle: `${r.party_name || ''}`,
-        note: `${r.note || r.description || r.payment_mode || 'Payment entry'}`,
+        note: `${r.remarks || 'Payment entry'}`,
         raw: r
       }));
 
@@ -661,7 +806,9 @@
         if (ad !== bd) return ad - bd;
         return a.id - b.id;
       });
+
       let running = 0;
+
       state.ledger = ledgerRows.map(row => {
         const debit = row.amount > 0 ? row.amount : 0;
         const credit = row.amount < 0 ? Math.abs(row.amount) : 0;
@@ -674,9 +821,11 @@
       const sales = state.raw.sales.reduce((a,b) => a + Number(b.payable ?? b.invoice_amount ?? 0), 0);
       const receipts = state.raw.receipts.reduce((a,b) => a + Number(b.amount || 0), 0);
       const returns = state.raw.returns.reduce((a,b) => a + Number(b.total_return_amount || 0), 0);
+
       const creditSales = state.raw.sales
         .filter(s => String(s.payment_type || '').toUpperCase().includes('CREDIT'))
         .reduce((a,b) => a + Number(b.payable ?? b.invoice_amount ?? 0), 0);
+
       const outstanding = sales - receipts - returns;
 
       $('statSales').textContent = money(sales);
@@ -689,6 +838,7 @@
       const avgBill = billCount ? (sales / billCount) : 0;
       const lastActivity = state.history[0]?.sortDate || null;
       const efficiency = sales > 0 ? ((receipts / sales) * 100) : 0;
+
       $('snapshotLine1').textContent = `Bills: ${billCount}`;
       $('snapshotLine2').textContent = `Average bill: ${money(avgBill)}`;
       $('snapshotLine3').textContent = `Last activity: ${lastActivity ? fmtDate(lastActivity) : '—'}`;
@@ -697,14 +847,18 @@
 
     function renderAging() {
       const buckets = { a0: 0, a30: 0, a60: 0, a90: 0 };
-      state.raw.sales.filter(s => String(s.payment_type || '').toUpperCase().includes('CREDIT')).forEach(s => {
-        const amt = Number(s.payable ?? s.invoice_amount ?? 0);
-        const age = daysBetween(s.bill_date || s.created_at?.slice?.(0,10));
-        if (age <= 30) buckets.a0 += amt;
-        else if (age <= 60) buckets.a30 += amt;
-        else if (age <= 90) buckets.a60 += amt;
-        else buckets.a90 += amt;
-      });
+
+      state.raw.sales
+        .filter(s => String(s.payment_type || '').toUpperCase().includes('CREDIT'))
+        .forEach(s => {
+          const amt = Number(s.payable ?? s.invoice_amount ?? 0);
+          const age = daysBetween(s.bill_date || (s.created_at ? String(s.created_at).slice(0,10) : ''));
+          if (age <= 30) buckets.a0 += amt;
+          else if (age <= 60) buckets.a30 += amt;
+          else if (age <= 90) buckets.a60 += amt;
+          else buckets.a90 += amt;
+        });
+
       $('age0').textContent = money(buckets.a0);
       $('age30').textContent = money(buckets.a30);
       $('age60').textContent = money(buckets.a60);
@@ -713,10 +867,12 @@
 
     function renderLedger() {
       const body = $('ledgerBody');
+
       if (!state.ledger.length) {
         body.innerHTML = '<tr><td colspan="6" class="muted">No ledger loaded yet.</td></tr>';
         return;
       }
+
       body.innerHTML = state.ledger.map(r => `
         <tr>
           <td>${fmtDate(r.sortDate)}</td>
@@ -743,10 +899,12 @@
     function renderHistory() {
       const rows = visibleHistory();
       const list = $('historyList');
+
       if (!rows.length) {
         list.innerHTML = '<div class="empty"><div style="font-size:1.08rem;font-weight:900;margin-bottom:8px;">No matching history</div><div>Try another filter or date range.</div></div>';
         return;
       }
+
       list.innerHTML = rows.map(row => {
         const map = {
           sale: ['SALE', 'chip-sale'],
@@ -754,8 +912,10 @@
           return: ['RETURN', 'chip-return'],
           payment: ['PAYMENT', 'chip-payment']
         };
+
         const [label, cls] = map[row.type] || ['ENTRY', 'chip-sale'];
         const amountClass = row.amount < 0 ? 'negative' : row.amount > 0 && row.type !== 'sale' ? 'positive' : 'neutral';
+
         return `
           <div class="entry" id="entry-${row.type}-${row.id}">
             <div class="entry-main">
@@ -792,29 +952,45 @@
       const entry = document.getElementById(`entry-${type}-${id}`);
       const details = document.getElementById(`details-${type}-${id}`);
       if (!entry || !details) return;
+
       if (entry.classList.contains('open')) {
         entry.classList.remove('open');
         return;
       }
+
       entry.classList.add('open');
       const key = `${type}-${id}`;
+
       if (state.detailsCache[key]) {
         details.innerHTML = state.detailsCache[key];
         return;
       }
+
       details.innerHTML = '<div class="muted">Loading item details...</div>';
+
       try {
         if (!sb) throw new Error('Supabase client not configured');
+
         let data = [];
+
         if (type === 'sale') {
-          const res = await sb.from('sales_item_details').select('item_code,item_name,quantity,price,gst_percent,hsn_code').eq('sales_id', id).order('id');
+          const res = await sb.from('sales_item_details')
+            .select('item_code,item_name,quantity,price,gst_percent,hsn_code')
+            .eq('sales_id', id)
+            .order('id');
+
           if (res.error) throw res.error;
           data = res.data || [];
         } else if (type === 'return') {
-          const res = await sb.from('sales_return_item_details').select('item_code,item_name,quantity,price,gst_percent,hsn_code').eq('sales_return_id', id).order('id');
+          const res = await sb.from('sales_return_item_details')
+            .select('item_code,item_name,return_qty,price,gst_percent,hsn_code')
+            .eq('return_id', id)
+            .order('id');
+
           if (res.error) throw res.error;
           data = res.data || [];
         }
+
         const html = buildItemsTable(data, type);
         state.detailsCache[key] = html;
         details.innerHTML = html;
@@ -826,6 +1002,7 @@
 
     function buildItemsTable(items, kind) {
       if (!items.length) return `<div class="empty">No ${kind} items found.</div>`;
+
       return `
         <table class="items-table">
           <thead>
@@ -845,7 +1022,7 @@
                 <td>${i + 1}</td>
                 <td>${esc(it.item_code || '')}</td>
                 <td>${esc(it.item_name || '')}</td>
-                <td class="right">${Number(it.quantity || 0)}</td>
+                <td class="right">${Number(it.quantity ?? it.return_qty ?? 0)}</td>
                 <td class="right">${money(it.price || 0)}</td>
                 <td class="right">${Number(it.gst_percent || 0)}</td>
                 <td>${esc(it.hsn_code || '')}</td>
@@ -856,6 +1033,7 @@
 
     function buildWhatsAppText() {
       if (!state.selectedCustomer) return 'Customer history';
+
       const lines = [
         '*VAJRA LIGHTS & ELECTRICALS*',
         'Customer History Summary',
@@ -870,11 +1048,13 @@
         `Transactions: ${state.history.length}`,
         `Period: ${$('periodPill').textContent.replace('Period: ', '')}`,
       ];
+
       return lines.join('\n');
     }
 
     window.shareWhatsApp = function shareWhatsApp() {
       if (!state.selectedCustomer) return showToast('Select a customer first.', 'err');
+
       const digits = String(state.selectedCustomer.mobile || '').replace(/\D/g, '');
       const text = encodeURIComponent(buildWhatsAppText());
       const target = digits ? `https://wa.me/91${digits}?text=${text}` : `https://wa.me/?text=${text}`;
@@ -895,8 +1075,12 @@
       }
     };
 
-    window.expandAll = function expandAll() {
-      document.querySelectorAll('.entry .mini-btn').forEach(btn => { if (btn.textContent === 'Items') btn.click(); });
+    window.expandAll = async function expandAll() {
+      const buttons = [...document.querySelectorAll('.entry .mini-btn')].filter(btn => btn.textContent.trim() === 'Items');
+      for (const btn of buttons) {
+        btn.click();
+        await new Promise(r => setTimeout(r, 80));
+      }
     };
 
     window.collapseAll = function collapseAll() {
@@ -906,12 +1090,18 @@
     window.downloadSnapshot = function downloadSnapshot() {
       const payload = {
         customer: state.selectedCustomer,
-        filters: { fromDate: $('fromDate').value, toDate: $('toDate').value, filter: $('historyFilter').value, activeTab: state.activeTab },
+        filters: {
+          fromDate: $('fromDate').value,
+          toDate: $('toDate').value,
+          filter: $('historyFilter').value,
+          activeTab: state.activeTab
+        },
         history: state.history,
         ledger: state.ledger,
         raw: state.raw,
         exportedAt: new Date().toISOString()
       };
+
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
@@ -932,6 +1122,7 @@
     $('customerSearch').addEventListener('input', async (e) => {
       const q = e.target.value.trim();
       if (q.length < 2) return renderSuggestions([]);
+
       try {
         const rows = await searchCustomers(q);
         renderSuggestions(rows);
@@ -946,6 +1137,7 @@
     });
 
     $('loadBtn').onclick = loadHistory;
+
     $('clearBtn').onclick = () => {
       state.selectedCustomer = null;
       state.activeTab = 'all';
@@ -953,20 +1145,26 @@
       state.ledger = [];
       state.raw = { sales: [], receipts: [], returns: [], payments: [] };
       state.detailsCache = {};
+
       $('customerSearch').value = '';
       $('historyFilter').value = 'all';
+
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
       document.querySelector('[data-tab="all"]').classList.add('active');
+
       updateCustomerCard(null);
       updateSummary();
       renderHistory();
       renderLedger();
       renderAging();
+
       $('statusPill').textContent = 'Status: Waiting';
       $('countPill').textContent = 'Transactions: 0';
       $('periodPill').textContent = 'Period: All dates';
+
       showToast('Cleared.');
     };
+
     $('historyFilter').addEventListener('change', renderHistory);
 
     defaultDates();

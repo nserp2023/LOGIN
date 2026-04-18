@@ -978,6 +978,19 @@
     .hidden {
       display: none !important;
     }
+    .summary-btn{
+  background: linear-gradient(135deg,#ff9800,#ff5722);
+  color: #fff;
+  border: none;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.summary-btn:hover{
+  opacity: 0.9;
+}
 
     @media (max-width: 1320px) {
       .summary-grid {
@@ -1084,6 +1097,7 @@
 
         <div class="topbar-right">
           <span id="backupStatus" class="backup-status"></span>
+           <button class="summary-btn" type="button"onclick="openSummaryPrint()">🧾 Summary Print</button>
           <button id="closeCashTopBtn" class="close-cash-btn" type="button">🔒 Close My Cash</button>
           <button id="backupBtn" class="backup-btn" title="Full Backup to Excel" aria-label="Full Backup to Excel" type="button">💾</button>
           <span id="userRoleBadge" class="role-badge">Staff</span>
@@ -1630,6 +1644,14 @@
         await loadLatestCashClosing();
       });
     }
+
+    function openSummaryPrint() {
+  const date = document.getElementById('closingDate')?.value || '';
+  const staff = document.getElementById('counterName')?.value || '';
+  
+  const url = `summary_print.html?date=${date}&staff=${encodeURIComponent(staff)}`;
+  window.open(url, '_blank');
+}
 
     async function closeTodayCash() {
       try {

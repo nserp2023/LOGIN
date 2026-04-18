@@ -14,6 +14,7 @@
     <script src="supabaseClient.js"></script>
     <script src="page_permissions.js"></script>
     <script src="common-ui.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -123,6 +124,10 @@
             font-size:12px;
             margin-top:6px;
         }
+
+        .wa-col button{
+            min-width: 86px;
+        }
     </style>
 </head>
 <body>
@@ -173,6 +178,7 @@
             <th>Salesman</th>
             <th>Created By</th>
             <th>Total</th>
+            <th>WhatsApp</th>
             <th>Print</th>
             <th>Edit</th>
         </tr>
@@ -183,6 +189,7 @@
 <script>
     const sb = window.sbcc;
     let canEditBills = false;
+    let currentRows = [];
 
     function normalizeText(v){
         return String(v || "").trim().toLowerCase();
@@ -192,8 +199,165 @@
         return row.created_by || row.created_user || row.created_by_user || row.user_name || row.username || "";
     }
 
-    async function loadReport() {
+    function getCurrentTypeConfig() {
         const type = document.getElementById("report_type").value;
+
+        let table = "sales_details";
+        let numberField = "sales_number";
+        let dateField = "bill_date";
+        let amountField = "invoice_amount";
+        let label = "Sales Bill";
+
+        if(type === "sales_pack"){
+            table = "sales_packing_details";
+            numberField = "packing_number";
+            dateField = "packing_date";
+            amountField = "packing_amount";
+            label = "Sales + Packing";
+        }
+
+        if(type === "quotation"){
+            table = "quotation_details";
+            numberField = "quotation_number";
+            dateField = "quotation_date";
+            amountField = "total_amount";
+            label = "Quotation";
+        }
+
+        if(type === "sales_order"){
+            table = "sales_order_details";
+            numberField = "order_number";
+            dateField = "order_date";
+            amountField = "total_amount";
+            label = "Sales Order";
+        }
+
+        return { type, table, numberField, dateField, amountField, label };
+    }
+
+    function findReportRow(id){
+        return currentRows.find(r => Number(r.id) === Number(id));
+    }
+
+    function formatMoney(v){
+        return `₹${Number(v || 0).toFixed(2)}`;
+    }
+
+    function getBaseUrl(){
+        const here = window.location.href;
+        return here.substring(0, here.lastIndexOf('/') + 1);
+    }
+
+    function getPrintUrl(id){
+        const { type } = getCurrentTypeConfig();
+        return `${getBaseUrl()}print.html?id=${id}&type=${type}`;
+    }
+
+    function buildWhatsAppMessage(row){
+        const { numberField, dateField, amountField, label } = getCurrentTypeConfig();
+        const billNo = `${row.series_code || ''}${row.series_code ? '-' : ''}${row[numberField] || ''}`;
+
+        return [
+            '*VAJRA LIGHTS & ELECTRICALS*',
+            `${label}`,
+            `Bill No: ${billNo}`,
+            `Date: ${row[dateField] || ''}`,
+            `Customer: ${row.customer_name || ''}`,
+            `Mobile: ${row.customer_mobile || ''}`,
+            `Amount: ${formatMoney(row[amountField] || 0)}`,
+            '',
+            `THANKS FOR PURCHASING WITH US!`,
+            'CONTACT FOR ANY INFO: 9495160771, 8606808063',
+        ].join('\n');
+    }
+
+    function shareWhatsAppText(id){
+        const row = findReportRow(id);
+        if(!row){
+            alert("Bill not found.");
+            return;
+        }
+
+        const text = encodeURIComponent(buildWhatsAppMessage(row));
+        const mobile = String(row.customer_mobile || '').replace(/\D/g, '');
+        const url = mobile
+            ? `https://wa.me/91${mobile}?text=${text}`
+            : `https://wa.me/?text=${text}`;
+
+        window.open(url, '_blank');
+    }
+
+    async function generateBillImageBlob(id){
+        const { type } = getCurrentTypeConfig();
+
+        const iframe = document.createElement('iframe');
+        iframe.style.position = 'fixed';
+        iframe.style.left = '-99999px';
+        iframe.style.top = '0';
+        iframe.style.width = '1000px';
+        iframe.style.height = '1400px';
+        iframe.style.border = '0';
+        iframe.src = `print.html?id=${id}&type=${type}`;
+        document.body.appendChild(iframe);
+
+        try {
+            await new Promise((resolve, reject) => {
+                iframe.onload = () => setTimeout(resolve, 1800);
+                setTimeout(() => reject(new Error('Print page load timeout')), 12000);
+            });
+
+            const doc = iframe.contentDocument || iframe.contentWindow.document;
+            const target = doc.body;
+
+            const canvas = await html2canvas(target, {
+                scale: 2,
+                backgroundColor: '#ffffff',
+                useCORS: true
+            });
+
+            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png', 1));
+            if(!blob) throw new Error('Could not create image blob');
+
+            return blob;
+        } finally {
+            iframe.remove();
+        }
+    }
+
+    async function shareWhatsAppImage(id){
+        const row = findReportRow(id);
+        if(!row){
+            alert("Bill not found.");
+            return;
+        }
+
+        try {
+            const blob = await generateBillImageBlob(id);
+            const { numberField } = getCurrentTypeConfig();
+            const fileName = `bill_${row.series_code || ''}_${row[numberField] || id}.png`.replace(/\s+/g, '_');
+            const file = new File([blob], fileName, { type: 'image/png' });
+            const text = buildWhatsAppMessage(row);
+
+            if (navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
+                await navigator.share({
+                    title: 'VAJRA Bill',
+                    text,
+                    files: [file]
+                });
+            } else {
+                shareWhatsAppText(id);
+                alert('Image share is not supported on this device/browser. Opened WhatsApp text share instead.');
+            }
+        } catch (err) {
+            console.error(err);
+            shareWhatsAppText(id);
+            alert('Could not generate bill image. Opened WhatsApp text share instead.');
+        }
+    }
+
+    async function loadReport() {
+        const cfg = getCurrentTypeConfig();
+        const type = cfg.type;
 
         const from = document.getElementById('from_date').value;
         const to = document.getElementById('to_date').value;
@@ -209,39 +373,13 @@
             type === "sales_order" ? "Sales Order Report" :
             "Sales Report";
 
-        let table = "sales_details";
-        let numberField = "sales_number";
-        let dateField = "bill_date";
-        let amountField = "invoice_amount";
-
-        if(type === "sales_pack"){
-            table = "sales_packing_details";
-            numberField = "packing_number";
-            dateField = "packing_date";
-            amountField = "packing_amount";
-        }
-
-        if(type === "quotation"){
-            table = "quotation_details";
-            numberField = "quotation_number";
-            dateField = "quotation_date";
-            amountField = "total_amount";
-        }
-
-        if(type === "sales_order"){
-            table = "sales_order_details";
-            numberField = "order_number";
-            dateField = "order_date";
-            amountField = "total_amount";
-        }
-
         let query = sb
-            .from(table)
+            .from(cfg.table)
             .select('*')
-            .order(numberField, { ascending:false });
+            .order(cfg.numberField, { ascending:false });
 
-        if(from) query = query.gte(dateField, from);
-        if(to) query = query.lte(dateField, to);
+        if(from) query = query.gte(cfg.dateField, from);
+        if(to) query = query.lte(cfg.dateField, to);
         if(series) query = query.eq('series_code', series);
         if(customer) query = query.ilike('customer_name', `%${customer}%`);
         if(mobile) query = query.ilike('customer_mobile', `%${mobile}%`);
@@ -268,13 +406,15 @@
             );
         }
 
+        currentRows = rows;
+
         const body = document.getElementById('report_body');
         body.innerHTML = '';
 
         let totalSum = 0;
 
         for(let s of rows){
-            const amount = parseFloat(s[amountField] || 0);
+            const amount = parseFloat(s[cfg.amountField] || 0);
             totalSum += amount;
 
             body.innerHTML += `
@@ -284,13 +424,18 @@
             }" onclick="toggleDetails(${s.id})">
 
                 <td>${s.series_code || ''}</td>
-                <td>${s[numberField] || ''}</td>
-                <td>${s[dateField] || ''}</td>
+                <td>${s[cfg.numberField] || ''}</td>
+                <td>${s[cfg.dateField] || ''}</td>
                 <td>${s.customer_name || ''}</td>
                 <td>${s.customer_mobile || ''}</td>
                 <td>${s.salesman || ''}</td>
                 <td>${getCreatedByValue(s) || ''}</td>
                 <td>₹${amount.toFixed(2)}</td>
+
+                <td class="wa-col">
+                    <button onclick="event.stopPropagation(); shareWhatsAppText(${s.id})">💬 Text</button>
+                    <button onclick="event.stopPropagation(); shareWhatsAppImage(${s.id})">🖼 Image</button>
+                </td>
 
                 <td>
                     ${
@@ -320,7 +465,7 @@
             </tr>
 
             <tr id="details-${s.id}" style="display:none;">
-                <td colspan="10">
+                <td colspan="11">
                     <div id="items-${s.id}">Loading...</div>
                 </td>
             </tr>
@@ -331,7 +476,7 @@
         <tr class="total-row">
             <td colspan="7">TOTAL</td>
             <td>₹${totalSum.toFixed(2)}</td>
-            <td colspan="2"></td>
+            <td colspan="3"></td>
         </tr>
         `;
     }

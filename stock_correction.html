@@ -1,0 +1,1221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VAJRA | Stock Correction Ultra Pro</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+      <script src="supabaseClient.js"></script>
+
+  <style>
+    :root {
+      --bg: #09111f;
+      --bg2: #0d1628;
+      --card: rgba(15, 23, 42, 0.86);
+      --card-2: rgba(17, 24, 39, 0.95);
+      --line: rgba(148, 163, 184, 0.18);
+      --line-strong: rgba(148, 163, 184, 0.32);
+      --text: #e5eefc;
+      --muted: #98a8c4;
+      --accent: #60a5fa;
+      --accent-2: #22c55e;
+      --danger: #fb7185;
+      --warn: #fbbf24;
+      --info: #38bdf8;
+      --chip: rgba(96, 165, 250, 0.14);
+      --glow: 0 10px 30px rgba(37, 99, 235, 0.18);
+      --radius: 18px;
+      --radius-sm: 12px;
+      --shadow: 0 18px 40px rgba(2, 6, 23, 0.38);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: radial-gradient(circle at top right, rgba(37, 99, 235, 0.18), transparent 20%), linear-gradient(180deg, #07101d 0%, #0a1322 100%); color: var(--text); font-family: Inter, Segoe UI, Arial, sans-serif; }
+    body { min-height: 100vh; }
+    button, input, select, textarea { font: inherit; }
+
+    .app {
+      max-width: 1800px;
+      margin: 0 auto;
+      padding: 18px;
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 14px;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 18px 20px;
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.95), rgba(10, 17, 32, 0.88));
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(12px);
+    }
+
+    .brand-mark {
+      width: 54px;
+      height: 54px;
+      border-radius: 16px;
+      display: grid;
+      place-items: center;
+      font-weight: 900;
+      font-size: 30px;
+      color: #fff;
+      background: radial-gradient(circle at 30% 30%, #ff6a88, #dc2626 55%, #7f1d1d);
+      box-shadow: 0 0 24px rgba(239, 68, 68, 0.5);
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 24px;
+      line-height: 1.1;
+      letter-spacing: 0.4px;
+    }
+
+    .brand p { margin: 5px 0 0; color: var(--muted); }
+
+    .top-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .btn {
+      border: 1px solid var(--line);
+      background: rgba(15, 23, 42, 0.8);
+      color: var(--text);
+      padding: 11px 16px;
+      border-radius: 14px;
+      cursor: pointer;
+      transition: 0.18s ease;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+      box-shadow: 0 8px 24px rgba(2, 6, 23, 0.18);
+    }
+
+    .btn:hover { transform: translateY(-1px); border-color: var(--line-strong); }
+    .btn.primary { background: linear-gradient(135deg, #2563eb, #1d4ed8); border-color: rgba(96, 165, 250, 0.4); }
+    .btn.success { background: linear-gradient(135deg, #16a34a, #15803d); border-color: rgba(34, 197, 94, 0.4); }
+    .btn.warn { background: linear-gradient(135deg, #d97706, #b45309); border-color: rgba(251, 191, 36, 0.35); }
+    .btn.ghost { background: rgba(15, 23, 42, 0.35); }
+    .btn.danger { background: linear-gradient(135deg, #e11d48, #be123c); border-color: rgba(251, 113, 133, 0.35); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(160px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .stat {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 16px;
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.88), rgba(8, 15, 29, 0.84));
+      box-shadow: var(--shadow);
+    }
+
+    .stat .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
+    .stat .value { margin-top: 8px; font-size: 24px; font-weight: 900; }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.88), rgba(9, 16, 29, 0.88));
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 18px;
+      border-bottom: 1px solid var(--line);
+      flex-wrap: wrap;
+    }
+
+    .panel-title { font-size: 18px; font-weight: 800; }
+    .panel-sub { font-size: 13px; color: var(--muted); margin-top: 4px; }
+
+    .filters {
+      padding: 16px 18px 8px;
+      display: grid;
+      grid-template-columns: repeat(6, minmax(160px, 1fr));
+      gap: 12px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .field label {
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 700;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+    }
+
+    .field input,
+    .field select,
+    .field textarea {
+      width: 100%;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      outline: none;
+      border-radius: 12px;
+      background: rgba(6, 11, 22, 0.72);
+      color: var(--text);
+      padding: 11px 12px;
+      min-height: 44px;
+    }
+
+    .field input:focus,
+    .field select:focus,
+    .field textarea:focus {
+      border-color: rgba(96, 165, 250, 0.55);
+      box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.12);
+    }
+
+    .field input[type="number"] { text-align: right; }
+
+    .filter-actions {
+      padding: 8px 18px 18px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .chips {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .chip {
+      padding: 8px 11px;
+      border-radius: 999px;
+      background: var(--chip);
+      color: #bfdbfe;
+      border: 1px solid rgba(96, 165, 250, 0.22);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .table-wrap {
+      border-top: 1px solid var(--line);
+      overflow: auto;
+      max-height: calc(100vh - 340px);
+      background: rgba(5, 10, 18, 0.45);
+    }
+
+    table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 2400px; }
+    thead th {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: linear-gradient(180deg, rgba(11, 19, 35, 0.98), rgba(8, 14, 27, 0.98));
+      color: #cfe2ff;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      padding: 11px 10px;
+      border-bottom: 1px solid var(--line-strong);
+      border-right: 1px solid rgba(148,163,184,0.08);
+      white-space: nowrap;
+    }
+
+    tbody td {
+      padding: 8px;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.09);
+      border-right: 1px solid rgba(148,163,184,0.05);
+      vertical-align: top;
+      background: rgba(7, 13, 24, 0.4);
+    }
+
+    tbody tr:hover td { background: rgba(15, 23, 42, 0.72); }
+    tbody tr.dirty td { background: rgba(37, 99, 235, 0.12); }
+    tbody tr.saving td { opacity: 0.65; }
+    tbody tr.error-row td { background: rgba(225, 29, 72, 0.12); }
+
+    .cell-input,
+    .cell-select,
+    .cell-textarea {
+      width: 100%;
+      border: 1px solid transparent;
+      background: rgba(15, 23, 42, 0.48);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 10px 10px;
+      min-height: 40px;
+    }
+
+    .cell-textarea { min-height: 82px; resize: vertical; }
+    .cell-input:focus,
+    .cell-select:focus,
+    .cell-textarea:focus {
+      outline: none;
+      border-color: rgba(96, 165, 250, 0.55);
+      background: rgba(15, 23, 42, 0.88);
+      box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
+    }
+
+    .num { text-align: right; }
+    .small-col { width: 80px; }
+    .med-col { width: 130px; }
+    .wide-col { width: 200px; }
+    .xwide-col { width: 270px; }
+
+    .sort-btn {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      background: transparent;
+      color: inherit;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+      font-weight: 800;
+    }
+
+    .sort-ind { opacity: 0.75; font-size: 11px; }
+
+    .row-meta {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 11px;
+      font-weight: 800;
+      border: 1px solid var(--line);
+      background: rgba(15, 23, 42, 0.7);
+    }
+
+    .badge.ok { color: #86efac; border-color: rgba(34,197,94,0.25); background: rgba(20, 83, 45, 0.26); }
+    .badge.warn { color: #fde68a; border-color: rgba(251,191,36,0.25); background: rgba(120, 53, 15, 0.22); }
+    .badge.err { color: #fda4af; border-color: rgba(251,113,133,0.25); background: rgba(127, 29, 29, 0.22); }
+    .badge.info { color: #bae6fd; border-color: rgba(56,189,248,0.25); background: rgba(12, 74, 110, 0.22); }
+
+    .footer-bar {
+      padding: 14px 18px;
+      border-top: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+      background: rgba(9, 15, 26, 0.92);
+      position: sticky;
+      bottom: 0;
+      z-index: 25;
+    }
+
+    .pager {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .statusbar {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      z-index: 200;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-width: 460px;
+    }
+
+    .toast {
+      padding: 14px 16px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: rgba(8, 15, 29, 0.95);
+      box-shadow: var(--shadow);
+      animation: slideIn .18s ease;
+    }
+
+    .toast.success { border-color: rgba(34, 197, 94, 0.28); }
+    .toast.error { border-color: rgba(251, 113, 133, 0.28); }
+    .toast.info { border-color: rgba(56, 189, 248, 0.28); }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(2, 6, 23, 0.45);
+      z-index: 300;
+      backdrop-filter: blur(4px);
+    }
+
+    .overlay.show { display: flex; }
+    .loader {
+      width: min(90vw, 420px);
+      border-radius: 20px;
+      border: 1px solid var(--line);
+      background: rgba(8, 15, 29, 0.94);
+      box-shadow: var(--shadow);
+      padding: 22px;
+      text-align: center;
+    }
+
+    .loader h3 { margin: 0 0 8px; }
+    .loader p { margin: 0; color: var(--muted); }
+    .spinner {
+      width: 44px;
+      height: 44px;
+      border: 4px solid rgba(148, 163, 184, 0.18);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 14px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .muted { color: var(--muted); }
+    .right { text-align: right; }
+    .center { text-align: center; }
+
+    @media (max-width: 1300px) {
+      .filters { grid-template-columns: repeat(4, minmax(160px, 1fr)); }
+      .stats { grid-template-columns: repeat(3, minmax(160px, 1fr)); }
+    }
+
+    @media (max-width: 900px) {
+      .topbar { grid-template-columns: 1fr; }
+      .top-actions { justify-content: flex-start; }
+      .filters { grid-template-columns: repeat(2, minmax(160px, 1fr)); }
+      .stats { grid-template-columns: repeat(2, minmax(160px, 1fr)); }
+      .table-wrap { max-height: calc(100vh - 290px); }
+    }
+
+    @media (max-width: 640px) {
+      .app { padding: 10px; }
+      .brand { padding: 14px; }
+      .brand h1 { font-size: 20px; }
+      .filters { grid-template-columns: 1fr; }
+      .stats { grid-template-columns: 1fr; }
+      .footer-bar { padding-bottom: max(14px, env(safe-area-inset-bottom)); }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="topbar">
+      <div class="brand">
+        <div class="brand-mark">V</div>
+        <div>
+          <h1>VAJRA Stock Correction Ultra Pro</h1>
+          <p>Fast filter • full column sorting • inline editing • save only edited items</p>
+        </div>
+      </div>
+      <div class="top-actions">
+        <button class="btn ghost" onclick="goDashboard()">Dashboard</button>
+        <button class="btn" onclick="reloadPageData()">Reload</button>
+        <button class="btn warn" onclick="discardAllChanges()">Discard Changes</button>
+        <button class="btn success" id="saveAllBtn" onclick="saveAllChanges()">Save Edited Items</button>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="label">Rows Loaded</div>
+        <div class="value" id="statRows">0</div>
+      </div>
+      <div class="stat">
+        <div class="label">Edited Rows</div>
+        <div class="value" id="statEdited">0</div>
+      </div>
+      <div class="stat">
+        <div class="label">Current Page</div>
+        <div class="value" id="statPage">1</div>
+      </div>
+      <div class="stat">
+        <div class="label">Sort Mode</div>
+        <div class="value" id="statSort" style="font-size:18px">CREATED_AT ↓</div>
+      </div>
+      <div class="stat">
+        <div class="label">Quick Status</div>
+        <div class="value" id="statStatus" style="font-size:18px">READY</div>
+      </div>
+    </div>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <div class="panel-title">Filter, Search & Correct Stock Master</div>
+          <div class="panel-sub">Search by HSN, item code, item name, barcode, brand, category, model, department and more.</div>
+        </div>
+        <div class="chips">
+          <div class="chip">Editable master grid</div>
+          <div class="chip">Server-side filters</div>
+          <div class="chip">Only edited rows save</div>
+        </div>
+      </div>
+
+      <div class="filters">
+        <div class="field">
+          <label>Quick Search</label>
+          <input id="qSearch" placeholder="Item code / item name / barcode / hsn / brand / model" />
+        </div>
+        <div class="field">
+          <label>Item Code</label>
+          <input id="fItemCode" placeholder="Enter item code" />
+        </div>
+        <div class="field">
+          <label>Item Name</label>
+          <input id="fItemName" placeholder="Enter item name" />
+        </div>
+        <div class="field">
+          <label>HSN Code</label>
+          <input id="fHsn" placeholder="Enter HSN code" />
+        </div>
+        <div class="field">
+          <label>Barcode</label>
+          <input id="fBarcode" placeholder="Enter barcode" />
+        </div>
+        <div class="field">
+          <label>Department</label>
+          <select id="fDepartment">
+            <option value="">ALL</option>
+            <option value="ALL">ALL</option>
+            <option value="ELECTRICAL">ELECTRICAL</option>
+            <option value="PLUMBING">PLUMBING</option>
+            <option value="INTERLOCK">INTERLOCK</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Brand</label>
+          <input id="fBrand" placeholder="Enter brand" />
+        </div>
+        <div class="field">
+          <label>Category</label>
+          <input id="fCategory" placeholder="Enter category" />
+        </div>
+        <div class="field">
+          <label>Model No</label>
+          <input id="fModel" placeholder="Enter model no" />
+        </div>
+        <div class="field">
+          <label>Min GST %</label>
+          <input id="fMinGst" type="number" step="0.01" placeholder="0" />
+        </div>
+        <div class="field">
+          <label>Max GST %</label>
+          <input id="fMaxGst" type="number" step="0.01" placeholder="9999" />
+        </div>
+        <div class="field">
+          <label>Page Size</label>
+          <select id="pageSize">
+            <option>25</option>
+            <option selected>50</option>
+            <option>100</option>
+            <option>200</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="filter-actions">
+        <div class="chips" id="activeFilterChips"></div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <button class="btn primary" onclick="applyFilters(true)">Apply Filters</button>
+          <button class="btn" onclick="clearFilters()">Clear Filters</button>
+          <button class="btn" onclick="exportVisibleCsv()">Export Visible CSV</button>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="small-col"><button class="sort-btn" onclick="toggleSort('id')">ID <span class="sort-ind" id="sort_id">↕</span></button></th>
+              <th class="med-col"><button class="sort-btn" onclick="toggleSort('item_code')">Item Code <span class="sort-ind" id="sort_item_code">↕</span></button></th>
+              <th class="xwide-col"><button class="sort-btn" onclick="toggleSort('item_name')">Item Name <span class="sort-ind" id="sort_item_name">↕</span></button></th>
+              <th class="med-col"><button class="sort-btn" onclick="toggleSort('hsn_code')">HSN <span class="sort-ind" id="sort_hsn_code">↕</span></button></th>
+              <th class="med-col"><button class="sort-btn" onclick="toggleSort('barcode')">Barcode <span class="sort-ind" id="sort_barcode">↕</span></button></th>
+              <th class="med-col"><button class="sort-btn" onclick="toggleSort('brand')">Brand <span class="sort-ind" id="sort_brand">↕</span></button></th>
+              <th class="med-col"><button class="sort-btn" onclick="toggleSort('category')">Category <span class="sort-ind" id="sort_category">↕</span></button></th>
+              <th class="med-col"><button class="sort-btn" onclick="toggleSort('model_no')">Model No <span class="sort-ind" id="sort_model_no">↕</span></button></th>
+              <th class="med-col"><button class="sort-btn" onclick="toggleSort('department')">Department <span class="sort-ind" id="sort_department">↕</span></button></th>
+              <th class="small-col"><button class="sort-btn" onclick="toggleSort('quantity')">Qty <span class="sort-ind" id="sort_quantity">↕</span></button></th>
+              <th class="small-col"><button class="sort-btn" onclick="toggleSort('price')">Price <span class="sort-ind" id="sort_price">↕</span></button></th>
+              <th class="small-col"><button class="sort-btn" onclick="toggleSort('discount_percent')">Disc % <span class="sort-ind" id="sort_discount_percent">↕</span></button></th>
+              <th class="small-col"><button class="sort-btn" onclick="toggleSort('purchase_price')">Purchase <span class="sort-ind" id="sort_purchase_price">↕</span></button></th>
+              <th class="small-col"><button class="sort-btn" onclick="toggleSort('purchase_price_gst')">Purchase+GST <span class="sort-ind" id="sort_purchase_price_gst">↕</span></button></th>
+              <th class="small-col"><button class="sort-btn" onclick="toggleSort('landing')">Landing <span class="sort-ind" id="sort_landing">↕</span></button></th>
+              <th class="small-col"><button class="sort-btn" onclick="toggleSort('price1_percent')">P1 % <span class="sort-ind" id="sort_price1_percent">↕</span></button></th>
+              <th class="small-col"><button class="sort-btn" onclick="toggleSort('price1')">P1 <span class="sort-ind" id="sort_price1">↕</span></button></th>
+              <th class="small-col"><button class="sort-btn" onclick="toggleSort('price1_gst')">P1+GST <span class="sort-ind" id="sort_price1_gst">↕</span></button></th>
+              <th class="small-col"><button class="sort-btn" onclick="toggleSort('price2_percent')">P2 % <span class="sort-ind" id="sort_price2_percent">↕</span></button></th>
+              <th class="small-col"><button class="sort-btn" onclick="toggleSort('price2')">P2 <span class="sort-ind" id="sort_price2">↕</span></button></th>
+              <th class="small-col"><button class="sort-btn" onclick="toggleSort('price2_gst')">P2+GST <span class="sort-ind" id="sort_price2_gst">↕</span></button></th>
+              <th class="small-col"><button class="sort-btn" onclick="toggleSort('price3_percent')">P3 % <span class="sort-ind" id="sort_price3_percent">↕</span></button></th>
+              <th class="small-col"><button class="sort-btn" onclick="toggleSort('price3')">P3 <span class="sort-ind" id="sort_price3">↕</span></button></th>
+              <th class="small-col"><button class="sort-btn" onclick="toggleSort('price3_gst')">P3+GST <span class="sort-ind" id="sort_price3_gst">↕</span></button></th>
+              <th class="small-col"><button class="sort-btn" onclick="toggleSort('gst_percent')">GST % <span class="sort-ind" id="sort_gst_percent">↕</span></button></th>
+              <th class="med-col"><button class="sort-btn" onclick="toggleSort('created_at')">Created At <span class="sort-ind" id="sort_created_at">↕</span></button></th>
+              <th class="med-col">Row Status</th>
+              <th class="med-col">Action</th>
+            </tr>
+          </thead>
+          <tbody id="gridBody">
+            <tr><td colspan="28" class="center muted" style="padding:26px;">Loading stock items...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="footer-bar">
+        <div class="pager">
+          <button class="btn" onclick="goPage(1)">First</button>
+          <button class="btn" onclick="goPage(state.page - 1)">Prev</button>
+          <span class="chip">Page <span id="pageLabel">1</span></span>
+          <button class="btn" onclick="goPage(state.page + 1)">Next</button>
+        </div>
+        <div class="pager">
+          <span class="chip" id="visibleSummary">Visible Rows: 0</span>
+          <span class="chip" id="dirtySummary">Edited Rows: 0</span>
+          <button class="btn success" onclick="saveAllChanges()">Save Edited Items</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="statusbar" id="toastBox"></div>
+
+  <div class="overlay" id="overlay">
+    <div class="loader">
+      <div class="spinner"></div>
+      <h3 id="overlayTitle">Please wait</h3>
+      <p id="overlayText">Loading data...</p>
+    </div>
+  </div>
+
+  <script>
+    const sb = window.sbcc || (window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null);
+
+    const textFields = new Set(['hsn_code','item_code','item_name','barcode','brand','category','model_no','department']);
+    const numericFields = new Set([
+      'quantity','price','discount_percent','purchase_price','purchase_price_gst','landing',
+      'price1_percent','price1','price1_gst','price2_percent','price2','price2_gst','price3_percent','price3','price3_gst','gst_percent'
+    ]);
+    const editableFields = [
+      'item_code','item_name','hsn_code','barcode','brand','category','model_no','department','quantity','price','discount_percent',
+      'purchase_price','purchase_price_gst','landing','price1_percent','price1','price1_gst','price2_percent','price2','price2_gst',
+      'price3_percent','price3','price3_gst','gst_percent'
+    ];
+
+    const state = {
+      page: 1,
+      pageSize: 50,
+      sortBy: 'created_at',
+      ascending: false,
+      loading: false,
+      rows: [],
+      originalMap: new Map(),
+      dirtyMap: new Map(),
+      rowErrorMap: new Map(),
+      saveInProgress: false,
+      lastFetchCount: 0
+    };
+
+    function showOverlay(title, text) {
+      document.getElementById('overlayTitle').textContent = title || 'Please wait';
+      document.getElementById('overlayText').textContent = text || '';
+      document.getElementById('overlay').classList.add('show');
+    }
+    function hideOverlay() { document.getElementById('overlay').classList.remove('show'); }
+
+    function toast(message, type = 'info', timeout = 3200) {
+      const box = document.getElementById('toastBox');
+      const div = document.createElement('div');
+      div.className = `toast ${type}`;
+      div.textContent = message;
+      box.appendChild(div);
+      setTimeout(() => div.remove(), timeout);
+    }
+
+    function setStatus(text) {
+      document.getElementById('statStatus').textContent = text;
+    }
+
+    function goDashboard() {
+      const guessed = ['dashboard.html', '../dashboard.html', '/dashboard.html'];
+      window.location.href = guessed[0];
+    }
+
+    function upperValue(v) {
+      return typeof v === 'string' ? v.toUpperCase() : v;
+    }
+
+    function normalizeValue(field, value) {
+      if (textFields.has(field)) {
+        if (value === '' || value == null) return null;
+        if (field === 'department') return String(value).trim().toUpperCase();
+        return String(value).toUpperCase();
+      }
+      if (numericFields.has(field)) {
+        if (value === '' || value == null) return null;
+        const n = Number(value);
+        return Number.isFinite(n) ? n : null;
+      }
+      return value;
+    }
+
+    function deepClone(obj) {
+      return JSON.parse(JSON.stringify(obj));
+    }
+
+    function getFieldValue(id) {
+      return document.getElementById(id)?.value ?? '';
+    }
+
+    function getActiveFilters() {
+      return {
+        qSearch: getFieldValue('qSearch').trim().toUpperCase(),
+        item_code: getFieldValue('fItemCode').trim().toUpperCase(),
+        item_name: getFieldValue('fItemName').trim().toUpperCase(),
+        hsn_code: getFieldValue('fHsn').trim().toUpperCase(),
+        barcode: getFieldValue('fBarcode').trim().toUpperCase(),
+        department: getFieldValue('fDepartment').trim().toUpperCase(),
+        brand: getFieldValue('fBrand').trim().toUpperCase(),
+        category: getFieldValue('fCategory').trim().toUpperCase(),
+        model_no: getFieldValue('fModel').trim().toUpperCase(),
+        min_gst: getFieldValue('fMinGst').trim(),
+        max_gst: getFieldValue('fMaxGst').trim(),
+      };
+    }
+
+    function renderFilterChips() {
+      const filters = getActiveFilters();
+      const box = document.getElementById('activeFilterChips');
+      box.innerHTML = '';
+      const entries = [
+        ['Search', filters.qSearch],
+        ['Item Code', filters.item_code],
+        ['Item Name', filters.item_name],
+        ['HSN', filters.hsn_code],
+        ['Barcode', filters.barcode],
+        ['Department', filters.department],
+        ['Brand', filters.brand],
+        ['Category', filters.category],
+        ['Model', filters.model_no],
+        ['Min GST', filters.min_gst],
+        ['Max GST', filters.max_gst],
+      ].filter(([,v]) => v !== '');
+
+      if (!entries.length) {
+        box.innerHTML = '<div class="chip">No active filters</div>';
+        return;
+      }
+
+      for (const [k,v] of entries) {
+        const el = document.createElement('div');
+        el.className = 'chip';
+        el.textContent = `${k}: ${v}`;
+        box.appendChild(el);
+      }
+    }
+
+    function updateSortIndicators() {
+      document.querySelectorAll('.sort-ind').forEach(el => el.textContent = '↕');
+      const target = document.getElementById(`sort_${state.sortBy}`);
+      if (target) target.textContent = state.ascending ? '↑' : '↓';
+      document.getElementById('statSort').textContent = `${state.sortBy.toUpperCase()} ${state.ascending ? '↑' : '↓'}`;
+    }
+
+    function toggleSort(column) {
+      if (state.sortBy === column) state.ascending = !state.ascending;
+      else {
+        state.sortBy = column;
+        state.ascending = true;
+      }
+      state.page = 1;
+      updateSortIndicators();
+      loadRows();
+    }
+
+    function updateStats() {
+      document.getElementById('statRows').textContent = state.rows.length;
+      document.getElementById('statEdited').textContent = state.dirtyMap.size;
+      document.getElementById('dirtySummary').textContent = `Edited Rows: ${state.dirtyMap.size}`;
+      document.getElementById('pageLabel').textContent = state.page;
+      document.getElementById('statPage').textContent = state.page;
+      document.getElementById('visibleSummary').textContent = `Visible Rows: ${state.rows.length}`;
+      document.getElementById('saveAllBtn').disabled = state.dirtyMap.size === 0 || state.saveInProgress;
+    }
+
+    async function ensureSupabase() {
+      if (!sb) {
+        toast('Supabase client not found. Set window.sbcc or update URL/key inside this file.', 'error', 6000);
+        throw new Error('Supabase client not found');
+      }
+    }
+
+    async function loadRows() {
+      await ensureSupabase();
+      if (state.saveInProgress) return;
+      state.loading = true;
+      setStatus('LOADING');
+      showOverlay('Loading stock items', 'Fetching stock master data with your filters...');
+      try {
+        const pageSize = Number(document.getElementById('pageSize').value || 50);
+        state.pageSize = pageSize;
+        renderFilterChips();
+        updateSortIndicators();
+        const f = getActiveFilters();
+        let query = sb.from('stock_items').select('*').order(state.sortBy, { ascending: state.ascending, nullsFirst: false });
+
+        if (f.item_code) query = query.ilike('item_code', `%${f.item_code}%`);
+        if (f.item_name) query = query.ilike('item_name', `%${f.item_name}%`);
+        if (f.hsn_code) query = query.ilike('hsn_code', `%${f.hsn_code}%`);
+        if (f.barcode) query = query.ilike('barcode', `%${f.barcode}%`);
+        if (f.department) query = query.eq('department', f.department);
+        if (f.brand) query = query.ilike('brand', `%${f.brand}%`);
+        if (f.category) query = query.ilike('category', `%${f.category}%`);
+        if (f.model_no) query = query.ilike('model_no', `%${f.model_no}%`);
+        if (f.min_gst !== '') query = query.gte('gst_percent', Number(f.min_gst));
+        if (f.max_gst !== '') query = query.lte('gst_percent', Number(f.max_gst));
+
+        // broad quick search across a few likely fields
+        if (f.qSearch) {
+          const s = f.qSearch.replaceAll(',', ' ').trim();
+          query = query.or([
+            `item_code.ilike.%${s}%`,
+            `item_name.ilike.%${s}%`,
+            `barcode.ilike.%${s}%`,
+            `hsn_code.ilike.%${s}%`,
+            `brand.ilike.%${s}%`,
+            `category.ilike.%${s}%`,
+            `model_no.ilike.%${s}%`
+          ].join(','));
+        }
+
+        const from = (state.page - 1) * state.pageSize;
+        const to = from + state.pageSize - 1;
+        const { data, error } = await query.range(from, to);
+        if (error) throw error;
+
+        state.rows = Array.isArray(data) ? data : [];
+        state.lastFetchCount = state.rows.length;
+        state.originalMap = new Map(state.rows.map(r => [r.id, deepClone(r)]));
+        renderRows();
+        updateStats();
+        setStatus('READY');
+      } catch (err) {
+        console.error(err);
+        setStatus('ERROR');
+        document.getElementById('gridBody').innerHTML = `<tr><td colspan="28" class="center" style="padding:26px;color:#fda4af;">${escapeHtml(err.message || 'Failed to load data')}</td></tr>`;
+        toast(`Load failed: ${err.message || err}`, 'error', 6000);
+      } finally {
+        state.loading = false;
+        hideOverlay();
+      }
+    }
+
+    function fieldCell(row, field) {
+      const value = row[field] ?? '';
+      if (field === 'department') {
+        return `<select class="cell-select" data-id="${row.id}" data-field="department">
+          <option value="ALL" ${value === 'ALL' ? 'selected' : ''}>ALL</option>
+          <option value="ELECTRICAL" ${value === 'ELECTRICAL' ? 'selected' : ''}>ELECTRICAL</option>
+          <option value="PLUMBING" ${value === 'PLUMBING' ? 'selected' : ''}>PLUMBING</option>
+          <option value="INTERLOCK" ${value === 'INTERLOCK' ? 'selected' : ''}>INTERLOCK</option>
+        </select>`;
+      }
+      const isNum = numericFields.has(field);
+      const cls = `cell-input ${isNum ? 'num' : ''}`;
+      const inputType = isNum ? 'number' : 'text';
+      const step = isNum ? 'step="0.01"' : '';
+      return `<input ${step} type="${inputType}" class="${cls}" data-id="${row.id}" data-field="${field}" value="${escapeAttr(value)}" />`;
+    }
+
+    function renderRows() {
+      const body = document.getElementById('gridBody');
+      if (!state.rows.length) {
+        body.innerHTML = '<tr><td colspan="28" class="center muted" style="padding:26px;">No stock items found for this filter.</td></tr>';
+        return;
+      }
+
+      body.innerHTML = state.rows.map(row => {
+        const dirty = state.dirtyMap.has(row.id);
+        const err = state.rowErrorMap.get(row.id);
+        const rowCls = [dirty ? 'dirty' : '', err ? 'error-row' : ''].filter(Boolean).join(' ');
+        return `
+          <tr class="${rowCls}" data-row-id="${row.id}">
+            <td>${row.id}</td>
+            <td>${fieldCell(row,'item_code')}</td>
+            <td>${fieldCell(row,'item_name')}</td>
+            <td>${fieldCell(row,'hsn_code')}</td>
+            <td>${fieldCell(row,'barcode')}</td>
+            <td>${fieldCell(row,'brand')}</td>
+            <td>${fieldCell(row,'category')}</td>
+            <td>${fieldCell(row,'model_no')}</td>
+            <td>${fieldCell(row,'department')}</td>
+            <td>${fieldCell(row,'quantity')}</td>
+            <td>${fieldCell(row,'price')}</td>
+            <td>${fieldCell(row,'discount_percent')}</td>
+            <td>${fieldCell(row,'purchase_price')}</td>
+            <td>${fieldCell(row,'purchase_price_gst')}</td>
+            <td>${fieldCell(row,'landing')}</td>
+            <td>${fieldCell(row,'price1_percent')}</td>
+            <td>${fieldCell(row,'price1')}</td>
+            <td>${fieldCell(row,'price1_gst')}</td>
+            <td>${fieldCell(row,'price2_percent')}</td>
+            <td>${fieldCell(row,'price2')}</td>
+            <td>${fieldCell(row,'price2_gst')}</td>
+            <td>${fieldCell(row,'price3_percent')}</td>
+            <td>${fieldCell(row,'price3')}</td>
+            <td>${fieldCell(row,'price3_gst')}</td>
+            <td>${fieldCell(row,'gst_percent')}</td>
+            <td><div class="badge info">${formatDateTime(row.created_at)}</div></td>
+            <td>
+              <div class="row-meta">
+                ${dirty ? '<span class="badge warn">Edited</span>' : '<span class="badge ok">Saved</span>'}
+                ${err ? `<span class="badge err">${escapeHtml(err)}</span>` : ''}
+              </div>
+            </td>
+            <td>
+              <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button class="btn ghost" onclick="resetRow(${row.id})">Reset</button>
+                <button class="btn success" onclick="saveSingleRow(${row.id})" ${dirty ? '' : 'disabled'} id="saveRowBtn_${row.id}">Save</button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      bindGridInputs();
+    }
+
+    function bindGridInputs() {
+      document.querySelectorAll('[data-id][data-field]').forEach(el => {
+        el.addEventListener('input', onGridInput);
+        el.addEventListener('change', onGridInput);
+        if (el.tagName === 'INPUT' && el.type === 'text') {
+          el.addEventListener('input', () => {
+            const start = el.selectionStart;
+            const end = el.selectionEnd;
+            el.value = upperValue(el.value);
+            if (typeof start === 'number' && typeof end === 'number') {
+              try { el.setSelectionRange(start, end); } catch {}
+            }
+          });
+        }
+      });
+    }
+
+    function onGridInput(e) {
+      const id = Number(e.target.dataset.id);
+      const field = e.target.dataset.field;
+      const row = state.rows.find(r => r.id === id);
+      if (!row) return;
+
+      const newValue = normalizeValue(field, e.target.value);
+      row[field] = newValue;
+      const original = state.originalMap.get(id);
+      if (!original) return;
+
+      const changes = {};
+      let hasChanges = false;
+      for (const key of editableFields) {
+        const cur = row[key] ?? null;
+        const old = original[key] ?? null;
+        if (!isSameValue(cur, old)) {
+          changes[key] = cur;
+          hasChanges = true;
+        }
+      }
+
+      if (hasChanges) state.dirtyMap.set(id, changes);
+      else state.dirtyMap.delete(id);
+      state.rowErrorMap.delete(id);
+      renderDirtyOnly(id);
+      updateStats();
+    }
+
+    function renderDirtyOnly(id) {
+      const tr = document.querySelector(`tr[data-row-id="${id}"]`);
+      if (!tr) return renderRows();
+      const dirty = state.dirtyMap.has(id);
+      const err = state.rowErrorMap.get(id);
+      tr.classList.toggle('dirty', dirty);
+      tr.classList.toggle('error-row', !!err);
+      const badgeCell = tr.children[26];
+      const btnCell = tr.children[27];
+      if (badgeCell) badgeCell.innerHTML = `<div class="row-meta">${dirty ? '<span class="badge warn">Edited</span>' : '<span class="badge ok">Saved</span>'}${err ? `<span class="badge err">${escapeHtml(err)}</span>` : ''}</div>`;
+      const btn = btnCell?.querySelector(`#saveRowBtn_${id}`);
+      if (btn) btn.disabled = !dirty;
+    }
+
+    function isSameValue(a, b) {
+      if (a == null && b == null) return true;
+      if (a === '' && b == null) return true;
+      if (b === '' && a == null) return true;
+      return String(a) === String(b);
+    }
+
+    function escapeHtml(str) {
+      return String(str ?? '').replace(/[&<>"']/g, s => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[s]));
+    }
+    function escapeAttr(str) { return escapeHtml(str); }
+
+    function formatDateTime(value) {
+      if (!value) return '-';
+      const d = new Date(value);
+      if (Number.isNaN(d.getTime())) return value;
+      return d.toLocaleString();
+    }
+
+    async function saveSingleRow(id) {
+      if (!state.dirtyMap.has(id)) return;
+      await ensureSupabase();
+      state.saveInProgress = true;
+      updateStats();
+      const tr = document.querySelector(`tr[data-row-id="${id}"]`);
+      tr?.classList.add('saving');
+      try {
+        const payload = { ...state.dirtyMap.get(id) };
+        validateRowPayload(payload);
+        const { error } = await sb.from('stock_items').update(payload).eq('id', id);
+        if (error) throw error;
+        const row = state.rows.find(r => r.id === id);
+        state.originalMap.set(id, deepClone(row));
+        state.dirtyMap.delete(id);
+        state.rowErrorMap.delete(id);
+        renderDirtyOnly(id);
+        updateStats();
+        toast(`Row ${id} saved successfully`, 'success');
+      } catch (err) {
+        console.error(err);
+        state.rowErrorMap.set(id, err.message || String(err));
+        renderDirtyOnly(id);
+        toast(`Save failed for row ${id}: ${err.message || err}`, 'error', 6000);
+      } finally {
+        tr?.classList.remove('saving');
+        state.saveInProgress = false;
+        updateStats();
+      }
+    }
+
+    async function saveAllChanges() {
+      if (!state.dirtyMap.size) {
+        toast('No edited rows to save', 'info');
+        return;
+      }
+      await ensureSupabase();
+      const ids = [...state.dirtyMap.keys()];
+      state.saveInProgress = true;
+      updateStats();
+      showOverlay('Saving edited items', `Saving ${ids.length} changed row(s)...`);
+      setStatus('SAVING');
+      let success = 0;
+      let failed = 0;
+      for (const id of ids) {
+        const tr = document.querySelector(`tr[data-row-id="${id}"]`);
+        tr?.classList.add('saving');
+        try {
+          const payload = { ...state.dirtyMap.get(id) };
+          validateRowPayload(payload);
+          const { error } = await sb.from('stock_items').update(payload).eq('id', id);
+          if (error) throw error;
+          const row = state.rows.find(r => r.id === id);
+          state.originalMap.set(id, deepClone(row));
+          state.dirtyMap.delete(id);
+          state.rowErrorMap.delete(id);
+          success++;
+          renderDirtyOnly(id);
+        } catch (err) {
+          console.error(err);
+          failed++;
+          state.rowErrorMap.set(id, err.message || String(err));
+          renderDirtyOnly(id);
+        } finally {
+          tr?.classList.remove('saving');
+        }
+      }
+      state.saveInProgress = false;
+      hideOverlay();
+      updateStats();
+      setStatus(failed ? 'PARTIAL SAVE' : 'READY');
+      if (success) toast(`${success} edited row(s) saved`, 'success');
+      if (failed) toast(`${failed} row(s) failed. Check Row Status column.`, 'error', 6000);
+    }
+
+    function validateRowPayload(payload) {
+      if ('department' in payload) {
+        const d = String(payload.department || '').trim().toUpperCase();
+        if (!['ALL','ELECTRICAL','PLUMBING','INTERLOCK'].includes(d)) {
+          throw new Error('Department must be ALL, ELECTRICAL, PLUMBING, or INTERLOCK');
+        }
+        payload.department = d;
+      }
+      if ('item_code' in payload && payload.item_code != null && String(payload.item_code).trim() === '') {
+        throw new Error('Item code cannot be empty');
+      }
+      for (const key of Object.keys(payload)) {
+        if (numericFields.has(key) && payload[key] !== null && payload[key] !== '') {
+          const n = Number(payload[key]);
+          if (!Number.isFinite(n)) throw new Error(`Invalid number in ${key}`);
+          payload[key] = n;
+        }
+      }
+    }
+
+    function resetRow(id) {
+      const original = state.originalMap.get(id);
+      const row = state.rows.find(r => r.id === id);
+      if (!original || !row) return;
+      Object.assign(row, deepClone(original));
+      state.dirtyMap.delete(id);
+      state.rowErrorMap.delete(id);
+      renderRows();
+      updateStats();
+      toast(`Row ${id} reset`, 'info');
+    }
+
+    function discardAllChanges() {
+      if (!state.dirtyMap.size) {
+        toast('No unsaved changes to discard', 'info');
+        return;
+      }
+      for (const row of state.rows) {
+        const original = state.originalMap.get(row.id);
+        if (original) Object.assign(row, deepClone(original));
+      }
+      state.dirtyMap.clear();
+      state.rowErrorMap.clear();
+      renderRows();
+      updateStats();
+      toast('All unsaved changes discarded', 'info');
+    }
+
+    function goPage(page) {
+      if (page < 1) return;
+      if (state.dirtyMap.size) {
+        const ok = confirm('You have unsaved changes. Page change may hide those rows. Continue?');
+        if (!ok) return;
+      }
+      state.page = page;
+      loadRows();
+    }
+
+    function applyFilters(resetPage = true) {
+      if (resetPage) state.page = 1;
+      loadRows();
+    }
+
+    function clearFilters() {
+      ['qSearch','fItemCode','fItemName','fHsn','fBarcode','fDepartment','fBrand','fCategory','fModel','fMinGst','fMaxGst'].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (el.tagName === 'SELECT') el.selectedIndex = 0;
+        else el.value = '';
+      });
+      state.page = 1;
+      renderFilterChips();
+      loadRows();
+    }
+
+    function exportVisibleCsv() {
+      if (!state.rows.length) {
+        toast('No visible rows to export', 'info');
+        return;
+      }
+      const cols = ['id','item_code','item_name','hsn_code','barcode','brand','category','model_no','department','quantity','price','discount_percent','purchase_price','purchase_price_gst','landing','price1_percent','price1','price1_gst','price2_percent','price2','price2_gst','price3_percent','price3','price3_gst','gst_percent','created_at'];
+      const lines = [cols.join(',')];
+      for (const row of state.rows) {
+        lines.push(cols.map(c => csvSafe(row[c])).join(','));
+      }
+      const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `stock_correction_visible_page_${state.page}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast('Visible page exported to CSV', 'success');
+    }
+
+    function csvSafe(v) {
+      const s = String(v ?? '');
+      return '"' + s.replaceAll('"', '""') + '"';
+    }
+
+    function reloadPageData() {
+      loadRows();
+    }
+
+    function bindTopEvents() {
+      ['qSearch','fItemCode','fItemName','fHsn','fBarcode','fBrand','fCategory','fModel'].forEach(id => {
+        const el = document.getElementById(id);
+        el?.addEventListener('input', () => {
+          el.value = upperValue(el.value);
+        });
+        el?.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') applyFilters(true);
+        });
+      });
+      ['fMinGst','fMaxGst'].forEach(id => {
+        document.getElementById(id)?.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') applyFilters(true);
+        });
+      });
+      document.getElementById('pageSize')?.addEventListener('change', () => applyFilters(true));
+      document.getElementById('fDepartment')?.addEventListener('change', () => applyFilters(true));
+      window.addEventListener('beforeunload', (e) => {
+        if (!state.dirtyMap.size) return;
+        e.preventDefault();
+        e.returnValue = '';
+      });
+    }
+
+    async function init() {
+      bindTopEvents();
+      updateSortIndicators();
+      renderFilterChips();
+      updateStats();
+      try {
+        await loadRows();
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>

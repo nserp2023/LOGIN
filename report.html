@@ -2,12 +2,9 @@
 <html>
 <head>
     <link rel="icon" href="favicon.ico" type="image/x-icon">
-
     <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
-
     <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
-
     <link rel="manifest" href="site.webmanifest">
     <title>Sales Report - VAJRA LIGHTS</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -72,6 +69,27 @@
 
         .converted-row{
             background: rgba(0,200,0,0.25);
+        }
+
+        .missing-item-row {
+            background: rgba(255, 105, 180, 0.32) !important;
+        }
+
+        .missing-item-row:hover {
+            background: rgba(255, 105, 180, 0.48) !important;
+        }
+
+        .missing-item-cell {
+            background: rgba(255, 80, 120, 0.22) !important;
+            color: #ffd6df;
+            font-weight: bold;
+        }
+
+        .warn-badge{
+            display:inline-block;
+            margin-left:6px;
+            color:#ff6b9a;
+            font-weight:900;
         }
 
         input, select {
@@ -237,6 +255,95 @@
 
     function findReportRow(id){
         return currentRows.find(r => Number(r.id) === Number(id));
+    }
+
+    async function getBillIssueMap(type, billIds){
+        const result = new Map();
+        if(!billIds || !billIds.length) return result;
+
+        let table = "sales_item_details";
+        let idField = "sales_id";
+
+        if(type === "sales_pack"){
+            table = "sales_packing_item_details";
+            idField = "packing_id";
+        }
+
+        if(type === "quotation"){
+            table = "quotation_item_details";
+            idField = "quotation_id";
+        }
+
+        if(type === "sales_order"){
+            table = "sales_order_item_details";
+            idField = "sales_order_id";
+        }
+
+        const normalizedBillIds = [...new Set((billIds || []).map(v => Number(v)).filter(Boolean))];
+        const allItems = [];
+        const chunkSize = 100;
+
+        for(let i = 0; i < normalizedBillIds.length; i += chunkSize){
+            const chunk = normalizedBillIds.slice(i, i + chunkSize);
+            let from = 0;
+            const pageSize = 1000;
+
+            while(true){
+                const { data, error } = await sb
+                    .from(table)
+                    .select(`${idField}, item_code, item_name`)
+                    .in(idField, chunk)
+                    .range(from, from + pageSize - 1);
+
+                if(error){
+                    console.error("Bill issue check failed:", error);
+                    return result;
+                }
+
+                const rows = data || [];
+                allItems.push(...rows);
+
+                if(rows.length < pageSize) break;
+                from += pageSize;
+            }
+        }
+
+        const foundBillIds = new Set();
+
+        allItems.forEach((item, index) => {
+            const parentId = Number(item[idField]);
+            foundBillIds.add(parentId);
+
+            if(!result.has(parentId)){
+                result.set(parentId, []);
+            }
+
+            const reasons = result.get(parentId);
+            const rowNo = index + 1;
+            const codeMissing = !String(item.item_code || "").trim();
+            const nameMissing = !String(item.item_name || "").trim();
+
+            if(codeMissing){
+                reasons.push(`Missing item code`);
+            }
+
+            if(nameMissing){
+                reasons.push(`Missing item name`);
+            }
+        });
+
+        normalizedBillIds.forEach(id => {
+            if(!foundBillIds.has(id)){
+                result.set(id, ["No item rows found"]);
+            }
+        });
+
+        for(const [id, reasons] of result.entries()){
+            const uniqueReasons = [...new Set(reasons)];
+            result.set(id, uniqueReasons);
+        }
+
+        return result;
     }
 
     function formatMoney(v){
@@ -406,6 +513,15 @@
             );
         }
 
+        const billIds = rows.map(r => Number(r.id)).filter(Boolean);
+        const billIssueMap = await getBillIssueMap(type, billIds);
+
+        rows = rows.map(r => ({
+            ...r,
+            issueReasons: billIssueMap.get(Number(r.id)) || [],
+            hasMissingItem: (billIssueMap.get(Number(r.id)) || []).length > 0
+        }));
+
         currentRows = rows;
 
         const body = document.getElementById('report_body');
@@ -419,14 +535,21 @@
 
             body.innerHTML += `
             <tr class="${
+                s.hasMissingItem ? 'missing-item-row' : ''
+            } ${
                 ((type === 'quotation' || type === 'sales_order') && s.converted)
                 ? 'converted-row' : ''
             }" onclick="toggleDetails(${s.id})">
 
                 <td>${s.series_code || ''}</td>
-                <td>${s[cfg.numberField] || ''}</td>
+
+                <td>
+                    ${s[cfg.numberField] || ''}
+                    ${s.hasMissingItem ? '<span class="warn-badge">⚠</span>' : ''}
+                </td>
+
                 <td>${s[cfg.dateField] || ''}</td>
-                <td>${s.customer_name || ''}</td>
+                <td title="${(s.issueReasons || []).join(', ')}">${s.customer_name || ''}${s.hasMissingItem ? `<div style="font-size:11px;color:#ffd6df;margin-top:4px;">${(s.issueReasons || []).join(', ')}</div>` : ''}</td>
                 <td>${s.customer_mobile || ''}</td>
                 <td>${s.salesman || ''}</td>
                 <td>${getCreatedByValue(s) || ''}</td>
@@ -523,7 +646,13 @@
         }
 
         if(!data || data.length === 0){
-            container.innerHTML = "No items found.";
+            container.innerHTML = `
+                <div class="dropdown-wood">
+                    <div class="missing-item-cell" style="padding:12px; border-radius:8px;">
+                        ⚠ No item rows found in this bill.
+                    </div>
+                </div>
+            `;
             return;
         }
 
@@ -540,6 +669,10 @@
         `;
 
         data.forEach(i => {
+            const isMissing =
+                !String(i.item_code || '').trim() ||
+                !String(i.item_name || '').trim();
+
             const qty = parseFloat(i.quantity || 0);
             const basePrice = parseFloat(i.price || 0);
             const disc = parseFloat(i.discount_percent || 0);
@@ -547,9 +680,9 @@
             const total = parseFloat(i.sales_price_gst || 0) * qty;
 
             html += `
-            <tr>
-                <td>${i.item_code || ''}</td>
-                <td>${i.item_name || ''}</td>
+            <tr class="${isMissing ? 'missing-item-cell' : ''}">
+                <td>${i.item_code || '❌ MISSING CODE'}</td>
+                <td>${i.item_name || '❌ MISSING NAME'}</td>
                 <td>${qty}</td>
                 <td>₹${price.toFixed(2)}</td>
                 <td>₹${total.toFixed(2)}</td>

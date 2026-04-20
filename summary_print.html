@@ -23,14 +23,14 @@
       --success:#0f766e;
       --danger:#b91c1c;
       --paper:#ffffff;
-      --paper-text:#101828;
-      --paper-muted:#475467;
-      --paper-line:#0f172a;
-      --paper-soft:#d0d7e2;
-      --paper-fill:#f7f9fc;
-      --cash-in:#effcf6;
-      --cash-out:#fff5f5;
-      --credit:#fff9eb;
+      --paper-text:#000000;
+      --paper-muted:#111111;
+      --paper-line:#000000;
+      --paper-soft:#000000;
+      --paper-fill:#ffffff;
+      --cash-in:#ffffff;
+      --cash-out:#ffffff;
+      --credit:#ffffff;
       --shadow:0 20px 45px rgba(0,0,0,.28);
       --radius:22px;
     }
@@ -356,7 +356,7 @@
 
     .mini-card .value{
       display:block;
-      font-size:18px;
+      font-size:20px;
       font-weight:1000;
       line-height:1.08;
       white-space:nowrap;
@@ -415,7 +415,7 @@
       align-items:center;
       gap:10px;
       margin:0 0 7px;
-      font-size:11px;
+      font-size:12px;
       text-transform:uppercase;
       font-weight:1000;
       letter-spacing:.08em;
@@ -442,12 +442,12 @@
       text-align:left;
       vertical-align:top;
       word-break:break-word;
-      font-size:11px;
+      font-size:12px;
     }
 
     th{
       background:var(--paper-fill);
-      font-size:9.5px;
+      font-size:11px;
       font-weight:1000;
       text-transform:uppercase;
       letter-spacing:.06em;
@@ -570,6 +570,30 @@
 
     .muted{ color:var(--paper-muted); }
 
+
+
+    .totals-grid.ultra-three{
+      grid-template-columns:1fr 1fr 1.15fr;
+    }
+
+    .ultra-total{
+      background:#fff;
+    }
+
+    .total-caption{
+      display:block;
+      font-size:11px;
+      font-weight:1000;
+      text-transform:uppercase;
+      letter-spacing:.05em;
+      margin-bottom:6px;
+      color:#000;
+    }
+
+    .balance-box{
+      background:#fff;
+    }
+
     @page{
       size:A4 portrait;
       margin:0;
@@ -594,7 +618,15 @@
         background:#fff !important;
       }
 
-      body{ color:var(--paper-text) !important; }
+      *{
+        color:#000 !important;
+        text-shadow:none !important;
+        box-shadow:none !important;
+        -webkit-print-color-adjust:exact;
+        print-color-adjust:exact;
+      }
+
+      body{ color:#000 !important; }
       .wrap{ max-width:none; margin:0; padding:0; }
       .topbar, .status{ display:none !important; }
       .sheet-area{
@@ -611,26 +643,36 @@
         height:auto;
         border-radius:0;
         box-shadow:none;
+        background:#fff !important;
+        color:#000 !important;
       }
 
-      .sheet-header{ padding:10px 12px 8px !important; }
+      .print-sheet::before{ display:none !important; }
+
+      .sheet-header{
+        padding:10px 12px 8px !important;
+        border-bottom:2px solid #000 !important;
+        background:#fff !important;
+      }
       .header-top{ margin-bottom:8px !important; }
-      .shop-name{ font-size:19px !important; }
-      .shop-tag{ font-size:10px !important; }
-      .doc-badge{ font-size:10px !important; padding:6px 12px !important; }
-      .sheet-title{ font-size:20px !important; }
-      .sheet-subtitle{ font-size:10px !important; margin-top:4px !important; }
+      .shop-name{ font-size:24px !important; font-weight:1000 !important; letter-spacing:.4px !important; }
+      .shop-tag{ font-size:11px !important; font-weight:800 !important; }
+      .doc-badge{ font-size:11px !important; padding:6px 12px !important; border:2px solid #000 !important; background:#fff !important; }
+      .sheet-title{ font-size:22px !important; font-weight:1000 !important; }
+      .sheet-subtitle{ font-size:11px !important; margin-top:4px !important; font-weight:800 !important; }
 
       .sheet-meta{
         margin-top:8px !important;
         gap:8px !important;
         grid-template-columns:1fr 1fr 1fr !important;
+        border-top:1.5px solid #000 !important;
       }
 
       .meta-box{
-        font-size:10.5px !important;
+        font-size:12px !important;
         gap:4px !important;
         white-space:nowrap !important;
+        font-weight:700 !important;
       }
 
       .sheet-main{
@@ -643,28 +685,35 @@
       }
 
       .mini-card{
-        padding:7px 8px !important;
-        border-radius:10px !important;
+        padding:8px 9px !important;
+        border-radius:8px !important;
+        border:2px solid #000 !important;
+        background:#fff !important;
       }
 
-      .mini-card .label{ font-size:8.5px !important; margin-bottom:3px !important; }
-      .mini-card .value{ font-size:14px !important; }
+      .mini-card .label{ font-size:10px !important; margin-bottom:3px !important; font-weight:900 !important; }
+      .mini-card .value{ font-size:16px !important; font-weight:1000 !important; }
 
       .two-col{ gap:8px !important; }
-      .col-block{ border-radius:12px !important; }
-      .col-head{ padding:7px 9px !important; }
-      .col-title{ font-size:12px !important; }
-      .col-amount{ font-size:12px !important; }
+      .col-block{ border-radius:10px !important; border:2px solid #000 !important; background:#fff !important; }
+      .col-head{ padding:7px 9px !important; border-bottom:2px solid #000 !important; background:#fff !important; }
+      .col-title{ font-size:13px !important; font-weight:1000 !important; }
+      .col-amount{ font-size:13px !important; font-weight:1000 !important; }
       .section-box{ padding:7px 7px 6px !important; }
-      .section-label{ margin-bottom:5px !important; font-size:9.5px !important; }
-      .section-note{ font-size:8px !important; }
+      .section-label{ margin-bottom:5px !important; font-size:10.5px !important; font-weight:1000 !important; }
+      .section-note{ font-size:9px !important; font-weight:700 !important; }
 
-      table{ table-layout:fixed !important; }
+      table{ table-layout:fixed !important; border-collapse:collapse !important; }
       th, td{
-        padding:3px 3px !important;
-        font-size:8.5px !important;
+        padding:4px 4px !important;
+        font-size:11px !important;
+        font-weight:700 !important;
+        border:1.5px solid #000 !important;
+        color:#000 !important;
       }
-      th{ font-size:7.6px !important; }
+      th{ font-size:11.5px !important; font-weight:1000 !important; background:#fff !important; }
+
+      .empty{ color:#000 !important; font-style:normal !important; }
 
       .sheet-bottom{
         gap:6px !important;
@@ -673,25 +722,26 @@
 
       .totals-band,
       .credit-area{
-        border-radius:12px !important;
+        border-radius:10px !important;
+        border:2px solid #000 !important;
+        background:#fff !important;
       }
 
-      .total-box{ padding:8px 5px !important; }
-      .total-line{
-        gap:5px !important;
-        font-size:10px !important;
-        white-space:nowrap !important;
-      }
-      .total-line b{
-        font-size:11px !important;
-        white-space:nowrap !important;
-      }
+      .totals-grid.ultra-three{ grid-template-columns:1fr 1fr 1.15fr !important; }
+      .total-box{ padding:8px 6px !important; }
+      .total-box + .total-box{ border-left:2px solid #000 !important; }
+      .total-caption{ font-size:11px !important; font-weight:1000 !important; margin-bottom:4px !important; letter-spacing:.04em !important; }
+      .total-line{ font-size:14px !important; font-weight:1000 !important; white-space:nowrap !important; display:block !important; }
+      .total-line b{ font-size:17px !important; font-weight:1000 !important; white-space:nowrap !important; }
+      .balance-box{ background:#fff !important; }
 
       .credit-header{
         padding:7px 9px !important;
+        background:#fff !important;
+        border-bottom:2px solid #000 !important;
       }
-      .credit-title{ font-size:11px !important; }
-      .credit-total{ font-size:10.5px !important; }
+      .credit-title{ font-size:12px !important; font-weight:1000 !important; }
+      .credit-total{ font-size:11px !important; font-weight:1000 !important; }
       .credit-body{ padding:7px 7px 6px !important; }
 
       .footer-sign{
@@ -699,12 +749,15 @@
         gap:8px !important;
       }
       .sign-box{
-        min-height:44px !important;
+        min-height:46px !important;
         padding:16px 6px 6px !important;
-        font-size:9.5px !important;
+        font-size:10.5px !important;
         white-space:nowrap !important;
+        border:2px solid #000 !important;
+        background:#fff !important;
+        font-weight:1000 !important;
       }
-    }
+    }    }
   </style>
 </head>
 <body>
@@ -857,11 +910,18 @@
 
         <div class="sheet-bottom">
           <div class="totals-band">
-            <div class="totals-grid">
-              <div class="total-box">
-                <span class="total-line">വരവ് --- <b id="leftTotal">₹ 0.00</b></span>
-                <span class="total-line">------------------------------ചെലവ് --- <b id="rightTotal">₹ 0.00</b></span>
-                <span class="total-line">--------------------------------------------------Balance --- <b id="balanceClosing">₹ 0.00</b></span>
+            <div class="totals-grid ultra-three">
+              <div class="total-box ultra-total">
+                <div class="total-caption">LEFT SIDE TOTAL</div>
+                <div class="total-line"><b id="leftTotal">₹ 0.00</b></div>
+              </div>
+              <div class="total-box ultra-total">
+                <div class="total-caption">RIGHT SIDE TOTAL</div>
+                <div class="total-line"><b id="rightTotal">₹ 0.00</b></div>
+              </div>
+              <div class="total-box ultra-total balance-box">
+                <div class="total-caption">BALANCE CLOSING AMOUNT</div>
+                <div class="total-line"><b id="balanceClosing">₹ 0.00</b></div>
               </div>
             </div>
           </div>

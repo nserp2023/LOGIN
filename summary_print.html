@@ -3,431 +3,165 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Counter Cash Closing Control — Pro Print</title>
-
+  <title>Summary Print - Smart Page Fit</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabaseClient.js"></script>
-
   <style>
+    @page { size: A4 portrait; margin: 8mm; }
+
     :root{
-      --bg-1:#07101d;
-      --bg-2:#101a2e;
-      --panel:#101a2f;
-      --panel-2:#16233e;
-      --line:#2e477a;
-      --line-soft:#d8dfeb;
-      --text:#eef4ff;
-      --muted:#99acd0;
-      --accent:#34d3ff;
-      --accent-2:#3b82f6;
-      --success:#0f766e;
-      --danger:#b91c1c;
-      --paper:#ffffff;
-      --paper-text:#000000;
-      --paper-muted:#111111;
-      --paper-line:#000000;
-      --paper-soft:#000000;
-      --paper-fill:#ffffff;
-      --cash-in:#ffffff;
-      --cash-out:#ffffff;
-      --credit:#ffffff;
-      --shadow:0 20px 45px rgba(0,0,0,.28);
-      --radius:22px;
+      --line:#000;
+      --text:#000;
+      --paper:#fff;
+      --soft:#bfbfbf;
     }
 
     *{ box-sizing:border-box; }
-    html,body{ margin:0; padding:0; }
-    body{
-      font-family: Inter, Arial, Helvetica, sans-serif;
-      background:
-        radial-gradient(circle at top left, rgba(52,211,255,.12), transparent 30%),
-        linear-gradient(180deg, var(--bg-1) 0%, var(--bg-2) 100%);
+
+    html, body{
+      margin:0;
+      padding:0;
+      background:#f3f3f3;
+      font-family: Arial, Helvetica, sans-serif;
       color:var(--text);
+      font-size:14px;
+      font-weight:500;
     }
 
-    .wrap{
-      max-width:1360px;
+    .app{
+      max-width:1200px;
       margin:0 auto;
       padding:18px;
     }
 
-    .topbar{
+    .controls{
       display:flex;
-      justify-content:space-between;
-      align-items:flex-start;
-      gap:18px;
+      gap:10px;
       flex-wrap:wrap;
-      padding:18px;
-      background:rgba(16,26,47,.88);
-      border:1px solid rgba(153,172,208,.18);
-      border-radius:var(--radius);
-      box-shadow:var(--shadow);
-      backdrop-filter: blur(10px);
+      align-items:end;
+      background:#fff;
+      border:2px solid #000;
+      padding:14px;
       margin-bottom:16px;
     }
 
-    .brand-block{
-      min-width:280px;
-      flex:1 1 380px;
-    }
-
-    .eyebrow{
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      padding:6px 12px;
-      border:1px solid rgba(52,211,255,.22);
-      border-radius:999px;
-      background:rgba(52,211,255,.08);
-      color:#dff8ff;
-      font-size:12px;
-      font-weight:800;
-      letter-spacing:.4px;
-      text-transform:uppercase;
-      margin-bottom:10px;
-    }
-
-    .brand-title{
-      margin:0;
-      font-size:30px;
-      line-height:1;
-      font-weight:900;
-      letter-spacing:.4px;
-    }
-
-    .brand-sub{
-      margin-top:8px;
-      color:var(--muted);
-      font-size:13px;
-      max-width:720px;
-      line-height:1.5;
-    }
-
-    .controls-shell{
-      flex:1 1 540px;
-      display:flex;
-      flex-direction:column;
-      gap:10px;
-    }
-
-    .controls{
-      display:grid;
-      grid-template-columns:1.2fr 1.4fr auto auto;
-      gap:10px;
-      align-items:end;
-    }
-
-    .control{
+    .ctrl{
       display:flex;
       flex-direction:column;
       gap:6px;
-      min-width:0;
     }
 
-    .control label{
-      font-size:12px;
-      color:var(--muted);
+    .ctrl label{
+      font-size:13px;
+      font-weight:800;
+    }
+
+    .ctrl input{
+      min-height:40px;
+      padding:8px 10px;
+      min-width:180px;
+      border:2px solid #000;
+      font-size:14px;
       font-weight:700;
-      letter-spacing:.25px;
-    }
-
-    input, button{ font:inherit; }
-
-    input[type="date"],
-    input[type="text"]{
-      min-height:46px;
-      padding:12px 14px;
-      color:var(--text);
-      background:#0c1630;
-      border:1px solid rgba(153,172,208,.22);
-      border-radius:14px;
-      outline:none;
-    }
-
-    input:focus{
-      border-color:rgba(52,211,255,.62);
-      box-shadow:0 0 0 4px rgba(52,211,255,.10);
+      color:#000;
+      background:#fff;
     }
 
     button{
-      min-height:46px;
+      min-height:40px;
       padding:0 16px;
-      border:none;
-      border-radius:14px;
-      font-weight:900;
+      border:2px solid #000;
+      background:#fff;
       cursor:pointer;
-      transition:transform .15s ease, box-shadow .15s ease, opacity .15s ease;
-    }
-
-    button:hover{ transform:translateY(-1px); }
-    button:active{ transform:translateY(0); }
-
-    .btn-primary{
-      color:#fff;
-      background:linear-gradient(135deg, var(--accent), var(--accent-2));
-      box-shadow:0 12px 28px rgba(59,130,246,.28);
-    }
-
-    .btn-secondary{
-      color:#e9f2ff;
-      background:linear-gradient(135deg, #1b2948, #21355d);
-      border:1px solid rgba(153,172,208,.2);
-    }
-
-    .toolbar-note{
-      color:var(--muted);
-      font-size:12px;
-      line-height:1.45;
+      font-weight:800;
+      font-size:14px;
+      color:#000;
     }
 
     .status{
-      display:none;
-      margin:0 0 16px;
-      padding:13px 14px;
-      border-radius:16px;
-      border:1px solid rgba(52,211,255,.22);
-      background:rgba(52,211,255,.07);
-      color:#dff8ff;
+      margin-bottom:10px;
       font-size:14px;
-      font-weight:700;
+      font-weight:800;
+      color:#000;
     }
 
-    .sheet-area{
-      padding:16px;
-      background:rgba(16,26,47,.9);
-      border:1px solid rgba(153,172,208,.18);
-      border-radius:26px;
-      box-shadow:var(--shadow);
-    }
-
-    .print-sheet{
-      width:100%;
-      min-height:1123px;
+    .sheet{
+      width:210mm;
+      min-height:0;
+      margin:0 auto 10px auto;
       background:var(--paper);
-      color:var(--paper-text);
-      border-radius:18px;
-      overflow:hidden;
-      display:flex;
-      flex-direction:column;
-      position:relative;
-      isolation:isolate;
+      padding:8mm;
+      border:2px solid #000;
+      page-break-after:always;
+      break-after:page;
     }
 
-    .print-sheet::before{
-      content:"";
-      position:absolute;
-      inset:0;
-      background:
-        radial-gradient(circle at top right, rgba(59,130,246,.08), transparent 28%),
-        radial-gradient(circle at bottom left, rgba(16,185,129,.05), transparent 25%);
-      pointer-events:none;
-      z-index:0;
+    .sheet:last-child{
+      page-break-after:auto;
+      break-after:auto;
     }
 
-    .sheet-header,
-    .sheet-main,
-    .sheet-bottom{ position:relative; z-index:1; }
-
-    .sheet-header{
-      padding:14px 18px 10px;
-      border-bottom:2px solid var(--paper-line);
-      background:linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+    .top-title{
+      text-align:center;
+      font-size:20px;
+      font-weight:900;
+      letter-spacing:.04em;
+      margin-top:4px;
     }
 
-    .header-top{
+    .meta-row{
       display:flex;
       justify-content:space-between;
-      align-items:flex-start;
-      gap:14px;
-      margin-bottom:10px;
+      margin-top:18px;
+      font-size:14px;
+      font-weight:800;
+      gap:12px;
     }
 
-    .shop-mark{
-      display:flex;
-      flex-direction:column;
-      gap:4px;
-    }
-
-    .shop-name{
-      font-size:22px;
-      font-weight:1000;
-      letter-spacing:.8px;
-      line-height:1;
-    }
-
-    .shop-tag{
-      font-size:11px;
-      font-weight:700;
-      letter-spacing:.22em;
-      color:var(--paper-muted);
-      text-transform:uppercase;
-    }
-
-    .doc-badge{
-      border:1.5px solid var(--paper-line);
-      padding:8px 14px;
-      border-radius:999px;
-      font-size:11px;
-      font-weight:900;
-      letter-spacing:.15em;
-      text-transform:uppercase;
-      white-space:nowrap;
-    }
-
-    .sheet-title{
-      margin:0;
+    .main-heading{
       text-align:center;
-      font-size:22px;
-      line-height:1.08;
-      font-weight:1000;
-      letter-spacing:.03em;
-    }
-
-    .sheet-subtitle{
-      margin-top:5px;
-      text-align:center;
-      font-size:11px;
-      color:var(--paper-muted);
-      font-weight:700;
-      letter-spacing:.08em;
-      text-transform:uppercase;
-    }
-
-    .sheet-meta{
-      margin-top:10px;
-      display:grid;
-      grid-template-columns:1fr 1fr 1fr;
-      gap:10px;
-      padding-top:9px;
-      border-top:1px solid var(--paper-soft);
-    }
-
-    .meta-box{
-      display:flex;
-      align-items:center;
-      gap:6px;
-      font-size:12px;
-      white-space:nowrap;
-      min-width:0;
-    }
-
-    .meta-box.center{ justify-content:center; }
-    .meta-box.right{ justify-content:flex-end; }
-    .meta-box .meta-label{
+      margin:10px 0 8px;
+      font-size:17px;
       font-weight:900;
-      text-transform:uppercase;
-      letter-spacing:.03em;
-    }
-    .meta-box .meta-value{
-      overflow:hidden;
-      text-overflow:ellipsis;
-    }
-
-    .sheet-main{
-      flex:1 1 auto;
-      display:flex;
-      flex-direction:column;
-      padding:10px 12px 0;
-    }
-
-    .summary-strip{
-      display:grid;
-      grid-template-columns:repeat(4, 1fr);
-      gap:8px;
-      margin-bottom:10px;
-    }
-
-    .mini-card{
-      border:1px solid var(--paper-soft);
-      border-radius:14px;
-      padding:10px 11px;
-      background:#fff;
-    }
-
-    .mini-card .label{
-      display:block;
-      font-size:10px;
-      color:var(--paper-muted);
-      text-transform:uppercase;
       letter-spacing:.08em;
-      font-weight:900;
-      margin-bottom:5px;
     }
 
-    .mini-card .value{
-      display:block;
-      font-size:20px;
-      font-weight:1000;
-      line-height:1.08;
-      white-space:nowrap;
+    .double-line{
+      border-top:2px solid var(--line);
+      border-bottom:2px solid var(--line);
+      height:6px;
+      margin:6px 0 14px;
     }
 
-    .mini-card.in{ background:var(--cash-in); }
-    .mini-card.out{ background:var(--cash-out); }
-    .mini-card.credit{ background:var(--credit); }
+    .main-box{
+      border:2px solid var(--line);
+      page-break-inside:avoid;
+      break-inside:avoid;
+    }
 
-    .two-col{
+    .split{
       display:grid;
       grid-template-columns:1fr 1fr;
-      gap:12px;
-      align-items:start;
     }
 
-    .col-block{
-      border:1.5px solid var(--paper-line);
-      border-radius:16px;
-      overflow:hidden;
-      background:#fff;
-      min-height:0;
+    .half.left{
+      border-right:2px solid var(--line);
     }
 
-    .col-head{
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap:10px;
-      padding:9px 12px;
-      border-bottom:1.5px solid var(--paper-line);
-    }
-
-    .col-head.in{ background:var(--cash-in); }
-    .col-head.out{ background:var(--cash-out); }
-
-    .col-title{
-      margin:0;
+    .band{
+      border-bottom:2px solid var(--line);
+      padding:10px 10px;
       font-size:15px;
-      font-weight:1000;
-      text-transform:uppercase;
-      letter-spacing:.04em;
+      font-weight:900;
+      min-height:40px;
     }
 
-    .col-amount{
-      font-size:14px;
-      font-weight:1000;
-      white-space:nowrap;
-    }
-
-    .section-box{ padding:10px 10px 8px; }
-
-    .section-label{
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap:10px;
-      margin:0 0 7px;
-      font-size:12px;
-      text-transform:uppercase;
-      font-weight:1000;
-      letter-spacing:.08em;
-      color:var(--paper-text);
-    }
-
-    .section-note{
-      font-size:9.5px;
-      color:var(--paper-muted);
-      font-weight:700;
-      text-transform:none;
-      letter-spacing:0;
+    .subband{
+      border-bottom:2px solid var(--line);
+      padding:10px 10px;
+      font-size:15px;
+      font-weight:900;
+      min-height:40px;
     }
 
     table{
@@ -436,690 +170,482 @@
       table-layout:fixed;
     }
 
-    th, td{
-      border:1px solid var(--paper-soft);
-      padding:5px 5px;
-      text-align:left;
+    .blank-table th,
+    .blank-table td{
+      border-right:1.5px solid #000;
+      border-bottom:1.5px solid var(--soft);
+      padding:5px 4px;
       vertical-align:top;
-      word-break:break-word;
-      font-size:12px;
-    }
-
-    th{
-      background:var(--paper-fill);
       font-size:11px;
-      font-weight:1000;
-      text-transform:uppercase;
-      letter-spacing:.06em;
-      white-space:nowrap;
+      line-height:1.15;
+      color:#000;
+      font-weight:700;
+      white-space:normal;
+      word-break:break-word;
+      overflow-wrap:anywhere;
     }
 
-    th.num, td.num{
-      text-align:right;
-      white-space:nowrap;
+    .blank-table th:last-child,
+    .blank-table td:last-child{
+      border-right:none;
     }
 
-    .empty{
+    .blank-table th{
+      border-bottom:2px solid #000;
       text-align:center;
-      color:#667085;
-      font-style:italic;
-      padding:12px;
+      height:34px;
+      font-size:11px;
+      font-weight:900;
+      line-height:1.1;
+      padding:4px 3px;
     }
 
-    .sheet-bottom{
-      margin-top:auto;
-      padding:10px 12px 12px;
-      display:flex;
-      flex-direction:column;
-      gap:8px;
+    .blank-table td{
+      height:34px;
     }
 
-    .totals-band{
-      border:2px solid var(--paper-line);
-      border-radius:16px;
-      overflow:hidden;
-      background:#fff;
-    }
-
-    .totals-grid{
-      display:grid;
-      grid-template-columns:1fr 1fr 1fr;
-      align-items:center;
-    }
-
-    .total-box{
-      padding:10px 10px;
+    .balance-line{
+      border:2px solid var(--line);
+      border-top:none;
       text-align:center;
-      min-width:0;
+      padding:12px 8px;
+      font-size:16px;
+      letter-spacing:.05em;
+      font-weight:900;
+      page-break-inside:avoid;
+      break-inside:avoid;
     }
 
-    .total-box + .total-box{
-      border-left:2px solid var(--paper-line);
-    }
-
-    .total-line{
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      gap:8px;
-      white-space:nowrap;
-      max-width:100%;
-      font-size:13px;
-      font-weight:1000;
-      text-transform:uppercase;
-      letter-spacing:.02em;
-    }
-
-    .total-line b{
-      font-size:15px;
-      font-weight:1000;
-    }
-
-    .credit-area{
-      border:2px solid var(--paper-line);
-      border-radius:16px;
-      overflow:hidden;
-      background:#fff;
-    }
-
-    .credit-header{
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap:10px;
-      padding:9px 12px;
-      border-bottom:1.5px solid var(--paper-line);
-      background:var(--credit);
+    .credit-box{
+      border:2px solid var(--line);
+      margin-top:18px;
+      page-break-inside:avoid;
+      break-inside:avoid;
     }
 
     .credit-title{
-      margin:0;
-      font-size:14px;
-      font-weight:1000;
-      text-transform:uppercase;
-      letter-spacing:.05em;
-    }
-
-    .credit-total{
-      font-size:13px;
-      font-weight:1000;
-      white-space:nowrap;
-    }
-
-    .credit-body{ padding:9px 10px 8px; }
-
-    .footer-sign{
-      display:grid;
-      grid-template-columns:1fr 1fr 1fr;
-      gap:10px;
-      padding-top:3px;
-    }
-
-    .sign-box{
       text-align:center;
-      border:1.5px solid var(--paper-line);
-      border-radius:14px;
-      padding:20px 8px 8px;
-      min-height:52px;
-      font-size:11px;
+      padding:10px 8px;
+      border-bottom:2px solid var(--line);
+      font-size:15px;
       font-weight:900;
-      text-transform:uppercase;
-      white-space:nowrap;
-      background:#fff;
-    }
-
-    .muted{ color:var(--paper-muted); }
-
-
-
-    .totals-grid.ultra-three{
-      grid-template-columns:1fr 1fr 1.15fr;
-    }
-
-    .ultra-total{
-      background:#fff;
-    }
-
-    .total-caption{
-      display:block;
-      font-size:11px;
-      font-weight:1000;
-      text-transform:uppercase;
       letter-spacing:.05em;
-      margin-bottom:6px;
+    }
+
+    .credit-table th,
+    .credit-table td{
+      border-right:1.5px solid var(--line);
+      border-bottom:1.5px solid var(--line);
+      padding:6px 6px;
+      font-size:12px;
       color:#000;
+      word-break:break-word;
+      overflow-wrap:anywhere;
     }
 
-    .balance-box{
-      background:#fff;
+    .credit-table th:last-child,
+    .credit-table td:last-child{
+      border-right:none;
     }
 
-    @page{
-      size:A4 portrait;
-      margin:0;
+    .credit-table thead th{
+      text-align:center;
+      font-weight:900;
+      font-size:13px;
+      border-bottom:2px solid var(--line);
     }
 
-    @media (max-width: 980px){
-      .controls{ grid-template-columns:1fr 1fr; }
-      .summary-strip{ grid-template-columns:1fr 1fr; }
-      .two-col{ grid-template-columns:1fr; }
-      .sheet-meta{ grid-template-columns:1fr; }
-      .meta-box,.meta-box.center,.meta-box.right{ justify-content:flex-start; }
-      .totals-grid{ grid-template-columns:1fr; }
-      .total-box + .total-box{ border-left:none; border-top:2px solid var(--paper-line); }
-      .credit-header{ flex-direction:column; align-items:flex-start; }
-      .footer-sign{ grid-template-columns:1fr; }
+    .credit-table tbody td{
+      height:32px;
+      font-weight:700;
+    }
+
+    .credit-table tbody tr:last-child td{
+      border-bottom:none;
+    }
+
+    .amount{
+      text-align:right;
+      white-space:nowrap !important;
+      word-break:normal !important;
+      overflow-wrap:normal !important;
+      font-weight:900;
+    }
+
+    .continued-note{
+      text-align:center;
+      font-size:13px;
+      font-weight:800;
+      margin:4px 0 8px;
+    }
+
+    #saleReceiptTotalText,
+    #cashSalesTotalText,
+    #returnPaymentTotalText,
+    #returnAmountText,
+    #balanceText{
+      font-weight:900;
+      font-size:17px;
     }
 
     @media print{
       html,body{
-        width:210mm;
-        height:297mm;
-        background:#fff !important;
+        background:#fff;
+        font-size:14px;
       }
+
+      .app{ padding:0; }
+      .controls,.status{ display:none !important; }
+      .sheet{ margin:0; }
+      button{ display:none; }
 
       *{
-        color:#000 !important;
-        text-shadow:none !important;
-        box-shadow:none !important;
-        -webkit-print-color-adjust:exact;
-        print-color-adjust:exact;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
       }
-
-      body{ color:#000 !important; }
-      .wrap{ max-width:none; margin:0; padding:0; }
-      .topbar, .status{ display:none !important; }
-      .sheet-area{
-        padding:0;
-        border:none;
-        border-radius:0;
-        box-shadow:none;
-        background:#fff;
-      }
-
-      .print-sheet{
-        width:210mm;
-        min-height:297mm;
-        height:auto;
-        border-radius:0;
-        box-shadow:none;
-        background:#fff !important;
-        color:#000 !important;
-      }
-
-      .print-sheet::before{ display:none !important; }
-
-      .sheet-header{
-        padding:10px 12px 8px !important;
-        border-bottom:2px solid #000 !important;
-        background:#fff !important;
-      }
-      .header-top{ margin-bottom:8px !important; }
-      .shop-name{ font-size:24px !important; font-weight:1000 !important; letter-spacing:.4px !important; }
-      .shop-tag{ font-size:11px !important; font-weight:800 !important; }
-      .doc-badge{ font-size:11px !important; padding:6px 12px !important; border:2px solid #000 !important; background:#fff !important; }
-      .sheet-title{ font-size:22px !important; font-weight:1000 !important; }
-      .sheet-subtitle{ font-size:11px !important; margin-top:4px !important; font-weight:800 !important; }
-
-      .sheet-meta{
-        margin-top:8px !important;
-        gap:8px !important;
-        grid-template-columns:1fr 1fr 1fr !important;
-        border-top:1.5px solid #000 !important;
-      }
-
-      .meta-box{
-        font-size:12px !important;
-        gap:4px !important;
-        white-space:nowrap !important;
-        font-weight:700 !important;
-      }
-
-      .sheet-main{
-        padding:8px 10px 0 !important;
-      }
-
-      .summary-strip{
-        gap:6px !important;
-        margin-bottom:8px !important;
-      }
-
-      .mini-card{
-        padding:8px 9px !important;
-        border-radius:8px !important;
-        border:2px solid #000 !important;
-        background:#fff !important;
-      }
-
-      .mini-card .label{ font-size:10px !important; margin-bottom:3px !important; font-weight:900 !important; }
-      .mini-card .value{ font-size:16px !important; font-weight:1000 !important; }
-
-      .two-col{ gap:8px !important; }
-      .col-block{ border-radius:10px !important; border:2px solid #000 !important; background:#fff !important; }
-      .col-head{ padding:7px 9px !important; border-bottom:2px solid #000 !important; background:#fff !important; }
-      .col-title{ font-size:13px !important; font-weight:1000 !important; }
-      .col-amount{ font-size:13px !important; font-weight:1000 !important; }
-      .section-box{ padding:7px 7px 6px !important; }
-      .section-label{ margin-bottom:5px !important; font-size:10.5px !important; font-weight:1000 !important; }
-      .section-note{ font-size:9px !important; font-weight:700 !important; }
-
-      table{ table-layout:fixed !important; border-collapse:collapse !important; }
-      th, td{
-        padding:4px 4px !important;
-        font-size:11px !important;
-        font-weight:700 !important;
-        border:1.5px solid #000 !important;
-        color:#000 !important;
-      }
-      th{ font-size:11.5px !important; font-weight:1000 !important; background:#fff !important; }
-
-      .empty{ color:#000 !important; font-style:normal !important; }
-
-      .sheet-bottom{
-        gap:6px !important;
-        padding:8px 10px 10px !important;
-      }
-
-      .totals-band,
-      .credit-area{
-        border-radius:10px !important;
-        border:2px solid #000 !important;
-        background:#fff !important;
-      }
-
-      .totals-grid.ultra-three{ grid-template-columns:1fr 1fr 1.15fr !important; }
-      .total-box{ padding:8px 6px !important; }
-      .total-box + .total-box{ border-left:2px solid #000 !important; }
-      .total-caption{ font-size:11px !important; font-weight:1000 !important; margin-bottom:4px !important; letter-spacing:.04em !important; }
-      .total-line{ font-size:14px !important; font-weight:1000 !important; white-space:nowrap !important; display:block !important; }
-      .total-line b{ font-size:17px !important; font-weight:1000 !important; white-space:nowrap !important; }
-      .balance-box{ background:#fff !important; }
-
-      .credit-header{
-        padding:7px 9px !important;
-        background:#fff !important;
-        border-bottom:2px solid #000 !important;
-      }
-      .credit-title{ font-size:12px !important; font-weight:1000 !important; }
-      .credit-total{ font-size:11px !important; font-weight:1000 !important; }
-      .credit-body{ padding:7px 7px 6px !important; }
-
-      .footer-sign{
-        grid-template-columns:1fr 1fr 1fr !important;
-        gap:8px !important;
-      }
-      .sign-box{
-        min-height:46px !important;
-        padding:16px 6px 6px !important;
-        font-size:10.5px !important;
-        white-space:nowrap !important;
-        border:2px solid #000 !important;
-        background:#fff !important;
-        font-weight:1000 !important;
-      }
-    }    
+    }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="topbar">
-      <div class="brand-block">
-        <div class="eyebrow">A4 Pro Closing Sheet</div>
-        <h1 class="brand-title">Counter Cash Closing Control</h1>
-        <div class="brand-sub">
-          Refreshed premium print design with tighter A4 layout, single-line totals band, single-line header meta,
-          approved payment filtering, approved sales return total, non-credit sales total, and separate credit sales section.
-        </div>
+  <div class="app">
+    <div class="controls">
+      <div class="ctrl">
+        <label for="closingDate">Date</label>
+        <input id="closingDate" type="date" />
       </div>
 
-      <div class="controls-shell">
-        <div class="controls">
-          <div class="control">
-            <label for="closingDate">Closing Date</label>
-            <input id="closingDate" type="date" />
-          </div>
-          <div class="control">
-            <label for="counterName">Counter / Staff</label>
-            <input id="counterName" type="text" placeholder="Optional name" />
-          </div>
-          <div class="control" style="min-width:auto;">
-            <label>&nbsp;</label>
-            <button class="btn-primary" onclick="loadClosingData()">Load Closing</button>
-          </div>
-          <div class="control" style="min-width:auto;">
-            <label>&nbsp;</label>
-            <button class="btn-secondary" onclick="window.print()">Print A4</button>
-          </div>
-        </div>
-        <div class="toolbar-note">
-          Main left-side sales total counts only non-credit sales. Credit sales are shown separately in the bottom credit block.
-        </div>
+      <div class="ctrl">
+        <label>&nbsp;</label>
+        <button onclick="loadClosingData()">Load</button>
+      </div>
+
+      <div class="ctrl">
+        <label>&nbsp;</label>
+        <button onclick="window.print()">Print</button>
       </div>
     </div>
 
-    <div id="statusBox" class="status"></div>
-
-    <div class="sheet-area">
-      <div id="printSheet" class="print-sheet">
-        <div class="sheet-header">
-          <div class="header-top">
-            <div class="shop-mark">
-              <div class="shop-name">VAJRA LIGHTS &amp; ELECTRICALS</div>
-              <div class="shop-tag">Daily Counter Settlement Document</div>
-            </div>
-            <div class="doc-badge">Internal Print Copy</div>
-          </div>
-
-          <h2 class="sheet-title">COUNTER CASH CLOSING CONTROL</h2>
-          <div class="sheet-subtitle">Sales • Receipts • Approved Payments • Approved Sales Returns • Credit Sales</div>
-
-          <div class="sheet-meta">
-            <div class="meta-box">
-              <span class="meta-label">Date:</span>
-              <span id="metaDate" class="meta-value">-</span>
-            </div>
-            <div class="meta-box center">
-              <span class="meta-label">Counter / Staff:</span>
-              <span id="metaCounter" class="meta-value">-</span>
-            </div>
-            <div class="meta-box right">
-              <span class="meta-label">Generated At:</span>
-              <span id="metaGenerated" class="meta-value">-</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="sheet-main">
-          <div class="summary-strip">
-            <div class="mini-card in">
-              <span class="label">Sales Total</span>
-              <span id="salesTotalMini" class="value">₹ 0.00</span>
-            </div>
-            <div class="mini-card in">
-              <span class="label">Receipt Total</span>
-              <span id="receiptsTotalMini" class="value">₹ 0.00</span>
-            </div>
-            <div class="mini-card credit">
-              <span class="label">Sales Return Total</span>
-              <span id="salesReturnTotalMini" class="value">₹ 0.00</span>
-            </div>
-            <div class="mini-card out">
-              <span class="label">Payment Total</span>
-              <span id="paymentsTotalMini" class="value">₹ 0.00</span>
-            </div>
-          </div>
-
-          <div class="two-col">
-            <div class="col-block">
-              <div class="col-head in">
-                <h3 class="col-title">Left Side / Cash In</h3>
-                <div class="col-amount" id="leftTotalHead">₹ 0.00</div>
-              </div>
-              <div class="section-box">
-                <div class="section-label">
-                  <span>Receipt Details</span>
-                  <span class="section-note">Sales total shown in summary cards above</span>
-                </div>
-                <table>
-                  <thead>
-                    <tr>
-                      <th style="width:12%;">Time</th>
-                      <th style="width:14%;">Voucher</th>
-                      <th style="width:22%;">Customer / Party</th>
-                      <th style="width:15%;">Mobile</th>
-                      <th>Description</th>
-                      <th class="num" style="width:15%;">Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody id="receiptsBody">
-                    <tr><td colspan="6" class="empty">No receipt entries for this date</td></tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <div class="col-block">
-              <div class="col-head out">
-                <h3 class="col-title">Right Side / Cash Out</h3>
-                <div class="col-amount" id="rightTotalHead">₹ 0.00</div>
-              </div>
-              <div class="section-box">
-                <div class="section-label">
-                  <span>Approved Payment Details</span>
-                  <span class="section-note">Sales return shown as approved total only</span>
-                </div>
-                <table>
-                  <thead>
-                    <tr>
-                      <th style="width:12%;">Time</th>
-                      <th style="width:14%;">Voucher</th>
-                      <th style="width:22%;">Supplier / Party</th>
-                      <th style="width:15%;">Mobile</th>
-                      <th>Description</th>
-                      <th class="num" style="width:15%;">Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody id="paymentsBody">
-                    <tr><td colspan="6" class="empty">No approved payment entries for this date</td></tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="sheet-bottom">
-          <div class="totals-band">
-            <div class="totals-grid ultra-three">
-              <div class="total-box ultra-total">
-                <div class="total-caption">LEFT SIDE TOTAL</div>
-                <div class="total-line"><b id="leftTotal">₹ 0.00</b></div>
-              </div>
-              <div class="total-box ultra-total">
-                <div class="total-caption">RIGHT SIDE TOTAL</div>
-                <div class="total-line"><b id="rightTotal">₹ 0.00</b></div>
-              </div>
-              <div class="total-box ultra-total balance-box">
-                <div class="total-caption">BALANCE CLOSING AMOUNT</div>
-                <div class="total-line"><b id="balanceClosing">₹ 0.00</b></div>
-              </div>
-            </div>
-          </div>
-
-          <div class="credit-area">
-            <div class="credit-header">
-              <h3 class="credit-title">Credit Sales Register</h3>
-              <div class="credit-total">Total Credit Sales: <span id="creditSalesTotal">₹ 0.00</span></div>
-            </div>
-            <div class="credit-body">
-              <table>
-                <thead>
-                  <tr>
-                    <th style="width:12%;">Bill No</th>
-                    <th style="width:10%;">Series</th>
-                    <th style="width:12%;">Date</th>
-                    <th>Customer Name</th>
-                    <th style="width:15%;">Mobile</th>
-                    <th style="width:22%;">Address</th>
-                    <th class="num" style="width:15%;">Bill Amount</th>
-                  </tr>
-                </thead>
-                <tbody id="creditSalesBody">
-                  <tr><td colspan="7" class="empty">No credit sales for this date</td></tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <div class="footer-sign">
-            <div class="sign-box">Prepared By</div>
-            <div class="sign-box">Checked By</div>
-            <div class="sign-box">Final Verification</div>
-          </div>
-        </div>
-      </div>
-    </div>
+    <div id="status" class="status"></div>
+    <div id="pagesContainer"></div>
   </div>
 
   <script>
-    const sb = window.sbcc || window.supabase?.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
-    const el = (id) => document.getElementById(id);
+    const sb = window.sbcc || (window.supabase && window.SUPABASE_URL && window.SUPABASE_ANON_KEY
+      ? window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY)
+      : null);
 
-    function setStatus(message, isError = false) {
-      const box = el('statusBox');
-      box.style.display = 'block';
-      box.style.background = isError ? 'rgba(185,28,28,.10)' : 'rgba(52,211,255,.07)';
-      box.style.borderColor = isError ? 'rgba(185,28,28,.24)' : 'rgba(52,211,255,.22)';
-      box.style.color = isError ? '#ffe1e1' : '#dff8ff';
-      box.textContent = message;
+    const $ = (id) => document.getElementById(id);
+
+    // Smart fit limits:
+    // First page can usually hold fewer detail rows because totals + credit box are also present.
+    const FIRST_PAGE_DETAIL_LIMIT = 8;
+    const NEXT_PAGE_DETAIL_LIMIT = 14;
+    const FIRST_PAGE_CREDIT_LIMIT = 5;
+    const NEXT_PAGE_CREDIT_LIMIT = 18;
+
+    function setStatus(msg, isErr = false){
+      const s = $('status');
+      if(!s) return;
+      s.textContent = msg || '';
+      s.style.color = isErr ? '#b00020' : '#000';
     }
 
-    function clearStatus() {
-      const box = el('statusBox');
-      box.style.display = 'none';
-      box.textContent = '';
+    function norm(v){ return String(v || '').trim().toLowerCase(); }
+    function num(v){ return Number(v || 0); }
+
+    function fmtCurrency(v){
+      return new Intl.NumberFormat('en-IN', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+      }).format(Math.round(num(v)));
     }
 
-    function fmtCurrency(value) {
-  const n = Math.round(Number(value || 0));
-  return new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    maximumFractionDigits: 0
-  }).format(n);
-}
-
-    function fmtDateDisplay(dateStr) {
-      if (!dateStr) return '-';
+    function fmtDate(dateStr){
+      if(!dateStr) return '00-00-0000';
       const d = new Date(dateStr + 'T00:00:00');
-      return d.toLocaleDateString('en-IN', {
-        day:'2-digit', month:'2-digit', year:'numeric'
-      });
+      const dd = String(d.getDate()).padStart(2, '0');
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const yyyy = d.getFullYear();
+      return `${dd}-${mm}-${yyyy}`;
     }
 
-    function fmtDateTimeDisplay(dt) {
-      if (!dt) return '-';
+    function fmtDateTime(dt){
+      const d = dt ? new Date(dt) : new Date();
+      const dd = String(d.getDate()).padStart(2, '0');
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const yyyy = d.getFullYear();
+      let hrs = d.getHours();
+      const mins = String(d.getMinutes()).padStart(2, '0');
+      const ap = hrs >= 12 ? 'pm' : 'am';
+      hrs = hrs % 12 || 12;
+      return `${dd}/${mm}/${yyyy}, ${hrs}:${mins} ${ap}`;
+    }
+
+    function fmtTime(dt){
+      if(!dt) return '';
       const d = new Date(dt);
-      return d.toLocaleString('en-IN', {
-        day:'2-digit', month:'2-digit', year:'numeric',
-        hour:'2-digit', minute:'2-digit'
-      });
+      let hrs = d.getHours();
+      const mins = String(d.getMinutes()).padStart(2, '0');
+      const ap = hrs >= 12 ? 'pm' : 'am';
+      hrs = hrs % 12 || 12;
+      return `${hrs}:${mins} ${ap}`;
     }
 
-    function fmtTime(dt) {
-      if (!dt) return '';
-      const d = new Date(dt);
-      return d.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' });
-    }
-
-    function normalize(v) {
-      return String(v || '').trim().toLowerCase();
-    }
-
-    function isApprovedStatus(status) {
-      const s = normalize(status);
+    function isApprovedStatus(status){
+      const s = norm(status);
       return s === 'approved' || s === 'accepted';
     }
 
-    function isCreditSale(row) {
-      return normalize(row.payment_type).includes('credit');
+    function isCreditSale(row){
+      return norm(row.payment_type).includes('credit');
     }
 
-    function billNo(row) {
+    function billNo(row){
       const series = row.series_code || '';
-      const num = row.sales_number ?? '';
-      return series && num !== '' ? `${series}-${num}` : (num !== '' ? String(num) : '-');
+      const no = row.sales_number ?? '';
+      return series && no !== '' ? `${series}-${no}` : String(no || '-');
     }
 
-    function safe(val) {
-      return val == null || val === '' ? '-' : String(val);
+    function safeCell(v){
+      return String(v || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
     }
 
-    function sumBy(list, key) {
-      return list.reduce((a, b) => a + Number(b?.[key] || 0), 0);
-    }
-
-    function renderReceipts(rows) {
-      const body = el('receiptsBody');
-      if (!rows.length) {
-        body.innerHTML = '<tr><td colspan="6" class="empty">No receipt entries for this date</td></tr>';
-        return;
+    function chunkArray(arr, size){
+      if(size <= 0) return [arr];
+      const out = [];
+      for(let i = 0; i < arr.length; i += size){
+        out.push(arr.slice(i, i + size));
       }
-      body.innerHTML = rows.map(r => `
+      return out.length ? out : [[]];
+    }
+
+    function buildDetailRows(rows){
+      return rows.map(r => `
         <tr>
-          <td>${fmtTime(r.created_at || r.txn_date)}</td>
-          <td>${safe(r.voucher_no || r.receipt_number || r.id)}</td>
-          <td>${safe(r.party_name || r.customer_name || r.reference_name)}</td>
-          <td>${safe(r.party_mobile || r.reference_mobile || r.customer_mobile)}</td>
-          <td>${safe(r.notes || r.description || r.remarks || r.bill_reference)}</td>
-          <td class="num">${fmtCurrency(r.amount)}</td>
+          <td>${safeCell(r[0])}</td>
+          <td>${safeCell(r[1])}</td>
+          <td>${safeCell(r[2])}</td>
+          <td>${safeCell(r[3])}</td>
+          <td class="amount">${safeCell(r[4])}</td>
         </tr>
       `).join('');
     }
 
-    function renderPayments(rows) {
-      const body = el('paymentsBody');
-      if (!rows.length) {
-        body.innerHTML = '<tr><td colspan="6" class="empty">No approved payment entries for this date</td></tr>';
-        return;
-      }
-      body.innerHTML = rows.map(r => `
+    function buildCreditRows(rows){
+      return rows.map(r => `
         <tr>
-          <td>${fmtTime(r.created_at || r.txn_date)}</td>
-          <td>${safe(r.voucher_no || r.payment_number || r.id)}</td>
-          <td>${safe(r.party_name || r.supplier_name || r.reference_name)}</td>
-          <td>${safe(r.party_mobile || r.reference_mobile || r.supplier_mobile)}</td>
-          <td>${safe(r.notes || r.description || r.remarks || r.bill_reference)}</td>
-          <td class="num">${fmtCurrency(r.amount)}</td>
+          <td>${safeCell(r[0])}</td>
+          <td>${safeCell(r[1])}</td>
+          <td>${safeCell(r[2])}</td>
+          <td class="amount">${safeCell(r[3])}</td>
         </tr>
       `).join('');
     }
 
-    function renderCreditSales(rows) {
-      const body = el('creditSalesBody');
-      if (!rows.length) {
-        body.innerHTML = '<tr><td colspan="7" class="empty">No credit sales for this date</td></tr>';
-        return;
+    function buildMainSection(receiptRows, paymentRows, totals, continued = false){
+      return `
+        <div class="top-title">VAJRA LIGHTS &amp; ELECTRICALS.</div>
+
+        <div class="meta-row">
+          <div>DATE: <span>${safeCell(totals.metaDate)}</span></div>
+          <div>GENERATED AT: <span>${safeCell(totals.generatedAt)}</span></div>
+        </div>
+
+        <div class="main-heading">CASH FLOW DETAIL</div>
+        ${continued ? '<div class="continued-note">CONTINUED</div>' : ''}
+        <div class="double-line"></div>
+
+        <div class="main-box">
+          <div class="split">
+            <div class="half left">
+              <div class="band">SALE &amp; RECEIPT TOTAL : <span>${safeCell(totals.saleReceiptTotal)}</span></div>
+              <div class="subband">TOTAL CASH SALES : <span>${safeCell(totals.cashSalesTotal)}</span></div>
+
+              <table class="blank-table">
+                <colgroup>
+                  <col style="width:10%">
+                  <col style="width:15%">
+                  <col style="width:23%">
+                  <col style="width:32%">
+                  <col style="width:20%">
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th>TIME</th>
+                    <th>VOUCHER</th>
+                    <th>CUSTOMER / PARTY</th>
+                    <th>DESCRIPTION</th>
+                    <th>AMOUNT</th>
+                  </tr>
+                </thead>
+                <tbody>${buildDetailRows(receiptRows)}</tbody>
+              </table>
+            </div>
+
+            <div class="half">
+              <div class="band">RETURN &amp; PAYMENT TOTAL : <span>${safeCell(totals.returnPaymentTotal)}</span></div>
+              <div class="subband">RETURN AMOUNT : <span>${safeCell(totals.returnAmount)}</span></div>
+
+              <table class="blank-table">
+                <colgroup>
+                  <col style="width:10%">
+                  <col style="width:15%">
+                  <col style="width:23%">
+                  <col style="width:32%">
+                  <col style="width:20%">
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th>TIME</th>
+                    <th>VOUCHER</th>
+                    <th>SUPPLIER / PARTY</th>
+                    <th>DESCRIPTION</th>
+                    <th>AMOUNT</th>
+                  </tr>
+                </thead>
+                <tbody>${buildDetailRows(paymentRows)}</tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="balance-line">
+          SALE &amp; RECEIPT &nbsp; - &nbsp; RETURN &amp; PAYMENT &nbsp; = &nbsp; BALANCE :
+          <span>${safeCell(totals.balance)}</span>
+        </div>
+      `;
+    }
+
+    function buildCreditSection(creditRows, titleSuffix = ''){
+      return `
+        <div class="credit-box">
+          <div class="credit-title">CREDIT - SALES REGISTER${titleSuffix}</div>
+          <table class="credit-table">
+            <colgroup>
+              <col style="width:18%">
+              <col style="width:36%">
+              <col style="width:22%">
+              <col style="width:24%">
+            </colgroup>
+            <thead>
+              <tr>
+                <th>BILL NO</th>
+                <th>CUSTOMER NAME</th>
+                <th>MOBILE</th>
+                <th>BILL AMOUNT</th>
+              </tr>
+            </thead>
+            <tbody>${buildCreditRows(creditRows)}</tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    function renderPages(receiptRows, paymentRows, creditRows, totals){
+      const pagesContainer = $('pagesContainer');
+      if(!pagesContainer) return;
+
+      const detailMax = Math.max(receiptRows.length, paymentRows.length);
+
+      // Smart rule:
+      // If everything is small, keep all on 1 page.
+      const canFitSinglePage =
+        detailMax <= FIRST_PAGE_DETAIL_LIMIT &&
+        creditRows.length <= FIRST_PAGE_CREDIT_LIMIT;
+
+      let pages = [];
+
+      if(canFitSinglePage){
+        pages.push(`
+          <div class="sheet">
+            ${buildMainSection(receiptRows, paymentRows, totals, false)}
+            ${buildCreditSection(creditRows)}
+          </div>
+        `);
+      } else {
+        // Split detail rows across pages first.
+        const receiptChunks = [];
+        const paymentChunks = [];
+
+        let start = 0;
+        let first = true;
+        while(start < detailMax){
+          const limit = first ? FIRST_PAGE_DETAIL_LIMIT : NEXT_PAGE_DETAIL_LIMIT;
+          receiptChunks.push(receiptRows.slice(start, start + limit));
+          paymentChunks.push(paymentRows.slice(start, start + limit));
+          start += limit;
+          first = false;
+        }
+
+        // If there were no details but credit overflowed, still render a first page main section with empty tables.
+        if(receiptChunks.length === 0){
+          receiptChunks.push([]);
+          paymentChunks.push([]);
+        }
+
+        receiptChunks.forEach((leftChunk, index) => {
+          const rightChunk = paymentChunks[index] || [];
+          const isLastDetailPage = index === receiptChunks.length - 1;
+
+          // Try to place some or all credit rows on the last detail page only if it is the only page
+          // or if credits are small enough.
+          let creditHtml = '';
+          if(isLastDetailPage){
+            const firstCreditLimit = index === 0 ? FIRST_PAGE_CREDIT_LIMIT : NEXT_PAGE_CREDIT_LIMIT;
+            const creditFirstChunk = creditRows.slice(0, firstCreditLimit);
+            const remainingCredits = creditRows.slice(firstCreditLimit);
+
+            creditHtml = creditFirstChunk.length ? buildCreditSection(creditFirstChunk) : '';
+
+            pages.push(`
+              <div class="sheet">
+                ${buildMainSection(leftChunk, rightChunk, totals, index > 0)}
+                ${creditHtml}
+              </div>
+            `);
+
+            if(remainingCredits.length){
+              const extraCreditChunks = chunkArray(remainingCredits, NEXT_PAGE_CREDIT_LIMIT);
+              extraCreditChunks.forEach((chunk, ci) => {
+                pages.push(`
+                  <div class="sheet">
+                    <div class="top-title">VAJRA LIGHTS &amp; ELECTRICALS.</div>
+                    <div class="meta-row">
+                      <div>DATE: <span>${safeCell(totals.metaDate)}</span></div>
+                      <div>GENERATED AT: <span>${safeCell(totals.generatedAt)}</span></div>
+                    </div>
+                    <div class="main-heading">CREDIT - SALES REGISTER</div>
+                    <div class="continued-note">CONTINUED</div>
+                    <div class="double-line"></div>
+                    ${buildCreditSection(chunk, ' (CONTINUED)')}
+                  </div>
+                `);
+              });
+            }
+          } else {
+            pages.push(`
+              <div class="sheet">
+                ${buildMainSection(leftChunk, rightChunk, totals, index > 0)}
+              </div>
+            `);
+          }
+        });
       }
-      body.innerHTML = rows.map(r => `
-        <tr>
-          <td>${safe(billNo(r))}</td>
-          <td>${safe(r.series_code)}</td>
-          <td>${fmtDateDisplay(r.bill_date)}</td>
-          <td>${safe(r.customer_name)}</td>
-          <td>${safe(r.customer_mobile)}</td>
-          <td>${safe(r.address)}</td>
-          <td class="num">${fmtCurrency(r.invoice_amount)}</td>
-        </tr>
-      `).join('');
+
+      pagesContainer.innerHTML = pages.join('');
     }
 
-    function updateSummary({ salesTotal, receiptsTotal, paymentsTotal, salesReturnTotal, creditSalesTotal }) {
-      const leftTotal = Number(salesTotal || 0) + Number(receiptsTotal || 0);
-      const rightTotal = Number(paymentsTotal || 0) + Number(salesReturnTotal || 0);
-      const balance = leftTotal - rightTotal;
-
-      el('salesTotalMini').textContent = fmtCurrency(salesTotal);
-      el('receiptsTotalMini').textContent = fmtCurrency(receiptsTotal);
-      el('paymentsTotalMini').textContent = fmtCurrency(paymentsTotal);
-      el('salesReturnTotalMini').textContent = fmtCurrency(salesReturnTotal);
-
-      el('leftTotal').textContent = fmtCurrency(leftTotal);
-      el('rightTotal').textContent = fmtCurrency(rightTotal);
-      el('balanceClosing').textContent = fmtCurrency(balance);
-      el('creditSalesTotal').textContent = fmtCurrency(creditSalesTotal);
-      el('leftTotalHead').textContent = fmtCurrency(leftTotal);
-      el('rightTotalHead').textContent = fmtCurrency(rightTotal);
-    }
-
-    async function fetchSales(dateStr) {
+    async function fetchSales(dateStr){
       const { data, error } = await sb
         .from('sales_details')
-        .select('id,sales_number,series_code,bill_date,invoice_amount,customer_name,customer_mobile,address,payment_type,created_at')
+        .select('id,sales_number,series_code,bill_date,invoice_amount,customer_name,customer_mobile,payment_type,created_at')
         .eq('bill_date', dateStr)
-        .order('sales_number', { ascending: true });
+        .order('created_at', { ascending: true });
 
-      if (error) throw error;
+      if(error) throw error;
 
       const rows = Array.isArray(data) ? data : [];
       const creditSales = rows.filter(isCreditSale);
@@ -1127,115 +653,129 @@
 
       return {
         creditSales,
-        cashSales,
-        salesTotal: sumBy(cashSales, 'invoice_amount'),
-        creditSalesTotal: sumBy(creditSales, 'invoice_amount')
+        cashSalesTotal: cashSales.reduce((a, b) => a + num(b.invoice_amount), 0)
       };
     }
 
-    async function fetchCashTransactions(dateStr) {
+    async function fetchCashTransactions(dateStr){
       const { data, error } = await sb
         .from('cash_transactions')
         .select('*')
         .eq('txn_date', dateStr)
         .order('created_at', { ascending: true });
 
-      if (error) throw error;
+      if(error) throw error;
 
       const rows = Array.isArray(data) ? data : [];
-      const receipts = rows.filter(r => normalize(r.txn_type) === 'receipt');
-      const approvedPayments = rows.filter(r =>
-        normalize(r.txn_type) === 'payment' && isApprovedStatus(r.approval_status)
+      const receipts = rows.filter(r => norm(r.txn_type) === 'receipt');
+      const payments = rows.filter(r =>
+        norm(r.txn_type) === 'payment' && isApprovedStatus(r.approval_status)
       );
 
       return {
         receipts,
-        approvedPayments,
-        receiptsTotal: sumBy(receipts, 'amount'),
-        paymentsTotal: sumBy(approvedPayments, 'amount')
+        payments,
+        receiptsTotal: receipts.reduce((a, b) => a + num(b.amount), 0),
+        paymentsTotal: payments.reduce((a, b) => a + num(b.amount), 0)
       };
     }
 
-    async function fetchSalesReturns(dateStr) {
+    async function fetchSalesReturns(dateStr){
       const { data, error } = await sb
         .from('sales_return_details')
-        .select('id,return_date,total_return_amount,approval_status,is_accepted,accepted_at,accepted_by,approved_at')
+        .select('id,total_return_amount,approval_status,is_accepted')
         .eq('return_date', dateStr);
 
-      if (error) throw error;
+      if(error) throw error;
 
       const rows = Array.isArray(data) ? data : [];
-      const approvedRows = rows.filter(r => isApprovedStatus(r.approval_status) || r.is_accepted === true);
+      const approved = rows.filter(r =>
+        isApprovedStatus(r.approval_status) || r.is_accepted === true
+      );
 
       return {
-        approvedRows,
-        salesReturnTotal: sumBy(approvedRows, 'total_return_amount')
+        total: approved.reduce((a, b) => a + num(b.total_return_amount), 0)
       };
     }
 
-    async function loadClosingData() {
-      try {
-        clearStatus();
+    async function loadClosingData(){
+      try{
+        if(!sb) throw new Error('Supabase client not found. Please check supabaseClient.js');
 
-        if (!sb) {
-          throw new Error('Supabase client not found. Please load supabaseClient.js or set window.sbcc.');
-        }
+        const dateStr = $('closingDate').value;
+        if(!dateStr) throw new Error('Please choose date');
 
-        const dateStr = el('closingDate').value;
-        if (!dateStr) throw new Error('Please choose a closing date first.');
+        setStatus('Loading...');
 
-        setStatus('Loading counter cash closing data...');
-
-        const [salesRes, cashRes, srRes] = await Promise.all([
+        const [sales, cash, sr] = await Promise.all([
           fetchSales(dateStr),
           fetchCashTransactions(dateStr),
           fetchSalesReturns(dateStr)
         ]);
 
-        renderReceipts(cashRes.receipts);
-        renderPayments(cashRes.approvedPayments);
-        renderCreditSales(salesRes.creditSales);
+        const receiptRows = cash.receipts.map(r => [
+          fmtTime(r.created_at || r.txn_date),
+          r.voucher_no || r.receipt_number || r.id || '',
+          r.party_name || r.customer_name || r.reference_name || '',
+          r.notes || r.description || r.remarks || 'RECEIPT',
+          fmtCurrency(r.amount)
+        ]);
 
-        updateSummary({
-          salesTotal: salesRes.salesTotal,
-          receiptsTotal: cashRes.receiptsTotal,
-          paymentsTotal: cashRes.paymentsTotal,
-          salesReturnTotal: srRes.salesReturnTotal,
-          creditSalesTotal: salesRes.creditSalesTotal
-        });
+        const paymentRows = cash.payments.map(r => [
+          fmtTime(r.created_at || r.txn_date),
+          r.voucher_no || r.payment_number || r.id || '',
+          r.party_name || r.supplier_name || r.reference_name || '',
+          r.notes || r.description || r.remarks || 'PAYMENT',
+          fmtCurrency(r.amount)
+        ]);
 
-        el('metaDate').textContent = fmtDateDisplay(dateStr);
-        el('metaCounter').textContent = el('counterName').value.trim() || '-';
-        el('metaGenerated').textContent = fmtDateTimeDisplay(new Date().toISOString());
+        const creditRows = sales.creditSales.map(r => [
+          billNo(r),
+          r.customer_name || '',
+          r.customer_mobile || '',
+          fmtCurrency(r.invoice_amount || 0)
+        ]);
 
-        setStatus('Closing sheet loaded successfully. You can print it now.');
-      } catch (err) {
+        const totals = {
+          metaDate: fmtDate(dateStr),
+          generatedAt: fmtDateTime(new Date()),
+          saleReceiptTotal: fmtCurrency(sales.cashSalesTotal + cash.receiptsTotal),
+          cashSalesTotal: fmtCurrency(sales.cashSalesTotal),
+          returnPaymentTotal: fmtCurrency(sr.total + cash.paymentsTotal),
+          returnAmount: fmtCurrency(sr.total),
+          balance: fmtCurrency((sales.cashSalesTotal + cash.receiptsTotal) - (sr.total + cash.paymentsTotal))
+        };
+
+        renderPages(receiptRows, paymentRows, creditRows, totals);
+        setStatus('Loaded successfully.');
+      }catch(err){
         console.error(err);
-        setStatus(err.message || 'Failed to load closing data.', true);
+        setStatus(err.message || 'Failed to load', true);
       }
     }
 
-    function initDefaults() {
+    (function init(){
       const now = new Date();
       const yyyy = now.getFullYear();
       const mm = String(now.getMonth() + 1).padStart(2, '0');
       const dd = String(now.getDate()).padStart(2, '0');
-      el('closingDate').value = `${yyyy}-${mm}-${dd}`;
 
-      el('metaDate').textContent = fmtDateDisplay(el('closingDate').value);
-      el('metaCounter').textContent = '-';
-      el('metaGenerated').textContent = fmtDateTimeDisplay(new Date().toISOString());
+      if($('closingDate')){
+        $('closingDate').value = `${yyyy}-${mm}-${dd}`;
+      }
 
-      updateSummary({
-        salesTotal: 0,
-        receiptsTotal: 0,
-        paymentsTotal: 0,
-        salesReturnTotal: 0,
-        creditSalesTotal: 0
-      });
-    }
+      const emptyTotals = {
+        metaDate: fmtDate(`${yyyy}-${mm}-${dd}`),
+        generatedAt: fmtDateTime(new Date()),
+        saleReceiptTotal: '0',
+        cashSalesTotal: '0',
+        returnPaymentTotal: '0',
+        returnAmount: '0',
+        balance: '0'
+      };
 
-    initDefaults();
+      renderPages([], [], [], emptyTotals);
+    })();
   </script>
 </body>
 </html>

@@ -1224,8 +1224,9 @@
         paidAmount,
         paymentType
     }) {
+        const isCredit = String(paymentType || "").toUpperCase() === "CREDIT";
         const amount = parseFloat(paidAmount || 0) || 0;
-        if (amount <= 0 || !headerId) return;
+        if (!isCredit || amount <= 0 || !headerId) return;
 
         const refType =
             docType === "sales_order" ? "sales_order_advance" :
@@ -1260,7 +1261,7 @@
                 party_name: customerName || "CUSTOMER",
                 amount: amount,
                 remarks: remarks,
-                approval_status: String(paymentType || "CASH").toUpperCase() === "CREDIT" ? "pending" : "approved",
+                approval_status: "pending",
                 reference_type: refType,
                 reference_id: headerId
             }]);
@@ -2692,7 +2693,7 @@ function calcTotal() {
                 throw new Error("Customer Name or Mobile is required for CREDIT sales order.");
             }
 
-            if (["sales", "sales_pack", "sales_order"].includes(docType) && paymentType === "CASH" && Math.abs(totalAmount - paidAmount) > 0.009) {
+            if (["sales", "sales_pack", "sales_order"].includes(docType) && paymentType === "CASH" && Math.abs(roundedTotal - paidAmount) > 0.009) {
                 throw new Error("Cash bill must be fully paid.");
             }
 
@@ -2927,15 +2928,17 @@ function calcTotal() {
             if (["sales", "sales_pack", "sales_order"].includes(docType)) {
                 const headerId = saleId;
                 const billNoForTxn = editingId ? document.getElementById("bill_number").value : nextBillNo;
+                const isCredit = String(paymentType || "").toUpperCase() === "CREDIT";
+                const paidNum = parseFloat(paidAmount || 0) || 0;
 
-                if ((parseFloat(paidAmount || 0) || 0) > 0) {
+                if (isCredit && paidNum > 0) {
                     await upsertCreditPaymentTransaction({
                         docType,
                         headerId,
                         billNo: billNoForTxn,
                         billDate: head.date,
                         customerName: head.name,
-                        paidAmount,
+                        paidAmount: paidNum,
                         paymentType
                     });
                 }

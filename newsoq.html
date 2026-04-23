@@ -910,11 +910,8 @@
             await loadQuotation(convertId);
         }
         else if(convertSO){
+            window.loadedSalesOrderId = convertSO;
             await loadSalesOrder(convertSO);
-            await sb
-                .from("sales_order_details")
-                .update({ converted: true })
-                .eq("id", convertSO);
         }
         else{
             addNewRow();
@@ -1240,7 +1237,8 @@
                 ? `Advance for Sales Order ${billNo}`
                 : `Credit paid for ${docType === "sales_pack" ? "Sales + Packing" : "Sales"} Bill ${billNo}`;
 
-        const voucherNo = `AUTO-${billNo}`;
+        const safeBillNo = String(billNo || "0").replace(/[^A-Z0-9_-]/gi, "");
+        const voucherNo = `AUTO-${refType}-${headerId}-${safeBillNo}`;
 
         const { error: deleteError } = await sb
             .from("cash_transactions")
@@ -2553,6 +2551,85 @@ function calcTotal() {
         }, 180);
     }
 
+    function collectAndValidateItemsBeforeHeaderSave(docType) {
+        const rows = document.querySelectorAll('#bill_body tr');
+        const itemsToValidate = [];
+        const packingItemsToValidate = [];
+
+        for (const row of rows) {
+            const codeField = row.querySelector('.code-inp');
+            const nameField = row.querySelector('.name-inp');
+            if (!codeField) continue;
+
+            const code = (codeField.value || '').trim();
+            const name = (nameField?.value || '').trim();
+
+            if (!code && !name) continue;
+
+            if (!code) {
+                throw new Error(`Please select a valid item for row: ${name || 'Unknown Item'}`);
+            }
+
+            const qtyField = row.querySelector('.qty-inp');
+            const priceField = row.querySelector('.price-inp');
+            const priceGstField = row.querySelector('.price-gst-inp');
+            const discField = row.querySelector('.disc-inp');
+            const gstField = row.querySelector('.gst-inp');
+            const hsnField = row.querySelector('.hsn-store');
+            const typeField = row.querySelector('.type-inp');
+
+            const qty = parseFloat(qtyField?.value || 0);
+            if (!Number.isFinite(qty) || qty <= 0) {
+                throw new Error(`Invalid quantity entered for item: ${code}`);
+            }
+
+            if (docType !== "sales_order") {
+                const valid = isValidStockItem(code);
+                if (!valid) {
+                    throw new Error(`Item "${code}" not found in stock. Cannot save.`);
+                }
+            }
+
+            if (docType === "sales" && !validateSalesRowQty(row, { showWarning: true })) {
+                throw new Error(`Entered qty is more than available stock for item: ${code}`);
+            }
+
+            const baseItem = {
+                item_code: code,
+                item_name: name,
+                quantity: qty,
+                price: parseFloat(priceField?.value || 0) || 0,
+                discount_percent: parseFloat(discField?.value || 0) || 0,
+                sales_price: parseFloat(priceField?.value || 0) || 0,
+                sales_price_gst: parseFloat(priceGstField?.value || 0) || 0,
+                hsn_code: hsnField?.value || "",
+                gst_percent: parseFloat(gstField?.value || 0) || 0};
+
+            itemsToValidate.push(baseItem);
+
+            if (docType === "sales_pack") {
+                packingItemsToValidate.push({
+                    item_code: baseItem.item_code,
+                    item_name: baseItem.item_name,
+                    quantity: baseItem.quantity,
+                    price: baseItem.price,
+                    discount_percent: baseItem.discount_percent,
+                    sales_price_gst: baseItem.sales_price_gst,
+                    hsn_code: baseItem.hsn_code,
+                    gst_percent: baseItem.gst_percent});
+            }
+        }
+
+        if (!itemsToValidate.length) {
+            throw new Error("No valid items to save.");
+        }
+
+        return {
+            itemsToValidate,
+            packingItemsToValidate
+        };
+    }
+
     async function saveAndPrint() {
         const totalAmount = parseFloat(
             (document.getElementById('display_grand_total').innerText || '₹0').replace('₹', '')
@@ -2566,6 +2643,11 @@ function calcTotal() {
         btn.innerText = "SAVING...";
 
         try {
+            const {
+                itemsToValidate,
+                packingItemsToValidate
+            } = collectAndValidateItemsBeforeHeaderSave(docType);
+
             const head = {
                 series: document.getElementById('bill_series').value,
                 date: document.getElementById('bill_date').value || new Date().toISOString().split("T")[0],
@@ -2687,7 +2769,7 @@ function calcTotal() {
                     advance_amount: paidAmount,
                     balance_amount: balanceAmount,
                     salesman: document.getElementById("salesman").value || "",
-                    created_by: localStorage.getItem("staff_name") || localStorage.getItem("username") || localStorage.getItem("user") || "SYSTEM"
+                    created_by: createdBy
                 };
             }
             else if (docType === "quotation") {
@@ -2700,7 +2782,7 @@ function calcTotal() {
                     gst_number: head.gst,
                     total_amount: roundedTotal,
                     salesman: document.getElementById("salesman").value || "",
-                    created_by: localStorage.getItem("staff_name") || localStorage.getItem("username") || localStorage.getItem("user") || "SYSTEM"
+                    created_by: createdBy
                 };
             }
             else {
@@ -2719,7 +2801,7 @@ function calcTotal() {
                     paid_amount: paidAmount,
                     balance_amount: balanceAmount,
                     salesman: document.getElementById("salesman").value,
-                    created_by: localStorage.getItem("staff_name") || localStorage.getItem("username") || localStorage.getItem("user") || "SYSTEM",
+                    created_by: createdBy,
                     round_off: roundOff
                 };
             }
@@ -2884,77 +2966,17 @@ function calcTotal() {
                 }
             }
 
-            const rows = document.querySelectorAll('#bill_body tr');
-            const itemsToSave = [];
-            const packingItemsToSave = [];
+            const itemsToSave = itemsToValidate.map(item => ({
+                ...item,
+                [idField]: saleId
+            }));
 
-            for (const row of rows) {
-                const codeField = row.querySelector('.code-inp');
-                if (!codeField) continue;
-
-                const code = (codeField.value || '').trim();
-                if (!code) continue;
-
-                const qtyField = row.querySelector('.qty-inp');
-                const priceField = row.querySelector('.price-inp');
-                const priceGstField = row.querySelector('.price-gst-inp');
-                const discField = row.querySelector('.disc-inp');
-                const gstField = row.querySelector('.gst-inp');
-                const hsnField = row.querySelector('.hsn-store');
-                const typeField = row.querySelector('.type-inp');
-
-                if (docType !== "sales_order") {
-                    const valid = isValidStockItem(code);
-                    if (!valid) {
-                        throw new Error(`Item "${code}" not found in stock. Cannot save.`);
-                    }
-                }
-
-                const qty = parseFloat(qtyField?.value || 0);
-                if (!qty || qty <= 0) {
-                    throw new Error("Invalid quantity entered for item: " + code);
-                }
-
-                if (docType === "sales" && !validateSalesRowQty(row, { showWarning: true })) {
-                    throw new Error("Entered qty is more than available stock for item: " + code);
-                }
-
-                let rowIdField;
-                if (docType === "quotation") rowIdField = "quotation_id";
-                else if (docType === "sales_order") rowIdField = "sales_order_id";
-                else rowIdField = "sales_id";
-
-                const baseItem = {
-                    [rowIdField]: saleId,
-                    item_code: code,
-                    item_name: row.querySelector('.name-inp')?.value || '',
-                    quantity: qtyField ? qtyField.value : 0,
-                    price: priceField ? priceField.value : 0,
-                    discount_percent: discField ? parseFloat(discField.value) || 0 : 0,
-                    sales_price: priceField ? priceField.value : 0,
-                    sales_price_gst: priceGstField ? priceGstField.value : 0,
-                    hsn_code: hsnField ? hsnField.value : "",
-                    gst_percent: gstField ? parseFloat(gstField.value) || 0 : 0};
-
-                itemsToSave.push(baseItem);
-
-                if (docType === "sales_pack") {
-                    packingItemsToSave.push({
-                        packing_id: packingId,
-                        item_code: baseItem.item_code,
-                        item_name: baseItem.item_name,
-                        quantity: baseItem.quantity,
-                        price: baseItem.price,
-                        discount_percent: baseItem.discount_percent || 0,
-                        sales_price_gst: baseItem.sales_price_gst,
-                        hsn_code: baseItem.hsn_code,
-                        gst_percent: baseItem.gst_percent});
-                }
-            }
-
-            if (!itemsToSave.length) {
-                throw new Error("No items to save.");
-            }
+            const packingItemsToSave = docType === "sales_pack"
+                ? packingItemsToValidate.map(item => ({
+                    ...item,
+                    packing_id: packingId
+                }))
+                : [];
 
             if (docType === "sales_pack" && packingItemsToSave.length) {
                 const { error: pErr } = await sb
@@ -2989,6 +3011,15 @@ function calcTotal() {
                 window.loadedQuotationId = null;
             }
 
+            if (docType === "sales" && window.loadedSalesOrderId) {
+                await sb
+                    .from("sales_order_details")
+                    .update({ converted: true })
+                    .eq("id", window.loadedSalesOrderId);
+
+                window.loadedSalesOrderId = null;
+            }
+
             window.location.replace(window.location.pathname + "?fresh=" + Date.now());
 
         } catch (e) {
@@ -3002,6 +3033,7 @@ function calcTotal() {
                 "PRINT & SAVE";
         }
     }
+
 
     document.addEventListener('focus' , (e) => {
         if (e.target.tagName === 'INPUT' && !e.target.readOnly) {
@@ -3065,9 +3097,10 @@ function calcTotal() {
             .maybeSingle();
 
         if(head){
-            document.getElementById("cust_name").value=head.customer_name || "";
-            document.getElementById("cust_mobile").value=head.customer_mobile || "";
-            document.getElementById("cust_gst").value=head.gst_number || "";
+            document.getElementById("cust_name").value = head.customer_name || "";
+            document.getElementById("cust_mobile").value = head.customer_mobile || "";
+            document.getElementById("cust_gst").value = head.gst_number || "";
+            document.getElementById("cust_address").value = head.address || "";
         }
 
         const {data, error} = await sb
@@ -3085,30 +3118,43 @@ function calcTotal() {
 
             const row=document.getElementById(`row_${currentRowId-1}`);
 
-            row.querySelector(".code-inp").value=item.item_code;
-            row.querySelector(".name-inp").value=item.item_name;
-            row.querySelector(".qty-inp").value=item.quantity;
-            row.querySelector(".price-inp").value=item.price;
-            row.querySelector(".price-gst-inp").value=item.sales_price_gst;
-            row.querySelector(".disc-inp").value=item.discount_percent || 0;
-            row.querySelector(".gst-inp").value=item.gst_percent;
-            row.querySelector(".hsn-store").value=item.hsn_code;
+            row.querySelector(".code-inp").value = item.item_code || "";
+            row.querySelector(".name-inp").value = item.item_name || "";
+            row.querySelector(".qty-inp").value = item.quantity || 0;
+            row.querySelector(".price-inp").value = item.price || 0;
+            row.querySelector(".price-gst-inp").value = item.sales_price_gst || 0;
+            row.querySelector(".disc-inp").value = item.discount_percent || 0;
+            row.querySelector(".gst-inp").value = item.gst_percent || 0;
+            row.querySelector(".hsn-store").value = item.hsn_code || "";
 
             const stockRow = stockData.find(x =>
                 String(x.item_code || "").trim().toUpperCase() === String(item.item_code || "").trim().toUpperCase()
             );
-            row.querySelector(".landing-inp").value = parseFloat(stockRow?.landing || 0).toFixed(2);
+
+            if (stockRow) {
+                row.querySelector(".raw-data").value = JSON.stringify(stockRow);
+                row.querySelector(".landing-inp").value = parseFloat(stockRow.landing || 0).toFixed(2);
+                row.querySelector(".type-inp").value = inferPriceTypeFromItemAndRow(stockRow, item);
+
+                const qtyBox = row.querySelector('.qty-inp');
+                qtyBox.title = `Available Stock: ${parseFloat(stockRow.balance || 0)}`;
+            } else {
+                row.querySelector(".raw-data").value = "";
+                row.querySelector(".landing-inp").value = "0.00";
+                row.querySelector(".type-inp").value = "1";
+            }
 
             calcForward(currentRowId-1);
+            applyItemRestriction(row);
         });
 
         calcTotal();
-        document.getElementById("cust_address").value = head?.address || "";
         document.getElementById("payment_type").value = "CASH";
         document.getElementById("paid_amount").value = "0.00";
         syncPaymentUI();
         alert("Sales Order loaded. Modify if needed and save as Sales.");
     }
+
 
     function applyItemRestriction(row){
         const selectedDept = getSelectedDepartment();
@@ -3158,12 +3204,12 @@ function calcTotal() {
     }
 
     async function loadQuotation(qid){
-        window.loadedQuotationId=qid;
+        window.loadedQuotationId = qid;
         document.getElementById("doc_type").value = "sales";
         await fetchNextBillNumber();
 
-        document.getElementById("bill_body").innerHTML="";
-        currentRowId=0;
+        document.getElementById("bill_body").innerHTML = "";
+        currentRowId = 0;
 
         const {data: qHead} = await sb
             .from("quotation_details")
@@ -3175,6 +3221,7 @@ function calcTotal() {
             document.getElementById("cust_name").value = qHead.customer_name || "";
             document.getElementById("cust_mobile").value = qHead.customer_mobile || "";
             document.getElementById("cust_gst").value = qHead.gst_number || "";
+            document.getElementById("cust_address").value = qHead.address || "";
         }
 
         const {data,error}=await sb
@@ -3192,30 +3239,43 @@ function calcTotal() {
 
             const row=document.getElementById(`row_${currentRowId-1}`);
 
-            row.querySelector(".code-inp").value=item.item_code;
-            row.querySelector(".name-inp").value=item.item_name;
-            row.querySelector(".qty-inp").value=item.quantity;
-            row.querySelector(".price-inp").value=item.price;
-            row.querySelector(".price-gst-inp").value=item.sales_price_gst;
-            row.querySelector(".disc-inp").value=item.discount_percent || 0;
-            row.querySelector(".gst-inp").value=item.gst_percent;
-            row.querySelector(".hsn-store").value=item.hsn_code;
+            row.querySelector(".code-inp").value = item.item_code || "";
+            row.querySelector(".name-inp").value = item.item_name || "";
+            row.querySelector(".qty-inp").value = item.quantity || 0;
+            row.querySelector(".price-inp").value = item.price || 0;
+            row.querySelector(".price-gst-inp").value = item.sales_price_gst || 0;
+            row.querySelector(".disc-inp").value = item.discount_percent || 0;
+            row.querySelector(".gst-inp").value = item.gst_percent || 0;
+            row.querySelector(".hsn-store").value = item.hsn_code || "";
 
             const stockRow = stockData.find(x =>
                 String(x.item_code || "").trim().toUpperCase() === String(item.item_code || "").trim().toUpperCase()
             );
-            row.querySelector(".landing-inp").value = parseFloat(stockRow?.landing || 0).toFixed(2);
+
+            if (stockRow) {
+                row.querySelector(".raw-data").value = JSON.stringify(stockRow);
+                row.querySelector(".landing-inp").value = parseFloat(stockRow.landing || 0).toFixed(2);
+                row.querySelector(".type-inp").value = inferPriceTypeFromItemAndRow(stockRow, item);
+
+                const qtyBox = row.querySelector('.qty-inp');
+                qtyBox.title = `Available Stock: ${parseFloat(stockRow.balance || 0)}`;
+            } else {
+                row.querySelector(".raw-data").value = "";
+                row.querySelector(".landing-inp").value = "0.00";
+                row.querySelector(".type-inp").value = "1";
+            }
 
             calcForward(currentRowId-1);
+            applyItemRestriction(row);
         });
 
         calcTotal();
-        document.getElementById("cust_address").value = qHead?.address || "";
         document.getElementById("payment_type").value = "CASH";
         document.getElementById("paid_amount").value = "0.00";
         syncPaymentUI();
         alert("Quotation loaded. You can modify items and save as Sales.");
     }
+
 
     const barcodeInput = document.getElementById("barcode_scan");
 

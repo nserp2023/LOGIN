@@ -895,20 +895,7 @@
         applyLandingColumnVisibility();
         syncPaymentUI();
 
-        document.getElementById("payment_type").addEventListener("change", syncPaymentUI);
-        document.getElementById("paid_amount").addEventListener("input", () => {
-            const total = getGrandTotalAmount();
-            const paidEl = document.getElementById("paid_amount");
-            let paid = parseFloat(paidEl.value) || 0;
-            if (paid < 0) paid = 0;
-            if (paid > total) paid = total;
-            paidEl.value = paid ? paid.toFixed(2) : "0.00";
-            syncPaymentUI();
-            closeStockWarning();
-            document.querySelectorAll("#bill_body tr").forEach(row => {
-                applyItemRestriction(row);
-            });
-        });
+        bindPaymentEvents();
 
         const params = new URLSearchParams(window.location.search);
         const convertId = params.get("convert");
@@ -1099,54 +1086,192 @@
         return true;
     }
 
-    function syncPaymentUI() {
-    const docType = document.getElementById("doc_type")?.value || "sales";
-    const paymentTypeGroup = document.getElementById("payment_type_group");
-    const paidAmountGroup = document.getElementById("paid_amount_group");
-    const balanceBox = document.getElementById("balance_box");
-    const paymentTypeEl = document.getElementById("payment_type");
-    const paidAmountEl = document.getElementById("paid_amount");
-    const balanceText = document.getElementById("display_balance_amount");
-
-    if (!paymentTypeGroup || !paidAmountGroup || !balanceBox || !paymentTypeEl || !paidAmountEl || !balanceText) {
-        return;
+    function getMoneyValue(val){
+        const n = parseFloat(
+            String(val ?? "")
+                .replace(/[₹,\s]/g, "")
+        );
+        return Number.isFinite(n) ? n : 0;
     }
 
-    const isSalesDoc = docType === "sales";
-    const showPayment = isSalesDoc;
-
-    paymentTypeGroup.style.display = showPayment ? "" : "none";
-    paidAmountGroup.style.display = showPayment ? "" : "none";
-    balanceBox.style.display = showPayment ? "" : "none";
-
-    if (!showPayment) {
-        paymentTypeEl.value = "CASH";
-        paidAmountEl.value = "0.00";
-        paidAmountEl.disabled = true;
-        balanceText.innerText = "₹0.00";
-        return;
+    function getCurrentDocType() {
+        return document.getElementById("doc_type")?.value || "sales";
     }
 
-const total = Math.round(
-    parseFloat((document.getElementById("display_grand_total")?.innerText || "₹0").replace("₹", "")) || 0
-);
-    const paymentType = paymentTypeEl.value || "CASH";
-
-    if (paymentType === "CASH") {
-        paidAmountEl.value = total.toFixed(2);
-        paidAmountEl.disabled = true;
-    } else {
-        paidAmountEl.disabled = false;
-        let paid = parseFloat(paidAmountEl.value) || 0;
-        if (paid < 0) paid = 0;
-        if (paid > total) paid = total;
-        paidAmountEl.value = paid.toFixed(2);
+    function getCurrentRoundedGrandTotal() {
+        return Math.round(
+            getMoneyValue(document.getElementById("display_grand_total")?.innerText || "0")
+        );
     }
 
-    const paidAmount = parseFloat(paidAmountEl.value) || 0;
-    const balanceAmount = Math.max(0, total - paidAmount);
-    balanceText.innerText = "₹" + balanceAmount.toFixed(2);
-}
+    function syncPaymentUI(forceKeepUserAmount = false) {
+        const docType = getCurrentDocType();
+
+        const paymentTypeGroup = document.getElementById("payment_type_group");
+        const paidAmountGroup = document.getElementById("paid_amount_group");
+        const balanceBox = document.getElementById("balance_box");
+        const paymentTypeEl = document.getElementById("payment_type");
+        const paidAmountEl = document.getElementById("paid_amount");
+        const balanceText = document.getElementById("display_balance_amount");
+        const paidLabel = paidAmountGroup?.querySelector("label");
+
+        if (!paymentTypeGroup || !paidAmountGroup || !balanceBox || !paymentTypeEl || !paidAmountEl || !balanceText) {
+            return;
+        }
+
+        const total = getCurrentRoundedGrandTotal();
+        const showPayment = ["sales", "sales_pack", "sales_order"].includes(docType);
+
+        paymentTypeGroup.style.display = showPayment ? "" : "none";
+        paidAmountGroup.style.display = showPayment ? "" : "none";
+        balanceBox.style.display = showPayment ? "" : "none";
+
+        if (!showPayment) {
+            paymentTypeEl.value = "CASH";
+            paymentTypeEl.dataset.justChangedToCredit = "0";
+            paidAmountEl.value = "0.00";
+            paidAmountEl.disabled = true;
+            if (paidLabel) paidLabel.textContent = "Paid Amount";
+            balanceText.innerText = "₹0.00";
+            return;
+        }
+
+        if (paidLabel) {
+            paidLabel.textContent = docType === "sales_order" ? "Advance" : "Credit Paid";
+        }
+
+        const paymentType = String(paymentTypeEl.value || "CASH").toUpperCase();
+
+        if (paymentType === "CASH") {
+            paidAmountEl.value = total.toFixed(2);
+            paidAmountEl.disabled = true;
+        } else {
+            paidAmountEl.disabled = false;
+
+            let paid = getMoneyValue(paidAmountEl.value);
+
+            if (!forceKeepUserAmount && paymentTypeEl.dataset.justChangedToCredit === "1") {
+                paid = 0;
+                paymentTypeEl.dataset.justChangedToCredit = "0";
+            }
+
+            if (paid < 0) paid = 0;
+            if (paid > total) paid = total;
+            paidAmountEl.value = paid.toFixed(2);
+        }
+
+        const paidAmount = getMoneyValue(paidAmountEl.value);
+        const balanceAmount = Math.max(0, total - paidAmount);
+        balanceText.innerText = "₹" + balanceAmount.toFixed(2);
+    }
+
+    function bindPaymentEvents() {
+        const paymentTypeEl = document.getElementById("payment_type");
+        const paidAmountEl = document.getElementById("paid_amount");
+
+        if (paymentTypeEl && !paymentTypeEl.dataset.boundCreditFix) {
+            paymentTypeEl.addEventListener("change", (e) => {
+                if ((e.target.value || "").toUpperCase() === "CREDIT") {
+                    e.target.dataset.justChangedToCredit = "1";
+                } else {
+                    e.target.dataset.justChangedToCredit = "0";
+                }
+                syncPaymentUI(false);
+            });
+            paymentTypeEl.dataset.boundCreditFix = "1";
+        }
+
+        if (paidAmountEl && !paidAmountEl.dataset.boundCreditFix) {
+            paidAmountEl.addEventListener("input", () => {
+                const total = getCurrentRoundedGrandTotal();
+                let paid = getMoneyValue(paidAmountEl.value);
+
+                if (paid < 0) paid = 0;
+                if (paid > total) paid = total;
+
+                paidAmountEl.value = paid ? paid.toFixed(2) : "0.00";
+                syncPaymentUI(true);
+
+                closeStockWarning();
+                document.querySelectorAll("#bill_body tr").forEach(row => {
+                    applyItemRestriction(row);
+                });
+            });
+            paidAmountEl.dataset.boundCreditFix = "1";
+        }
+    }
+
+    async function isSalesPackLinkedSalesId(salesId) {
+        if (!salesId) return false;
+
+        const { data, error } = await sb
+            .from("sales_packing_details")
+            .select("id")
+            .eq("sales_id", salesId)
+            .maybeSingle();
+
+        if (error) {
+            console.error("Error checking sales pack link:", error);
+            return false;
+        }
+
+        return !!data;
+    }
+
+    async function upsertCreditPaymentTransaction({
+        docType,
+        headerId,
+        billNo,
+        billDate,
+        customerName,
+        paidAmount,
+        paymentType
+    }) {
+        const amount = parseFloat(paidAmount || 0) || 0;
+        if (amount <= 0 || !headerId) return;
+
+        const refType =
+            docType === "sales_order" ? "sales_order_advance" :
+            docType === "sales_pack" ? "sales_pack_credit" :
+            "sales_credit";
+
+        const remarks =
+            docType === "sales_order"
+                ? `Advance for Sales Order ${billNo}`
+                : `Credit paid for ${docType === "sales_pack" ? "Sales + Packing" : "Sales"} Bill ${billNo}`;
+
+        const voucherNo = `AUTO-${billNo}`;
+
+        const { error: deleteError } = await sb
+            .from("cash_transactions")
+            .delete()
+            .eq("reference_type", refType)
+            .eq("reference_id", headerId);
+
+        if (deleteError) {
+            console.error("Auto payment delete error:", deleteError);
+            throw deleteError;
+        }
+
+        const { error: insertError } = await sb
+            .from("cash_transactions")
+            .insert([{
+                voucher_no: voucherNo,
+                txn_date: billDate,
+                txn_type: "payment",
+                party_name: customerName || "CUSTOMER",
+                amount: amount,
+                remarks: remarks,
+                approval_status: String(paymentType || "CASH").toUpperCase() === "CREDIT" ? "pending" : "approved",
+                reference_type: refType,
+                reference_id: headerId
+            }]);
+
+        if (insertError) {
+            console.error("Auto payment insert error:", insertError);
+            throw insertError;
+        }
+    }
 
     async function fetchNextBillNumber() {
         const series = document.getElementById('bill_series').value;
@@ -1826,6 +1951,28 @@ ${data.map((c, idx) => `
     window.addEventListener('resize', repositionVisibleDropdowns);
     window.addEventListener('scroll', repositionVisibleDropdowns, true);
 
+
+    function inferPriceTypeFromItemAndRow(stockItem, itemRow){
+        if(!stockItem || !itemRow) return "1";
+
+        const rowPrice = parseFloat(itemRow.sales_price ?? itemRow.price ?? 0) || 0;
+        const rowPriceGst = parseFloat(itemRow.sales_price_gst ?? 0) || 0;
+
+        const p1 = parseFloat(stockItem.price1 || 0) || 0;
+        const p2 = parseFloat(stockItem.price2 || 0) || 0;
+        const p3 = parseFloat(stockItem.price3 || 0) || 0;
+        const landing = parseFloat(stockItem.landing || 0) || 0;
+
+        const eq = (a, b) => Math.abs((parseFloat(a) || 0) - (parseFloat(b) || 0)) < 0.01;
+
+        if(eq(rowPrice, p1)) return "1";
+        if(eq(rowPrice, p2)) return "2";
+        if(eq(rowPrice, p3)) return "3";
+        if(eq(rowPriceGst, landing)) return "L";
+
+        return "1";
+    }
+
     function updatePriceFromType(id) {
     const row = document.getElementById(`row_${id}`);
     const type = row.querySelector('.type-inp').value;
@@ -2408,11 +2555,13 @@ function calcTotal() {
 
     async function saveAndPrint() {
         const totalAmount = parseFloat(
-    (document.getElementById('display_grand_total').innerText || '₹0').replace('₹','')
-) || 0;
-        const docType=document.getElementById("doc_type").value;
+            (document.getElementById('display_grand_total').innerText || '₹0').replace('₹', '')
+        ) || 0;
+
+        const docType = document.getElementById("doc_type").value;
         const btn = document.getElementById('btn_save');
-        if(btn.disabled) return; 
+        if (btn.disabled) return;
+
         btn.disabled = true;
         btn.innerText = "SAVING...";
 
@@ -2424,25 +2573,25 @@ function calcTotal() {
                 name: document.getElementById('cust_name').value,
                 addr: document.getElementById('cust_address').value,
                 gst: document.getElementById('cust_gst').value,
-                total: parseFloat(document.getElementById('display_grand_total').innerText.replace('₹',''))
+                total: parseFloat(
+                    (document.getElementById('display_grand_total').innerText || '₹0').replace('₹', '')
+                ) || 0
             };
 
-            const paymentType = document.getElementById("payment_type")?.value || "CASH";
+            const paymentType = String(document.getElementById("payment_type")?.value || "CASH").toUpperCase();
 
-const exactTotal = parseFloat(head.total || 0) || 0;
-const roundedTotal = Math.round(exactTotal);
-const roundOff = roundedTotal - exactTotal;
+            const exactTotal = parseFloat(head.total || 0) || 0;
+            const roundedTotal = Math.round(exactTotal);
+            const roundOff = roundedTotal - exactTotal;
 
-let paidAmount = parseFloat(document.getElementById("paid_amount")?.value) || 0;
+            let paidAmount = parseFloat(document.getElementById("paid_amount")?.value) || 0;
+            paidAmount = Math.max(0, Math.min(roundedTotal, paidAmount));
 
-// restrict
-paidAmount = Math.max(0, Math.min(roundedTotal, paidAmount));
+            if (paymentType === "CASH" && ["sales", "sales_pack", "sales_order"].includes(docType)) {
+                paidAmount = roundedTotal;
+            }
 
-if (paymentType === "CASH") {
-    paidAmount = roundedTotal;
-}
-
-const balanceAmount = Math.max(0, roundedTotal - paidAmount);
+            const balanceAmount = Math.max(0, roundedTotal - paidAmount);
 
             const hasCustomerDetails = !!((head.mob || "").trim() || (head.name || "").trim());
 
@@ -2453,12 +2602,16 @@ const balanceAmount = Math.max(0, roundedTotal - paidAmount);
                 head.gst = "";
             }
 
-            if (docType === "sales" && paymentType === "CREDIT" && !((head.mob || "").trim() || (head.name || "").trim())) {
-                throw new Error("Customer Name or Mobile is required for CREDIT sales.");
+            if (["sales", "sales_pack"].includes(docType) && paymentType === "CREDIT" && !((head.mob || "").trim() || (head.name || "").trim())) {
+                throw new Error("Customer Name or Mobile is required for CREDIT bills.");
             }
 
-            if (docType === "sales" && paymentType === "CASH" && Math.abs(totalAmount - paidAmount) > 0.009) {
-                throw new Error("Cash sale must be fully paid.");
+            if (docType === "sales_order" && paymentType === "CREDIT" && !((head.mob || "").trim() || (head.name || "").trim())) {
+                throw new Error("Customer Name or Mobile is required for CREDIT sales order.");
+            }
+
+            if (["sales", "sales_pack", "sales_order"].includes(docType) && paymentType === "CASH" && Math.abs(totalAmount - paidAmount) > 0.009) {
+                throw new Error("Cash bill must be fully paid.");
             }
 
             const createdBy =
@@ -2470,29 +2623,25 @@ const balanceAmount = Math.max(0, roundedTotal - paidAmount);
             const seriesCode = document.getElementById('bill_series').value;
             let nextBillNo;
 
-            if(editingId){
+            if (editingId) {
                 nextBillNo = document.getElementById("bill_number").value;
-            }else{
-                if(docType === "sales" || docType === "sales_pack"){
+            } else {
+                if (docType === "sales" || docType === "sales_pack") {
                     const { data, error } = await sb.rpc('get_next_sales_number', { p_series: seriesCode });
-                    if(error) throw error;
+                    if (error) throw error;
                     nextBillNo = data;
-                }
-                else if(docType === "sales_order"){
+                } else if (docType === "sales_order") {
                     const { data, error } = await sb.rpc('get_next_sales_order_number', { p_series: seriesCode });
-                    if(error) throw error;
+                    if (error) throw error;
                     nextBillNo = data;
-                }
-                else{
+                } else {
                     const { data, error } = await sb.rpc('get_next_quotation_number', { p_series: seriesCode });
-                    if(error) throw error;
+                    if (error) throw error;
                     nextBillNo = data;
                 }
             }
-            
-            console.log("Auto-detected Bill No:", nextBillNo);
 
-            let custId = null;
+            console.log("Auto-detected Bill No:", nextBillNo);
 
             if ((head.mob || "").trim()) {
                 const { data: existC } = await sb
@@ -2502,7 +2651,6 @@ const balanceAmount = Math.max(0, roundedTotal - paidAmount);
                     .maybeSingle();
 
                 if (existC) {
-                    custId = existC.customer_id;
                     await sb
                         .from('customers')
                         .update({
@@ -2510,26 +2658,23 @@ const balanceAmount = Math.max(0, roundedTotal - paidAmount);
                             address: head.addr || "",
                             gst_number: head.gst || ""
                         })
-                        .eq('customer_id', custId);
+                        .eq('customer_id', existC.customer_id);
                 } else {
-                    const { data: newC, error: cErr } = await sb
+                    const { error: cErr } = await sb
                         .from('customers')
                         .insert([{
                             mobile: head.mob,
                             name: head.name || " ",
                             address: head.addr || "",
                             gst_number: head.gst || ""
-                        }])
-                        .select()
-                        .single();
-                    if(cErr) throw cErr;
-                    custId = newC.customer_id;
+                        }]);
+                    if (cErr) throw cErr;
                 }
             }
 
             let insertData;
 
-            if(docType === "sales_order"){
+            if (docType === "sales_order") {
                 insertData = {
                     series_code: head.series,
                     order_number: editingId ? document.getElementById("bill_number").value : nextBillNo,
@@ -2537,12 +2682,15 @@ const balanceAmount = Math.max(0, roundedTotal - paidAmount);
                     customer_name: head.name,
                     customer_mobile: head.mob,
                     gst_number: head.gst,
-                    total_amount: head.total,
+                    total_amount: roundedTotal,
+                    payment_type: paymentType,
+                    advance_amount: paidAmount,
+                    balance_amount: balanceAmount,
                     salesman: document.getElementById("salesman").value || "",
-                    created_by: createdBy
+                    created_by: localStorage.getItem("staff_name") || localStorage.getItem("username") || localStorage.getItem("user") || "SYSTEM"
                 };
             }
-            else if(docType === "quotation"){
+            else if (docType === "quotation") {
                 insertData = {
                     series_code: head.series,
                     quotation_number: editingId ? document.getElementById("bill_number").value : nextBillNo,
@@ -2550,53 +2698,65 @@ const balanceAmount = Math.max(0, roundedTotal - paidAmount);
                     customer_name: head.name,
                     customer_mobile: head.mob,
                     gst_number: head.gst,
-                    total_amount: head.total,
+                    total_amount: roundedTotal,
                     salesman: document.getElementById("salesman").value || "",
-                    created_by: createdBy
+                    created_by: localStorage.getItem("staff_name") || localStorage.getItem("username") || localStorage.getItem("user") || "SYSTEM"
                 };
             }
-            else if(docType === "sales" || docType === "sales_pack"){
+            else {
                 insertData = {
                     series_code: head.series,
-                    sales_number: nextBillNo,
+                    sales_number: editingId ? document.getElementById("bill_number").value : nextBillNo,
                     bill_date: head.date,
                     customer_name: head.name,
                     customer_mobile: head.mob,
                     gst_number: head.gst,
                     address: head.addr,
-                    invoice_number: nextBillNo,
+                    invoice_number: editingId ? document.getElementById("bill_number").value : nextBillNo,
                     invoice_date: head.date,
-                    invoice_amount: head.total,
-                    payment_type: docType === "sales" ? paymentType : "CASH",
-                    paid_amount: docType === "sales" ? paidAmount : head.total,
-                    balance_amount: docType === "sales" ? balanceAmount : 0,
+                    invoice_amount: roundedTotal,
+                    payment_type: paymentType,
+                    paid_amount: paidAmount,
+                    balance_amount: balanceAmount,
                     salesman: document.getElementById("salesman").value,
-                    created_by: createdBy,
-                    round_off: 0
+                    created_by: localStorage.getItem("staff_name") || localStorage.getItem("username") || localStorage.getItem("user") || "SYSTEM",
+                    round_off: roundOff
                 };
             }
 
-            let headerTable;
+            if (editingId && docType === "sales") {
+                const linkedPack = await isSalesPackLinkedSalesId(editingId);
+                if (linkedPack) {
+                    const { data: oldHead } = await sb
+                        .from("sales_details")
+                        .select("payment_type, paid_amount, balance_amount")
+                        .eq("id", editingId)
+                        .maybeSingle();
 
-            if(docType==="quotation") headerTable="quotation_details";
-            else if(docType==="sales_order") headerTable="sales_order_details";
-            else if(docType==="sales_pack") headerTable="sales_details";
-            else headerTable="sales_details";
+                    if (oldHead) {
+                        insertData.payment_type = oldHead.payment_type || "CASH";
+                        insertData.paid_amount = parseFloat(oldHead.paid_amount || 0) || 0;
+                        insertData.balance_amount = parseFloat(oldHead.balance_amount || 0) || 0;
+                    }
+                }
+            }
+
+            let headerTable;
+            if (docType === "quotation") headerTable = "quotation_details";
+            else if (docType === "sales_order") headerTable = "sales_order_details";
+            else headerTable = "sales_details";
 
             let sale;
 
-            if(editingId){
-                if(docType === "sales_pack"){
+            if (editingId) {
+                if (docType === "sales_pack") {
                     const { data: pack } = await sb
                         .from("sales_packing_details")
                         .select("sales_id")
                         .eq("id", editingId)
                         .maybeSingle();
 
-                    if(!pack){
-                        alert("Packing record not found");
-                        return;
-                    }
+                    if (!pack) throw new Error("Packing record not found");
 
                     const { data, error } = await sb
                         .from("sales_details")
@@ -2605,9 +2765,9 @@ const balanceAmount = Math.max(0, roundedTotal - paidAmount);
                         .select()
                         .maybeSingle();
 
-                    if(error) throw error;
+                    if (error) throw error;
                     sale = data;
-                }else{
+                } else {
                     const { data, error } = await sb
                         .from(headerTable)
                         .update(insertData)
@@ -2615,18 +2775,17 @@ const balanceAmount = Math.max(0, roundedTotal - paidAmount);
                         .select()
                         .maybeSingle();
 
-                    if(error) throw error;
+                    if (error) throw error;
                     sale = data;
                 }
-            }
-            else{
+            } else {
                 const { data, error } = await sb
                     .from(headerTable)
                     .insert([insertData])
                     .select()
                     .maybeSingle();
 
-                if(error) throw error;
+                if (error) throw error;
                 sale = data;
             }
 
@@ -2637,11 +2796,11 @@ const balanceAmount = Math.max(0, roundedTotal - paidAmount);
             const saleId = sale.id;
             let packingId = null;
 
-            if(docType === "sales_pack"){
+            if (docType === "sales_pack") {
                 let pack;
 
-                if(editingId){
-                    const {data, error} = await sb
+                if (editingId) {
+                    const { data, error } = await sb
                         .from("sales_packing_details")
                         .update({
                             series_code: head.series,
@@ -2650,18 +2809,17 @@ const balanceAmount = Math.max(0, roundedTotal - paidAmount);
                             customer_name: head.name,
                             customer_mobile: head.mob,
                             gst_number: head.gst,
-                            packing_amount: head.total,
+                            packing_amount: roundedTotal,
                             salesman: document.getElementById("salesman").value
                         })
                         .eq("sales_id", saleId)
                         .select()
                         .single();
 
-                    if(error) throw error;
+                    if (error) throw error;
                     pack = data;
-
-                }else{
-                    const {data, error} = await sb
+                } else {
+                    const { data, error } = await sb
                         .from("sales_packing_details")
                         .insert([{
                             sales_id: saleId,
@@ -2671,177 +2829,181 @@ const balanceAmount = Math.max(0, roundedTotal - paidAmount);
                             customer_name: head.name,
                             customer_mobile: head.mob,
                             gst_number: head.gst,
-                            packing_amount: head.total,
+                            packing_amount: roundedTotal,
                             salesman: document.getElementById("salesman").value
                         }])
                         .select()
                         .single();
 
-                    if(error) throw error;
+                    if (error) throw error;
                     pack = data;
                 }
 
                 packingId = pack.id;
             }
 
+            if (["sales", "sales_pack", "sales_order"].includes(docType)) {
+                const headerId = saleId;
+                const billNoForTxn = editingId ? document.getElementById("bill_number").value : nextBillNo;
+
+                if ((parseFloat(paidAmount || 0) || 0) > 0) {
+                    await upsertCreditPaymentTransaction({
+                        docType,
+                        headerId,
+                        billNo: billNoForTxn,
+                        billDate: head.date,
+                        customerName: head.name,
+                        paidAmount,
+                        paymentType
+                    });
+                }
+            }
+
             let itemTable;
             let idField;
 
-            if(docType==="quotation"){
-                itemTable="quotation_item_details";
-                idField="quotation_id";
+            if (docType === "quotation") {
+                itemTable = "quotation_item_details";
+                idField = "quotation_id";
             }
-            else if(docType==="sales_order"){
-                itemTable="sales_order_item_details";
-                idField="sales_order_id";
+            else if (docType === "sales_order") {
+                itemTable = "sales_order_item_details";
+                idField = "sales_order_id";
             }
-            else{
-                itemTable="sales_item_details";
-                idField="sales_id";
+            else {
+                itemTable = "sales_item_details";
+                idField = "sales_id";
             }
 
-            if(editingId){
-                if(docType === "sales_pack"){
+            if (editingId) {
+                if (docType === "sales_pack") {
                     await sb.from("sales_item_details").delete().eq("sales_id", saleId);
                     await sb.from("sales_packing_item_details").delete().eq("packing_id", packingId);
-                }else{
+                } else {
                     await sb.from(itemTable).delete().eq(idField, editingId);
                 }
             }
 
             const rows = document.querySelectorAll('#bill_body tr');
             const itemsToSave = [];
-            
+            const packingItemsToSave = [];
+
             for (const row of rows) {
                 const codeField = row.querySelector('.code-inp');
-                if(!codeField) continue;
+                if (!codeField) continue;
 
-                const code = codeField.value;
+                const code = (codeField.value || '').trim();
+                if (!code) continue;
+
                 const qtyField = row.querySelector('.qty-inp');
                 const priceField = row.querySelector('.price-inp');
                 const priceGstField = row.querySelector('.price-gst-inp');
                 const discField = row.querySelector('.disc-inp');
                 const gstField = row.querySelector('.gst-inp');
                 const hsnField = row.querySelector('.hsn-store');
+                const typeField = row.querySelector('.type-inp');
 
-                if(code) {
-                    const docType = document.getElementById("doc_type").value;
-
-                    if(docType !== "sales_order"){
-                        const valid = isValidStockItem(code);
-                        if(!valid){
-                            throw new Error(`Item "${code}" not found in stock. Cannot save.`);
-                        }
+                if (docType !== "sales_order") {
+                    const valid = isValidStockItem(code);
+                    if (!valid) {
+                        throw new Error(`Item "${code}" not found in stock. Cannot save.`);
                     }
+                }
 
-                    const qty = parseFloat(row.querySelector('.qty-inp').value);
-                    if (!qty || qty <= 0) {
-                        throw new Error("Invalid quantity entered for item: " + code);
-                    }
+                const qty = parseFloat(qtyField?.value || 0);
+                if (!qty || qty <= 0) {
+                    throw new Error("Invalid quantity entered for item: " + code);
+                }
 
-                    if(docType === "sales"){
-                        const availableStock = getAvailableStockForRow(row);
-                        if(availableStock <= 0){
-                            showStockWarning(`${row.querySelector('.name-inp')?.value || code} has no stock.`, row.querySelector('.qty-inp'));
-                            throw new Error("No stock for item: " + code);
-                        }
-                        if(qty > availableStock){
-                            showStockWarning(`${row.querySelector('.name-inp')?.value || code} available stock is ${availableStock}. Entered qty is ${qty}.`, row.querySelector('.qty-inp'));
-                            throw new Error("Entered qty is more than available stock for item: " + code);
-                        }
-                    }
-                    
-                    let idField;
-                    if(docType==="quotation") idField="quotation_id";
-                    else if(docType==="sales_order") idField="sales_order_id";
-                    else idField="sales_id";
+                if (docType === "sales" && !validateSalesRowQty(row, { showWarning: true })) {
+                    throw new Error("Entered qty is more than available stock for item: " + code);
+                }
 
-                    itemsToSave.push({
-                        [idField]: saleId,
-                        item_code: code,
-                        item_name: row.querySelector('.name-inp').value,
-                        quantity: qtyField ? qtyField.value : 0,
-                        price: priceField ? priceField.value : 0,
-                        discount_percent: discField ? parseFloat(discField.value) || 0 : 0,
-                        sales_price: priceField ? priceField.value : 0,
-                        sales_price_gst: priceGstField ? priceGstField.value : 0,
-                        hsn_code: hsnField ? hsnField.value : "",
-                        gst_percent: gstField ? parseFloat(gstField.value) : 0
-                    });
+                let rowIdField;
+                if (docType === "quotation") rowIdField = "quotation_id";
+                else if (docType === "sales_order") rowIdField = "sales_order_id";
+                else rowIdField = "sales_id";
+
+                const baseItem = {
+                    [rowIdField]: saleId,
+                    item_code: code,
+                    item_name: row.querySelector('.name-inp')?.value || '',
+                    quantity: qtyField ? qtyField.value : 0,
+                    price: priceField ? priceField.value : 0,
+                    discount_percent: discField ? parseFloat(discField.value) || 0 : 0,
+                    sales_price: priceField ? priceField.value : 0,
+                    sales_price_gst: priceGstField ? priceGstField.value : 0,
+                    hsn_code: hsnField ? hsnField.value : "",
+                    gst_percent: gstField ? parseFloat(gstField.value) || 0 : 0};
+
+                itemsToSave.push(baseItem);
+
+                if (docType === "sales_pack") {
+                    packingItemsToSave.push({
+                        packing_id: packingId,
+                        item_code: baseItem.item_code,
+                        item_name: baseItem.item_name,
+                        quantity: baseItem.quantity,
+                        price: baseItem.price,
+                        discount_percent: baseItem.discount_percent || 0,
+                        sales_price_gst: baseItem.sales_price_gst,
+                        hsn_code: baseItem.hsn_code,
+                        gst_percent: baseItem.gst_percent});
                 }
             }
 
-            if(itemsToSave.length > 0) {
-                if(docType === "sales_pack"){
-                    if(editingId){
-                        await sb
-                            .from("sales_packing_item_details")
-                            .delete()
-                            .eq("packing_id", packingId);
-                    }
-
-                    const packingItems = itemsToSave.map(i => ({
-                        packing_id: packingId,
-                        item_code: i.item_code,
-                        item_name: i.item_name,
-                        quantity: i.quantity,
-                        price: i.price,
-                        discount_percent: i.discount_percent || 0,
-                        sales_price_gst: i.sales_price_gst,
-                        hsn_code: i.hsn_code,
-                        gst_percent: i.gst_percent
-                    }));
-
-                    const { error: pErr } = await sb
-                        .from("sales_packing_item_details")
-                        .insert(packingItems);
-
-                    if(pErr) throw pErr;
-                }
-
-                if(docType==="quotation") itemTable="quotation_item_details";
-                else if(docType==="sales_order") itemTable="sales_order_item_details";
-                else itemTable="sales_item_details";
-
-                const { error: iErr } = await sb.from(itemTable).insert(itemsToSave);
-                if(iErr) throw iErr;       
-            } else {
+            if (!itemsToSave.length) {
                 throw new Error("No items to save.");
             }
 
-            if(!editingId){
+            if (docType === "sales_pack" && packingItemsToSave.length) {
+                const { error: pErr } = await sb
+                    .from("sales_packing_item_details")
+                    .insert(packingItemsToSave);
+
+                if (pErr) throw pErr;
+            }
+
+            const { error: iErr } = await sb.from(itemTable).insert(itemsToSave);
+            if (iErr) throw iErr;
+
+            if (!editingId) {
                 document.getElementById('bill_number').value = nextBillNo;
             }
-            
+
             alert(`Bill #${nextBillNo} Saved Successfully!`);
 
-            if(docType==="sales_pack"){
+            if (docType === "sales_pack") {
                 window.open(`print.html?type=sales_pack&id=${packingId}`, "_blank");
             }
-            else{
+            else {
                 window.open(`print.html?type=${docType}&id=${saleId}`, "_blank");
             }
 
-            if(docType==="sales" && window.loadedQuotationId){
+            if (docType === "sales" && window.loadedQuotationId) {
                 await sb
                     .from("quotation_details")
-                    .update({converted:true})
+                    .update({ converted: true })
                     .eq("id", window.loadedQuotationId);
 
-                window.loadedQuotationId=null;
+                window.loadedQuotationId = null;
             }
 
             window.location.replace(window.location.pathname + "?fresh=" + Date.now());
 
-        } catch(e) {
+        } catch (e) {
             console.error(e);
             alert("Error: " + (e.message || e));
+        } finally {
             btn.disabled = false;
-            btn.innerText = "PRINT & SAVE";
+            btn.innerText =
+                docType === "quotation" ? "SAVE & PRINT QUOTATION" :
+                docType === "sales_order" ? "SAVE & PRINT SALES ORDER" :
+                "PRINT & SAVE";
         }
     }
 
-    document.addEventListener('focus', (e) => {
+    document.addEventListener('focus' , (e) => {
         if (e.target.tagName === 'INPUT' && !e.target.readOnly) {
             if(typeof e.target.select === 'function') {
                 e.target.select();
@@ -3153,11 +3315,17 @@ barcodeInput.addEventListener("keydown", async function (e) {
         let head;
 
         if(type === "sales_pack"){
-            const {data} = await sb
+            const {data, error} = await sb
                 .from("sales_packing_details")
                 .select("*")
                 .eq("id", id)
                 .maybeSingle();
+
+            if(error){
+                console.error(error);
+                alert("Error loading document");
+                return;
+            }
 
             if(!data){
                 alert("Document Not Found");
@@ -3200,14 +3368,16 @@ barcodeInput.addEventListener("keydown", async function (e) {
         const paymentTypeEl = document.getElementById("payment_type");
         const paidAmountEl = document.getElementById("paid_amount");
         if (paymentTypeEl) {
-            paymentTypeEl.value = type === "sales"
-                ? String(head.payment_type || "CASH").toUpperCase()
-                : "CASH";
+            paymentTypeEl.value = String(head.payment_type || "CASH").toUpperCase();
+            paymentTypeEl.dataset.justChangedToCredit = "0";
         }
         if (paidAmountEl) {
-            const paidValue = type === "sales"
-                ? parseFloat(head.paid_amount ?? head.invoice_amount ?? 0) || 0
-                : parseFloat(head.invoice_amount || head.total_amount || head.packing_amount || 0) || 0;
+            let paidValue = 0;
+            if (type === "sales_order") {
+                paidValue = parseFloat(head.advance_amount ?? 0) || 0;
+            } else {
+                paidValue = parseFloat(head.paid_amount ?? 0) || 0;
+            }
             paidAmountEl.value = paidValue.toFixed(2);
         }
 
@@ -3233,19 +3403,27 @@ barcodeInput.addEventListener("keydown", async function (e) {
         let items;
 
         if(type === "sales_pack"){
-            const {data} = await sb
+            const {data, error} = await sb
                 .from("sales_packing_item_details")
                 .select("*")
                 .eq("packing_id", head.id);
-
+            if(error){
+                console.error(error);
+                alert("Error loading items");
+                return;
+            }
             items = data;
 
         }else{
-            const {data} = await sb
+            const {data, error} = await sb
                 .from(itemTable)
                 .select("*")
                 .eq(idField, id);
-
+            if(error){
+                console.error(error);
+                alert("Error loading items");
+                return;
+            }
             items = data;
         }
 
@@ -3273,12 +3451,16 @@ barcodeInput.addEventListener("keydown", async function (e) {
             row.querySelector(".code-inp").value = item.item_code || "";
             row.querySelector(".name-inp").value = item.item_name || "";
             row.querySelector(".qty-inp").value = item.quantity || 1;
-            row.querySelector(".price-inp").value = item.price || 0;
+            row.querySelector(".price-inp").value = item.price || item.sales_price || 0;
             row.querySelector(".price-gst-inp").value = item.sales_price_gst || 0;
             row.querySelector(".disc-inp").value = item.discount_percent || 0;
             row.querySelector(".gst-inp").value = item.gst_percent || 0;
             row.querySelector(".hsn-store").value = item.hsn_code || "";
-            row.querySelector(".type-inp").value = "1";
+            const stockItem = stockData.find(
+                x => String(x.item_code || "").trim().toUpperCase() === String(item.item_code || "").trim().toUpperCase()
+            );
+
+            row.querySelector(".type-inp").value = inferPriceTypeFromItemAndRow(stockItem, item);
 
             const stockRow = stockMap.get(String(item.item_code || "").trim().toUpperCase());
 
@@ -3287,10 +3469,10 @@ barcodeInput.addEventListener("keydown", async function (e) {
                 item_name: item.item_name || "",
                 gst_percent: item.gst_percent || 0,
                 hsn_code: item.hsn_code || "",
-                price1: stockRow?.price1 ?? item.price ?? 0,
-                price2: stockRow?.price2 ?? item.price ?? 0,
-                price3: stockRow?.price3 ?? item.price ?? 0,
-                landing: stockRow?.landing ?? item.sales_price_gst ?? item.price ?? 0,
+                price1: stockRow?.price1 ?? item.price ?? item.sales_price ?? 0,
+                price2: stockRow?.price2 ?? item.price ?? item.sales_price ?? 0,
+                price3: stockRow?.price3 ?? item.price ?? item.sales_price ?? 0,
+                landing: stockRow?.landing ?? item.sales_price_gst ?? item.price ?? item.sales_price ?? 0,
                 balance: stockRow?.balance ?? 0,
                 department: stockRow?.department ?? "ALL",
                 barcode: stockRow?.barcode ?? ""
@@ -3303,16 +3485,17 @@ barcodeInput.addEventListener("keydown", async function (e) {
             }
 
             calcForward(rid);
+            applyItemRestriction(row);
         }
 
         calcTotal();
 
         if(type === "sales_pack"){
-            document.getElementById("salesman").value="VAJRA";
+            document.getElementById("salesman").value = head.salesman || "VAJRA";
             document.getElementById("salesman").disabled=true;
         }
 
-        syncPaymentUI();
+        syncPaymentUI(true);
     }
 
 let html5QrScanner = null;

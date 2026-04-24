@@ -1055,6 +1055,17 @@
         }
     }
 
+    function getOriginalEditQtyForRow(row){
+        const qty = parseFloat(row?.dataset?.originalQty || "0");
+        return Number.isFinite(qty) ? qty : 0;
+    }
+
+    function getEffectiveAvailableStockForRow(row){
+        const currentBalance = getAvailableStockForRow(row);
+        const oldBillQty = getOriginalEditQtyForRow(row);
+        return currentBalance + oldBillQty;
+    }
+
     function validateSalesRowQty(row, opts = {}){
         if(!row || !isSalesMode()) return true;
 
@@ -1062,20 +1073,23 @@
         const name = (row.querySelector('.name-inp')?.value || "").trim();
         const qtyInput = row.querySelector('.qty-inp');
         const qty = getQtyInputValue(row);
-        const available = getAvailableStockForRow(row);
+        const available = getEffectiveAvailableStockForRow(row);
 
         if(!code && !name) return true;
 
+        // In edit mode, qty 0 is allowed so the old item can be removed from the bill.
+        if(qty <= 0) return true;
+
         if(available <= 0){
             if(opts.showWarning !== false){
-                showStockWarning(`${name || code} has no stock.`, qtyInput);
+                showStockWarning(`${name || code} has no available stock.`, qtyInput);
             }
             return false;
         }
 
         if(qty > available){
             if(opts.showWarning !== false){
-                showStockWarning(`${name || code} available stock is ${available}. Entered qty is ${qty}.`, qtyInput);
+                showStockWarning(`${name || code} allowed qty is ${available}.\nCurrent stock + old bill qty is allowed.\nEntered qty is ${qty}.`, qtyInput);
             }
             return false;
         }
@@ -1822,6 +1836,7 @@ ${data.map((c, idx) => `
         row.querySelector('.price-gst-inp').value = "";
         row.querySelector('.disc-inp').value = 0;
         row.querySelector('.raw-data').value = JSON.stringify(item);
+        row.dataset.originalQty = "0";
 
         const landingInp = row.querySelector('.landing-inp');
         if (landingInp) {
@@ -2580,8 +2595,13 @@ function calcTotal() {
             const typeField = row.querySelector('.type-inp');
 
             const qty = parseFloat(qtyField?.value || 0);
-            if (!Number.isFinite(qty) || qty <= 0) {
+            if (!Number.isFinite(qty) || qty < 0) {
                 throw new Error(`Invalid quantity entered for item: ${code}`);
+            }
+
+            // Qty 0 rows are skipped. This lets you remove an old edit item by making qty 0.
+            if (qty === 0) {
+                continue;
             }
 
             if (docType !== "sales_order") {
@@ -3168,9 +3188,9 @@ function calcTotal() {
         if(!nameInp || !codeInp) return;
 
         const hasDeptFilter = !!selectedDept && selectedDept !== "ALL";
-        const available = getAvailableStockForRow(row);
+        const available = getEffectiveAvailableStockForRow(row);
         const qty = getQtyInputValue(row);
-        const showSalesWarning = isSalesMode() && !!(getRowRawItem(row)) && (available <= 0 || qty > available);
+        const showSalesWarning = isSalesMode() && !!(getRowRawItem(row)) && qty > 0 && (available <= 0 || qty > available);
 
         if(showSalesWarning){
             nameInp.style.backgroundColor = "rgba(239, 68, 68, 0.10)";
@@ -3542,6 +3562,7 @@ barcodeInput.addEventListener("keydown", async function (e) {
             };
 
             row.querySelector(".raw-data").value = JSON.stringify(rawItem);
+            row.dataset.originalQty = String(parseFloat(item.quantity || 0) || 0);
             const landingInp = row.querySelector(".landing-inp");
             if (landingInp) {
                 landingInp.value = parseFloat(rawItem.landing || 0).toFixed(2);

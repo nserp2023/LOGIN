@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>VAJRA - Advance Control</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabaseClient.js"></script>
+<script src="page_permissions.js"></script>
+<script src="common-ui.js"></script>
+
+
+<style>
+:root{
+  --bg:#eef3fb;
+  --card:#fff;
+  --dark:#0f172a;
+  --blue:#2563eb;
+  --green:#16a34a;
+  --red:#dc2626;
+  --amber:#d97706;
+  --line:#e5e7eb;
+  --muted:#64748b;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:Segoe UI,Arial,sans-serif;
+  background:linear-gradient(135deg,#e0f2fe,#f8fafc);
+  color:#111827;
+}
+.header{
+  background:linear-gradient(135deg,#020617,#1e3a8a);
+  color:white;
+  padding:16px;
+  position:sticky;
+  top:0;
+  z-index:20;
+  box-shadow:0 8px 24px rgba(0,0,0,.25);
+}
+.headrow{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+  align-items:center;
+}
+h1{margin:0;font-size:22px}
+.sub{font-size:13px;opacity:.85;margin-top:4px}
+.btn{
+  border:0;
+  border-radius:12px;
+  padding:9px 13px;
+  font-weight:800;
+  cursor:pointer;
+}
+.btn-white{background:white;color:#111827}
+.btn-blue{background:var(--blue);color:white}
+.btn-green{background:var(--green);color:white}
+.btn-red{background:var(--red);color:white}
+.btn-dark{background:var(--dark);color:white}
+.main{padding:14px}
+.cards{
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  gap:12px;
+  margin-bottom:14px;
+}
+.card{
+  background:white;
+  border:1px solid var(--line);
+  border-radius:18px;
+  padding:14px;
+  box-shadow:0 8px 24px rgba(15,23,42,.08);
+}
+.card small{color:var(--muted);font-weight:700}
+.card div{
+  font-size:22px;
+  font-weight:950;
+  margin-top:7px;
+}
+.toolbar{
+  background:white;
+  border:1px solid var(--line);
+  border-radius:18px;
+  padding:12px;
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-bottom:14px;
+  box-shadow:0 8px 24px rgba(15,23,42,.06);
+}
+.input{
+  padding:10px 12px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  min-width:160px;
+  font-size:14px;
+}
+.tablebox{
+  background:white;
+  border:1px solid var(--line);
+  border-radius:18px;
+  overflow:auto;
+  box-shadow:0 8px 24px rgba(15,23,42,.08);
+}
+table{
+  width:100%;
+  min-width:1200px;
+  border-collapse:collapse;
+}
+th{
+  background:#f1f5f9;
+  padding:11px;
+  font-size:12px;
+  text-align:left;
+  color:#334155;
+  position:sticky;
+  top:0;
+  z-index:5;
+}
+td{
+  padding:11px;
+  border-top:1px solid var(--line);
+  font-size:14px;
+}
+tr:hover{background:#f8fafc}
+.money{font-weight:950;white-space:nowrap}
+.badge{
+  padding:5px 9px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:900;
+  display:inline-block;
+}
+.fresh{background:#dcfce7;color:#166534}
+.warn{background:#fef3c7;color:#92400e}
+.danger{background:#fee2e2;color:#991b1b}
+.pending{background:#dbeafe;color:#1d4ed8}
+.actions{
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+}
+.empty{
+  text-align:center;
+  padding:35px;
+  color:var(--muted);
+}
+.oldrow{background:#fff1f2}
+.midrow{background:#fffbeb}
+.modal-bg{
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(15,23,42,.65);
+  z-index:100;
+  align-items:center;
+  justify-content:center;
+  padding:14px;
+}
+.modal{
+  background:white;
+  width:100%;
+  max-width:820px;
+  max-height:90vh;
+  overflow:auto;
+  border-radius:22px;
+  padding:18px;
+}
+.modal-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  border-bottom:1px solid var(--line);
+  padding-bottom:10px;
+  margin-bottom:12px;
+}
+.grid{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:10px;
+}
+.box{
+  background:#f8fafc;
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:12px;
+}
+.label{font-size:12px;color:var(--muted);font-weight:700}
+.value{font-weight:950;margin-top:5px}
+@media(max-width:950px){
+  .cards{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:600px){
+  .cards{grid-template-columns:1fr}
+  .input,.toolbar .btn{width:100%}
+  .grid{grid-template-columns:1fr}
+}
+@media print{
+  .toolbar,.actions,.header button,.modal-bg{display:none!important}
+  body{background:white}
+  .header{background:white;color:black;box-shadow:none;border-bottom:2px solid black}
+  .card,.tablebox{box-shadow:none;border:1px solid black}
+  th,td{border:1px solid black;color:black}
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">
+  <div class="headrow">
+    <div>
+      <h1>Advance Control Dashboard</h1>
+      <div class="sub">Pending sales order advances, follow-up, conversion and collection control</div>
+    </div>
+    <div>
+      <button class="btn btn-white" onclick="location.href='dashboard.html'">Dashboard</button>
+      <button class="btn btn-white" onclick="location.href='newsoq.html'">Sales</button>
+      <button class="btn btn-white" onclick="window.print()">Print</button>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+
+  <div class="cards">
+    <div class="card"><small>Pending Customers</small><div id="cCustomers">0</div></div>
+    <div class="card"><small>Order Amount</small><div id="cOrder">₹0</div></div>
+    <div class="card"><small>Advance Received</small><div id="cAdvance">₹0</div></div>
+    <div class="card"><small>Balance To Collect</small><div id="cBalance">₹0</div></div>
+    <div class="card"><small>Overdue 30+ Days</small><div id="cOverdue">0</div></div>
+  </div>
+
+  <div class="toolbar">
+    <input class="input" id="searchBox" placeholder="Search name / mobile / order no" oninput="render()">
+    <input class="input" type="date" id="fromDate" onchange="loadAdvances()">
+    <input class="input" type="date" id="toDate" onchange="loadAdvances()">
+
+    <select class="input" id="ageFilter" onchange="render()">
+      <option value="ALL">All Pending</option>
+      <option value="FRESH">Fresh 0-14 Days</option>
+      <option value="MID">15-29 Days</option>
+      <option value="OLD">Overdue 30+ Days</option>
+    </select>
+
+    <select class="input" id="salesmanFilter" onchange="render()">
+      <option value="ALL">All Salesman</option>
+    </select>
+
+    <button class="btn btn-blue" onclick="loadAdvances()">Refresh</button>
+    <button class="btn btn-green" onclick="shareSummary()">WhatsApp Summary</button>
+  </div>
+
+  <div class="tablebox">
+    <table>
+      <thead>
+        <tr>
+          <th>Order No</th>
+          <th>Date</th>
+          <th>Customer</th>
+          <th>Mobile</th>
+          <th>Salesman</th>
+          <th>Order Amount</th>
+          <th>Advance</th>
+          <th>Balance</th>
+          <th>Age</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="tbody">
+        <tr><td colspan="11" class="empty">Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<div class="modal-bg" id="modal">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 style="margin:0">Advance Details</h2>
+      <button class="btn btn-red" onclick="closeModal()">Close</button>
+    </div>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+const sb = window.sbcc;
+
+const CONFIG = {
+  table: "sales_order_details",
+  id: "id",
+  orderNo: "order_number",
+  date: "order_date",
+  customer: "customer_name",
+  mobile: "customer_mobile",
+  total: "total_amount",
+  advance: "advance_amount",
+  balance: "balance_amount",
+  salesman: "salesman",
+  converted: "converted",
+  status: "status",
+  remarks: "remarks"
+};
+
+let allRows = [];
+let filteredRows = [];
+
+document.addEventListener("DOMContentLoaded", async () => {
+  try{
+    if(typeof requirePageAccess === "function"){
+      const ok = await requirePageAccess("advance_dashboard");
+      if(!ok) return;
+    }
+  }catch(e){
+    console.warn("Permission check skipped:", e);
+  }
+
+  loadAdvances();
+});
+
+function n(v){ return Number(v || 0); }
+
+function money(v){
+  return "₹" + n(v).toLocaleString("en-IN", {
+    minimumFractionDigits:2,
+    maximumFractionDigits:2
+  });
+}
+
+function safe(v){ return v === null || v === undefined || v === "" ? "-" : v; }
+
+function val(row,key){ return row?.[CONFIG[key]]; }
+
+function getTotal(row){ return n(val(row,"total")); }
+function getAdvance(row){ return n(val(row,"advance")); }
+
+function getBalance(row){
+  const b = val(row,"balance");
+  if(b !== null && b !== undefined && b !== "") return n(b);
+  return Math.max(0, getTotal(row) - getAdvance(row));
+}
+
+function ageDays(dateStr){
+  if(!dateStr) return 0;
+  const d = new Date(dateStr);
+  if(isNaN(d)) return 0;
+  return Math.floor((new Date() - d) / 86400000);
+}
+
+function isPendingAdvance(row){
+  const advance = getAdvance(row);
+  const balance = getBalance(row);
+  const converted = row[CONFIG.converted];
+  const status = String(row[CONFIG.status] || "").toLowerCase();
+
+  if(advance <= 0) return false;
+  if(balance <= 0) return false;
+  if(converted === true) return false;
+  if(status.includes("closed")) return false;
+  if(status.includes("completed")) return false;
+  if(status.includes("cancel")) return false;
+  if(status.includes("converted")) return false;
+
+  return true;
+}
+
+async function loadAdvances(){
+  const tbody = document.getElementById("tbody");
+  tbody.innerHTML = `<tr><td colspan="11" class="empty">Loading advance orders...</td></tr>`;
+
+  const from = document.getElementById("fromDate").value;
+  const to = document.getElementById("toDate").value;
+
+  let query = sb
+    .from(CONFIG.table)
+    .select("*")
+    .order(CONFIG.id, { ascending:false });
+
+  if(from) query = query.gte(CONFIG.date, from);
+  if(to) query = query.lte(CONFIG.date, to);
+
+  const { data, error } = await query;
+
+  if(error){
+    console.error(error);
+    tbody.innerHTML = `<tr><td colspan="11" class="empty">Error loading advance data<br>${error.message}</td></tr>`;
+    return;
+  }
+
+  allRows = (data || []).filter(isPendingAdvance);
+  fillSalesmanFilter();
+  render();
+}
+
+function fillSalesmanFilter(){
+  const sel = document.getElementById("salesmanFilter");
+  const old = sel.value || "ALL";
+
+  const names = [...new Set(allRows.map(r => String(val(r,"salesman") || "").trim()).filter(Boolean))];
+
+  sel.innerHTML = `<option value="ALL">All Salesman</option>` +
+    names.map(x => `<option value="${x}">${x}</option>`).join("");
+
+  sel.value = names.includes(old) ? old : "ALL";
+}
+
+function render(){
+  const q = document.getElementById("searchBox").value.toLowerCase().trim();
+  const ageFilter = document.getElementById("ageFilter").value;
+  const salesman = document.getElementById("salesmanFilter").value;
+
+  filteredRows = allRows.filter(row => {
+    const text = [
+      val(row,"orderNo"),
+      val(row,"customer"),
+      val(row,"mobile"),
+      val(row,"salesman")
+    ].join(" ").toLowerCase();
+
+    const age = ageDays(val(row,"date"));
+
+    let ageOk = true;
+    if(ageFilter === "FRESH") ageOk = age <= 14;
+    if(ageFilter === "MID") ageOk = age >= 15 && age <= 29;
+    if(ageFilter === "OLD") ageOk = age >= 30;
+
+    let salesmanOk = salesman === "ALL" || String(val(row,"salesman") || "") === salesman;
+
+    return text.includes(q) && ageOk && salesmanOk;
+  });
+
+  const tbody = document.getElementById("tbody");
+
+  if(filteredRows.length === 0){
+    tbody.innerHTML = `<tr><td colspan="11" class="empty">No pending advance orders found</td></tr>`;
+    updateTotals([]);
+    return;
+  }
+
+  tbody.innerHTML = filteredRows.map((row,i)=>{
+    const age = ageDays(val(row,"date"));
+    const cls = age >= 30 ? "oldrow" : age >= 15 ? "midrow" : "";
+
+    const badge = age >= 30
+      ? `<span class="badge danger">${age} days</span>`
+      : age >= 15
+        ? `<span class="badge warn">${age} days</span>`
+        : `<span class="badge fresh">${age} days</span>`;
+
+    return `
+      <tr class="${cls}">
+        <td><b>${safe(val(row,"orderNo"))}</b></td>
+        <td>${safe(val(row,"date"))}</td>
+        <td><b>${safe(val(row,"customer"))}</b></td>
+        <td>${safe(val(row,"mobile"))}</td>
+        <td>${safe(val(row,"salesman"))}</td>
+        <td class="money">${money(getTotal(row))}</td>
+        <td class="money" style="color:var(--green)">${money(getAdvance(row))}</td>
+        <td class="money" style="color:var(--red)">${money(getBalance(row))}</td>
+        <td>${badge}</td>
+        <td><span class="badge pending">PENDING</span></td>
+        <td>
+          <div class="actions">
+            <button class="btn btn-blue" onclick="viewDetails(${i})">View</button>
+            <button class="btn btn-dark" onclick="convertToBill(${i})">Convert</button>
+            <button class="btn btn-green" onclick="collectBalance(${i})">Collect</button>
+            <button class="btn btn-red" onclick="sendReminder(${i})">Remind</button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join("");
+
+  updateTotals(filteredRows);
+}
+
+function updateTotals(rows){
+  const cust = new Set();
+  let order = 0, adv = 0, bal = 0, overdue = 0;
+
+  rows.forEach(r=>{
+    cust.add(String(val(r,"mobile") || val(r,"customer") || r.id));
+    order += getTotal(r);
+    adv += getAdvance(r);
+    bal += getBalance(r);
+    if(ageDays(val(r,"date")) >= 30) overdue++;
+  });
+
+  document.getElementById("cCustomers").innerText = cust.size;
+  document.getElementById("cOrder").innerText = money(order);
+  document.getElementById("cAdvance").innerText = money(adv);
+  document.getElementById("cBalance").innerText = money(bal);
+  document.getElementById("cOverdue").innerText = overdue;
+}
+
+function viewDetails(i){
+  const r = filteredRows[i];
+
+  document.getElementById("modalBody").innerHTML = `
+    <div class="grid">
+      <div class="box"><div class="label">Order No</div><div class="value">${safe(val(r,"orderNo"))}</div></div>
+      <div class="box"><div class="label">Date</div><div class="value">${safe(val(r,"date"))}</div></div>
+      <div class="box"><div class="label">Customer</div><div class="value">${safe(val(r,"customer"))}</div></div>
+      <div class="box"><div class="label">Mobile</div><div class="value">${safe(val(r,"mobile"))}</div></div>
+      <div class="box"><div class="label">Salesman</div><div class="value">${safe(val(r,"salesman"))}</div></div>
+      <div class="box"><div class="label">Age</div><div class="value">${ageDays(val(r,"date"))} days</div></div>
+      <div class="box"><div class="label">Order Amount</div><div class="value">${money(getTotal(r))}</div></div>
+      <div class="box"><div class="label">Advance Received</div><div class="value" style="color:var(--green)">${money(getAdvance(r))}</div></div>
+      <div class="box"><div class="label">Balance To Collect</div><div class="value" style="color:var(--red)">${money(getBalance(r))}</div></div>
+      <div class="box"><div class="label">Status</div><div class="value">PENDING ADVANCE</div></div>
+      <div class="box" style="grid-column:1/-1"><div class="label">Remarks</div><div class="value">${safe(val(r,"remarks"))}</div></div>
+    </div>
+    <br>
+    <div class="actions">
+      <button class="btn btn-dark" onclick="convertToBill(${i})">Convert To Bill</button>
+      <button class="btn btn-green" onclick="collectBalance(${i})">Collect Balance</button>
+      <button class="btn btn-red" onclick="sendReminder(${i})">WhatsApp Reminder</button>
+    </div>
+  `;
+
+  document.getElementById("modal").style.display = "flex";
+}
+
+function closeModal(){
+  document.getElementById("modal").style.display = "none";
+}
+
+function convertToBill(i){
+  const r = filteredRows[i];
+  const id = r[CONFIG.id];
+  window.open(`newsoq.html?convert_so=${encodeURIComponent(id)}`, "_blank");
+}
+
+function collectBalance(i){
+  const r = filteredRows[i];
+
+  const params = new URLSearchParams({
+    name: val(r,"customer") || "",
+    mobile: val(r,"mobile") || "",
+    amount: getBalance(r),
+    ref: "sales_order_advance",
+    id: r[CONFIG.id]
+  });
+
+  window.open(`paymentreceipt.html?${params.toString()}`, "_blank");
+}
+
+function cleanMobile(m){
+  return String(m || "").replace(/\D/g,"").replace(/^91/,"");
+}
+
+function sendReminder(i){
+  const r = filteredRows[i];
+  const mobile = cleanMobile(val(r,"mobile"));
+
+  const msg =
+`Dear ${safe(val(r,"customer"))},
+
+Your sales order is still pending.
+
+Order No: ${safe(val(r,"orderNo"))}
+Order Amount: ${money(getTotal(r))}
+Advance Received: ${money(getAdvance(r))}
+Balance To Collect: ${money(getBalance(r))}
+
+Please contact VAJRA LIGHTS to complete this order.`;
+
+  if(mobile.length >= 10){
+    window.open(`https://wa.me/91${mobile}?text=${encodeURIComponent(msg)}`, "_blank");
+  }else{
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank");
+  }
+}
+
+function shareSummary(){
+  let order = 0, adv = 0, bal = 0, old = 0;
+
+  filteredRows.forEach(r=>{
+    order += getTotal(r);
+    adv += getAdvance(r);
+    bal += getBalance(r);
+    if(ageDays(val(r,"date")) >= 30) old++;
+  });
+
+  const msg =
+`VAJRA ADVANCE SUMMARY
+
+Pending Orders: ${filteredRows.length}
+Order Amount: ${money(order)}
+Advance Received: ${money(adv)}
+Balance To Collect: ${money(bal)}
+Overdue 30+ Days: ${old}`;
+
+  window.open("https://wa.me/?text=" + encodeURIComponent(msg), "_blank");
+}
+</script>
+
+</body>
+</html>

@@ -1271,6 +1271,12 @@
               <div class="cash-box-note" id="savedClosingNote">No cash closing saved today.</div>
             </div>
 
+            <div class="cash-box">
+              <div class="cash-box-label">Balance To Collect From Next Staff</div>
+              <div class="cash-box-value" id="balanceToCollect">₹ 0.00</div>
+              <div class="cash-box-note">System Expected Cash - Last Saved Cash Closing.</div>
+            </div>
+
             <div class="cash-actions">
               <button type="button" class="primary-btn" id="closeCashBtn">🔒 Save Staff Cash Closing</button>
               <button type="button" class="secondary-btn" id="refreshSummaryBtn">🔄 Refresh Dashboard</button>
@@ -1628,6 +1634,7 @@
         setText("pendingReturnsText", String(pendingReturns));
         setText("cashToClose", formatCurrency(todayBalance));
         setText("systemExpectedCash", formatCurrency(todayBalance));
+        updateBalanceToCollect();
         updateV2HealthStatus(todayBalance, todayCreditSales, pendingPayments + pendingReturns);
       } catch (err) {
         console.error("loadTodayDashboardSummary error:", err);
@@ -1732,6 +1739,7 @@
           setText("lastClosedAt", "—");
           setText("savedClosingNote", "No cash closing saved today or table not created yet.");
           setText("closingStatusChip", "Create daily_cash_closing table to use this feature");
+          updateBalanceToCollect();
           return;
         }
 
@@ -1744,6 +1752,7 @@
           setText("lastClosedAt", "—");
           setText("savedClosingNote", "No cash closing saved today.");
           setText("closingStatusChip", "No closing yet today");
+          updateBalanceToCollect();
           return;
         }
 
@@ -1764,9 +1773,21 @@
         setText("lastClosedAt", timeText);
         setText("savedClosingNote", row.notes ? `Note: ${row.notes}` : "Cash closing saved successfully.");
         setText("closingStatusChip", "Latest closing amount saved");
+        updateBalanceToCollect();
       } catch (err) {
         console.error("loadLatestCashClosing error:", err);
       }
+    }
+
+    function updateBalanceToCollect() {
+      const expectedText = document.getElementById("systemExpectedCash")?.innerText || "0";
+      const closedText = document.getElementById("savedClosingCash")?.innerText || "0";
+
+      const expected = Number(String(expectedText).replace(/[₹,\s]/g, "")) || 0;
+      const closed = Number(String(closedText).replace(/[₹,\s]/g, "")) || 0;
+      const balance = expected - closed;
+
+      setText("balanceToCollect", formatCurrency(balance));
     }
 
     function setText(id, value) {

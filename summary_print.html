@@ -87,13 +87,15 @@
 
     .sheet{
       width:210mm;
-      min-height:0;
+      height:297mm;
       margin:0 auto 10px auto;
       background:var(--paper);
       padding:8mm;
       border:2px solid #000;
       page-break-after:always;
       break-after:page;
+      overflow:hidden;
+      position:relative;
     }
 
     .sheet:last-child{
@@ -296,7 +298,14 @@
 
       .app{ padding:0; }
       .controls,.status{ display:none !important; }
-      .sheet{ margin:0; }
+      .sheet{
+        width:194mm;
+        height:281mm;
+        margin:0;
+        padding:0;
+        border:none;
+        box-shadow:none;
+      }
       button{ display:none; }
 
       *{
@@ -336,12 +345,7 @@
 
     const $ = (id) => document.getElementById(id);
 
-    // Smart fit limits:
-    // First page can usually hold fewer detail rows because totals + credit box are also present.
-    const FIRST_PAGE_DETAIL_LIMIT = 8;
-    const NEXT_PAGE_DETAIL_LIMIT = 14;
-    const FIRST_PAGE_CREDIT_LIMIT = 5;
-    const NEXT_PAGE_CREDIT_LIMIT = 18;
+    // Smart A4 page fit uses real rendered height, not fixed row counts.
 
     function setStatus(msg, isErr = false){
       const s = $('status');
@@ -544,98 +548,98 @@
       `;
     }
 
+    function createContinuationHeader(totals, headingText){
+      return `
+        <div class="top-title">VAJRA LIGHTS &amp; ELECTRICALS.</div>
+        <div class="meta-row">
+          <div>DATE: <span>${safeCell(totals.metaDate)}</span></div>
+          <div>GENERATED AT: <span>${safeCell(totals.generatedAt)}</span></div>
+        </div>
+        <div class="main-heading">${safeCell(headingText)}</div>
+        <div class="continued-note">CONTINUED</div>
+        <div class="double-line"></div>
+      `;
+    }
+
     function renderPages(receiptRows, paymentRows, creditRows, totals){
       const pagesContainer = $('pagesContainer');
       if(!pagesContainer) return;
+      pagesContainer.innerHTML = '';
 
-      const detailMax = Math.max(receiptRows.length, paymentRows.length);
-
-      // Smart rule:
-      // If everything is small, keep all on 1 page.
-      const canFitSinglePage =
-        detailMax <= FIRST_PAGE_DETAIL_LIMIT &&
-        creditRows.length <= FIRST_PAGE_CREDIT_LIMIT;
-
-      let pages = [];
-
-      if(canFitSinglePage){
-        pages.push(`
-          <div class="sheet">
-            ${buildMainSection(receiptRows, paymentRows, totals, false)}
-            ${buildCreditSection(creditRows)}
-          </div>
-        `);
-      } else {
-        // Split detail rows across pages first.
-        const receiptChunks = [];
-        const paymentChunks = [];
-
-        let start = 0;
-        let first = true;
-        while(start < detailMax){
-          const limit = first ? FIRST_PAGE_DETAIL_LIMIT : NEXT_PAGE_DETAIL_LIMIT;
-          receiptChunks.push(receiptRows.slice(start, start + limit));
-          paymentChunks.push(paymentRows.slice(start, start + limit));
-          start += limit;
-          first = false;
-        }
-
-        // If there were no details but credit overflowed, still render a first page main section with empty tables.
-        if(receiptChunks.length === 0){
-          receiptChunks.push([]);
-          paymentChunks.push([]);
-        }
-
-        receiptChunks.forEach((leftChunk, index) => {
-          const rightChunk = paymentChunks[index] || [];
-          const isLastDetailPage = index === receiptChunks.length - 1;
-
-          // Try to place some or all credit rows on the last detail page only if it is the only page
-          // or if credits are small enough.
-          let creditHtml = '';
-          if(isLastDetailPage){
-            const firstCreditLimit = index === 0 ? FIRST_PAGE_CREDIT_LIMIT : NEXT_PAGE_CREDIT_LIMIT;
-            const creditFirstChunk = creditRows.slice(0, firstCreditLimit);
-            const remainingCredits = creditRows.slice(firstCreditLimit);
-
-            creditHtml = creditFirstChunk.length ? buildCreditSection(creditFirstChunk) : '';
-
-            pages.push(`
-              <div class="sheet">
-                ${buildMainSection(leftChunk, rightChunk, totals, index > 0)}
-                ${creditHtml}
-              </div>
-            `);
-
-            if(remainingCredits.length){
-              const extraCreditChunks = chunkArray(remainingCredits, NEXT_PAGE_CREDIT_LIMIT);
-              extraCreditChunks.forEach((chunk, ci) => {
-                pages.push(`
-                  <div class="sheet">
-                    <div class="top-title">VAJRA LIGHTS &amp; ELECTRICALS.</div>
-                    <div class="meta-row">
-                      <div>DATE: <span>${safeCell(totals.metaDate)}</span></div>
-                      <div>GENERATED AT: <span>${safeCell(totals.generatedAt)}</span></div>
-                    </div>
-                    <div class="main-heading">CREDIT - SALES REGISTER</div>
-                    <div class="continued-note">CONTINUED</div>
-                    <div class="double-line"></div>
-                    ${buildCreditSection(chunk, ' (CONTINUED)')}
-                  </div>
-                `);
-              });
-            }
-          } else {
-            pages.push(`
-              <div class="sheet">
-                ${buildMainSection(leftChunk, rightChunk, totals, index > 0)}
-              </div>
-            `);
-          }
-        });
+      function createPage(){
+        const page = document.createElement('div');
+        page.className = 'sheet';
+        pagesContainer.appendChild(page);
+        return page;
       }
 
-      pagesContainer.innerHTML = pages.join('');
+      function pageFits(page){
+        return page.scrollHeight <= page.clientHeight + 1;
+      }
+
+      function removeLastIfExists(tbody){
+        if(tbody && tbody.lastElementChild) tbody.lastElementChild.remove();
+      }
+
+      let page = createPage();
+      page.innerHTML = buildMainSection([], [], totals, false);
+
+      let leftBody = page.querySelector('.half.left tbody');
+      let rightBody = page.querySelector('.half:not(.left) tbody');
+      const maxDetailRows = Math.max(receiptRows.length, paymentRows.length);
+
+      for(let i = 0; i < maxDetailRows; i++){
+        const receiptHtml = receiptRows[i] ? buildDetailRows([receiptRows[i]]) : '<tr><td></td><td></td><td></td><td></td><td class="amount"></td></tr>';
+        const paymentHtml = paymentRows[i] ? buildDetailRows([paymentRows[i]]) : '<tr><td></td><td></td><td></td><td></td><td class="amount"></td></tr>';
+
+        leftBody.insertAdjacentHTML('beforeend', receiptHtml);
+        rightBody.insertAdjacentHTML('beforeend', paymentHtml);
+
+        if(!pageFits(page)){
+          removeLastIfExists(leftBody);
+          removeLastIfExists(rightBody);
+
+          page = createPage();
+          page.innerHTML = buildMainSection([], [], totals, true);
+          leftBody = page.querySelector('.half.left tbody');
+          rightBody = page.querySelector('.half:not(.left) tbody');
+
+          leftBody.insertAdjacentHTML('beforeend', receiptHtml);
+          rightBody.insertAdjacentHTML('beforeend', paymentHtml);
+        }
+      }
+
+      // Put credit register after cash-flow details. If it does not fit, move it to a fresh page.
+      const creditWrapper = document.createElement('div');
+      creditWrapper.innerHTML = buildCreditSection([]);
+      page.appendChild(creditWrapper.firstElementChild);
+
+      if(!pageFits(page)){
+        const lastCreditBox = page.querySelector('.credit-box:last-child');
+        if(lastCreditBox) lastCreditBox.remove();
+
+        page = createPage();
+        page.innerHTML = createContinuationHeader(totals, 'CREDIT - SALES REGISTER') + buildCreditSection([]);
+      }
+
+      let creditBody = page.querySelector('.credit-table tbody');
+
+      for(let i = 0; i < creditRows.length; i++){
+        const rowHtml = buildCreditRows([creditRows[i]]);
+        creditBody.insertAdjacentHTML('beforeend', rowHtml);
+
+        if(!pageFits(page)){
+          removeLastIfExists(creditBody);
+
+          page = createPage();
+          page.innerHTML = createContinuationHeader(totals, 'CREDIT - SALES REGISTER') + buildCreditSection([], ' (CONTINUED)');
+          creditBody = page.querySelector('.credit-table tbody');
+          creditBody.insertAdjacentHTML('beforeend', rowHtml);
+        }
+      }
+
+      // If there are no credit rows and the empty credit table alone wastes space, keep it only on the last page.
+      // This keeps the print format consistent while still using full A4 height for real data rows.
     }
 
     async function fetchSales(dateStr){

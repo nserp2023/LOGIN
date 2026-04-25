@@ -695,6 +695,86 @@
       gap: 12px;
     }
 
+    .shift-history-card {
+      margin-top: 16px;
+      padding: 14px;
+      border-radius: 18px;
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.06);
+    }
+
+    .shift-history-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      color: white;
+      font-size: 13px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: .8px;
+      margin-bottom: 10px;
+    }
+
+    .shift-history-list {
+      display: grid;
+      gap: 10px;
+      max-height: 260px;
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .shift-row {
+      padding: 12px;
+      border-radius: 16px;
+      background: rgba(15,23,42,.72);
+      border: 1px solid rgba(255,255,255,.06);
+    }
+
+    .shift-row-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      color: #f8fbff;
+      font-size: 13px;
+      font-weight: 900;
+      margin-bottom: 8px;
+    }
+
+    .shift-row-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .shift-mini {
+      padding: 8px;
+      border-radius: 12px;
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.05);
+    }
+
+    .shift-mini span {
+      display: block;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .7px;
+      margin-bottom: 4px;
+    }
+
+    .shift-mini strong {
+      color: white;
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .remaining-positive { color: #fbbf24 !important; }
+    .remaining-zero { color: #34d399 !important; }
+    .remaining-negative { color: #fb7185 !important; }
+
+
     .primary-btn,
     .secondary-btn {
       border: none;
@@ -1260,26 +1340,36 @@
 
           <div class="closing-grid">
             <div class="cash-box">
-              <div class="cash-box-label">System Expected Cash</div>
+              <div class="cash-box-label">Current Shift Expected Cash</div>
               <div class="cash-box-value" id="systemExpectedCash">₹ 0.00</div>
-              <div class="cash-box-note">This is based on today's approved dashboard cash flow.</div>
+              <div class="cash-box-note">Live cash expected for the current / next shift after previous closing.</div>
             </div>
 
             <div class="cash-box">
-              <div class="cash-box-label">Last Saved Cash Closing</div>
+              <div class="cash-box-label">Staff Closed Cash Amount</div>
               <div class="cash-box-value" id="savedClosingCash">₹ 0.00</div>
-              <div class="cash-box-note" id="savedClosingNote">No cash closing saved today.</div>
+              <div class="cash-box-note" id="savedClosingNote">No cash entered for current shift yet.</div>
             </div>
 
             <div class="cash-box">
-              <div class="cash-box-label">Balance To Collect From Next Staff</div>
+              <div class="cash-box-label">Current Shift Balance</div>
               <div class="cash-box-value" id="balanceToCollect">₹ 0.00</div>
-              <div class="cash-box-note">System Expected Cash - Last Saved Cash Closing.</div>
+              <div class="cash-box-note">Current shift expected cash - current staff closed cash amount.</div>
             </div>
 
             <div class="cash-actions">
-              <button type="button" class="primary-btn" id="closeCashBtn">🔒 Save Staff Cash Closing</button>
+              <button type="button" class="primary-btn" id="closeCashBtn">🔒 Save Shift Cash Closing</button>
               <button type="button" class="secondary-btn" id="refreshSummaryBtn">🔄 Refresh Dashboard</button>
+            </div>
+
+            <div class="shift-history-card">
+              <div class="shift-history-title">
+                <span>Today Shift History</span>
+                <span id="shiftCountBadge">0 Shifts</span>
+              </div>
+              <div class="shift-history-list" id="shiftHistoryList">
+                <div class="cash-box-note">No shift closing saved today.</div>
+              </div>
             </div>
           </div>
         </div>
@@ -1324,6 +1414,7 @@
 
         await loadTodayDashboardSummary();
         await loadLatestCashClosing();
+        await loadShiftHistory();
       } catch (err) {
         console.error(err);
         alert("Dashboard failed to load.");
@@ -1649,6 +1740,7 @@
       document.getElementById("refreshSummaryBtn")?.addEventListener("click", async () => {
         await loadTodayDashboardSummary();
         await loadLatestCashClosing();
+        await loadShiftHistory();
       });
     }
 
@@ -1662,7 +1754,7 @@
 
     async function closeTodayCash() {
       try {
-        const amountText = prompt("Enter today's closing cash amount");
+        const amountText = prompt("Enter current shift closing cash amount");
         if (amountText === null) return;
 
         const amount = Number(String(amountText).replace(/,/g, "").trim());
@@ -1672,7 +1764,10 @@
           return;
         }
 
+        const defaultStaff = localStorage.getItem("username") || "Staff";
+        const staffName = prompt("Enter staff name", defaultStaff) || defaultStaff;
         const notes = prompt("Enter note if needed (difference / timing / remarks)") || "";
+
         const userRes = await sb.auth.getUser();
         const user = userRes?.data?.user;
 
@@ -1681,9 +1776,51 @@
           return;
         }
 
+        const today = new Date();
+        const start = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0).toISOString();
+        const end = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999).toISOString();
+
+        const { data: shifts, error: shiftError } = await sb
+          .from("daily_cash_closing")
+          .select("*")
+          .gte("closing_time", start)
+          .lte("closing_time", end)
+          .order("shift_no", { ascending: true })
+          .order("closing_time", { ascending: true });
+
+        if (shiftError) {
+          console.error("Shift check error:", shiftError);
+          alert("Could not read today's shift closing records. Please check daily_cash_closing table columns.");
+          return;
+        }
+
+        // Always take live dashboard balance from Today's Balance, not from System Expected Cash,
+        // because System Expected Cash may already be showing the last frozen shift value.
+        const liveTodayBalance = getMoneyValue("todayBalance");
+
+        let shiftNo = 1;
+        let expectedCash = liveTodayBalance;
+
+        if (Array.isArray(shifts) && shifts.length > 0) {
+          const lastShift = shifts[shifts.length - 1];
+          const lastShiftNo = Number(lastShift.shift_no || shifts.length || 1);
+          const previousExpected = Number(lastShift.system_expected_cash || 0);
+          const previousRemaining = Number(lastShift.remaining_cash ?? (previousExpected - Number(lastShift.closing_amount || 0)));
+          const newCashFlowAfterLastShift = liveTodayBalance - previousExpected;
+
+          shiftNo = lastShiftNo + 1;
+          expectedCash = previousRemaining + newCashFlowAfterLastShift;
+        }
+
+        const remainingCash = expectedCash - amount;
+
         const payload = {
           user_id: user.id,
+          shift_no: shiftNo,
+          staff_name: staffName,
           closing_amount: amount,
+          system_expected_cash: expectedCash,
+          remaining_cash: remainingCash,
           notes: notes
         };
 
@@ -1695,25 +1832,19 @@
         }
 
         if (insertError) {
-          const rpcTry = await sb.rpc("save_daily_cash_closing", {
-            p_closing_amount: amount,
-            p_notes: notes
-          });
-
-          if (rpcTry.error) {
-            console.error("Cash closing save error:", insertError, rpcTry.error);
-            alert(
-              "Could not save cash closing. Create table daily_cash_closing or RPC save_daily_cash_closing first."
-            );
-            return;
-          }
+          console.error("Cash closing save error:", insertError);
+          alert(
+            "Could not save shift closing. Please run the daily_cash_closing multi-shift SQL first."
+          );
+          return;
         }
 
-        alert("Cash closing saved successfully.");
+        alert(`Shift ${shiftNo} saved successfully. Remaining cash: ${formatCurrency(remainingCash)}`);
         await loadLatestCashClosing();
+        await loadShiftHistory();
       } catch (err) {
         console.error("closeTodayCash error:", err);
-        alert("Failed to save cash closing.");
+        alert("Failed to save shift cash closing.");
       }
     }
 
@@ -1728,6 +1859,7 @@
           .select("*")
           .gte("closing_time", start)
           .lte("closing_time", end)
+          .order("shift_no", { ascending: false })
           .order("closing_time", { ascending: false })
           .limit(1);
 
@@ -1737,26 +1869,43 @@
           setText("savedClosingCash", "₹ 0.00");
           setText("lastClosedBy", "—");
           setText("lastClosedAt", "—");
-          setText("savedClosingNote", "No cash closing saved today or table not created yet.");
-          setText("closingStatusChip", "Create daily_cash_closing table to use this feature");
+          setText("savedClosingNote", "No shift closing saved today or table not upgraded yet.");
+          setText("closingStatusChip", "Create / upgrade daily_cash_closing table to use multi-shift closing");
           updateBalanceToCollect();
           return;
         }
 
         const row = Array.isArray(data) ? data[0] : null;
 
+        const liveTodayBalance = getMoneyValue("todayBalance");
+
         if (!row) {
+          // Before first closing, the current shift expected cash is the live Today's Balance.
           setText("lastClosingAmount", "₹ 0.00");
           setText("savedClosingCash", "₹ 0.00");
+          setText("systemExpectedCash", formatCurrency(liveTodayBalance));
+          setText("balanceToCollect", formatCurrency(liveTodayBalance));
           setText("lastClosedBy", "—");
           setText("lastClosedAt", "—");
-          setText("savedClosingNote", "No cash closing saved today.");
-          setText("closingStatusChip", "No closing yet today");
-          updateBalanceToCollect();
+          setText("savedClosingNote", "No cash entered for current shift yet.");
+          setText("closingStatusChip", "No shift closing yet today");
+          applyRemainingColor(liveTodayBalance);
           return;
         }
 
-        const amount = Number(row.closing_amount || 0);
+        const lastExpected = Number(row.system_expected_cash || 0);
+        const lastClosed = Number(row.closing_amount || 0);
+        const lastRemaining = Number(row.remaining_cash ?? (lastExpected - lastClosed));
+        const shiftNo = Number(row.shift_no || 1);
+
+        // After one shift is closed, the top 3 boxes must show the NEXT/CURRENT live shift,
+        // not the already closed shift. Formula:
+        // current expected = last remaining + cash flow happened after last shift closing.
+        const newCashFlowAfterLastShift = liveTodayBalance - lastExpected;
+        const currentShiftExpected = lastRemaining + newCashFlowAfterLastShift;
+        const currentShiftClosed = 0;
+        const currentShiftBalance = currentShiftExpected - currentShiftClosed;
+
         const closeTime = row.closing_time ? new Date(row.closing_time) : null;
         const timeText = closeTime
           ? closeTime.toLocaleString("en-IN", {
@@ -1767,27 +1916,114 @@
             })
           : "—";
 
-        setText("lastClosingAmount", formatCurrency(amount));
-        setText("savedClosingCash", formatCurrency(amount));
-        setText("lastClosedBy", row.user_id ? String(row.user_id).slice(0, 8) + "..." : "—");
+        // Mini snapshot shows latest saved shift.
+        setText("lastClosingAmount", formatCurrency(lastClosed));
+        setText("lastClosedBy", row.staff_name || (row.user_id ? String(row.user_id).slice(0, 8) + "..." : "—"));
         setText("lastClosedAt", timeText);
-        setText("savedClosingNote", row.notes ? `Note: ${row.notes}` : "Cash closing saved successfully.");
-        setText("closingStatusChip", "Latest closing amount saved");
-        updateBalanceToCollect();
+        setText("closingStatusChip", `Latest saved: Shift ${shiftNo}`);
+
+        // Main closing boxes show current / next shift live position.
+        setText("systemExpectedCash", formatCurrency(currentShiftExpected));
+        setText("savedClosingCash", formatCurrency(currentShiftClosed));
+        setText("balanceToCollect", formatCurrency(currentShiftBalance));
+        setText("savedClosingNote", `Ready for Shift ${shiftNo + 1}. Last saved Shift ${shiftNo}: ${formatCurrency(lastClosed)} closed, ${formatCurrency(lastRemaining)} remaining.`);
+        applyRemainingColor(currentShiftBalance);
       } catch (err) {
         console.error("loadLatestCashClosing error:", err);
       }
     }
 
-    function updateBalanceToCollect() {
-      const expectedText = document.getElementById("systemExpectedCash")?.innerText || "0";
-      const closedText = document.getElementById("savedClosingCash")?.innerText || "0";
+    async function loadShiftHistory() {
+      try {
+        const list = document.getElementById("shiftHistoryList");
+        if (!list) return;
 
-      const expected = Number(String(expectedText).replace(/[₹,\s]/g, "")) || 0;
-      const closed = Number(String(closedText).replace(/[₹,\s]/g, "")) || 0;
+        const today = new Date();
+        const start = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0).toISOString();
+        const end = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999).toISOString();
+
+        const { data, error } = await sb
+          .from("daily_cash_closing")
+          .select("*")
+          .gte("closing_time", start)
+          .lte("closing_time", end)
+          .order("shift_no", { ascending: true })
+          .order("closing_time", { ascending: true });
+
+        if (error) {
+          console.warn("Shift history error:", error.message);
+          list.innerHTML = `<div class="cash-box-note">Shift history unavailable. Please upgrade daily_cash_closing table.</div>`;
+          setText("shiftCountBadge", "0 Shifts");
+          return;
+        }
+
+        if (!Array.isArray(data) || data.length === 0) {
+          list.innerHTML = `<div class="cash-box-note">No shift closing saved today.</div>`;
+          setText("shiftCountBadge", "0 Shifts");
+          return;
+        }
+
+        setText("shiftCountBadge", `${data.length} Shift${data.length > 1 ? "s" : ""}`);
+
+        list.innerHTML = data.map(row => {
+          const expected = Number(row.system_expected_cash || 0);
+          const closed = Number(row.closing_amount || 0);
+          const remaining = Number(row.remaining_cash ?? (expected - closed));
+          const shiftNo = Number(row.shift_no || 1);
+          const cls = remaining === 0 ? "remaining-zero" : remaining > 0 ? "remaining-positive" : "remaining-negative";
+          const closeTime = row.closing_time ? new Date(row.closing_time).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : "—";
+          const staff = escapeHtml(row.staff_name || "Staff");
+
+          return `
+            <div class="shift-row">
+              <div class="shift-row-top">
+                <span>Shift ${shiftNo} • ${staff}</span>
+                <span>${closeTime}</span>
+              </div>
+              <div class="shift-row-grid">
+                <div class="shift-mini"><span>Expected</span><strong>${formatCurrency(expected)}</strong></div>
+                <div class="shift-mini"><span>Closed</span><strong>${formatCurrency(closed)}</strong></div>
+                <div class="shift-mini"><span>Remaining</span><strong class="${cls}">${formatCurrency(remaining)}</strong></div>
+              </div>
+            </div>
+          `;
+        }).join("");
+      } catch (err) {
+        console.error("loadShiftHistory error:", err);
+      }
+    }
+
+    function updateBalanceToCollect() {
+      const expected = getMoneyValue("systemExpectedCash");
+      const closed = getMoneyValue("savedClosingCash");
       const balance = expected - closed;
 
       setText("balanceToCollect", formatCurrency(balance));
+      applyRemainingColor(balance);
+    }
+
+    function getMoneyValue(id) {
+      const text = document.getElementById(id)?.innerText || "0";
+      return Number(String(text).replace(/[₹,\s]/g, "")) || 0;
+    }
+
+    function applyRemainingColor(value) {
+      const el = document.getElementById("balanceToCollect");
+      if (!el) return;
+      el.classList.remove("remaining-positive", "remaining-zero", "remaining-negative");
+      const amount = Number(value || 0);
+      if (amount === 0) el.classList.add("remaining-zero");
+      else if (amount > 0) el.classList.add("remaining-positive");
+      else el.classList.add("remaining-negative");
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
     }
 
     function setText(id, value) {
@@ -1796,7 +2032,7 @@
     }
 
     function formatCurrency(value) {
-      return `₹ ${Number(value || 0).toFixed(2)}`;
+      return `₹ ${Number(value || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
   </script>
 </body>

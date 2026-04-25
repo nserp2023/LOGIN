@@ -919,11 +919,25 @@
         }
       });
 
-      calculateRow(wrap);
+      calculateRow(wrap, { preserveSelling: true });
       return wrap;
     }
 
-    function calculateRow(row){
+    function normalizeSaleGst(baseEl, gstEl, gstPercent){
+      const base = num(baseEl.value);
+      const gstVal = num(gstEl.value);
+      const gp = num(gstPercent);
+
+      if(!base) return;
+
+      // During bill load / qty edit, never copy sale price into sale price + GST.
+      // If GST-inclusive value is missing or wrongly same/less than base, rebuild it from GST%.
+      if(gp > 0 && (!gstEl.value || gstVal <= base)){
+        gstEl.value = fmt2(base * (1 + gp / 100));
+      }
+    }
+
+    function calculateRow(row, options = {}){
       const all = row.querySelectorAll("input, select");
       const [hsn, code, barcode, name, department, qty, price, disc, total, gstp, totalG, purch, purchG, landing, p1p, p1, p1g, p2p, p2, p2g, p3p, p3, p3g] = all;
 
@@ -949,9 +963,18 @@
 
       if(landing.dataset.userOverride !== "1") landing.value = purchG.value;
 
-      syncTier(p1p, p1, p1g, Gp, landing.value);
-      syncTier(p2p, p2, p2g, Gp, landing.value);
-      syncTier(p3p, p3, p3g, Gp, landing.value);
+      const active = document.activeElement;
+      const saleFieldsTouched = [gstp, landing, p1p, p1, p1g, p2p, p2, p2g, p3p, p3, p3g].includes(active);
+
+      if(options.preserveSelling || !saleFieldsTouched){
+        normalizeSaleGst(p1, p1g, Gp);
+        normalizeSaleGst(p2, p2g, Gp);
+        normalizeSaleGst(p3, p3g, Gp);
+      }else{
+        syncTier(p1p, p1, p1g, Gp, landing.value);
+        syncTier(p2p, p2, p2g, Gp, landing.value);
+        syncTier(p3p, p3, p3g, Gp, landing.value);
+      }
 
       updatePayableFromItems();
       maybeEnableUpdate();

@@ -948,6 +948,7 @@
 
       const newValue = normalizeValue(field, e.target.value);
       row[field] = newValue;
+      syncPricePairForInput(row, field);
       const original = state.originalMap.get(id);
       if (!original) return;
 
@@ -1002,6 +1003,152 @@
       return d.toLocaleString();
     }
 
+
+    function round2(value) {
+      const n = Number(value);
+      return Number.isFinite(n) ? Number(n.toFixed(2)) : null;
+    }
+
+    function priceBaseFromGst(gstPrice, gstPercent) {
+      const value = Number(gstPrice || 0);
+      const gst = Number(gstPercent || 0);
+      if (!Number.isFinite(value) || !Number.isFinite(gst)) return null;
+      return round2(value / (1 + gst / 100));
+    }
+
+    function priceGstFromBase(basePrice, gstPercent) {
+      const value = Number(basePrice || 0);
+      const gst = Number(gstPercent || 0);
+      if (!Number.isFinite(value) || !Number.isFinite(gst)) return null;
+      return round2(value * (1 + gst / 100));
+    }
+
+    function setRowInputValue(rowId, field, value) {
+      const el = document.querySelector(`[data-id="${rowId}"][data-field="${field}"]`);
+      if (el && document.activeElement !== el) el.value = value ?? '';
+    }
+
+    function syncPricePairForInput(row, changedField) {
+      if (!row || !changedField) return;
+      const gst = Number(row.gst_percent || 0);
+      const pairs = [
+        ['price1', 'price1_gst'],
+        ['price2', 'price2_gst'],
+        ['price3', 'price3_gst']
+      ];
+
+      for (const [baseField, gstField] of pairs) {
+        if (changedField === gstField) {
+          row[baseField] = priceBaseFromGst(row[gstField], gst);
+          setRowInputValue(row.id, baseField, row[baseField]);
+        } else if (changedField === baseField) {
+          row[gstField] = priceGstFromBase(row[baseField], gst);
+          setRowInputValue(row.id, gstField, row[gstField]);
+        } else if (changedField === 'gst_percent') {
+          row[gstField] = priceGstFromBase(row[baseField], gst);
+          setRowInputValue(row.id, gstField, row[gstField]);
+        }
+      }
+    }
+
+    function syncPricePairPayload(id, payload) {
+      if (!payload) return payload;
+      const row = state.rows.find(r => Number(r.id) === Number(id));
+      if (!row) return payload;
+
+      const gst = Number(
+        Object.prototype.hasOwnProperty.call(payload, 'gst_percent')
+          ? payload.gst_percent
+          : row.gst_percent || 0
+      );
+
+      const pairs = [
+        ['price1', 'price1_gst'],
+        ['price2', 'price2_gst'],
+        ['price3', 'price3_gst']
+      ];
+
+      for (const [baseField, gstField] of pairs) {
+        if (Object.prototype.hasOwnProperty.call(payload, gstField)) {
+          payload[baseField] = priceBaseFromGst(payload[gstField], gst);
+          row[baseField] = payload[baseField];
+        } else if (Object.prototype.hasOwnProperty.call(payload, baseField) || Object.prototype.hasOwnProperty.call(payload, 'gst_percent')) {
+          payload[gstField] = priceGstFromBase(row[baseField], gst);
+          row[gstField] = payload[gstField];
+        }
+      }
+
+      return payload;
+    }
+
+
+    async function buildStockCorrectionLedgerPayload(id, payload) {
+      if (!payload || !Object.prototype.hasOwnProperty.call(payload, 'quantity')) return null;
+
+      const row = state.rows.find(r => Number(r.id) === Number(id));
+      if (!row || !row.item_code) return null;
+
+      const itemCode = String(row.item_code || '').trim();
+      if (!itemCode) return null;
+
+      const targetQty = Number(payload.quantity || 0);
+      if (!Number.isFinite(targetQty)) throw new Error('Invalid target quantity for stock correction');
+
+      const { data: currentStock, error: stockErr } = await sb
+        .from('stock_balance_view')
+        .select('balance')
+        .eq('item_code', itemCode)
+        .maybeSingle();
+
+      if (stockErr) throw stockErr;
+
+      const currentQty = Number(currentStock?.balance || 0);
+      const diff = targetQty - currentQty;
+
+      if (!Number.isFinite(diff) || Math.abs(diff) < 0.000001) return null;
+
+      return {
+        item_code: itemCode,
+        item_name: row.item_name || '',
+        txn_type: 'STOCK_CORRECTION',
+        reference_id: id,
+        qty_in: diff > 0 ? diff : 0,
+        qty_out: diff < 0 ? Math.abs(diff) : 0,
+        txn_date: new Date().toISOString().slice(0, 10),
+        _audit_note: `SET STOCK FROM ${currentQty} TO ${targetQty}`
+      };
+    }
+
+    async function insertStockCorrectionLedger(ledgerPayload) {
+      if (!ledgerPayload) return;
+
+      const { _audit_note, ...basePayload } = ledgerPayload;
+      const variants = [
+        { ...basePayload, reference_type: 'STOCK_CORRECTION', remarks: _audit_note },
+        { ...basePayload, reference_type: 'STOCK_CORRECTION', note: _audit_note },
+        { ...basePayload, reference_type: 'STOCK_CORRECTION' },
+        { ...basePayload, remarks: _audit_note },
+        basePayload
+      ];
+
+      let lastError = null;
+      for (const attemptPayload of variants) {
+        const { error } = await sb.from('stock_ledger').insert([attemptPayload]);
+        if (!error) return;
+        lastError = error;
+
+        const msg = String(error.message || '').toLowerCase();
+        const canRetryWithoutColumn =
+          msg.includes('column') ||
+          msg.includes('schema cache') ||
+          msg.includes('could not find');
+
+        if (!canRetryWithoutColumn) break;
+      }
+
+      throw lastError || new Error('Stock ledger correction insert failed');
+    }
+
     async function saveSingleRow(id) {
       if (!state.dirtyMap.has(id)) return;
       await ensureSupabase();
@@ -1011,9 +1158,12 @@
       tr?.classList.add('saving');
       try {
         const payload = { ...state.dirtyMap.get(id) };
+        syncPricePairPayload(id, payload);
         validateRowPayload(payload);
+        const ledgerPayload = await buildStockCorrectionLedgerPayload(id, payload);
         const { error } = await sb.from('stock_items').update(payload).eq('id', id);
         if (error) throw error;
+        await insertStockCorrectionLedger(ledgerPayload);
         const row = state.rows.find(r => r.id === id);
         state.originalMap.set(id, deepClone(row));
         state.dirtyMap.delete(id);
@@ -1051,9 +1201,12 @@
         tr?.classList.add('saving');
         try {
           const payload = { ...state.dirtyMap.get(id) };
+          syncPricePairPayload(id, payload);
           validateRowPayload(payload);
+          const ledgerPayload = await buildStockCorrectionLedgerPayload(id, payload);
           const { error } = await sb.from('stock_items').update(payload).eq('id', id);
           if (error) throw error;
+          await insertStockCorrectionLedger(ledgerPayload);
           const row = state.rows.find(r => r.id === id);
           state.originalMap.set(id, deepClone(row));
           state.dirtyMap.delete(id);

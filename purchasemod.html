@@ -372,10 +372,6 @@
   <script src="page_permissions.js"></script>
   <script>
     const sb = window.sbcc;
-    document.addEventListener("DOMContentLoaded", async () => {
-      const ok = await requirePageAccess("purchase");
-      if (!ok) return;
-    });
 
     const fmt2 = v => (isFinite(v) ? Number(v).toFixed(2) : "0.00");
     const num = v => (v === "" || v == null ? 0 : Number(v));
@@ -1536,7 +1532,26 @@
       }
     });
 
-    (async function(){
+    async function loadFromEditUrl(){
+      const params = new URLSearchParams(window.location.search);
+      const editId = params.get("edit") || params.get("id") || params.get("purchase_id");
+
+      if(!editId) return;
+
+      const id = Number(editId);
+      if(!id || Number.isNaN(id)){
+        byId("saveStatus").innerHTML = `<span class="err">Invalid purchase edit ID in URL.</span>`;
+        return;
+      }
+
+      byId("searchStatus").innerHTML = `<span class="ok">Opening purchase ID ${id} from report...</span>`;
+      await loadPurchaseById(id);
+    }
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      const ok = await requirePageAccess("purchase");
+      if (!ok) return;
+
       await loadStockData();
       await initSupplierDropdowns();
       bindLoadSearchEvents();
@@ -1559,7 +1574,9 @@
       byId("updateBtn").addEventListener("click", updatePurchase);
       byId("updateBtnSticky").addEventListener("click", ()=>{ if(!byId("updateBtnSticky").disabled) updatePurchase(); });
       syncStickyUpdateState();
-    })();
+
+      await loadFromEditUrl();
+    });
   </script>
 </body>
 </html>

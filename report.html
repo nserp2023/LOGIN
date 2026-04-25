@@ -156,7 +156,6 @@
     <label>Report Type:</label>
     <select id="report_type">
         <option value="sales">Sales</option>
-        <option value="sales_pack">Sales + Packing</option>
         <option value="quotation">Quotation</option>
         <option value="sales_order">Sales Order</option>
     </select>
@@ -208,6 +207,7 @@
     const sb = window.sbcc;
     let canEditBills = false;
     let currentRows = [];
+    let packingUnlocked = false;
 
     function normalizeText(v){
         return String(v || "").trim().toLowerCase();
@@ -218,7 +218,15 @@
     }
 
     function getCurrentTypeConfig() {
-        const type = document.getElementById("report_type").value;
+        let type = document.getElementById("report_type").value;
+
+        // Sales + Packing is hidden and locked by default.
+        // Only Shift + P unlocks this report type in the dropdown.
+        if(type === "sales_pack" && !packingUnlocked){
+            alert("Access Denied");
+            type = "sales";
+            document.getElementById("report_type").value = "sales";
+        }
 
         let table = "sales_details";
         let numberField = "sales_number";
@@ -831,6 +839,41 @@
             window.open(`newsoq.html?convert_so=${id}`, "_blank");
         }
     }
+
+
+    function unlockSalesPackingReport(){
+        if(packingUnlocked) return;
+
+        packingUnlocked = true;
+
+        const select = document.getElementById("report_type");
+        let option = select.querySelector('option[value="sales_pack"]');
+
+        if(!option){
+            option = document.createElement("option");
+            option.value = "sales_pack";
+            option.textContent = "Sales + Packing";
+
+            const quotationOption = select.querySelector('option[value="quotation"]');
+            if(quotationOption){
+                select.insertBefore(option, quotationOption);
+            } else {
+                select.appendChild(option);
+            }
+        }
+
+        select.value = "sales_pack";
+        loadReport();
+        alert("🔓 Sales + Packing Report Unlocked");
+    }
+
+    document.addEventListener("keydown", (e) => {
+        // Secret shortcut: Shift + P
+        if(e.shiftKey && e.key.toLowerCase() === "p"){
+            e.preventDefault();
+            unlockSalesPackingReport();
+        }
+    });
 
     document.addEventListener("DOMContentLoaded", async () => {
         const ok = await requirePageAccess("sales");

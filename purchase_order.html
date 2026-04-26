@@ -11,11 +11,11 @@
   <script src="common-ui.js"></script>
   <style>
     :root{
-      --bg:#f4f7fb;
+      --bg:#eef4fb;
       --card:#ffffff;
-      --card2:#f9fbff;
+      --card2:#f8fbff;
       --text:#14213d;
-      --muted:#5f6f8b;
+      --muted:#60708d;
       --line:#d9e2ef;
       --line2:#e9eef6;
       --primary:#2563eb;
@@ -29,697 +29,482 @@
       --row-h:42px;
     }
     *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%}
     body{
-      margin:0;
       background:linear-gradient(180deg,#f7faff 0%,#eef4fb 100%);
       color:var(--text);
       font:14px/1.4 "Segoe UI",system-ui,-apple-system,sans-serif;
+      padding-bottom:112px;
     }
-    .wrap{
-      max-width:1600px;
-      margin:0 auto;
-      padding:18px 14px 120px;
-    }
-    .topbar{
-      display:flex;
-      justify-content:space-between;
-      align-items:flex-end;
-      gap:12px;
-      flex-wrap:wrap;
-      margin-bottom:14px;
-    }
-    .brand h1{
-      margin:0;
-      font-size:26px;
-      letter-spacing:.2px;
-    }
-    .brand small{
-      color:var(--muted);
-      font-size:13px;
-    }
-    .chips{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-    }
-    .chip{
-      background:#fff;
-      border:1px solid var(--line);
-      border-radius:999px;
-      padding:8px 12px;
-      color:#3b4d69;
-      box-shadow:var(--shadow);
-      font-size:12px;
-      font-weight:700;
-    }
-
-    .panel{
-      background:var(--card);
-      border:1px solid var(--line);
-      border-radius:var(--radius);
-      box-shadow:var(--shadow);
-      padding:14px;
-      margin-bottom:12px;
-    }
-    .panel-head{
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap:12px;
-      flex-wrap:wrap;
-      margin-bottom:12px;
-    }
-    .panel-head h2{
-      margin:0;
-      font-size:17px;
-    }
-    .panel-head small{
-      color:var(--muted);
-      display:block;
-      margin-top:3px;
-    }
-
-    .row{
-      display:grid;
-      gap:10px;
-      grid-auto-flow:column;
-      grid-auto-columns:minmax(140px,1fr);
-      overflow-x:auto;
-      padding-bottom:2px;
-    }
-    .field{
-      display:flex;
-      flex-direction:column;
-      position:relative;
-      min-width:140px;
-    }
-    .field label{
-      font-size:12px;
-      color:var(--muted);
-      font-weight:700;
-      margin-bottom:6px;
-      text-transform:uppercase;
-      letter-spacing:.04em;
-    }
-    .field input, .field textarea, .field select, .grid input, .grid select{
-      width:100%;
-      min-height:var(--row-h);
-      border:1px solid var(--line);
-      border-radius:var(--radius-sm);
-      background:#fff;
-      color:var(--text);
-      padding:10px 12px;
-      outline:none;
-      transition:.15s;
-      font:inherit;
-    }
-    .field textarea{
-      min-height:84px;
-      resize:vertical;
-    }
-    .field input:focus, .field textarea:focus, .field select:focus,
-    .grid input:focus, .grid select:focus{
-      border-color:#7aa8ff;
-      box-shadow:0 0 0 3px rgba(37,99,235,.12);
-    }
-    .readonly{
-      background:#f3f6fb !important;
-      color:#42526b !important;
-      font-weight:700;
-    }
-
-    .status-badge{
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      height:42px;
-      border-radius:12px;
-      padding:0 14px;
-      font-weight:800;
-      border:1px solid var(--line);
-      background:#f8fbff;
-    }
-    .status-PENDING{color:var(--warn); background:#fff8eb; border-color:#f3d49c}
-    .status-PARTIAL{color:#a16207; background:#fff7d6; border-color:#ead488}
-    .status-COMPLETED,.status-RECEIVED{color:var(--ok); background:#ecfdf3; border-color:#b7efcc}
-    .status-CANCELLED{color:var(--danger); background:#fff1f2; border-color:#f4b2b8}
-
-    .table-shell{
-      overflow:auto;
-      border:1px solid var(--line2);
-      border-radius:14px;
-      background:var(--card2);
-      padding:10px;
-    }
-    .grid{
-      display:grid;
-      grid-template-columns:
-        70px
-        120px
-        260px
-        90px
-        110px
-        180px
-        110px
-        110px
-        110px
-        120px
-        56px;
-      gap:10px;
-      align-items:center;
-      min-width:1350px;
-    }
-    .grid.hdr{
-      position:sticky;
-      top:0;
-      z-index:2;
-      background:linear-gradient(180deg,#f9fbff 0%,#f5f9ff 100%);
-      border-bottom:1px solid var(--line);
-      padding:0 0 10px;
-      margin-bottom:10px;
-    }
-    .grid.hdr > div{
-      font-size:12px;
-      color:#52637e;
-      font-weight:800;
-      text-transform:uppercase;
-      padding:0 4px;
-    }
-    #items .grid{
-      background:#fff;
-      border:1px solid var(--line);
-      border-radius:12px;
-      padding:10px;
-      margin-bottom:10px;
-    }
+    .wrap{max-width:1600px;margin:0 auto;padding:16px 14px 24px}
+    .topbar{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+    .brand h1{margin:0;font-size:26px;letter-spacing:.2px}
+    .brand small{color:var(--muted);font-size:13px}
+    .chips{display:flex;gap:10px;flex-wrap:wrap}
+    .chip{background:#fff;border:1px solid var(--line);border-radius:999px;padding:8px 12px;color:#3b4d69;box-shadow:var(--shadow);font-size:12px;font-weight:800}
+    .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px;margin-bottom:12px}
+    .panel-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+    .panel-head h2{margin:0;font-size:17px}
+    .panel-head small{color:var(--muted);display:block;margin-top:3px}
+    .header-grid{display:grid;grid-template-columns:120px 140px 160px 220px 160px 260px 1fr;gap:10px;align-items:end;overflow-x:auto;padding-bottom:3px}
+    .field{display:flex;flex-direction:column;position:relative;min-width:120px}
+    .field label{font-size:12px;color:var(--muted);font-weight:800;margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}
+    .field input,.grid input{width:100%;min-height:var(--row-h);border:1px solid var(--line);border-radius:var(--radius-sm);background:#fff;color:var(--text);padding:10px 12px;outline:none;transition:.15s;font:inherit}
+    .field input:focus,.grid input:focus{border-color:#7aa8ff;box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+    .readonly{background:#f3f6fb!important;color:#42526b!important;font-weight:800}
+    .status-badge{display:inline-flex;align-items:center;justify-content:center;height:42px;border-radius:12px;padding:0 14px;font-weight:900;border:1px solid #f3d49c;background:#fff8eb;color:var(--warn)}
+    .btns{display:flex;gap:10px;flex-wrap:wrap}
+    .btn{height:42px;padding:0 16px;border:none;border-radius:12px;cursor:pointer;font-weight:900;letter-spacing:.2px;box-shadow:0 8px 18px rgba(37,99,235,.08)}
+    .btn.primary{background:linear-gradient(180deg,var(--primary),var(--primary2));color:#fff}
+    .btn.soft{background:#eef4ff;color:#1e4db7;border:1px solid #cdddff}
+    .btn.gray{background:#fff;color:#42526b;border:1px solid var(--line)}
+    .btn.danger{background:#fff1f2;color:#b91c1c;border:1px solid #f4b3b9;padding:0 12px}
+    .btn:disabled{opacity:.55;cursor:not-allowed}
+    .summary-strip{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:10px;margin-bottom:12px}
+    .summary-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 12px;box-shadow:var(--shadow)}
+    .summary-card span{display:block;font-size:11px;text-transform:uppercase;color:var(--muted);font-weight:900;letter-spacing:.05em}
+    .summary-card strong{display:block;margin-top:2px;font-size:19px;color:#17213a}
+    .table-shell{overflow:auto;border:1px solid var(--line2);border-radius:14px;background:var(--card2);padding:10px}
+    .grid{display:grid;grid-template-columns:58px 130px 320px 90px 105px 110px 170px 96px 120px 100px 54px;gap:8px;align-items:center;min-width:1380px}
+    .grid.hdr{position:sticky;top:0;z-index:3;background:linear-gradient(180deg,#f9fbff 0%,#f5f9ff 100%);border-bottom:1px solid var(--line);padding:0 0 10px;margin-bottom:10px}
+    .grid.hdr>div{font-size:12px;color:#52637e;font-weight:900;text-transform:uppercase;padding:0 4px}
+    #items .grid{background:#fff;border:1px solid var(--line);border-radius:12px;padding:8px;margin-bottom:8px}
     #items .grid:nth-child(even){background:#fbfdff}
-    .cell-muted{
-      text-align:center;
-      font-weight:700;
-      color:#5b6e8a;
-      background:#f3f7fc;
-      border:1px solid var(--line);
-      min-height:42px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      border-radius:10px;
-      padding:0 8px;
-    }
-
-    .btns{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-    }
-    .btn{
-      height:42px;
-      padding:0 16px;
-      border:none;
-      border-radius:12px;
-      cursor:pointer;
-      font-weight:800;
-      letter-spacing:.2px;
-      box-shadow:0 8px 18px rgba(37,99,235,.08);
-    }
-    .btn.primary{background:linear-gradient(180deg,var(--primary),var(--primary2)); color:#fff}
-    .btn.soft{background:#eef4ff; color:#1e4db7; border:1px solid #cdddff}
-    .btn.warn{background:#fff3e8; color:#b45309; border:1px solid #ffd2a8}
-    .btn.danger{background:#fff1f2; color:#b91c1c; border:1px solid #f4b3b9}
-    .btn.gray{background:#fff; color:#42526b; border:1px solid var(--line)}
-
-    .statusline{
-      margin-top:10px;
-      min-height:42px;
-      border:1px solid var(--line);
-      border-radius:12px;
-      background:#f8fbff;
-      padding:10px 12px;
-      color:#4d617d;
-      font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-      display:flex;
-      align-items:center;
-    }
-
-    .dropdown{
-      position:absolute;
-      z-index:99;
-      left:0;
-      right:auto;
-      top:100%;
-      margin-top:4px;
-      min-width:760px;
-      max-width:min(1000px,calc(100vw - 30px));
-      max-height:280px;
-      overflow:auto;
-      background:#fff;
-      border:1px solid #cfdcf0;
-      border-radius:12px;
-      box-shadow:0 16px 35px rgba(20,33,61,.15);
-    }
-    .opt{
-      display:grid;
-      grid-template-columns:140px 1fr 110px 110px;
-      gap:10px;
-      padding:10px 12px;
-      border-bottom:1px solid #eef2f7;
-      cursor:pointer;
-    }
-    .opt:hover{background:#f5f9ff}
-    .muted{color:#70829d; font-size:12px}
-
-    .sticky{
-      position:fixed;
-      left:0; right:0; bottom:0;
-      background:rgba(255,255,255,.94);
-      backdrop-filter:blur(8px);
-      border-top:1px solid var(--line);
-      box-shadow:0 -10px 28px rgba(24,39,75,.08);
-      padding:10px 14px;
-      z-index:100;
-    }
-    .sticky-inner{
-      max-width:1600px;
-      margin:0 auto;
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap:10px;
-      flex-wrap:wrap;
-    }
-    .sticky-note{
-      color:var(--muted);
-      font-size:12px;
-      font-weight:700;
-    }
-
-    @media print{
-      .sticky,.btns,.statusline,.chips{display:none !important}
-      body{background:#fff}
-      .wrap{padding:0}
-      .panel{box-shadow:none;border:1px solid #ccc}
-    }
-
-    @media (max-width:900px){
-      .wrap{padding:10px 8px 120px}
-      .btn{width:100%}
-      .sticky-inner{flex-direction:column;align-items:stretch}
-      .btns{width:100%}
-      .row{grid-auto-columns:minmax(220px,1fr)}
-    }
+    .cell-muted{text-align:center;font-weight:800;color:#5b6e8a;background:#f3f7fc;border:1px solid var(--line);min-height:42px;display:flex;align-items:center;justify-content:center;border-radius:10px;padding:0 8px}
+    .amount-cell{color:#123762;font-weight:900;background:#eef6ff}
+    .new-item{border-color:#f97316!important;background:#fff7ed!important}
+    .type-new{color:#c2410c;background:#fff7ed;border-color:#fed7aa}
+    .type-stock{color:#047857;background:#ecfdf5;border-color:#bbf7d0}
+    .pending-box{font-size:11px;line-height:1.25;text-align:left;background:#f8fbff;border:1px solid var(--line);border-radius:10px;padding:5px 7px;min-height:42px;display:flex;flex-direction:column;justify-content:center}
+    .pending-box .old{color:#b45309;font-weight:900}.pending-box .new{color:#2563eb;font-weight:900}.pending-box .total{color:#16a34a;font-weight:900;font-size:12px}
+    .pending-box.warn{background:#fff7ed;border-color:#fb923c}.pending-box.danger{background:#fff1f2;border-color:#ef4444}
+    .statusline{margin-top:10px;min-height:42px;border:1px solid var(--line);border-radius:12px;background:#f8fbff;padding:10px 12px;color:#4d617d;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;display:flex;align-items:center;white-space:pre-wrap}
+    .dropdown{position:fixed;z-index:9999;min-width:760px;max-width:min(1000px,calc(100vw - 22px));max-height:310px;overflow:auto;background:#fff;border:1px solid #cfdcf0;border-radius:12px;box-shadow:0 18px 38px rgba(20,33,61,.22)}
+    .opt{display:grid;grid-template-columns:135px 1fr 110px 110px 115px;gap:10px;padding:10px 12px;border-bottom:1px solid #eef2f7;cursor:pointer;align-items:center}
+    .opt.supplier-opt{grid-template-columns:1fr 150px 180px 1.2fr}
+    .opt:hover,.opt.active{background:#eaf2ff}.muted{color:#70829d;font-size:12px}.opt strong{color:#16233e}
+    .sticky{position:fixed;left:0;right:0;bottom:0;background:rgba(255,255,255,.95);backdrop-filter:blur(8px);border-top:1px solid var(--line);box-shadow:0 -10px 28px rgba(24,39,75,.08);padding:10px 14px;z-index:100}
+    .sticky-inner{max-width:1600px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}.sticky-note{color:var(--muted);font-size:12px;font-weight:800}
+    .pending-popup-overlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(15,23,42,.35);backdrop-filter:blur(5px);z-index:30000;padding:18px}.pending-popup-overlay.show{display:flex}.pending-popup{width:min(92vw,520px);background:#fff;color:#14213d;border:1px solid #fed7aa;border-radius:18px;box-shadow:0 24px 70px rgba(124,45,18,.28);padding:20px}.pending-popup h3{margin:0 0 10px;color:#c2410c;font-size:22px}.pending-popup p{margin:0 0 14px;color:#334155;line-height:1.55;white-space:pre-line}.pending-popup .popup-actions{display:flex;justify-content:flex-end;gap:10px}.pending-popup button{height:40px;padding:0 16px;border:none;border-radius:12px;font-weight:900;cursor:pointer}.pending-popup .ok-btn{background:#ea580c;color:white}.pending-popup .soft-btn{background:#ffedd5;color:#9a3412}
+    @media(max-width:900px){body{padding-bottom:150px}.wrap{padding:10px 8px 24px}.header-grid{grid-template-columns:repeat(2,minmax(220px,1fr))}.summary-strip{grid-template-columns:repeat(2,minmax(150px,1fr))}.btn{width:100%}.btns{width:100%}.sticky-inner{flex-direction:column;align-items:stretch}.dropdown{min-width:calc(100vw - 20px);left:10px!important}.opt{grid-template-columns:110px 1fr}.opt .hide-mobile{display:none}}
+    @media print{body{background:#fff;padding:0}.wrap{padding:0}.topbar,.chips,.btns,.sticky,.statusline{display:none!important}.panel{box-shadow:none;border:none;padding:0}.summary-strip{display:none}.table-shell{border:none;padding:0;overflow:visible}.grid{min-width:0;grid-template-columns:42px 95px 1fr 60px 75px 85px 105px 70px 80px 65px;gap:3px}.grid.hdr>div{font-size:10px}#items .grid{break-inside:avoid;border-bottom:1px solid #ccc;border-radius:0;margin:0;padding:4px}.grid input{border:none!important;padding:0;min-height:24px}.btn.danger,.delete-col{display:none!important}.pending-box{font-size:9px;padding:2px}.cell-muted{min-height:24px;border:none;background:#fff}.amount-cell{background:#fff}.brand-print{display:block!important;text-align:center;margin-bottom:12px}.print-header{display:block!important;margin-bottom:10px}}
+    .brand-print,.print-header{display:none}
   </style>
 </head>
 <body>
   <div class="wrap">
+    <div class="brand-print"><h2>VAJRA LIGHTS - PURCHASE ORDER</h2></div>
     <div class="topbar">
-      <div class="brand">
-        <h1>Purchase Order</h1>
-        <small>New items + old items • no stock effect • manual purchase later auto-updates PO report</small>
-      </div>
-      <div class="chips">
-        <div class="chip">Light Pro UI</div>
-        <div class="chip">Manual Purchase Compatible</div>
-        <div class="chip">Pending Tracking</div>
-      </div>
+      <div class="brand"><h1>Purchase Order</h1><small>Sales-style search • New items allowed • Pending warning enabled</small></div>
+      <div class="chips"><div class="chip" id="stockCountChip">Loading stock...</div><div class="chip">Full Catalog Search</div><div class="chip">Pending Alert</div></div>
     </div>
 
     <div class="panel">
-      <div class="panel-head">
-        <div>
-          <h2>Order Header</h2>
-          <small>Create purchase order separately. Purchase entry remains manual.</small>
-        </div>
-        <div id="poStatusBadge" class="status-badge status-PENDING">PENDING</div>
+      <div class="panel-head"><div><h2>Order Header</h2><small>Type supplier name/GST to pick old supplier. Mobile can be typed manually.</small></div><div id="poStatusBadge" class="status-badge">PENDING</div></div>
+      <div class="header-grid">
+        <div class="field"><label>PO Number</label><input id="poNumber" class="readonly" readonly></div>
+        <div class="field"><label>Order Date</label><input id="orderDate" type="date"></div>
+        <div class="field"><label>Supplier GST</label><input id="supplierGst" autocomplete="off"></div>
+        <div class="field"><label>Supplier Name</label><input id="supplierName" autocomplete="off"></div>
+        <div class="field"><label>Mobile</label><input id="supplierMobile" autocomplete="off" inputmode="tel"></div>
+        <div class="field"><label>Supplier Address</label><input id="supplierAddress" autocomplete="off"></div>
+        <div class="field"><label>Header Remark</label><input id="headerRemark"></div>
       </div>
+      <div class="print-header" id="printHeader"></div>
+    </div>
 
-      <div class="row">
-        <div class="field">
-          <label>PO Number</label>
-          <input id="poNumber" class="readonly" readonly>
-        </div>
-        <div class="field">
-          <label>Order Date</label>
-          <input id="orderDate" type="date">
-        </div>
-        <div class="field">
-          <label>Supplier GST</label>
-          <input id="supplierGst" autocomplete="off">
-        </div>
-        <div class="field">
-          <label>Supplier Name</label>
-          <input id="supplierName" autocomplete="off">
-        </div>
-        <div class="field">
-          <label>Supplier Address</label>
-          <input id="supplierAddress" autocomplete="off">
-        </div>
-        <div class="field">
-          <label>Header Remark</label>
-          <input id="headerRemark">
-        </div>
-      </div>
+    <div class="summary-strip">
+      <div class="summary-card"><span>Total Items</span><strong id="sumItems">0</strong></div>
+      <div class="summary-card"><span>Total Qty</span><strong id="sumQty">0.00</strong></div>
+      <div class="summary-card"><span>PO Amount</span><strong id="sumAmount">₹0.00</strong></div>
+      <div class="summary-card"><span>Old Pending</span><strong id="sumOldPending">0.00</strong></div>
     </div>
 
     <div class="panel">
-      <div class="panel-head">
-        <div>
-          <h2>Order Items</h2>
-          <small>Type existing item or brand new item. New items are not saved into stock master.</small>
-        </div>
-        <div class="btns">
-          <button class="btn gray" id="addRowTop">+ Add Row</button>
-          <button class="btn soft" id="printTop">Print</button>
-          <button class="btn primary" id="saveTop">Save Purchase Order</button>
-        </div>
-      </div>
-
+      <div class="panel-head"><div><h2>Order Items</h2><small>Search old items using code or name. Type new items manually if not found.</small></div><div class="btns"><button class="btn gray" id="addRowTop">+ Add Row</button><button class="btn soft" id="printTop">Print</button><button class="btn primary" id="saveTop">Save Purchase Order</button></div></div>
       <div class="table-shell">
-        <div class="grid hdr">
-          <div>#</div>
-          <div>Item Code</div>
-          <div>Item Name</div>
-          <div>Qty</div>
-          <div>Price</div>
-          <div>Remark</div>
-          <div>Received</div>
-          <div>Pending</div>
-          <div>Status</div>
-          <div>Type</div>
-          <div></div>
-        </div>
+        <div class="grid hdr"><div>#</div><div>Item Code</div><div>Item Name / Search</div><div>Qty</div><div>Price</div><div>Amount</div><div>Remark</div><div>Received</div><div>Pending</div><div>Type</div><div></div></div>
         <div id="items"></div>
       </div>
-
       <div class="statusline" id="saveStatus">READY</div>
     </div>
   </div>
 
-  <div class="sticky">
-    <div class="sticky-inner">
-      <div class="sticky-note">Enter = next field • Shift+Enter = previous • Purchase remains manual • Report auto-updates when purchase is saved</div>
-      <div class="btns">
-        <button class="btn gray" id="addRowBottom">+ Add Row</button>
-        <button class="btn soft" id="printBottom">Print</button>
-        <button class="btn primary" id="saveBottom">Save Purchase Order</button>
-      </div>
-    </div>
-  </div>
+  <div class="sticky"><div class="sticky-inner"><div class="sticky-note">Enter = next • Shift+Enter = back • Arrow keys select dropdown • New items can be typed manually</div><div class="btns"><button class="btn gray" id="addRowBottom">+ Add Row</button><button class="btn soft" id="printBottom">Print</button><button class="btn primary" id="saveBottom">Save Purchase Order</button></div></div></div>
 
-  <script>
-    const sb = window.sbcc;
-    let stockData = [];
-    let currentRowId = 0;
-    let dropdown = null;
+  <div id="pendingPopupOverlay" class="pending-popup-overlay" tabindex="-1" aria-hidden="true"><div class="pending-popup"><h3>Pending Order Already Exists</h3><p id="pendingPopupMessage"></p><div class="popup-actions"><button type="button" class="soft-btn" onclick="closePendingPopup()">OK, Continue</button><button type="button" class="ok-btn" onclick="focusPendingPopupQty()">Change Qty</button></div></div></div>
 
-    const byId = id => document.getElementById(id);
-    const num = v => (v === "" || v == null ? 0 : Number(v));
-    const fmt2 = v => Number(v || 0).toFixed(2);
+<script>
+const sb = window.sbcc;
+let stockData = [];
+let lastPrices = {};
+let pendingMap = {};
+let currentRowId = 0;
+let dropdown = null;
+let activeIndex = 0;
+let currentDropdownInput = null;
+let pendingPopupReturnFocus = null;
 
-    document.addEventListener("DOMContentLoaded", async () => {
-      const ok = await requirePageAccess("purchase");
-      if (!ok) return;
+const byId = id => document.getElementById(id);
+const num = v => (v === "" || v == null ? 0 : Number(v));
+const fmt2 = v => Number(v || 0).toFixed(2);
+const money = v => "₹" + fmt2(v);
+function clean(v){return String(v || "").trim();}
+function norm(v){return String(v || "").toLowerCase().replace(/[^a-z0-9]+/g," ").replace(/\s+/g," ").trim();}
+function esc(v){return String(v ?? "").replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));}
 
-      byId("orderDate").valueAsDate = new Date();
-      await loadStockData();
-      await loadNextPONumber();
-      addRow();
+document.addEventListener("DOMContentLoaded", async () => {
+  if(typeof requirePageAccess === "function"){
+    const ok = await requirePageAccess("purchase");
+    if(!ok) return;
+  }
+  byId("orderDate").valueAsDate = new Date();
+  bindHeaderEvents();
+  bindButtons();
+  await Promise.all([loadStockData(), loadLastPrices(), loadPendingData(), loadNextPONumber()]);
+  byId("stockCountChip").textContent = stockData.length + " stock items loaded";
+  addRow();
+});
 
-      byId("addRowTop").onclick = addRow;
-      byId("addRowBottom").onclick = addRow;
-      byId("printTop").onclick = () => window.print();
-      byId("printBottom").onclick = () => window.print();
-      byId("saveTop").onclick = savePO;
-      byId("saveBottom").onclick = savePO;
-    });
+document.addEventListener("input", e => {
+  if(e.target && e.target.tagName === "INPUT" && e.target.type !== "number" && e.target.type !== "date"){
+    const pos = e.target.selectionStart;
+    e.target.value = e.target.value.toUpperCase();
+    try{ e.target.setSelectionRange(pos,pos); }catch(_e){}
+  }
+});
 
-    async function loadNextPONumber(){
-      const { data, error } = await sb
-        .from("purchase_order_details")
-        .select("po_number")
-        .order("po_number", { ascending:false })
-        .limit(1);
+function bindButtons(){
+  ["addRowTop","addRowBottom"].forEach(id => byId(id).onclick = () => focusNewRow(addRow()));
+  ["printTop","printBottom"].forEach(id => byId(id).onclick = printPO);
+  ["saveTop","saveBottom"].forEach(id => byId(id).onclick = savePO);
+}
 
-      if(error){
-        byId("poNumber").value = "PO-1";
-        return;
-      }
+function bindHeaderEvents(){
+  byId("supplierName").addEventListener("input", e => searchSupplier(e.target, "name"));
+  byId("supplierGst").addEventListener("input", e => searchSupplier(e.target, "gst_number"));
+}
 
-      let next = 1;
-      if(data && data.length){
-        const raw = String(data[0].po_number || "");
-        const n = parseInt(raw.replace(/[^0-9]/g,"")) || 0;
-        next = n + 1;
-      }
-      byId("poNumber").value = "PO-" + next;
+async function loadStockData(){
+  let all = [], from = 0, size = 1000, keep = true;
+  while(keep){
+    const {data, error} = await sb.from("stock_balance_view").select("item_code,item_name,balance").range(from, from + size - 1);
+    if(error){ console.error(error); setStatus("Stock loading failed: " + error.message, true); break; }
+    if(data && data.length){ all = all.concat(data); from += size; if(data.length < size) keep = false; }
+    else keep = false;
+  }
+  stockData = all;
+}
+
+async function loadLastPrices(){
+  const {data, error} = await sb.from("purchase_item_details").select("item_code,price").order("id",{ascending:false}).limit(8000);
+  if(error){ console.warn("Last price load failed", error); return; }
+  lastPrices = {};
+  (data || []).forEach(x => { if(x.item_code && lastPrices[x.item_code] == null) lastPrices[x.item_code] = x.price; });
+}
+
+async function loadPendingData(){
+  const {data, error} = await sb.from("purchase_order_pending_view").select("item_code,item_name,total_pending");
+  pendingMap = {};
+  if(error){ console.warn("Pending view not loaded", error); setStatus("READY - Pending view not found/allowed. Pending warning will be 0 until SQL view is created.", false); return; }
+  (data || []).forEach(x => { const code = clean(x.item_code); if(code) pendingMap[code] = Number(x.total_pending || 0); });
+}
+
+async function loadNextPONumber(){
+  const {data, error} = await sb.from("purchase_order_details").select("po_number").order("po_number",{ascending:false}).limit(1);
+  let next = 1;
+  if(!error && data && data.length){ next = (parseInt(String(data[0].po_number || "").replace(/[^0-9]/g,"")) || 0) + 1; }
+  byId("poNumber").value = "PO-" + next;
+}
+
+async function searchSupplier(input, field){
+  const q = clean(input.value);
+  if(q.length < 2){ hideDropdown(); return; }
+  const col = field === "gst_number" ? "gst_number" : "name";
+  const {data, error} = await sb.from("suppliers").select("supplier_id,name,gst_number,address").ilike(col, `%${q}%`).limit(12);
+  if(error || !data || !data.length){ hideDropdown(); return; }
+  showDropdown(input, data, pick => {
+    byId("supplierName").value = pick.name || "";
+    byId("supplierGst").value = pick.gst_number || "";
+    byId("supplierAddress").value = pick.address || "";
+  }, "supplier");
+}
+
+function searchStock(query){
+  const q = norm(query);
+  if(!q) return [];
+  const terms = q.split(" ").filter(Boolean);
+  const scored = stockData.map(item => {
+    const codeRaw = String(item.item_code || "");
+    const nameRaw = String(item.item_name || "");
+    const code = norm(codeRaw), name = norm(nameRaw), both = code + " " + name;
+    const matched = terms.every(t => both.includes(t));
+    if(!matched) return null;
+    let score = 0;
+    if(code === q) score += 1000;
+    if(name === q) score += 950;
+    if(code.startsWith(q)) score += 800;
+    if(name.startsWith(q)) score += 750;
+    for(const t of terms){ if(code.includes(t)) score += 45; if(name.includes(t)) score += 40; }
+    score -= Math.abs(name.length - q.length) * 0.05;
+    return {item, score};
+  }).filter(Boolean);
+  scored.sort((a,b) => b.score - a.score || String(a.item.item_name || "").localeCompare(String(b.item.item_name || "")));
+  return scored.slice(0, 50).map(x => x.item);
+}
+
+function addRow(prefill = {}){
+  const id = currentRowId++;
+  const row = document.createElement("div");
+  row.className = "grid item-row";
+  row.innerHTML = `
+    <div class="cell-muted serial">${id + 1}</div>
+    <div><input class="item-code" value="${esc(prefill.item_code || "")}" autocomplete="off"></div>
+    <div><input class="item-name" value="${esc(prefill.item_name || "")}" autocomplete="off" placeholder="Type item code or item name"></div>
+    <div><input class="qty" type="number" step="0.01" value="${prefill.quantity || 1}"></div>
+    <div><input class="price" type="number" step="0.01" value="${prefill.price ?? ""}"></div>
+    <div class="cell-muted amount-cell amount">0.00</div>
+    <div><input class="remark" value="${esc(prefill.remark || "")}"></div>
+    <div class="cell-muted received">${fmt2(prefill.received_qty || 0)}</div>
+    <div class="pending pending-box"><div class="old">OLD: 0.00</div><div class="new">NEW: 0.00</div><div class="total">TOT: 0.00</div></div>
+    <div class="cell-muted row-type ${prefill.is_new_item ? "type-new" : "type-stock"}">${prefill.is_new_item ? "NEW" : "STOCK"}</div>
+    <div class="delete-col"><button class="btn danger" type="button">×</button></div>`;
+  byId("items").appendChild(row);
+
+  const codeInp = row.querySelector(".item-code");
+  const nameInp = row.querySelector(".item-name");
+  const qtyInp = row.querySelector(".qty");
+  const priceInp = row.querySelector(".price");
+  const remarkInp = row.querySelector(".remark");
+
+  row.querySelector(".btn.danger").onclick = () => { row.remove(); renumberRows(); calcAll(); };
+  codeInp.addEventListener("input", () => showItemDropdown(codeInp));
+  nameInp.addEventListener("input", () => showItemDropdown(nameInp));
+  nameInp.addEventListener("blur", () => markNewIfManual(row));
+  codeInp.addEventListener("blur", () => markNewIfManual(row));
+  qtyInp.addEventListener("input", () => { calcRow(row); updatePending(row); calcAll(); });
+  priceInp.addEventListener("input", () => { calcRow(row); calcAll(); });
+
+  const nav = [codeInp,nameInp,qtyInp,priceInp,remarkInp];
+  nav.forEach((el, idx) => el.addEventListener("keydown", e => {
+    if(dropdown && ["ArrowDown","ArrowUp","Enter","Escape"].includes(e.key)) return;
+    if(e.key === "Enter" && !e.shiftKey){
+      e.preventDefault();
+      if(idx < nav.length - 1) nav[idx + 1].focus();
+      else focusNewRow(addRow());
+    } else if(e.key === "Enter" && e.shiftKey){
+      e.preventDefault();
+      if(idx > 0) nav[idx - 1].focus();
     }
+  }));
 
-    async function loadStockData(){
-      let all = [];
-      let from = 0;
-      const size = 1000;
-      let keep = true;
+  if(prefill.item_code) row.dataset.code = prefill.item_code;
+  calcRow(row); updatePending(row); calcAll();
+  return row;
+}
 
-      while(keep){
-        const { data, error } = await sb
-          .from("stock_balance_view")
-          .select("item_code,item_name,balance")
-          .range(from, from + size - 1);
+function focusNewRow(row){ setTimeout(() => { const inp = row?.querySelector(".item-name"); inp?.focus(); inp?.select?.(); }, 0); }
+function renumberRows(){ document.querySelectorAll("#items .item-row").forEach((r,i) => r.querySelector(".serial").textContent = i + 1); }
 
-        if(error){
-          console.error(error);
-          break;
-        }
-        if(data && data.length){
-          all = all.concat(data);
-          from += size;
-          if(data.length < size) keep = false;
-        }else{
-          keep = false;
-        }
-      }
+function showItemDropdown(input){
+  const items = searchStock(input.value);
+  if(!items.length){ hideDropdown(); return; }
+  showDropdown(input, items, item => {
+    const row = input.closest(".item-row");
+    fillRowFromStock(row, item);
+    const oldPending = Number(pendingMap[item.item_code] || 0);
+    const qty = num(row.querySelector(".qty").value);
+    const received = num(row.querySelector(".received").textContent);
+    const newPending = Math.max(0, qty - received);
+    if(oldPending > 0) showPendingPopup(item.item_name || item.item_code, oldPending, newPending, oldPending + newPending, row.querySelector(".qty"));
+  }, "item");
+}
 
-      stockData = all;
+function fillRowFromStock(row, item){
+  row.dataset.code = item.item_code || "";
+  row.querySelector(".item-code").value = item.item_code || "";
+  row.querySelector(".item-name").value = item.item_name || "";
+  row.querySelector(".item-code").dataset.code = item.item_code || "";
+  row.querySelector(".item-name").dataset.code = item.item_code || "";
+  row.querySelector(".item-code").classList.remove("new-item");
+  row.querySelector(".item-name").classList.remove("new-item");
+  const type = row.querySelector(".row-type");
+  type.textContent = "STOCK"; type.className = "cell-muted row-type type-stock";
+  if(lastPrices[item.item_code] != null){ row.querySelector(".price").value = lastPrices[item.item_code]; }
+  calcRow(row); updatePending(row); calcAll();
+}
+
+function markNewIfManual(row){
+  const name = clean(row.querySelector(".item-name").value);
+  const code = clean(row.querySelector(".item-code").value);
+  if((name || code) && !row.dataset.code){
+    row.querySelector(".item-name").classList.add("new-item");
+    const type = row.querySelector(".row-type");
+    type.textContent = "NEW"; type.className = "cell-muted row-type type-new";
+    updatePending(row);
+  }
+}
+
+function calcRow(row){
+  const q = num(row.querySelector(".qty").value);
+  const p = num(row.querySelector(".price").value);
+  row.querySelector(".amount").textContent = fmt2(q * p);
+}
+
+function updatePending(row){
+  const code = row.dataset.code || row.querySelector(".item-name").dataset.code || row.querySelector(".item-code").dataset.code || "";
+  const oldPending = code ? Number(pendingMap[code] || 0) : 0;
+  const qty = num(row.querySelector(".qty").value);
+  const received = num(row.querySelector(".received").textContent);
+  const newPending = Math.max(0, qty - received);
+  const total = oldPending + newPending;
+  const el = row.querySelector(".pending");
+  el.innerHTML = `<div class="old">OLD: ${fmt2(oldPending)}</div><div class="new">NEW: ${fmt2(newPending)}</div><div class="total">TOT: ${fmt2(total)}</div>`;
+  el.classList.remove("warn","danger");
+  if(oldPending > 0) el.classList.add("warn");
+  if(total >= 50) el.classList.add("danger");
+}
+
+function calcAll(){
+  let items = 0, qty = 0, amount = 0, oldPending = 0;
+  document.querySelectorAll("#items .item-row").forEach(row => {
+    const hasItem = clean(row.querySelector(".item-name").value) || clean(row.querySelector(".item-code").value);
+    if(hasItem) items++;
+    qty += num(row.querySelector(".qty").value);
+    amount += num(row.querySelector(".amount").textContent);
+    const code = row.dataset.code || "";
+    oldPending += code ? Number(pendingMap[code] || 0) : 0;
+  });
+  byId("sumItems").textContent = items;
+  byId("sumQty").textContent = fmt2(qty);
+  byId("sumAmount").textContent = money(amount);
+  byId("sumOldPending").textContent = fmt2(oldPending);
+}
+
+function showDropdown(anchorInput, items, onPick, type){
+  hideDropdown();
+  dropdown = document.createElement("div");
+  dropdown.className = "dropdown";
+  currentDropdownInput = anchorInput;
+  activeIndex = 0;
+
+  items.forEach((it, idx) => {
+    const opt = document.createElement("div");
+    opt.className = "opt " + (type === "supplier" ? "supplier-opt" : "item-opt");
+    opt.dataset.idx = idx;
+    if(type === "supplier"){
+      opt.innerHTML = `<div><strong>${esc(it.name || "")}</strong></div><div class="muted">${esc(it.gst_number || "")}</div><div class="muted hide-mobile">${esc(it.supplier_id || "")}</div><div class="muted hide-mobile">${esc(it.address || "")}</div>`;
+    }else{
+      const oldPending = Number(pendingMap[it.item_code] || 0);
+      opt.innerHTML = `<div class="muted">${esc(it.item_code || "")}</div><div><strong>${esc(it.item_name || "")}</strong></div><div class="muted hide-mobile">Stock: ${fmt2(it.balance || 0)}</div><div class="muted hide-mobile">Pending: ${fmt2(oldPending)}</div><div class="muted hide-mobile">${lastPrices[it.item_code] != null ? "Last: " + fmt2(lastPrices[it.item_code]) : ""}</div>`;
     }
+    opt.onclick = () => { onPick(it); hideDropdown(); };
+    dropdown.appendChild(opt);
+  });
 
-    function addRow(prefill = {}){
-      const id = currentRowId++;
-      const wrap = document.createElement("div");
-      wrap.className = "grid";
-      wrap.id = "row_" + id;
-      wrap.innerHTML = `
-        <div class="cell-muted">${id + 1}</div>
-        <div class="field">
-          <input class="item-code" value="${prefill.item_code || ""}" autocomplete="off">
-        </div>
-        <div class="field">
-          <input class="item-name" value="${prefill.item_name || ""}" autocomplete="off">
-        </div>
-        <div class="field">
-          <input class="qty" type="number" step="0.01" value="${prefill.quantity || 1}">
-        </div>
-        <div class="field">
-          <input class="price" type="number" step="0.01" value="${prefill.price ?? ""}">
-        </div>
-        <div class="field">
-          <input class="remark" value="${prefill.remark || ""}">
-        </div>
-        <div class="cell-muted received">${fmt2(prefill.received_qty || 0)}</div>
-        <div class="cell-muted pending">${fmt2((prefill.quantity || 1) - (prefill.received_qty || 0))}</div>
-        <div class="cell-muted row-status">${prefill.status || "PENDING"}</div>
-        <div class="cell-muted row-type">${prefill.is_new_item ? "NEW" : "STOCK"}</div>
-        <div><button class="btn danger" type="button">×</button></div>
-      `;
-      byId("items").appendChild(wrap);
+  document.body.appendChild(dropdown);
+  const rect = anchorInput.getBoundingClientRect();
+  const h = Math.min(310, items.length * 44);
+  let top = rect.bottom + 5;
+  if(window.innerHeight - rect.bottom < h && rect.top > h) top = rect.top - h - 5;
+  let left = rect.left;
+  const minW = type === "supplier" ? 720 : 850;
+  dropdown.style.minWidth = Math.min(minW, window.innerWidth - 22) + "px";
+  if(left + Math.min(minW, window.innerWidth - 22) > window.innerWidth - 10) left = Math.max(10, window.innerWidth - Math.min(minW, window.innerWidth - 22) - 10);
+  dropdown.style.left = left + "px";
+  dropdown.style.top = top + "px";
+  highlightOption();
 
-      const codeInp = wrap.querySelector(".item-code");
-      const nameInp = wrap.querySelector(".item-name");
-      const qtyInp = wrap.querySelector(".qty");
-      const delBtn = wrap.querySelector(".btn.danger");
+  anchorInput.onkeydown = e => {
+    const opts = dropdown?.querySelectorAll(".opt") || [];
+    if(!opts.length) return;
+    if(e.key === "ArrowDown"){ e.preventDefault(); activeIndex = (activeIndex + 1) % opts.length; highlightOption(); }
+    else if(e.key === "ArrowUp"){ e.preventDefault(); activeIndex = (activeIndex - 1 + opts.length) % opts.length; highlightOption(); }
+    else if(e.key === "Enter"){ e.preventDefault(); opts[activeIndex]?.click(); }
+    else if(e.key === "Escape"){ e.preventDefault(); hideDropdown(); }
+  };
+}
 
-      delBtn.onclick = () => wrap.remove();
+function highlightOption(){
+  if(!dropdown) return;
+  const opts = dropdown.querySelectorAll(".opt");
+  opts.forEach((opt,i) => { opt.classList.toggle("active", i === activeIndex); if(i === activeIndex) opt.scrollIntoView({block:"nearest"}); });
+}
+function hideDropdown(){ if(dropdown){ dropdown.remove(); dropdown=null; } if(currentDropdownInput){ currentDropdownInput.onkeydown = null; currentDropdownInput = null; } }
+document.addEventListener("click", e => { if(dropdown && !dropdown.contains(e.target) && e.target !== currentDropdownInput) hideDropdown(); });
+window.addEventListener("resize", hideDropdown);
+window.addEventListener("scroll", hideDropdown, true);
 
-      codeInp.addEventListener("input", () => showItemDropdown(codeInp, "item_code", item => fillRowFromStock(wrap, item)));
-      nameInp.addEventListener("input", () => showItemDropdown(nameInp, "item_name", item => fillRowFromStock(wrap, item)));
+function showPendingPopup(itemName, oldPending, newPending, totalPending, focusEl){
+  if(!oldPending || oldPending <= 0) return;
+  pendingPopupReturnFocus = focusEl || null;
+  byId("pendingPopupMessage").textContent = `${itemName}\n\nOld pending qty: ${fmt2(oldPending)}\nThis order qty: ${fmt2(newPending)}\nTotal pending after this order: ${fmt2(totalPending)}\n\nPlease confirm before adding more order.`;
+  const overlay = byId("pendingPopupOverlay");
+  overlay.classList.add("show"); overlay.setAttribute("aria-hidden","false"); setTimeout(() => overlay.focus(), 0);
+}
+function closePendingPopup(){ const overlay = byId("pendingPopupOverlay"); overlay.classList.remove("show"); overlay.setAttribute("aria-hidden","true"); }
+function focusPendingPopupQty(){ closePendingPopup(); if(pendingPopupReturnFocus) setTimeout(() => { pendingPopupReturnFocus.focus(); pendingPopupReturnFocus.select?.(); }, 0); }
+document.addEventListener("keydown", e => { if(e.key === "Escape") closePendingPopup(); });
 
-      [codeInp,nameInp,qtyInp,wrap.querySelector(".price"),wrap.querySelector(".remark")].forEach((el, idx, arr) => {
-        el.addEventListener("keydown", e => {
-          if(e.key === "Enter" && !e.shiftKey){
-            e.preventDefault();
-            if(arr[idx+1]) arr[idx+1].focus();
-            else addRow();
-          } else if(e.key === "Enter" && e.shiftKey){
-            e.preventDefault();
-            if(arr[idx-1]) arr[idx-1].focus();
-          }
-        });
-      });
+function collectRows(){
+  const rows = [], used = new Set();
+  document.querySelectorAll("#items .item-row").forEach(row => {
+    const item_code = clean(row.querySelector(".item-code").value) || null;
+    const item_name = clean(row.querySelector(".item-name").value) || item_code || "";
+    const quantity = num(row.querySelector(".qty").value);
+    const priceRaw = row.querySelector(".price").value;
+    const remark = clean(row.querySelector(".remark").value);
+    if(!item_name && !item_code) return;
+    const key = (item_code || item_name).toUpperCase();
+    if(used.has(key)) throw new Error("Duplicate item: " + item_name);
+    used.add(key);
+    if(quantity <= 0) throw new Error("Quantity must be greater than 0 for " + item_name);
+    rows.push({item_code, item_name, is_new_item: !row.dataset.code, quantity, price: priceRaw === "" ? null : num(priceRaw), remark});
+  });
+  return rows;
+}
+
+async function savePO(){
+  try{
+    hideDropdown();
+    const po_number = clean(byId("poNumber").value);
+    const order_date = byId("orderDate").value;
+    const supplier_gst = clean(byId("supplierGst").value);
+    const supplier_name = clean(byId("supplierName").value);
+    const supplier_mobile = clean(byId("supplierMobile").value);
+    const supplier_address = clean(byId("supplierAddress").value);
+    let remark = clean(byId("headerRemark").value);
+    const items = collectRows();
+    if(!supplier_name){ setStatus("Supplier name is required.", true); byId("supplierName").focus(); return; }
+    if(!items.length){ setStatus("At least one item is required.", true); return; }
+    const {data: authData} = await sb.auth.getUser();
+    const created_by = authData?.user?.email || "";
+    const headerBase = {po_number, order_date, supplier_name, supplier_gst, supplier_address, remark, status:"PENDING", created_by};
+    let header, headErr;
+    ({data: header, error: headErr} = await sb.from("purchase_order_details").insert([{...headerBase, supplier_mobile}]).select().single());
+    if(headErr && String(headErr.message || "").includes("supplier_mobile")){
+      const remark2 = supplier_mobile ? (remark ? remark + " | " : "") + "MOBILE: " + supplier_mobile : remark;
+      ({data: header, error: headErr} = await sb.from("purchase_order_details").insert([{...headerBase, remark: remark2}]).select().single());
     }
+    if(headErr) throw headErr;
+    const payload = items.map(x => ({purchase_order_id: header.id, item_code:x.item_code, item_name:x.item_name, is_new_item:x.is_new_item, quantity:x.quantity, received_qty:0, price:x.price, remark:x.remark, status:"PENDING"}));
+    const {error:itemErr} = await sb.from("purchase_order_item_details").insert(payload);
+    if(itemErr) throw itemErr;
+    setStatus("Purchase order saved successfully.");
+    await afterSaveReset();
+  }catch(err){ console.error(err); setStatus("Save failed: " + (err.message || err), true); }
+}
 
-    function normalize(v){
-      return String(v || "").toLowerCase().trim();
-    }
+async function afterSaveReset(){
+  byId("supplierGst").value=""; byId("supplierName").value=""; byId("supplierMobile").value=""; byId("supplierAddress").value=""; byId("headerRemark").value=""; byId("orderDate").valueAsDate = new Date(); byId("items").innerHTML=""; currentRowId=0;
+  await loadNextPONumber(); await loadPendingData(); addRow(); calcAll();
+}
 
-    function searchStock(query, field){
-      const q = normalize(query);
-      if(!q) return [];
-      return stockData.filter(x => normalize(x[field]).includes(q) || normalize(x.item_code).includes(q) || normalize(x.item_name).includes(q)).slice(0, 30);
-    }
-
-    function showItemDropdown(anchor, field, onPick){
-      hideDropdown();
-      const items = searchStock(anchor.value, field);
-      if(!items.length) return;
-
-      dropdown = document.createElement("div");
-      dropdown.className = "dropdown";
-
-      items.forEach(it => {
-        const opt = document.createElement("div");
-        opt.className = "opt";
-        opt.innerHTML = `
-          <div class="muted">${it.item_code || ""}</div>
-          <div>${it.item_name || ""}</div>
-          <div class="muted">Stock: ${fmt2(it.balance || 0)}</div>
-          <div class="muted">Existing</div>
-        `;
-        opt.onclick = () => {
-          onPick(it);
-          hideDropdown();
-        };
-        dropdown.appendChild(opt);
-      });
-
-      anchor.parentElement.appendChild(dropdown);
-    }
-
-    function hideDropdown(){
-      if(dropdown){
-        dropdown.remove();
-        dropdown = null;
-      }
-    }
-
-    document.addEventListener("click", e => {
-      if(dropdown && !dropdown.contains(e.target)) hideDropdown();
-    });
-
-    function fillRowFromStock(row, item){
-      row.querySelector(".item-code").value = item.item_code || "";
-      row.querySelector(".item-name").value = item.item_name || "";
-      row.querySelector(".row-type").textContent = "STOCK";
-    }
-
-    function collectRows(){
-      const rows = [];
-      document.querySelectorAll("#items .grid").forEach(row => {
-        const item_code = row.querySelector(".item-code").value.trim();
-        const item_name = row.querySelector(".item-name").value.trim();
-        const quantity = num(row.querySelector(".qty").value);
-        const priceRaw = row.querySelector(".price").value;
-        const remark = row.querySelector(".remark").value.trim();
-
-        if(!item_name && !item_code) return;
-        rows.push({
-          item_code: item_code || null,
-          item_name: item_name || item_code || "",
-          is_new_item: !item_code,
-          quantity,
-          price: priceRaw === "" ? null : num(priceRaw),
-          remark
-        });
-      });
-      return rows;
-    }
-
-    async function savePO(){
-      try{
-        hideDropdown();
-        const po_number = byId("poNumber").value.trim();
-        const order_date = byId("orderDate").value;
-        const supplier_gst = byId("supplierGst").value.trim();
-        const supplier_name = byId("supplierName").value.trim();
-        const supplier_address = byId("supplierAddress").value.trim();
-        const remark = byId("headerRemark").value.trim();
-
-        const items = collectRows();
-
-        if(!supplier_name){
-          setStatus("Supplier name is required.", true);
-          byId("supplierName").focus();
-          return;
-        }
-        if(!items.length){
-          setStatus("At least one item is required.", true);
-          return;
-        }
-        if(items.some(x => !x.item_name || x.quantity <= 0)){
-          setStatus("Each item needs item name and quantity greater than 0.", true);
-          return;
-        }
-
-        const { data: authData } = await sb.auth.getUser();
-        const created_by = authData?.user?.email || "";
-
-        const { data: header, error: headErr } = await sb
-          .from("purchase_order_details")
-          .insert([{
-            po_number,
-            order_date,
-            supplier_name,
-            supplier_gst,
-            supplier_address,
-            remark,
-            status: "PENDING",
-            created_by
-          }])
-          .select()
-          .single();
-
-        if(headErr) throw headErr;
-
-        const itemPayload = items.map(x => ({
-          purchase_order_id: header.id,
-          item_code: x.item_code,
-          item_name: x.item_name,
-          is_new_item: x.is_new_item,
-          quantity: x.quantity,
-          received_qty: 0,
-          price: x.price,
-          remark: x.remark,
-          status: "PENDING"
-        }));
-
-        const { error: itemErr } = await sb
-          .from("purchase_order_item_details")
-          .insert(itemPayload);
-
-        if(itemErr) throw itemErr;
-
-        setStatus("Purchase order saved successfully.");
-        byId("poStatusBadge").textContent = "PENDING";
-        byId("poStatusBadge").className = "status-badge status-PENDING";
-        await loadNextPONumber();
-        byId("supplierGst").value = "";
-        byId("supplierName").value = "";
-        byId("supplierAddress").value = "";
-        byId("headerRemark").value = "";
-        byId("orderDate").valueAsDate = new Date();
-        byId("items").innerHTML = "";
-        currentRowId = 0;
-        addRow();
-      }catch(err){
-        console.error(err);
-        setStatus("Save failed: " + err.message, true);
-      }
-    }
-
-    function setStatus(msg, isErr = false){
-      const el = byId("saveStatus");
-      el.textContent = msg;
-      el.style.color = isErr ? "#b91c1c" : "#35507a";
-      el.style.background = isErr ? "#fff1f2" : "#f8fbff";
-      el.style.borderColor = isErr ? "#f2b8c0" : "#d9e2ef";
-    }
-  </script>
+function printPO(){
+  byId("printHeader").innerHTML = `<strong>PO No:</strong> ${esc(byId("poNumber").value)} &nbsp; <strong>Date:</strong> ${esc(byId("orderDate").value)} &nbsp; <strong>Supplier:</strong> ${esc(byId("supplierName").value)} &nbsp; <strong>Mobile:</strong> ${esc(byId("supplierMobile").value)} &nbsp; <strong>GST:</strong> ${esc(byId("supplierGst").value)}`;
+  window.print();
+}
+function setStatus(msg, isErr=false){ const el=byId("saveStatus"); el.textContent=msg; el.style.color=isErr?"#b91c1c":"#35507a"; el.style.background=isErr?"#fff1f2":"#f8fbff"; el.style.borderColor=isErr?"#f2b8c0":"#d9e2ef"; }
+</script>
 </body>
 </html>

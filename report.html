@@ -413,8 +413,27 @@
     }
 
     function buildWhatsAppMessage(row){
-        const { numberField, dateField, amountField, label } = getCurrentTypeConfig();
+        const { numberField, dateField, amountField, label, type } = getCurrentTypeConfig();
         const billNo = `${row.series_code || ''}${row.series_code ? '-' : ''}${row[numberField] || ''}`;
+
+        if(type === "quotation"){
+            return [
+                '*VAJRA LIGHTS & ELECTRICALS*',
+                'QUOTATION',
+                `Quotation No: ${billNo}`,
+                `Date: ${row[dateField] || ''}`,
+                `Customer: ${row.customer_name || ''}`,
+                `Mobile: ${row.customer_mobile || ''}`,
+                '',
+                `TOTAL Item Amount : ₹  ${Number(row[amountField] || 0).toFixed(0)}`,
+                '',
+                '✨ Special Price Prepared Just For You!',
+                '💡 Quality Products • Best Value • Trusted Service',
+                '👉 Confirm your order to lock this price.',
+                '',
+                'CONTACT: 9495160771, 8606808063'
+            ].join('\n');
+        }
 
         return [
             '*VAJRA LIGHTS & ELECTRICALS*',
@@ -425,7 +444,7 @@
             `Mobile: ${row.customer_mobile || ''}`,
             `Amount: ${formatMoney(row[amountField] || 0)}`,
             '',
-            `THANKS FOR PURCHASING WITH US!`,
+            'THANK YOU FOR YOUR BUSINESS!',
             'CONTACT FOR ANY INFO: 9495160771, 8606808063',
         ].join('\n');
     }

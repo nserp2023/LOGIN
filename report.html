@@ -146,6 +146,42 @@
         .wa-col button{
             min-width: 86px;
         }
+
+        .cancel-btn {
+            background:#dc2626;
+            color:white;
+        }
+
+        .cancel-btn:hover {
+            background:#b91c1c;
+        }
+
+        .cancelled-row {
+            background: rgba(255, 0, 0, 0.28) !important;
+            opacity: 0.78;
+        }
+
+        .cancelled-row:hover {
+            background: rgba(255, 0, 0, 0.38) !important;
+        }
+
+        .cancelled-badge {
+            display:inline-block;
+            padding:3px 7px;
+            border-radius:999px;
+            background:#dc2626;
+            color:white;
+            font-size:11px;
+            font-weight:900;
+            margin-left:6px;
+        }
+
+        .cancel-info {
+            color:#ffd6d6;
+            font-size:11px;
+            margin-top:4px;
+            line-height:1.35;
+        }
     </style>
 </head>
 <body>
@@ -197,7 +233,7 @@
             <th>Total</th>
             <th>WhatsApp</th>
             <th>Print</th>
-            <th>Edit</th>
+            <th>Edit / Cancel</th>
         </tr>
     </thead>
     <tbody id="report_body"></tbody>
@@ -327,7 +363,6 @@
             }
 
             const reasons = result.get(parentId);
-            const rowNo = index + 1;
             const codeMissing = !String(item.item_code || "").trim();
             const nameMissing = !String(item.item_name || "").trim();
 
@@ -393,6 +428,11 @@
             return;
         }
 
+        if(row.status === "CANCELLED"){
+            alert("Cancelled bill cannot be shared.");
+            return;
+        }
+
         const text = encodeURIComponent(buildWhatsAppMessage(row));
         const mobile = String(row.customer_mobile || '').replace(/\D/g, '');
         const url = mobile
@@ -443,6 +483,11 @@
         const row = findReportRow(id);
         if(!row){
             alert("Bill not found.");
+            return;
+        }
+
+        if(row.status === "CANCELLED"){
+            alert("Cancelled bill cannot be shared.");
             return;
         }
 
@@ -539,10 +584,19 @@
 
         for(let s of rows){
             const amount = parseFloat(s[cfg.amountField] || 0);
-            totalSum += amount;
+            if(s.status !== "CANCELLED") totalSum += amount;
+
+            const cancelInfo = s.status === "CANCELLED"
+                ? `<div class="cancel-info">
+                        Cancelled By: ${s.cancelled_by || ''}<br>
+                        Reason: ${s.cancel_reason || ''}
+                   </div>`
+                : '';
 
             body.innerHTML += `
             <tr class="${
+                s.status === "CANCELLED" ? 'cancelled-row' : ''
+            } ${
                 s.hasMissingItem ? 'missing-item-row' : ''
             } ${
                 ((type === 'quotation' || type === 'sales_order') && s.converted)
@@ -554,6 +608,8 @@
                 <td>
                     ${s[cfg.numberField] || ''}
                     ${s.hasMissingItem ? '<span class="warn-badge">⚠</span>' : ''}
+                    ${s.status === "CANCELLED" ? '<span class="cancelled-badge">CANCELLED</span>' : ''}
+                    ${cancelInfo}
                 </td>
 
                 <td>${s[cfg.dateField] || ''}</td>
@@ -564,30 +620,40 @@
                 <td>₹${amount.toFixed(2)}</td>
 
                 <td class="wa-col">
-                    <button onclick="event.stopPropagation(); shareWhatsAppText(${s.id})">💬 Text</button>
-                    <button onclick="event.stopPropagation(); shareWhatsAppImage(${s.id})">🖼 Image</button>
+                    <button ${s.status === "CANCELLED" ? 'disabled title="Cancelled bill"' : ''} onclick="event.stopPropagation(); shareWhatsAppText(${s.id})">💬 Text</button>
+                    <button ${s.status === "CANCELLED" ? 'disabled title="Cancelled bill"' : ''} onclick="event.stopPropagation(); shareWhatsAppImage(${s.id})">🖼 Image</button>
                 </td>
 
                 <td>
                     ${
                         type === "sales_pack"
-                        ? `<button onclick="event.stopPropagation(); printSalesPacking(${s.id})">🧾📦 Sales + Packing</button>`
-                        : `<button onclick="event.stopPropagation(); printDoc(${s.id})">🖨 Invoice</button>`
+                        ? `<button ${s.status === "CANCELLED" ? 'disabled title="Cancelled bill"' : ''} onclick="event.stopPropagation(); printSalesPacking(${s.id})">🧾📦 Sales + Packing</button>`
+                        : `<button ${s.status === "CANCELLED" ? 'disabled title="Cancelled bill"' : ''} onclick="event.stopPropagation(); printDoc(${s.id})">🖨 Invoice</button>`
                     }
 
                     ${type === "sales" ? `
-                        <button onclick="event.stopPropagation(); printPacking(${s.id})">📦 Packing</button>
+                        <button ${s.status === "CANCELLED" ? 'disabled title="Cancelled bill"' : ''} onclick="event.stopPropagation(); printPacking(${s.id})">📦 Packing</button>
                     ` : ""}
                 </td>
 
                 <td>
                     ${
-                        canEditBills
+                        canEditBills && s.status !== "CANCELLED"
                         ? `<button onclick="event.stopPropagation(); editDoc(${s.id})">✏ Edit</button>`
-                        : `<button disabled title="No permission">✏ Edit</button>`
+                        : s.status === "CANCELLED"
+                            ? `<button disabled title="Cancelled bill">✏ Edit</button>`
+                            : `<button disabled title="No permission">✏ Edit</button>`
                     }
 
-                    ${(type === "quotation" || type === "sales_order") && !s.converted ? `
+                    ${
+                        canEditBills && s.status !== "CANCELLED"
+                        ? `<button class="cancel-btn" onclick="event.stopPropagation(); cancelDoc(${s.id})">❌ Cancel</button>`
+                        : s.status === "CANCELLED"
+                            ? `<span class="cancelled-badge">CANCELLED</span>`
+                            : ""
+                    }
+
+                    ${(type === "quotation" || type === "sales_order") && !s.converted && s.status !== "CANCELLED" ? `
                         <br>
                         <button onclick="event.stopPropagation(); convertToSales(${s.id})">🔄 Convert</button>
                     ` : ""}
@@ -604,7 +670,7 @@
 
         body.innerHTML += `
         <tr class="total-row">
-            <td colspan="7">TOTAL</td>
+            <td colspan="7">TOTAL ACTIVE BILLS ONLY</td>
             <td>₹${totalSum.toFixed(2)}</td>
             <td colspan="3"></td>
         </tr>
@@ -703,6 +769,12 @@
     }
 
     function printDoc(id){
+        const row = findReportRow(id);
+        if(row && row.status === "CANCELLED"){
+            alert("Cancelled bill cannot be printed.");
+            return;
+        }
+
         const type = document.getElementById("report_type").value;
 
         const iframe = document.createElement('iframe');
@@ -719,6 +791,12 @@
     }
 
     function printPacking(id){
+        const row = findReportRow(id);
+        if(row && row.status === "CANCELLED"){
+            alert("Cancelled bill cannot be printed.");
+            return;
+        }
+
         const iframe = document.createElement('iframe');
         iframe.style.position = 'absolute';
         iframe.style.width = '0';
@@ -733,6 +811,12 @@
     }
 
     function printSalesPacking(id){
+        const row = findReportRow(id);
+        if(row && row.status === "CANCELLED"){
+            alert("Cancelled bill cannot be printed.");
+            return;
+        }
+
         const iframe = document.createElement('iframe');
         iframe.style.position = 'absolute';
         iframe.style.width = '0';
@@ -776,6 +860,206 @@
         });
     }
 
+    async function getCancelAllowedProfile(){
+        const profile = typeof getLoggedInProfile === "function" ? await getLoggedInProfile() : null;
+        const role = String(profile?.role || "").toUpperCase();
+
+        if(role !== "OWNER" && role !== "ADMIN"){
+            return { allowed:false, profile, reason:"Only OWNER / ADMIN can cancel bills." };
+        }
+
+        return { allowed:true, profile, reason:"" };
+    }
+
+    function getProfileName(profile){
+        return profile?.username || profile?.name || profile?.email || profile?.id || "UNKNOWN";
+    }
+
+    async function hasPaymentForBill(id, cfg){
+        // This check is intentionally soft because some databases use different reference columns.
+        // If the columns do not exist, it will not block cancellation.
+        const possibleQueries = [
+            { reference_id: id },
+            { sales_id: id },
+            { bill_id: id }
+        ];
+
+        for(const filter of possibleQueries){
+            try {
+                let q = sb.from("cash_transactions").select("id").limit(1);
+                Object.entries(filter).forEach(([key, value]) => {
+                    q = q.eq(key, value);
+                });
+
+                const { data, error } = await q;
+                if(!error && data && data.length > 0){
+                    return true;
+                }
+            } catch(e){
+                console.warn("Payment check skipped for filter", filter, e);
+            }
+        }
+
+        return false;
+    }
+
+    async function reverseStockForCancel(id, cfg, reason){
+        if(cfg.type !== "sales" && cfg.type !== "sales_pack"){
+            return { ok:true, message:"No stock reversal needed." };
+        }
+
+        let itemTable = "sales_item_details";
+        let idField = "sales_id";
+        let refType = "SALES_CANCEL";
+
+        if(cfg.type === "sales_pack"){
+            itemTable = "sales_packing_item_details";
+            idField = "packing_id";
+            refType = "SALES_PACK_CANCEL";
+        }
+
+        const { data: alreadyReversed, error: alreadyErr } = await sb
+            .from("stock_ledger")
+            .select("id")
+            .eq("reference_id", id)
+            .eq("txn_type", refType)
+            .limit(1);
+
+        if(alreadyErr){
+            console.warn("Stock duplicate reverse check failed:", alreadyErr);
+        }
+
+        if(alreadyReversed && alreadyReversed.length > 0){
+            return { ok:true, message:"Stock reversal was already done earlier." };
+        }
+
+        const { data: items, error: itemErr } = await sb
+            .from(itemTable)
+            .select("*")
+            .eq(idField, id);
+
+        if(itemErr){
+            console.error(itemErr);
+            return { ok:false, message:"Could not read bill items for stock reversal." };
+        }
+
+        const ledgerRows = (items || [])
+            .filter(item => String(item.item_code || "").trim() && Number(item.quantity || 0) > 0)
+            .map(item => ({
+                item_code: item.item_code,
+                qty_in: Number(item.quantity || 0),
+                qty_out: 0,
+                reference_id: id,
+                txn_type: refType,
+                remarks: `Cancelled ${cfg.label}: ${reason}`
+            }));
+
+        if(!ledgerRows.length){
+            return { ok:true, message:"No valid stock items found to reverse." };
+        }
+
+        const { error: ledgerErr } = await sb
+            .from("stock_ledger")
+            .insert(ledgerRows);
+
+        if(ledgerErr){
+            console.error(ledgerErr);
+            return { ok:false, message:"Stock reverse failed: " + ledgerErr.message };
+        }
+
+        return { ok:true, message:"Stock reversed successfully." };
+    }
+
+    async function cancelDoc(id){
+        const cfg = getCurrentTypeConfig();
+        const row = findReportRow(id);
+
+        if(!row){
+            alert("Bill not found.");
+            return;
+        }
+
+        if(row.status === "CANCELLED"){
+            alert("This bill is already cancelled.");
+            return;
+        }
+
+        const access = await getCancelAllowedProfile();
+        if(!access.allowed){
+            alert("❌ " + access.reason);
+            return;
+        }
+
+        const hasPayment = await hasPaymentForBill(id, cfg);
+        if(hasPayment){
+            alert("❌ Cannot cancel. Payment / cash transaction already exists for this bill.");
+            return;
+        }
+
+        const billNo = `${row.series_code || ''}${row.series_code ? '-' : ''}${row[cfg.numberField] || id}`;
+        const reason = prompt(`Enter cancel reason for ${cfg.label} ${billNo}:`);
+
+        if(!reason || !reason.trim()){
+            alert("Cancel reason is required.");
+            return;
+        }
+
+        const impactMsg = `⚠ Cancel Impact:\n\n` +
+            `Document: ${cfg.label}\n` +
+            `Bill No: ${billNo}\n` +
+            `Amount: ${formatMoney(row[cfg.amountField] || 0)}\n\n` +
+            `• Bill will be marked as CANCELLED\n` +
+            `${(cfg.type === "sales" || cfg.type === "sales_pack") ? "• Stock will be returned automatically\n" : "• No stock reversal needed\n"}` +
+            `• Edit / Print / WhatsApp will be disabled\n` +
+            `• Cancel reason, user and time will be saved\n\n` +
+            `Continue?`;
+
+        if(!confirm(impactMsg)) return;
+
+        try {
+            const profileName = getProfileName(access.profile);
+
+            const { data: updatedRows, error } = await sb
+                .from(cfg.table)
+                .update({
+                    status: "CANCELLED",
+                    cancelled_at: new Date().toISOString(),
+                    cancelled_by: profileName,
+                    cancel_reason: reason.trim()
+                })
+                .eq("id", id)
+                .neq("status", "CANCELLED")
+                .select("id");
+
+            if(error){
+                alert("Cancel failed: " + error.message);
+                console.error(error);
+                return;
+            }
+
+            if(!updatedRows || updatedRows.length === 0){
+                alert("This bill may already be cancelled or could not be updated.");
+                loadReport();
+                return;
+            }
+
+            const stockResult = await reverseStockForCancel(id, cfg, reason.trim());
+
+            if(!stockResult.ok){
+                alert("Bill cancelled, but stock reverse failed.\n\n" + stockResult.message);
+                loadReport();
+                return;
+            }
+
+            alert("✅ Cancelled successfully.\n" + stockResult.message);
+            loadReport();
+
+        } catch(err){
+            console.error(err);
+            alert("Something went wrong while cancelling.");
+        }
+    }
+
     async function editDoc(id){
         let allowed = false;
 
@@ -807,6 +1091,12 @@
             return;
         }
 
+        const row = findReportRow(id);
+        if(row && row.status === "CANCELLED"){
+            alert("Cancelled bill cannot be edited.");
+            return;
+        }
+
         const type = document.getElementById("report_type").value;
 
         if(type === "sales"){
@@ -828,6 +1118,12 @@
 
     function convertToSales(id){
         const type = document.getElementById("report_type").value;
+        const row = findReportRow(id);
+
+        if(row && row.status === "CANCELLED"){
+            alert("Cancelled document cannot be converted.");
+            return;
+        }
 
         if(!confirm("Convert this document to Sales?")) return;
 

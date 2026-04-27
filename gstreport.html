@@ -277,6 +277,20 @@
 
     .footer-space{ height:30px; }
 
+    .audit-note{
+      background:#fff7ed;
+      border:1px solid #fed7aa;
+      color:#9a3412;
+      padding:10px 14px;
+      border-radius:12px;
+      font-weight:800;
+      margin-bottom:12px;
+      line-height:1.45;
+    }
+    .pill.cancelled{ background:#fee2e2; color:#991b1b; }
+    .cancelled-text{ color:#991b1b; font-weight:800; }
+
+
     @media (max-width: 1200px){
       .filters{
         grid-template-columns:1fr 1fr;
@@ -331,7 +345,7 @@
       <h1 class="title">GST REPORT PAGE</h1>
       <div class="sub">
         Monthly accountant-ready GST report with bill-wise GST rate summary, B2B, B2C, purchase register,
-        accepted sales returns, HSN summary, and CSV export.
+        accepted sales returns, HSN summary, CSV/Excel export, and cancelled-sales audit. Cancelled sales bills are excluded from GST filing totals.
       </div>
 
       <div class="filters">
@@ -356,6 +370,10 @@
         <button id="exportAllExcelBtn" class="btn-blue">EXPORT ALL EXCEL</button>
         <button id="clearBtn" class="btn-red">CLEAR</button>
       </div>
+    </div>
+
+    <div class="audit-note">
+      ✅ GST filing totals exclude CANCELLED sales bills. Use the Cancelled Sales Audit tab only for checking cancelled bills; it is not included in GST totals.
     </div>
 
     <div class="stats">
@@ -444,6 +462,7 @@
       <button class="tab-btn" data-tab="purchaseSection">Purchase Register</button>
       <button class="tab-btn" data-tab="returnSection">Sales Return</button>
       <button class="tab-btn" data-tab="hsnSection">HSN Summary</button>
+      <button class="tab-btn" data-tab="cancelledSection">Cancelled Sales Audit</button>
     </div>
 
     <div id="salesSection" class="section active">
@@ -634,6 +653,46 @@
       </div>
     </div>
 
+
+
+    <div id="cancelledSection" class="section">
+      <div class="section-head">
+        <div class="section-title">CANCELLED SALES AUDIT - NOT INCLUDED IN GST TOTALS</div>
+        <div class="section-tools">
+          <button onclick="exportReport('cancelledSales','csv')">EXPORT CSV</button>
+          <button onclick="exportReport('cancelledSales','excel')">EXPORT EXCEL</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table id="cancelledSalesTable">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Type</th>
+              <th>Bill Date</th>
+              <th>Cancelled At</th>
+              <th>Cancelled By</th>
+              <th>Reason</th>
+              <th>Series</th>
+              <th>Sales No</th>
+              <th>Customer</th>
+              <th>Customer GSTIN</th>
+              <th>Invoice No</th>
+              <th>Invoice Date</th>
+              <th>GST %</th>
+              <th class="num">Taxable Value</th>
+              <th class="num">GST Value</th>
+              <th class="num">Total Value</th>
+            </tr>
+          </thead>
+          <tbody id="cancelledSalesBody"></tbody>
+        </table>
+      </div>
+      <div class="note">
+        This section is for audit only. These cancelled bills are not included in Sales Register, B2B, B2C, HSN Summary, GST Summary, Monthly Summary, or Net GST Liability.
+      </div>
+    </div>
+
     <div class="footer-space"></div>
   </div>
 
@@ -660,6 +719,7 @@
     let b2bRows = [];
     let b2cRows = [];
     let hsnSummaryRows = [];
+    let cancelledSalesRows = [];
 
     // =========================
     // INIT
@@ -771,10 +831,11 @@
       b2bRows = [];
       b2cRows = [];
       hsnSummaryRows = [];
+      cancelledSalesRows = [];
 
       [
         "salesBody","b2bBody","b2cBody","purchaseBody","returnBody",
-        "hsnBody","gstRateSummaryBody","monthlySummaryBody"
+        "hsnBody","gstRateSummaryBody","monthlySummaryBody","cancelledSalesBody"
       ].forEach(id => document.getElementById(id).innerHTML = "");
 
       setText("statPurchaseTaxable","0.00");
@@ -796,7 +857,8 @@
         await Promise.all([
           loadSales(range.startDate, range.endDate),
           loadPurchases(range.startDate, range.endDate),
-          loadSalesReturns(range.startDate, range.endDate)
+          loadSalesReturns(range.startDate, range.endDate),
+          loadCancelledSales(range.startDate, range.endDate)
         ]);
 
         salesSummaryRows = groupSalesByBillAndGst(salesItemRows);
@@ -807,6 +869,7 @@
         hsnSummaryRows = generateHSNSummary(salesItemRows);
 
         renderAll();
+        renderCancelledSalesTable(cancelledSalesRows);
         applySearchFilter();
       }catch(err){
         console.error(err);
@@ -820,9 +883,10 @@
     async function loadSales(startDate, endDate){
       const { data: heads, error: hErr } = await sb
         .from("sales_details")
-        .select("id, sales_number, bill_date, gst_number, customer_name, invoice_number, invoice_date, series_code")
+        .select("id, sales_number, bill_date, gst_number, customer_name, invoice_number, invoice_date, series_code, status")
         .gte("bill_date", startDate)
         .lte("bill_date", endDate)
+        .or("status.is.null,status.neq.CANCELLED")
         .order("bill_date", { ascending:true });
 
       if(hErr) throw hErr;
@@ -861,6 +925,7 @@
           customer_gst: h.gst_number || "",
           invoice_number: h.invoice_number || "",
           invoice_date: h.invoice_date || "",
+          status: h.status || "ACTIVE",
           hsn_code: it.hsn_code || "",
           item_code: it.item_code || "",
           item_name: it.item_name || "",
@@ -871,6 +936,74 @@
           total_value: total
         };
       });
+    }
+
+
+    // =========================
+    // CANCELLED SALES AUDIT LOAD (NOT USED IN GST TOTALS)
+    // =========================
+    async function loadCancelledSales(startDate, endDate){
+      const { data: heads, error: hErr } = await sb
+        .from("sales_details")
+        .select("id, sales_number, bill_date, gst_number, customer_name, invoice_number, invoice_date, series_code, status, cancelled_at, cancelled_by, cancel_reason")
+        .gte("bill_date", startDate)
+        .lte("bill_date", endDate)
+        .eq("status", "CANCELLED")
+        .order("bill_date", { ascending:true });
+
+      if(hErr) throw hErr;
+
+      const ids = (heads || []).map(x => x.id);
+      if(!ids.length){
+        cancelledSalesRows = [];
+        return;
+      }
+
+      const { data: items, error: iErr } = await sb
+        .from("sales_item_details")
+        .select("sales_id, hsn_code, item_code, item_name, quantity, sales_price, sales_price_gst, gst_percent")
+        .in("sales_id", ids)
+        .order("sales_id", { ascending:true });
+
+      if(iErr) throw iErr;
+
+      const map = new Map((heads || []).map(h => [h.id, h]));
+      const tempRows = (items || []).map((it, idx) => {
+        const h = map.get(it.sales_id) || {};
+        const qty = num(it.quantity);
+        const rateExcl = num(it.sales_price);
+        const rateIncl = num(it.sales_price_gst);
+        const gstPercent = num(it.gst_percent);
+        const taxable = round2(qty * rateExcl);
+        const total = round2(qty * rateIncl);
+        const gstValue = round2(total - taxable);
+
+        return {
+          rowNo: idx + 1,
+          bill_id: it.sales_id,
+          type: "CANCELLED SALES",
+          bill_date: h.bill_date,
+          cancelled_at: h.cancelled_at || "",
+          cancelled_by: h.cancelled_by || "",
+          cancel_reason: h.cancel_reason || "",
+          sales_number: h.sales_number || "",
+          series_code: h.series_code || "",
+          customer_name: h.customer_name || "",
+          customer_gst: h.gst_number || "",
+          invoice_number: h.invoice_number || "",
+          invoice_date: h.invoice_date || "",
+          hsn_code: it.hsn_code || "",
+          item_code: it.item_code || "",
+          item_name: it.item_name || "",
+          qty,
+          gst_percent: gstPercent,
+          taxable_value: taxable,
+          gst_value: gstValue,
+          total_value: total
+        };
+      });
+
+      cancelledSalesRows = groupCancelledSalesByBillAndGst(tempRows);
     }
 
     // =========================
@@ -919,6 +1052,7 @@
           supplier_gst: h.gst_number || "",
           invoice_number: h.invoice_number || "",
           invoice_date: h.invoice_date || "",
+          status: h.status || "ACTIVE",
           hsn_code: it.hsn_code || "",
           item_code: it.item_code || "",
           item_name: it.item_name || "",
@@ -1001,6 +1135,44 @@
             bill_id: r.bill_id,
             type: r.type,
             bill_date: r.bill_date,
+            series_code: r.series_code,
+            sales_number: r.sales_number,
+            customer_name: r.customer_name,
+            customer_gst: r.customer_gst,
+            invoice_number: r.invoice_number,
+            invoice_date: r.invoice_date,
+            gst_percent: r.gst_percent,
+            taxable_value: 0,
+            gst_value: 0,
+            total_value: 0
+          });
+        }
+
+        const row = map.get(key);
+        row.taxable_value += num(r.taxable_value);
+        row.gst_value += num(r.gst_value);
+        row.total_value += num(r.total_value);
+      });
+
+      return Array.from(map.values())
+        .map((r, i) => ({ rowNo:i+1, ...r }))
+        .sort((a,b) => new Date(a.bill_date) - new Date(b.bill_date) || num(a.sales_number)-num(b.sales_number) || num(a.gst_percent)-num(b.gst_percent));
+    }
+
+
+    function groupCancelledSalesByBillAndGst(rows){
+      const map = new Map();
+
+      rows.forEach(r => {
+        const key = `${r.bill_id}_${r.gst_percent}`;
+        if(!map.has(key)){
+          map.set(key, {
+            bill_id: r.bill_id,
+            type: r.type,
+            bill_date: r.bill_date,
+            cancelled_at: r.cancelled_at,
+            cancelled_by: r.cancelled_by,
+            cancel_reason: r.cancel_reason,
             series_code: r.series_code,
             sales_number: r.sales_number,
             customer_name: r.customer_name,
@@ -1162,6 +1334,7 @@
       renderPurchaseTable(purchaseSummaryRows);
       renderReturnTable(returnSummaryRows);
       renderHSNTable(hsnSummaryRows);
+      renderCancelledSalesTable(cancelledSalesRows);
       renderGSTRateSummary();
       renderMonthlySummary();
       renderTopStats();
@@ -1179,6 +1352,37 @@
           <td>${r.rowNo}</td>
           <td><span class="pill sales">SALES</span></td>
           <td>${formatDate(r.bill_date)}</td>
+          <td>${escapeHtml(r.series_code)}</td>
+          <td>${escapeHtml(r.sales_number)}</td>
+          <td>${escapeHtml(r.customer_name)}</td>
+          <td>${escapeHtml(r.customer_gst)}</td>
+          <td>${escapeHtml(r.invoice_number)}</td>
+          <td>${formatDate(r.invoice_date)}</td>
+          <td class="num">${fmt(r.gst_percent)}</td>
+          <td class="num">${fmt(r.taxable_value)}</td>
+          <td class="num">${fmt(r.gst_value)}</td>
+          <td class="num">${fmt(r.total_value)}</td>
+        </tr>
+      `).join("");
+    }
+
+
+    function renderCancelledSalesTable(rows){
+      const body = document.getElementById("cancelledSalesBody");
+      if(!body) return;
+      if(!rows.length){
+        body.innerHTML = `<tr><td colspan="16" class="empty">No cancelled sales found</td></tr>`;
+        return;
+      }
+
+      body.innerHTML = rows.map(r => `
+        <tr>
+          <td>${r.rowNo}</td>
+          <td><span class="pill cancelled">CANCELLED</span></td>
+          <td>${formatDate(r.bill_date)}</td>
+          <td>${formatDate(r.cancelled_at)}</td>
+          <td>${escapeHtml(r.cancelled_by)}</td>
+          <td class="cancelled-text">${escapeHtml(r.cancel_reason)}</td>
           <td>${escapeHtml(r.series_code)}</td>
           <td>${escapeHtml(r.sales_number)}</td>
           <td>${escapeHtml(r.customer_name)}</td>
@@ -1461,6 +1665,10 @@
       renderHSNTable(filterRows(hsnSummaryRows, q, [
         "hsn_code","gst_percent"
       ]));
+
+      renderCancelledSalesTable(filterRows(cancelledSalesRows, q, [
+        "series_code","sales_number","customer_name","customer_gst","invoice_number","gst_percent","cancelled_by","cancel_reason"
+      ]));
     }
 
     function filterRows(rows, q, keys){
@@ -1578,6 +1786,25 @@
               TOTAL_VALUE: r.total_value
             }))
           };
+        case "cancelledSales":
+          return {
+            filename: "cancelled_sales_audit_not_for_gst_filing",
+            rows: makeRowsExportable(cancelledSalesRows).map(r => ({
+              TYPE: r.type,
+              BILL_DATE: formatDate(r.bill_date),
+              CANCELLED_AT: formatDate(r.cancelled_at),
+              CANCELLED_BY: r.cancelled_by,
+              CANCEL_REASON: r.cancel_reason,
+              INVOICE_NUMBER: makeInvoiceNumber(r.series_code, r.invoice_number, r.sales_number),
+              CUSTOMER: r.customer_name,
+              CUSTOMER_GSTIN: r.customer_gst,
+              GST_PERCENT: r.gst_percent,
+              TAXABLE_VALUE: r.taxable_value,
+              GST_VALUE: r.gst_value,
+              TOTAL_VALUE: r.total_value,
+              NOTE: "AUDIT ONLY - NOT INCLUDED IN GST TOTALS"
+            }))
+          };
         case "gstRateSummary":
           return {
             filename: "gst_rate_summary",
@@ -1662,7 +1889,7 @@
     }
 
     function exportAllReports(format){
-      ["sales","b2b","b2c","purchase","return","hsn","gstRateSummary","monthlySummary"].forEach((key, idx) => {
+      ["sales","b2b","b2c","purchase","return","hsn","gstRateSummary","monthlySummary","cancelledSales"].forEach((key, idx) => {
         setTimeout(() => exportReport(key, format), idx * 120);
       });
     }

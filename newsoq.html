@@ -103,6 +103,14 @@
         .w-lg { width: 200px; }
         .w-xl { width: 250px; }
 
+        #remark_group {
+            display: none;
+        }
+
+        #quotation_remark {
+            min-width: 260px;
+        }
+
         .grand-total-box {
             margin-left: auto;
             background: var(--text);
@@ -694,6 +702,11 @@
             </select>
         </div>
 
+        <div class="form-group" id="remark_group">
+            <label>Remark</label>
+            <input type="text" id="quotation_remark" class="form-control w-xl" placeholder="Quotation remark">
+        </div>
+
         <div class="grand-total-box" style="background:#1e293b;">
     <span>TOTAL QTY</span>
     <div id="display_total_qty">0</div>
@@ -886,6 +899,21 @@
         });
     }
 
+    function toggleRemarkField(){
+        const type = document.getElementById("doc_type")?.value || "sales";
+        const remarkGroup = document.getElementById("remark_group");
+        const remarkInput = document.getElementById("quotation_remark");
+
+        if(!remarkGroup) return;
+
+        const showRemark = type === "quotation";
+        remarkGroup.style.display = showRemark ? "flex" : "none";
+
+        if(!showRemark && remarkInput){
+            remarkInput.value = "";
+        }
+    }
+
     window.onload = async () => {
         setupDate();
         await loadBillSeries();
@@ -893,6 +921,7 @@
         await loadCurrentUserRole();
         await loadStockData();
         applyLandingColumnVisibility();
+        toggleRemarkField();
         syncPaymentUI();
 
         bindPaymentEvents();
@@ -950,6 +979,7 @@
                 sm.disabled=false;
             }
 
+            toggleRemarkField();
             syncPaymentUI();
         });
 
@@ -2802,6 +2832,7 @@ function calcTotal() {
                     customer_mobile: head.mob,
                     gst_number: head.gst,
                     total_amount: roundedTotal,
+                    remark: document.getElementById("quotation_remark")?.value || "",
                     salesman: document.getElementById("salesman").value || "",
                     created_by: createdBy
                 };
@@ -3369,6 +3400,7 @@ barcodeInput.addEventListener("keydown", async function (e) {
         editingType = type;
 
         document.getElementById("doc_type").value = type;
+        toggleRemarkField();
 
         let headerTable;
         let itemTable;
@@ -3447,6 +3479,11 @@ barcodeInput.addEventListener("keydown", async function (e) {
         document.getElementById("cust_mobile").value = head.customer_mobile || "";
         document.getElementById("cust_address").value = head.address || "";
         document.getElementById("cust_gst").value = head.gst_number || "";
+
+        if (document.getElementById("quotation_remark")) {
+            document.getElementById("quotation_remark").value = type === "quotation" ? (head.remark || "") : "";
+        }
+        toggleRemarkField();
 
         const paymentTypeEl = document.getElementById("payment_type");
         const paidAmountEl = document.getElementById("paid_amount");

@@ -12,6 +12,7 @@
 
 <link rel="manifest" href="site.webmanifest">
   <title>Stock Report - VAJRA LIGHTS</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabaseClient.js"></script>
     <script src="page_permissions.js"></script>
@@ -290,6 +291,148 @@
       text-overflow:ellipsis;
     }
 
+
+    .movement-summary{
+      display:grid;
+      grid-template-columns: repeat(6, minmax(130px, 1fr));
+      gap:10px;
+      margin:0 0 12px;
+    }
+
+    .movement-card{
+      border:1px solid rgba(38,53,82,.85);
+      border-radius:13px;
+      background:linear-gradient(180deg, rgba(15,23,42,.9), rgba(8,13,25,.9));
+      padding:10px;
+      min-height:66px;
+    }
+
+    .movement-card .mini-label{
+      font-size:11px;
+      color:var(--muted);
+      font-weight:800;
+      text-transform:uppercase;
+      letter-spacing:.04em;
+      margin-bottom:4px;
+    }
+
+    .movement-card .mini-value{
+      font-size:18px;
+      font-weight:900;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    .movement-insight{
+      margin:0 0 12px;
+      padding:10px 12px;
+      border-radius:13px;
+      border:1px solid rgba(96,165,250,.28);
+      background:rgba(37,99,235,.10);
+      color:#bfdbfe;
+      font-weight:800;
+    }
+
+    .trend-box{
+      display:none;
+      margin:0 0 12px;
+      padding:10px;
+      border-radius:13px;
+      border:1px solid rgba(38,53,82,.85);
+      background:rgba(8,13,25,.55);
+    }
+
+    .trend-box.open{display:block;}
+
+    .effect-in{color:#22c55e;font-weight:900;}
+    .effect-out{color:#fb7185;font-weight:900;}
+    .effect-zero{color:var(--muted);font-weight:700;}
+    .balance-pos{color:#86efac;font-weight:900;}
+    .balance-neg{color:#fda4af;font-weight:900;}
+
+    .type-badge{
+      display:inline-flex;
+      align-items:center;
+      gap:5px;
+      padding:5px 9px;
+      border-radius:999px;
+      font-size:11px;
+      font-weight:900;
+      white-space:nowrap;
+      border:1px solid transparent;
+    }
+
+    .type-sales{
+      background:rgba(244,63,94,.15);
+      color:#fda4af;
+      border-color:rgba(244,63,94,.30);
+    }
+
+    .type-purchase{
+      background:rgba(34,197,94,.15);
+      color:#86efac;
+      border-color:rgba(34,197,94,.30);
+    }
+
+    .type-return{
+      background:rgba(245,158,11,.16);
+      color:#fcd34d;
+      border-color:rgba(245,158,11,.32);
+    }
+
+    .type-other{
+      background:rgba(96,165,250,.14);
+      color:#bfdbfe;
+      border-color:rgba(96,165,250,.30);
+    }
+
+    .risk-badge{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      margin-left:6px;
+      padding:2px 7px;
+      border-radius:999px;
+      background:rgba(244,63,94,.16);
+      color:#fda4af;
+      border:1px solid rgba(244,63,94,.35);
+      font-size:10px;
+      font-weight:900;
+    }
+
+    .staff-filter{
+      height:36px;
+      width:190px;
+      border-radius:10px;
+      border:1px solid var(--border);
+      background:linear-gradient(180deg, #0f1728, #0c1424);
+      color:var(--text);
+      padding:0 10px;
+      outline:none;
+      font-weight:700;
+    }
+
+    .staff-badge{
+      display:inline-flex;
+      align-items:center;
+      max-width:190px;
+      padding:5px 9px;
+      border-radius:999px;
+      background:rgba(56,189,248,.14);
+      color:#7dd3fc;
+      border:1px solid rgba(56,189,248,.28);
+      font-size:12px;
+      font-weight:900;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    @media (max-width: 1000px){
+      .movement-summary{grid-template-columns: repeat(2, 1fr);}
+    }
+
     .empty, .loading{
       padding:18px;
       text-align:center;
@@ -409,7 +552,7 @@
           </tbody>
         </table>
       </div>
-      <div class="footer-note">Tip: click <b>Details</b> to see grouped movement with date filter, bill number, billed by, customer mobile, and supplier name.</div>
+      <div class="footer-note">Tip: click <b>Details</b> to see ultra visual stock movement with staff filter, bill number, customer/supplier, effect, and running balance.</div>
     </div>
   </div>
 
@@ -766,9 +909,29 @@ function applyFilters(){
       if(names.includes(current)) filter.value = current;
     }
 
-    function renderGroupedTable(rows, itemCode, extra = {}){
-      if(!rows.length) return `<div class="empty">No movement found.</div>`;
+    function getTypeVisual(type){
+      if(type === "SALES") return { icon:"🔻", cls:"type-sales" };
+      if(type === "PURCHASE") return { icon:"🟢", cls:"type-purchase" };
+      if(type === "SALES RETURN") return { icon:"🟡", cls:"type-return" };
+      return { icon:"🔵", cls:"type-other" };
+    }
 
+    function getEffectClass(effect){
+      if(effect > 0) return "effect-in";
+      if(effect < 0) return "effect-out";
+      return "effect-zero";
+    }
+
+    function getBalanceClass(balance){
+      return Number(balance || 0) >= 0 ? "balance-pos" : "balance-neg";
+    }
+
+    function getCurrentStock(itemCode){
+      const row = stockRows.find(r => String(r.item_code || '') === String(itemCode || ''));
+      return row || {};
+    }
+
+    function renderGroupedTable(rows, itemCode, extra = {}){
       const isAsc = sortState[itemCode] === 'asc';
 
       const fromEl = document.getElementById(`detailFrom_${itemCode}`);
@@ -779,8 +942,13 @@ function applyFilters(){
       const toVal = toEl?.value ? new Date(toEl.value + 'T23:59:59') : null;
       const staffVal = staffEl?.value || "";
 
-      let filtered = [...rows].filter(r => {
+      let filtered = [...(rows || [])].filter(r => {
         const d = new Date(r.last_updated);
+        const effect = Number(r.final_effect || 0);
+
+        // Ultra clean ledger: hide useless zero movement rows.
+        if(effect === 0) return false;
+
         if(fromVal && d < fromVal) return false;
         if(toVal && d > toVal) return false;
 
@@ -802,14 +970,126 @@ function applyFilters(){
       const withBalance = filtered.map(r => {
         const eff = Number(r.final_effect || 0);
         running += eff;
-        return { ...r, running_balance: running };
+        const meta = getMovementMeta(r, extra);
+        return { ...r, running_balance: running, _meta: meta };
       });
 
       if(!withBalance.length){
-        return `<div class="empty">No movement found for this filter.</div>`;
+        return `<div class="empty">No real stock movement found for this filter.</div>`;
       }
 
+      const totalIn = withBalance
+        .filter(r => Number(r.final_effect || 0) > 0)
+        .reduce((s,r)=>s + Number(r.final_effect || 0), 0);
+
+      const totalOut = Math.abs(withBalance
+        .filter(r => Number(r.final_effect || 0) < 0)
+        .reduce((s,r)=>s + Number(r.final_effect || 0), 0));
+
+      const net = totalIn - totalOut;
+      const saleRows = withBalance.filter(r => Number(r.final_effect || 0) < 0);
+      const avgSaleQty = saleRows.length ? totalOut / saleRows.length : 0;
+      const abnormalRows = saleRows.filter(r => Math.abs(Number(r.final_effect || 0)) > Math.max(10, avgSaleQty * 2.5));
+      const current = getCurrentStock(itemCode);
+      const currentStock = Number(current.balance || 0);
+      const landing = Number(current.landing || 0);
+      const salePrice = Number(current.price1 || current.price2 || current.price3 || 0);
+      const profitPerUnit = Math.max(0, salePrice - landing);
+      const estimatedProfit = profitPerUnit * totalOut;
+
+      const firstDate = withBalance.length ? new Date(withBalance[withBalance.length - 1].last_updated) : null;
+      const lastDate = withBalance.length ? new Date(withBalance[0].last_updated) : null;
+      const dateDays = (firstDate && lastDate)
+        ? Math.max(1, Math.ceil(Math.abs(lastDate - firstDate) / 86400000) + 1)
+        : 1;
+
+      const avgPerDay = totalOut / dateDays;
+      const daysLeft = avgPerDay > 0 ? currentStock / avgPerDay : 9999;
+      const demand7 = avgPerDay * 7;
+
+      let speed = "SLOW";
+      if(avgPerDay > 20) speed = "FAST";
+      else if(avgPerDay > 5) speed = "MEDIUM";
+
+      let reorder = "✅ Stock Safe";
+      if(daysLeft < 3) reorder = "🚨 Urgent Reorder";
+      else if(daysLeft < 7) reorder = "⚠️ Reorder Soon";
+
+      const staffStats = {};
+      saleRows.forEach(r => {
+        const name = r._meta?.billedBy || "";
+        if(!name) return;
+        staffStats[name] = (staffStats[name] || 0) + Math.abs(Number(r.final_effect || 0));
+      });
+
+      const topStaff = Object.entries(staffStats).sort((a,b)=>b[1]-a[1])[0];
+
+      let insight = "";
+      if(speed === "FAST") insight += "⚡ Fast moving item. Keep enough stock ready. ";
+      else if(speed === "MEDIUM") insight += "📊 Medium movement item. Watch reorder level. ";
+      else insight += "🐢 Slow moving item. Avoid over-purchase. ";
+
+      if(abnormalRows.length) insight += "🚨 Check unusual large movements. ";
+      if(daysLeft < 7) insight += "📦 Purchase planning needed. ";
+      if(!insight.trim()) insight = "✅ Movement looks normal.";
+
+      const chartId = `trendCanvas_${String(itemCode).replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+
+      setTimeout(() => renderTrendChart(chartId, withBalance), 50);
+
       return `
+        <div class="movement-summary">
+          <div class="movement-card">
+            <div class="mini-label">Stock In</div>
+            <div class="mini-value effect-in">+${qtyFmt(totalIn)}</div>
+          </div>
+          <div class="movement-card">
+            <div class="mini-label">Stock Out</div>
+            <div class="mini-value effect-out">-${qtyFmt(totalOut)}</div>
+          </div>
+          <div class="movement-card">
+            <div class="mini-label">Net Movement</div>
+            <div class="mini-value ${net >= 0 ? 'effect-in' : 'effect-out'}">${net > 0 ? '+' : ''}${qtyFmt(net)}</div>
+          </div>
+          <div class="movement-card">
+            <div class="mini-label">Speed</div>
+            <div class="mini-value">${esc(speed)}</div>
+          </div>
+          <div class="movement-card">
+            <div class="mini-label">7 Day Demand</div>
+            <div class="mini-value">${qtyFmt(demand7)}</div>
+          </div>
+          <div class="movement-card">
+            <div class="mini-label">Reorder</div>
+            <div class="mini-value" style="font-size:14px;">${esc(reorder)}</div>
+          </div>
+        </div>
+
+        <div class="movement-summary" style="grid-template-columns: repeat(4, minmax(150px, 1fr));">
+          <div class="movement-card">
+            <div class="mini-label">Est. Profit</div>
+            <div class="mini-value effect-in">₹${money(estimatedProfit)}</div>
+          </div>
+          <div class="movement-card">
+            <div class="mini-label">Top Billed By</div>
+            <div class="mini-value" style="font-size:14px;">${topStaff ? esc(topStaff[0]) + ' (' + qtyFmt(topStaff[1]) + ')' : '-'}</div>
+          </div>
+          <div class="movement-card">
+            <div class="mini-label">Days Left</div>
+            <div class="mini-value ${daysLeft < 7 ? 'effect-out' : 'effect-in'}">${daysLeft >= 9999 ? '∞' : qtyFmt(daysLeft)}</div>
+          </div>
+          <div class="movement-card">
+            <div class="mini-label">Risk Alerts</div>
+            <div class="mini-value ${abnormalRows.length ? 'effect-out' : 'effect-in'}">${abnormalRows.length}</div>
+          </div>
+        </div>
+
+        <div class="movement-insight">💡 ${esc(insight)}</div>
+
+        <div class="trend-box open">
+          <canvas id="${esc(chartId)}" height="72"></canvas>
+        </div>
+
         <table class="mini-table">
           <thead>
             <tr>
@@ -825,7 +1105,10 @@ function applyFilters(){
           </thead>
           <tbody>
             ${withBalance.map(r => {
-              const meta = getMovementMeta(r, extra);
+              const meta = r._meta || getMovementMeta(r, extra);
+              const visual = getTypeVisual(meta.type);
+              const eff = Number(r.final_effect || 0);
+              const abnormal = abnormalRows.includes(r);
               const billedByHtml = meta.billedBy
                 ? `<span class="staff-badge" title="${esc(meta.billedBy)}">${esc(meta.billedBy)}</span>`
                 : `<span style="color:var(--muted);">-</span>`;
@@ -833,19 +1116,63 @@ function applyFilters(){
               return `
                 <tr>
                   <td>${esc(fmtDate(r.last_updated))}</td>
-                  <td>${esc(meta.type)}</td>
+                  <td><span class="type-badge ${visual.cls}">${visual.icon} ${esc(meta.type)}</span>${abnormal ? '<span class="risk-badge">RISK</span>' : ''}</td>
                   <td class="mono">${esc(meta.billNo)}</td>
                   <td>${billedByHtml}</td>
                   <td>${esc(meta.partyName)}</td>
                   <td class="mono">${esc(meta.mobile)}</td>
-                  <td class="num"><b>${qtyFmt(r.final_effect)}</b></td>
-                  <td class="num">${qtyFmt(r.running_balance)}</td>
+                  <td class="num ${getEffectClass(eff)}"><b>${eff > 0 ? '+' : ''}${qtyFmt(eff)}</b></td>
+                  <td class="num ${getBalanceClass(r.running_balance)}">${qtyFmt(r.running_balance)}</td>
                 </tr>
               `;
             }).join('')}
           </tbody>
         </table>
       `;
+    }
+
+    function renderTrendChart(chartId, rows){
+      if(!window.Chart) return;
+      const canvas = document.getElementById(chartId);
+      if(!canvas) return;
+
+      if(canvas._chartInstance){
+        canvas._chartInstance.destroy();
+      }
+
+      const ordered = [...rows].sort((a,b)=>new Date(a.last_updated) - new Date(b.last_updated));
+      let running = 0;
+      const labels = [];
+      const data = [];
+
+      ordered.forEach(r => {
+        running += Number(r.final_effect || 0);
+        labels.push(new Date(r.last_updated).toLocaleDateString('en-IN'));
+        data.push(Number(running.toFixed(2)));
+      });
+
+      canvas._chartInstance = new Chart(canvas, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Running Stock Movement',
+            data,
+            tension: .35,
+            fill: true,
+            pointRadius: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display:false } },
+          scales: {
+            x: { display:false },
+            y: { ticks: { color:'#9eb0cf' }, grid: { color:'rgba(148,163,184,.12)' } }
+          }
+        }
+      });
     }
 
     function applyDetailDateFilter(itemCode){
@@ -889,11 +1216,13 @@ function applyFilters(){
       if(data.groupedError){
         groupedWrap.innerHTML = `<div class="empty">Failed: ${esc(data.groupedError.message)}</div>`;
       } else {
-        groupedWrap.innerHTML = renderGroupedTable(data.grouped, itemCode, {
+        const maps = {
           salesMap: data.salesMap,
           purchaseMap: data.purchaseMap,
           salesReturnMap: data.salesReturnMap
-        });
+        };
+        populateStaffFilter(itemCode, data.grouped, maps);
+        groupedWrap.innerHTML = renderGroupedTable(data.grouped, itemCode, maps);
       }
 
       setTimeout(() => row.scrollIntoView({ behavior:'smooth', block:'nearest' }), 50);

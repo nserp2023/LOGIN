@@ -154,7 +154,7 @@
     .filters {
       padding: 16px 18px 8px;
       display: grid;
-      grid-template-columns: repeat(6, minmax(160px, 1fr));
+      grid-template-columns: repeat(5, minmax(160px, 1fr));
       gap: 12px;
     }
 
@@ -227,7 +227,7 @@
       background: rgba(5, 10, 18, 0.45);
     }
 
-    table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 2400px; }
+    table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 1900px; }
     thead th {
       position: sticky;
       top: 0;
@@ -412,6 +412,68 @@
     .right { text-align: right; }
     .center { text-align: center; }
 
+
+    /* Bigger Excel editing mode */
+    body.top-collapsed .stats,
+    body.top-collapsed #filterDrawer {
+      display: none !important;
+    }
+    body.top-collapsed .brand {
+      padding: 10px 14px;
+      border-radius: 18px;
+    }
+    body.top-collapsed .brand-mark {
+      width: 40px;
+      height: 40px;
+      font-size: 22px;
+      border-radius: 12px;
+    }
+    body.top-collapsed .brand h1 {
+      font-size: 18px;
+    }
+    body.top-collapsed .brand p {
+      display: none;
+    }
+    body.top-collapsed .topbar {
+      margin-bottom: 8px;
+    }
+    body.top-collapsed .panel-head {
+      padding: 10px 14px;
+    }
+    body.top-collapsed .table-wrap {
+      max-height: calc(100vh - 190px);
+    }
+    .filter-drawer {
+      border-top: 1px solid rgba(148, 163, 184, 0.12);
+    }
+    .small-col { width: 125px; min-width: 125px; }
+    .med-col { width: 170px; min-width: 170px; }
+    .wide-col { width: 230px; min-width: 230px; }
+    .xwide-col { width: 420px; min-width: 420px; }
+    table { min-width: 2800px; }
+    .cell-input,
+    .cell-select {
+      min-width: 110px;
+      font-size: 15px;
+      padding: 11px 12px;
+      height: 44px;
+    }
+    [data-field="item_name"] { min-width: 390px; }
+    [data-field="item_code"],
+    [data-field="barcode"],
+    [data-field="hsn_code"],
+    [data-field="department"] { min-width: 150px; }
+    [data-field="purchase_price"],
+    [data-field="purchase_price_gst"],
+    [data-field="landing"],
+    [data-field="price1"],
+    [data-field="price1_gst"],
+    [data-field="price2"],
+    [data-field="price2_gst"],
+    [data-field="price3"],
+    [data-field="price3_gst"],
+    [data-field="gst_percent"] { min-width: 120px; }
+
     @media (max-width: 1300px) {
       .filters { grid-template-columns: repeat(4, minmax(160px, 1fr)); }
       .stats { grid-template-columns: repeat(3, minmax(160px, 1fr)); }
@@ -423,6 +485,7 @@
       .filters { grid-template-columns: repeat(2, minmax(160px, 1fr)); }
       .stats { grid-template-columns: repeat(2, minmax(160px, 1fr)); }
       .table-wrap { max-height: calc(100vh - 290px); }
+      body.top-collapsed .table-wrap { max-height: calc(100vh - 155px); }
     }
 
     @media (max-width: 640px) {
@@ -442,10 +505,11 @@
         <div class="brand-mark">V</div>
         <div>
           <h1>VAJRA Stock Correction Ultra Pro</h1>
-          <p>Fast filter • full column sorting • inline editing • save only edited items</p>
+          <p>Excel style full filtered list • inline editing • missing data filters • save only edited items</p>
         </div>
       </div>
       <div class="top-actions">
+        <button class="btn primary" id="toggleTopBtn" onclick="toggleTopSection()">Hide Top / Filters ▲</button>
         <button class="btn ghost" onclick="goDashboard()">Dashboard</button>
         <button class="btn" onclick="reloadPageData()">Reload</button>
         <button class="btn warn" onclick="discardAllChanges()">Discard Changes</button>
@@ -463,8 +527,8 @@
         <div class="value" id="statEdited">0</div>
       </div>
       <div class="stat">
-        <div class="label">Current Page</div>
-        <div class="value" id="statPage">1</div>
+        <div class="label">Filtered Rows</div>
+        <div class="value" id="statFiltered">0</div>
       </div>
       <div class="stat">
         <div class="label">Sort Mode</div>
@@ -480,19 +544,21 @@
       <div class="panel-head">
         <div>
           <div class="panel-title">Filter, Search & Correct Stock Master</div>
-          <div class="panel-sub">Search by HSN, item code, item name, barcode, brand, category, model, department and more.</div>
+          <div class="panel-sub">Search by HSN, item code, item name, barcode, department and missing values.</div>
         </div>
         <div class="chips">
+          <button class="btn primary" onclick="toggleTopSection()">Show / Hide Filters</button>
           <div class="chip">Editable master grid</div>
-          <div class="chip">Server-side filters</div>
+          <div class="chip">All filtered rows loaded</div>
           <div class="chip">Only edited rows save</div>
         </div>
       </div>
 
+      <div id="filterDrawer" class="filter-drawer">
       <div class="filters">
         <div class="field">
           <label>Quick Search</label>
-          <input id="qSearch" placeholder="Item code / item name / barcode / hsn / brand / model" />
+          <input id="qSearch" placeholder="Item code / item name / barcode / hsn" />
         </div>
         <div class="field">
           <label>Item Code</label>
@@ -514,23 +580,12 @@
           <label>Department</label>
           <select id="fDepartment">
             <option value="">ALL</option>
+            <option value="__NO_DEPARTMENT__">NO DEPARTMENT SELECTED</option>
             <option value="ALL">ALL</option>
             <option value="ELECTRICAL">ELECTRICAL</option>
             <option value="PLUMBING">PLUMBING</option>
             <option value="INTERLOCK">INTERLOCK</option>
           </select>
-        </div>
-        <div class="field">
-          <label>Brand</label>
-          <input id="fBrand" placeholder="Enter brand" />
-        </div>
-        <div class="field">
-          <label>Category</label>
-          <input id="fCategory" placeholder="Enter category" />
-        </div>
-        <div class="field">
-          <label>Model No</label>
-          <input id="fModel" placeholder="Enter model no" />
         </div>
         <div class="field">
           <label>Min GST %</label>
@@ -541,12 +596,21 @@
           <input id="fMaxGst" type="number" step="0.01" placeholder="9999" />
         </div>
         <div class="field">
-          <label>Page Size</label>
-          <select id="pageSize">
-            <option>25</option>
-            <option selected>50</option>
-            <option>100</option>
-            <option>200</option>
+          <label>Find Missing</label>
+          <select id="fMissing">
+            <option value="">NONE</option>
+            <option value="NO_HSN">NO HSN</option>
+            <option value="NO_PURCHASE_PRICE">NO PURCHASE PRICE</option>
+            <option value="NO_PURCHASE_PRICE_GST">NO PURCHASE+GST</option>
+            <option value="NO_LANDING">NO LANDING</option>
+            <option value="NO_SALES_PRICE">NO SALES PRICE</option>
+            <option value="NO_PRICE1">NO P1</option>
+            <option value="NO_PRICE1_GST">NO P1+GST</option>
+            <option value="NO_PRICE2">NO P2</option>
+            <option value="NO_PRICE2_GST">NO P2+GST</option>
+            <option value="NO_PRICE3">NO P3</option>
+            <option value="NO_PRICE3_GST">NO P3+GST</option>
+            <option value="NO_GST">NO GST %</option>
           </select>
         </div>
       </div>
@@ -559,6 +623,7 @@
           <button class="btn" onclick="exportVisibleCsv()">Export Visible CSV</button>
         </div>
       </div>
+      </div>
 
       <div class="table-wrap">
         <table>
@@ -569,13 +634,8 @@
               <th class="xwide-col"><button class="sort-btn" onclick="toggleSort('item_name')">Item Name <span class="sort-ind" id="sort_item_name">↕</span></button></th>
               <th class="med-col"><button class="sort-btn" onclick="toggleSort('hsn_code')">HSN <span class="sort-ind" id="sort_hsn_code">↕</span></button></th>
               <th class="med-col"><button class="sort-btn" onclick="toggleSort('barcode')">Barcode <span class="sort-ind" id="sort_barcode">↕</span></button></th>
-              <th class="med-col"><button class="sort-btn" onclick="toggleSort('brand')">Brand <span class="sort-ind" id="sort_brand">↕</span></button></th>
-              <th class="med-col"><button class="sort-btn" onclick="toggleSort('category')">Category <span class="sort-ind" id="sort_category">↕</span></button></th>
-              <th class="med-col"><button class="sort-btn" onclick="toggleSort('model_no')">Model No <span class="sort-ind" id="sort_model_no">↕</span></button></th>
               <th class="med-col"><button class="sort-btn" onclick="toggleSort('department')">Department <span class="sort-ind" id="sort_department">↕</span></button></th>
               <th class="small-col"><button class="sort-btn" onclick="toggleSort('quantity')">Qty <span class="sort-ind" id="sort_quantity">↕</span></button></th>
-              <th class="small-col"><button class="sort-btn" onclick="toggleSort('price')">Price <span class="sort-ind" id="sort_price">↕</span></button></th>
-              <th class="small-col"><button class="sort-btn" onclick="toggleSort('discount_percent')">Disc % <span class="sort-ind" id="sort_discount_percent">↕</span></button></th>
               <th class="small-col"><button class="sort-btn" onclick="toggleSort('purchase_price')">Purchase <span class="sort-ind" id="sort_purchase_price">↕</span></button></th>
               <th class="small-col"><button class="sort-btn" onclick="toggleSort('purchase_price_gst')">Purchase+GST <span class="sort-ind" id="sort_purchase_price_gst">↕</span></button></th>
               <th class="small-col"><button class="sort-btn" onclick="toggleSort('landing')">Landing <span class="sort-ind" id="sort_landing">↕</span></button></th>
@@ -595,20 +655,17 @@
             </tr>
           </thead>
           <tbody id="gridBody">
-            <tr><td colspan="28" class="center muted" style="padding:26px;">Loading stock items...</td></tr>
+            <tr><td colspan="23" class="center muted" style="padding:26px;">Loading stock items...</td></tr>
           </tbody>
         </table>
       </div>
 
       <div class="footer-bar">
         <div class="pager">
-          <button class="btn" onclick="goPage(1)">First</button>
-          <button class="btn" onclick="goPage(state.page - 1)">Prev</button>
-          <span class="chip">Page <span id="pageLabel">1</span></span>
-          <button class="btn" onclick="goPage(state.page + 1)">Next</button>
+          <span class="chip">Excel Mode: All filtered rows loaded in one page</span>
+          <span class="chip" id="visibleSummary">Visible Rows: 0</span>
         </div>
         <div class="pager">
-          <span class="chip" id="visibleSummary">Visible Rows: 0</span>
           <span class="chip" id="dirtySummary">Edited Rows: 0</span>
           <button class="btn success" onclick="saveAllChanges()">Save Edited Items</button>
         </div>
@@ -629,20 +686,19 @@
   <script>
     const sb = window.sbcc || (window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null);
 
-    const textFields = new Set(['hsn_code','item_code','item_name','barcode','brand','category','model_no','department']);
+    const textFields = new Set(['hsn_code','item_code','item_name','barcode','department']);
     const numericFields = new Set([
-      'quantity','price','discount_percent','purchase_price','purchase_price_gst','landing',
+      'quantity','purchase_price','purchase_price_gst','landing',
       'price1_percent','price1','price1_gst','price2_percent','price2','price2_gst','price3_percent','price3','price3_gst','gst_percent'
     ]);
     const editableFields = [
-      'item_code','item_name','hsn_code','barcode','brand','category','model_no','department','quantity','price','discount_percent',
+      'item_code','item_name','hsn_code','barcode','department','quantity',
       'purchase_price','purchase_price_gst','landing','price1_percent','price1','price1_gst','price2_percent','price2','price2_gst',
       'price3_percent','price3','price3_gst','gst_percent'
     ];
 
     const state = {
       page: 1,
-      pageSize: 50,
       sortBy: 'created_at',
       ascending: false,
       loading: false,
@@ -672,6 +728,17 @@
 
     function setStatus(text) {
       document.getElementById('statStatus').textContent = text;
+    }
+
+    function toggleTopSection(forceOpen) {
+      const collapsed = typeof forceOpen === 'boolean' ? !forceOpen : !document.body.classList.contains('top-collapsed');
+      document.body.classList.toggle('top-collapsed', collapsed);
+      const btn = document.getElementById('toggleTopBtn');
+      if (btn) btn.textContent = collapsed ? 'Show Top / Filters ▼' : 'Hide Top / Filters ▲';
+      setTimeout(() => {
+        const wrap = document.querySelector('.table-wrap');
+        if (wrap) wrap.focus?.();
+      }, 50);
     }
 
     function goDashboard() {
@@ -713,9 +780,7 @@
         hsn_code: getFieldValue('fHsn').trim().toUpperCase(),
         barcode: getFieldValue('fBarcode').trim().toUpperCase(),
         department: getFieldValue('fDepartment').trim().toUpperCase(),
-        brand: getFieldValue('fBrand').trim().toUpperCase(),
-        category: getFieldValue('fCategory').trim().toUpperCase(),
-        model_no: getFieldValue('fModel').trim().toUpperCase(),
+        missing: getFieldValue('fMissing').trim().toUpperCase(),
         min_gst: getFieldValue('fMinGst').trim(),
         max_gst: getFieldValue('fMaxGst').trim(),
       };
@@ -731,10 +796,8 @@
         ['Item Name', filters.item_name],
         ['HSN', filters.hsn_code],
         ['Barcode', filters.barcode],
-        ['Department', filters.department],
-        ['Brand', filters.brand],
-        ['Category', filters.category],
-        ['Model', filters.model_no],
+        ['Department', filters.department === '__NO_DEPARTMENT__' ? 'NO DEPARTMENT SELECTED' : filters.department],
+        ['Missing', filters.missing],
         ['Min GST', filters.min_gst],
         ['Max GST', filters.max_gst],
       ].filter(([,v]) => v !== '');
@@ -774,8 +837,7 @@
       document.getElementById('statRows').textContent = state.rows.length;
       document.getElementById('statEdited').textContent = state.dirtyMap.size;
       document.getElementById('dirtySummary').textContent = `Edited Rows: ${state.dirtyMap.size}`;
-      document.getElementById('pageLabel').textContent = state.page;
-      document.getElementById('statPage').textContent = state.page;
+      const sf = document.getElementById('statFiltered'); if (sf) sf.textContent = state.rows.length;
       document.getElementById('visibleSummary').textContent = `Visible Rows: ${state.rows.length}`;
       document.getElementById('saveAllBtn').disabled = state.dirtyMap.size === 0 || state.saveInProgress;
     }
@@ -787,15 +849,45 @@
       }
     }
 
+
+    function applyMissingFilter(query, missing) {
+      switch (missing) {
+        case 'NO_HSN':
+          return query.or('hsn_code.is.null,hsn_code.eq.');
+        case 'NO_PURCHASE_PRICE':
+          return query.or('purchase_price.is.null,purchase_price.eq.0');
+        case 'NO_PURCHASE_PRICE_GST':
+          return query.or('purchase_price_gst.is.null,purchase_price_gst.eq.0');
+        case 'NO_LANDING':
+          return query.or('landing.is.null,landing.eq.0');
+        case 'NO_SALES_PRICE':
+          return query.or('price1.is.null,price1.eq.0,price1_gst.is.null,price1_gst.eq.0,price2.is.null,price2.eq.0,price2_gst.is.null,price2_gst.eq.0,price3.is.null,price3.eq.0,price3_gst.is.null,price3_gst.eq.0');
+        case 'NO_PRICE1':
+          return query.or('price1.is.null,price1.eq.0');
+        case 'NO_PRICE1_GST':
+          return query.or('price1_gst.is.null,price1_gst.eq.0');
+        case 'NO_PRICE2':
+          return query.or('price2.is.null,price2.eq.0');
+        case 'NO_PRICE2_GST':
+          return query.or('price2_gst.is.null,price2_gst.eq.0');
+        case 'NO_PRICE3':
+          return query.or('price3.is.null,price3.eq.0');
+        case 'NO_PRICE3_GST':
+          return query.or('price3_gst.is.null,price3_gst.eq.0');
+        case 'NO_GST':
+          return query.or('gst_percent.is.null,gst_percent.eq.0');
+        default:
+          return query;
+      }
+    }
+
     async function loadRows() {
       await ensureSupabase();
       if (state.saveInProgress) return;
       state.loading = true;
       setStatus('LOADING');
-      showOverlay('Loading stock items', 'Fetching stock master data with your filters...');
+      showOverlay('Loading stock items', 'Fetching all filtered stock master rows...');
       try {
-        const pageSize = Number(document.getElementById('pageSize').value || 50);
-        state.pageSize = pageSize;
         renderFilterChips();
         updateSortIndicators();
         const f = getActiveFilters();
@@ -805,10 +897,8 @@
         if (f.item_name) query = query.ilike('item_name', `%${f.item_name}%`);
         if (f.hsn_code) query = query.ilike('hsn_code', `%${f.hsn_code}%`);
         if (f.barcode) query = query.ilike('barcode', `%${f.barcode}%`);
-        if (f.department) query = query.eq('department', f.department);
-        if (f.brand) query = query.ilike('brand', `%${f.brand}%`);
-        if (f.category) query = query.ilike('category', `%${f.category}%`);
-        if (f.model_no) query = query.ilike('model_no', `%${f.model_no}%`);
+        if (f.department && f.department !== '__NO_DEPARTMENT__') query = query.eq('department', f.department);
+        if (f.department === '__NO_DEPARTMENT__') query = query.or('department.is.null,department.eq.');
         if (f.min_gst !== '') query = query.gte('gst_percent', Number(f.min_gst));
         if (f.max_gst !== '') query = query.lte('gst_percent', Number(f.max_gst));
 
@@ -819,19 +909,25 @@
             `item_code.ilike.%${s}%`,
             `item_name.ilike.%${s}%`,
             `barcode.ilike.%${s}%`,
-            `hsn_code.ilike.%${s}%`,
-            `brand.ilike.%${s}%`,
-            `category.ilike.%${s}%`,
-            `model_no.ilike.%${s}%`
+            `hsn_code.ilike.%${s}%`
           ].join(','));
         }
 
-        const from = (state.page - 1) * state.pageSize;
-        const to = from + state.pageSize - 1;
-        const { data, error } = await query.range(from, to);
-        if (error) throw error;
+        query = applyMissingFilter(query, f.missing);
 
-        state.rows = Array.isArray(data) ? data : [];
+        const allRows = [];
+        const chunkSize = 1000;
+        let from = 0;
+        while (true) {
+          const { data, error } = await query.range(from, from + chunkSize - 1);
+          if (error) throw error;
+          const rows = Array.isArray(data) ? data : [];
+          allRows.push(...rows);
+          if (rows.length < chunkSize) break;
+          from += chunkSize;
+        }
+
+        state.rows = allRows;
         state.lastFetchCount = state.rows.length;
         state.originalMap = new Map(state.rows.map(r => [r.id, deepClone(r)]));
         renderRows();
@@ -840,7 +936,7 @@
       } catch (err) {
         console.error(err);
         setStatus('ERROR');
-        document.getElementById('gridBody').innerHTML = `<tr><td colspan="28" class="center" style="padding:26px;color:#fda4af;">${escapeHtml(err.message || 'Failed to load data')}</td></tr>`;
+        document.getElementById('gridBody').innerHTML = `<tr><td colspan="23" class="center" style="padding:26px;color:#fda4af;">${escapeHtml(err.message || 'Failed to load data')}</td></tr>`;
         toast(`Load failed: ${err.message || err}`, 'error', 6000);
       } finally {
         state.loading = false;
@@ -852,6 +948,7 @@
       const value = row[field] ?? '';
       if (field === 'department') {
         return `<select class="cell-select" data-id="${row.id}" data-field="department">
+          <option value="" ${!value ? 'selected' : ''}>NO DEPARTMENT SELECTED</option>
           <option value="ALL" ${value === 'ALL' ? 'selected' : ''}>ALL</option>
           <option value="ELECTRICAL" ${value === 'ELECTRICAL' ? 'selected' : ''}>ELECTRICAL</option>
           <option value="PLUMBING" ${value === 'PLUMBING' ? 'selected' : ''}>PLUMBING</option>
@@ -868,7 +965,7 @@
     function renderRows() {
       const body = document.getElementById('gridBody');
       if (!state.rows.length) {
-        body.innerHTML = '<tr><td colspan="28" class="center muted" style="padding:26px;">No stock items found for this filter.</td></tr>';
+        body.innerHTML = '<tr><td colspan="23" class="center muted" style="padding:26px;">No stock items found for this filter.</td></tr>';
         return;
       }
 
@@ -883,13 +980,8 @@
             <td>${fieldCell(row,'item_name')}</td>
             <td>${fieldCell(row,'hsn_code')}</td>
             <td>${fieldCell(row,'barcode')}</td>
-            <td>${fieldCell(row,'brand')}</td>
-            <td>${fieldCell(row,'category')}</td>
-            <td>${fieldCell(row,'model_no')}</td>
             <td>${fieldCell(row,'department')}</td>
             <td>${fieldCell(row,'quantity')}</td>
-            <td>${fieldCell(row,'price')}</td>
-            <td>${fieldCell(row,'discount_percent')}</td>
             <td>${fieldCell(row,'purchase_price')}</td>
             <td>${fieldCell(row,'purchase_price_gst')}</td>
             <td>${fieldCell(row,'landing')}</td>
@@ -977,8 +1069,8 @@
       const err = state.rowErrorMap.get(id);
       tr.classList.toggle('dirty', dirty);
       tr.classList.toggle('error-row', !!err);
-      const badgeCell = tr.children[26];
-      const btnCell = tr.children[27];
+      const badgeCell = tr.children[21];
+      const btnCell = tr.children[22];
       if (badgeCell) badgeCell.innerHTML = `<div class="row-meta">${dirty ? '<span class="badge warn">Edited</span>' : '<span class="badge ok">Saved</span>'}${err ? `<span class="badge err">${escapeHtml(err)}</span>` : ''}</div>`;
       const btn = btnCell?.querySelector(`#saveRowBtn_${id}`);
       if (btn) btn.disabled = !dirty;
@@ -1233,10 +1325,10 @@
     function validateRowPayload(payload) {
       if ('department' in payload) {
         const d = String(payload.department || '').trim().toUpperCase();
-        if (!['ALL','ELECTRICAL','PLUMBING','INTERLOCK'].includes(d)) {
-          throw new Error('Department must be ALL, ELECTRICAL, PLUMBING, or INTERLOCK');
+        if (d && !['ALL','ELECTRICAL','PLUMBING','INTERLOCK'].includes(d)) {
+          throw new Error('Department must be blank, ALL, ELECTRICAL, PLUMBING, or INTERLOCK');
         }
-        payload.department = d;
+        payload.department = d || null;
       }
       if ('item_code' in payload && payload.item_code != null && String(payload.item_code).trim() === '') {
         throw new Error('Item code cannot be empty');
@@ -1294,7 +1386,7 @@
     }
 
     function clearFilters() {
-      ['qSearch','fItemCode','fItemName','fHsn','fBarcode','fDepartment','fBrand','fCategory','fModel','fMinGst','fMaxGst'].forEach(id => {
+      ['qSearch','fItemCode','fItemName','fHsn','fBarcode','fDepartment','fMinGst','fMaxGst','fMissing'].forEach(id => {
         const el = document.getElementById(id);
         if (!el) return;
         if (el.tagName === 'SELECT') el.selectedIndex = 0;
@@ -1310,7 +1402,7 @@
         toast('No visible rows to export', 'info');
         return;
       }
-      const cols = ['id','item_code','item_name','hsn_code','barcode','brand','category','model_no','department','quantity','price','discount_percent','purchase_price','purchase_price_gst','landing','price1_percent','price1','price1_gst','price2_percent','price2','price2_gst','price3_percent','price3','price3_gst','gst_percent','created_at'];
+      const cols = ['id','item_code','item_name','hsn_code','barcode','department','quantity','purchase_price','purchase_price_gst','landing','price1_percent','price1','price1_gst','price2_percent','price2','price2_gst','price3_percent','price3','price3_gst','gst_percent','created_at'];
       const lines = [cols.join(',')];
       for (const row of state.rows) {
         lines.push(cols.map(c => csvSafe(row[c])).join(','));
@@ -1319,10 +1411,10 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `stock_correction_visible_page_${state.page}.csv`;
+      a.download = `stock_correction_filtered_rows.csv`;
       a.click();
       URL.revokeObjectURL(url);
-      toast('Visible page exported to CSV', 'success');
+      toast('Filtered rows exported to CSV', 'success');
     }
 
     function csvSafe(v) {
@@ -1335,7 +1427,7 @@
     }
 
     function bindTopEvents() {
-      ['qSearch','fItemCode','fItemName','fHsn','fBarcode','fBrand','fCategory','fModel'].forEach(id => {
+      ['qSearch','fItemCode','fItemName','fHsn','fBarcode'].forEach(id => {
         const el = document.getElementById(id);
         el?.addEventListener('input', () => {
           el.value = upperValue(el.value);
@@ -1349,8 +1441,8 @@
           if (e.key === 'Enter') applyFilters(true);
         });
       });
-      document.getElementById('pageSize')?.addEventListener('change', () => applyFilters(true));
       document.getElementById('fDepartment')?.addEventListener('change', () => applyFilters(true));
+      document.getElementById('fMissing')?.addEventListener('change', () => applyFilters(true));
       window.addEventListener('beforeunload', (e) => {
         if (!state.dirtyMap.size) return;
         e.preventDefault();

@@ -182,6 +182,14 @@
             margin-top:4px;
             line-height:1.35;
         }
+
+        .remark-report-cell {
+            color:#ffe4b5;
+            font-weight:700;
+            max-width:220px;
+            white-space:normal;
+            line-height:1.35;
+        }
     </style>
 </head>
 <body>
@@ -231,6 +239,7 @@
             <th>Salesman</th>
             <th>Created By</th>
             <th>Total</th>
+            <th id="remark_header" style="display:none;">Remark</th>
             <th>WhatsApp</th>
             <th>Print</th>
             <th>Edit / Cancel</th>
@@ -515,9 +524,19 @@
         }
     }
 
+    function toggleRemarkColumn(){
+        const type = document.getElementById("report_type").value;
+        const header = document.getElementById("remark_header");
+
+        if(header){
+            header.style.display = (type === "quotation") ? "" : "none";
+        }
+    }
+
     async function loadReport() {
         const cfg = getCurrentTypeConfig();
         const type = cfg.type;
+        toggleRemarkColumn();
 
         const from = document.getElementById('from_date').value;
         const to = document.getElementById('to_date').value;
@@ -619,6 +638,10 @@
                 <td>${getCreatedByValue(s) || ''}</td>
                 <td>₹${amount.toFixed(2)}</td>
 
+                ${type === "quotation" ? `
+                    <td class="remark-report-cell">${s.remark || ''}</td>
+                ` : ''}
+
                 <td class="wa-col">
                     <button ${s.status === "CANCELLED" ? 'disabled title="Cancelled bill"' : ''} onclick="event.stopPropagation(); shareWhatsAppText(${s.id})">💬 Text</button>
                     <button ${s.status === "CANCELLED" ? 'disabled title="Cancelled bill"' : ''} onclick="event.stopPropagation(); shareWhatsAppImage(${s.id})">🖼 Image</button>
@@ -661,7 +684,7 @@
             </tr>
 
             <tr id="details-${s.id}" style="display:none;">
-                <td colspan="11">
+                <td colspan="${type === 'quotation' ? 12 : 11}">
                     <div id="items-${s.id}">Loading...</div>
                 </td>
             </tr>
@@ -672,6 +695,7 @@
         <tr class="total-row">
             <td colspan="7">TOTAL ACTIVE BILLS ONLY</td>
             <td>₹${totalSum.toFixed(2)}</td>
+            ${type === "quotation" ? `<td></td>` : ''}
             <td colspan="3"></td>
         </tr>
         `;
@@ -1202,13 +1226,17 @@
             }
         }
 
+        toggleRemarkColumn();
         await loadSeries();
         loadReport();
 
         document.getElementById("from_date").addEventListener("change", loadReport);
         document.getElementById("to_date").addEventListener("change", loadReport);
         document.getElementById("series_filter").addEventListener("change", loadReport);
-        document.getElementById("report_type").addEventListener("change", loadReport);
+        document.getElementById("report_type").addEventListener("change", () => {
+            toggleRemarkColumn();
+            loadReport();
+        });
 
         document.getElementById("customer_filter").addEventListener("input", debounce(loadReport, 400));
         document.getElementById("mobile_filter").addEventListener("input", debounce(loadReport, 400));

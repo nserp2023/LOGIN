@@ -262,6 +262,34 @@
     .mini-table th, .mini-table td{padding:10px 8px;border-bottom:1px solid rgba(38,53,82,.65);font-size:12px;}
     .mini-table th{position:sticky;top:0;background:#0f1728;color:#9eb0cf;text-align:left;}
 
+    .staff-filter{
+      height:36px;
+      width:180px;
+      border-radius:10px;
+      border:1px solid var(--border);
+      background:linear-gradient(180deg, #0f1728, #0c1424);
+      color:var(--text);
+      padding:0 10px;
+      outline:none;
+      font-weight:700;
+    }
+
+    .staff-badge{
+      display:inline-flex;
+      align-items:center;
+      max-width:170px;
+      padding:5px 9px;
+      border-radius:999px;
+      background:rgba(56,189,248,.14);
+      color:#7dd3fc;
+      border:1px solid rgba(56,189,248,.28);
+      font-size:12px;
+      font-weight:800;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
     .empty, .loading{
       padding:18px;
       text-align:center;
@@ -381,7 +409,7 @@
           </tbody>
         </table>
       </div>
-      <div class="footer-note">Tip: click <b>Details</b> to see grouped movement with date filter, bill number, invoice number, customer mobile, and supplier name.</div>
+      <div class="footer-note">Tip: click <b>Details</b> to see grouped movement with date filter, bill number, billed by, customer mobile, and supplier name.</div>
     </div>
   </div>
 
@@ -581,6 +609,9 @@ function applyFilters(){
                     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
                       <input type="date" id="detailFrom_${esc(rawKey)}" class="input" style="height:36px;width:160px;padding:0 10px;" />
                       <input type="date" id="detailTo_${esc(rawKey)}" class="input" style="height:36px;width:160px;padding:0 10px;" />
+                      <select id="staffFilter_${esc(rawKey)}" class="staff-filter" onchange="applyDetailDateFilter('${key}')">
+                        <option value="">All Billed By</option>
+                      </select>
                       <button class="expand-btn" onclick="applyDetailDateFilter('${key}')">Filter</button>
                       <button class="expand-btn" onclick="toggleSort('${key}')">Asc / Desc</button>
                     </div>
@@ -621,7 +652,7 @@ function applyFilters(){
         const [salesRes, purchaseRes, salesReturnRes] = await Promise.all([
           sb
             .from('sales_details')
-            .select('id, sales_number, series_code, customer_name, customer_mobile, bill_date, invoice_number')
+            .select('id, sales_number, series_code, customer_name, customer_mobile, bill_date, created_by')
             .in('id', referenceIds),
 
           sb
@@ -659,25 +690,105 @@ function applyFilters(){
       return detailsCache[itemCode];
     }
 
+    function getMovementMeta(r, extra = {}){
+      const salesMap = extra.salesMap || {};
+      const purchaseMap = extra.purchaseMap || {};
+      const salesReturnMap = extra.salesReturnMap || {};
+
+      const refId = String(r.reference_id ?? '');
+      const eff = Number(r.final_effect || 0);
+      const txnType = String(r.txn_type || '').toUpperCase();
+
+      const sales = salesMap[refId];
+      const purchase = purchaseMap[refId];
+      const salesReturn = salesReturnMap[refId];
+
+      let type = "UNKNOWN";
+      let billNo = "";
+      let billedBy = "";
+      let partyName = "";
+      let mobile = "";
+
+      if (txnType.includes('RETURN')) {
+        type = "SALES RETURN";
+      } else if (txnType.includes('PURCHASE')) {
+        type = "PURCHASE";
+      } else if (txnType.includes('SALE')) {
+        type = "SALES";
+      } else {
+        if (salesReturn) type = "SALES RETURN";
+        else if (purchase) type = "PURCHASE";
+        else if (sales) type = "SALES";
+        else if (eff > 0) type = "IN";
+        else if (eff < 0) type = "OUT";
+      }
+
+      if(type === "SALES" && sales){
+        billNo = sales.series_code
+          ? `${sales.series_code}-${sales.sales_number ?? ''}`
+          : `${sales.sales_number ?? ''}`;
+        billedBy = sales.created_by || "";
+        partyName = sales.customer_name || "";
+        mobile = sales.customer_mobile || "";
+      }
+      else if(type === "PURCHASE" && purchase){
+        billNo = purchase.purchase_number || "";
+        billedBy = "";
+        partyName = purchase.supplier_name || "";
+        mobile = "";
+      }
+      else if(type === "SALES RETURN" && salesReturn){
+        billNo = `${salesReturn.return_number || ''}`;
+        billedBy = "";
+        partyName = salesReturn.customer_name || "";
+        mobile = salesReturn.customer_mobile || "";
+      }
+
+      return { type, billNo, billedBy, partyName, mobile };
+    }
+
+    function populateStaffFilter(itemCode, rows, extra = {}){
+      const filter = document.getElementById(`staffFilter_${itemCode}`);
+      if(!filter) return;
+
+      const current = filter.value || "";
+      const names = [...new Set(
+        rows
+          .map(r => getMovementMeta(r, extra).billedBy)
+          .filter(Boolean)
+      )].sort((a,b) => String(a).localeCompare(String(b)));
+
+      filter.innerHTML = [
+        `<option value="">All Billed By</option>`,
+        ...names.map(name => `<option value="${esc(name)}">${esc(name)}</option>`)
+      ].join('');
+
+      if(names.includes(current)) filter.value = current;
+    }
+
     function renderGroupedTable(rows, itemCode, extra = {}){
       if(!rows.length) return `<div class="empty">No movement found.</div>`;
 
       const isAsc = sortState[itemCode] === 'asc';
 
-      const salesMap = extra.salesMap || {};
-      const purchaseMap = extra.purchaseMap || {};
-      const salesReturnMap = extra.salesReturnMap || {};
-
       const fromEl = document.getElementById(`detailFrom_${itemCode}`);
       const toEl = document.getElementById(`detailTo_${itemCode}`);
+      const staffEl = document.getElementById(`staffFilter_${itemCode}`);
 
       const fromVal = fromEl?.value ? new Date(fromEl.value + 'T00:00:00') : null;
       const toVal = toEl?.value ? new Date(toEl.value + 'T23:59:59') : null;
+      const staffVal = staffEl?.value || "";
 
       let filtered = [...rows].filter(r => {
         const d = new Date(r.last_updated);
         if(fromVal && d < fromVal) return false;
         if(toVal && d > toVal) return false;
+
+        if(staffVal){
+          const meta = getMovementMeta(r, extra);
+          if(meta.billedBy !== staffVal) return false;
+        }
+
         return true;
       });
 
@@ -694,15 +805,18 @@ function applyFilters(){
         return { ...r, running_balance: running };
       });
 
+      if(!withBalance.length){
+        return `<div class="empty">No movement found for this filter.</div>`;
+      }
+
       return `
         <table class="mini-table">
           <thead>
             <tr>
               <th>Date</th>
               <th>Type</th>
-              <th>Reference ID</th>
               <th>Bill No</th>
-              <th>Invoice No</th>
+              <th>Billed By</th>
               <th>Customer / Supplier</th>
               <th>Mobile</th>
               <th class="num">Effect</th>
@@ -711,64 +825,19 @@ function applyFilters(){
           </thead>
           <tbody>
             ${withBalance.map(r => {
-              const refId = String(r.reference_id ?? '');
-              const eff = Number(r.final_effect || 0);
-              const txnType = String(r.txn_type || '').toUpperCase();
-
-              const sales = salesMap[refId];
-              const purchase = purchaseMap[refId];
-              const salesReturn = salesReturnMap[refId];
-
-              let type = "UNKNOWN";
-              let billNo = "";
-              let invoiceNo = "";
-              let partyName = "";
-              let mobile = "";
-
-              if (txnType.includes('RETURN')) {
-                type = "SALES RETURN";
-              } else if (txnType.includes('PURCHASE')) {
-                type = "PURCHASE";
-              } else if (txnType.includes('SALE')) {
-                type = "SALES";
-              } else {
-                if (salesReturn) type = "SALES RETURN";
-                else if (purchase) type = "PURCHASE";
-                else if (sales) type = "SALES";
-                else if (eff > 0) type = "IN";
-                else if (eff < 0) type = "OUT";
-              }
-
-              if(type === "SALES" && sales){
-                billNo = sales.series_code
-                  ? `${sales.series_code}-${sales.sales_number ?? ''}`
-                  : `${sales.sales_number ?? ''}`;
-                invoiceNo = sales.invoice_number || "";
-                partyName = sales.customer_name || "";
-                mobile = sales.customer_mobile || "";
-              }
-              else if(type === "PURCHASE" && purchase){
-                billNo = purchase.purchase_number || "";
-                invoiceNo = purchase.invoice_number || "";
-                partyName = purchase.supplier_name || "";
-                mobile = "";
-              }
-              else if(type === "SALES RETURN" && salesReturn){
-                billNo = `${salesReturn.return_number || ''}`;
-                invoiceNo = "";
-                partyName = salesReturn.customer_name || "";
-                mobile = salesReturn.customer_mobile || "";
-              }
+              const meta = getMovementMeta(r, extra);
+              const billedByHtml = meta.billedBy
+                ? `<span class="staff-badge" title="${esc(meta.billedBy)}">${esc(meta.billedBy)}</span>`
+                : `<span style="color:var(--muted);">-</span>`;
 
               return `
                 <tr>
                   <td>${esc(fmtDate(r.last_updated))}</td>
-                  <td>${esc(type)}</td>
-                  <td class="mono">${esc(refId)}</td>
-                  <td class="mono">${esc(billNo)}</td>
-                  <td class="mono">${esc(invoiceNo)}</td>
-                  <td>${esc(partyName)}</td>
-                  <td class="mono">${esc(mobile)}</td>
+                  <td>${esc(meta.type)}</td>
+                  <td class="mono">${esc(meta.billNo)}</td>
+                  <td>${billedByHtml}</td>
+                  <td>${esc(meta.partyName)}</td>
+                  <td class="mono">${esc(meta.mobile)}</td>
                   <td class="num"><b>${qtyFmt(r.final_effect)}</b></td>
                   <td class="num">${qtyFmt(r.running_balance)}</td>
                 </tr>
@@ -784,11 +853,14 @@ function applyFilters(){
       const data = detailsCache[itemCode];
       if(!groupedWrap || !data) return;
 
-      groupedWrap.innerHTML = renderGroupedTable(data.grouped, itemCode, {
+      const maps = {
         salesMap: data.salesMap,
         purchaseMap: data.purchaseMap,
         salesReturnMap: data.salesReturnMap
-      });
+      };
+
+      populateStaffFilter(itemCode, data.grouped, maps);
+      groupedWrap.innerHTML = renderGroupedTable(data.grouped, itemCode, maps);
     }
     window.applyDetailDateFilter = applyDetailDateFilter;
 

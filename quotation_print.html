@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Quotation Print</title>
+
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+    color: #000;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 10px;
+  }
+
+  .header h2 {
+    margin: 0;
+    font-size: 22px;
+  }
+
+  .info {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    font-size: 13px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+
+  th, td {
+    border: 1px solid #000;
+    padding: 6px;
+  }
+
+  th {
+    background: #eee;
+  }
+
+  .center {
+    text-align: center;
+  }
+
+  .total-section {
+    margin-top: 10px;
+    text-align: right;
+    font-size: 16px;
+    font-weight: bold;
+  }
+
+  @media print {
+    body {
+      margin: 5mm;
+    }
+  }
+</style>
+</head>
+
+<body>
+
+<div class="header">
+  <h2>QUOTATION</h2>
+</div>
+
+<div class="info">
+  <div>
+    <strong>Customer:</strong> <span id="custName"></span><br>
+    <strong>Mobile:</strong> <span id="custMobile"></span>
+  </div>
+
+  <div style="text-align:right;">
+    <strong>Quotation No:</strong> <span id="qNo"></span><br>
+    <strong>Date:</strong> <span id="qDate"></span>
+  </div>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th style="width:25%;">Item Code</th>
+      <th>Item Name</th>
+      <th style="width:15%;" class="center">Qty</th>
+    </tr>
+  </thead>
+  <tbody id="itemsTable"></tbody>
+</table>
+
+<div class="total-section">
+  Total Amount: ₹ <span id="grandTotal">0.00</span>
+</div>
+
+<script>
+  const quotation = JSON.parse(localStorage.getItem("printQuotation"));
+
+  document.getElementById("custName").innerText = quotation.customer_name || "";
+  document.getElementById("custMobile").innerText = quotation.customer_mobile || "";
+  document.getElementById("qNo").innerText = quotation.quotation_number || "";
+  document.getElementById("qDate").innerText = quotation.bill_date || "";
+
+  const table = document.getElementById("itemsTable");
+
+  let total = 0;
+
+  quotation.items.forEach(item => {
+    const price = Number(item.sales_price || item.price || 0); // used internally only
+    const qty = Number(item.quantity || 0);
+    const amount = price * qty;
+
+    total += amount;
+
+    const row = `
+      <tr>
+        <td>${item.item_code || ""}</td>
+        <td>${item.item_name || ""}</td>
+        <td class="center">${qty}</td>
+      </tr>
+    `;
+
+    table.insertAdjacentHTML("beforeend", row);
+  });
+
+  document.getElementById("grandTotal").innerText = total.toFixed(2);
+
+  window.onload = () => {
+    window.print();
+  };
+</script>
+
+</body>
+</html>

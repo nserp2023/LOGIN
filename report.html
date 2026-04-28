@@ -785,6 +785,12 @@
 
                 <td>
                     ${
+                        type === "quotation"
+                        ? `<button ${s.status === "CANCELLED" ? 'disabled title="Cancelled quotation"' : ''} onclick="event.stopPropagation(); printQuotationSimple(${s.id})">📄 Simple Quote</button>`
+                        : ""
+                    }
+
+                    ${
                         type === "sales_pack"
                         ? `<button ${s.status === "CANCELLED" ? 'disabled title="Cancelled bill"' : ''} onclick="event.stopPropagation(); printSalesPacking(${s.id})">🧾📦 Sales + Packing</button>`
                         : `<button ${s.status === "CANCELLED" ? 'disabled title="Cancelled bill"' : ''} onclick="event.stopPropagation(); printDoc(${s.id})">🖨 Invoice</button>`
@@ -949,6 +955,20 @@
             document.body.removeChild(iframe);
         }, 5000);
     }
+
+    function printQuotationSimple(id){
+        const row = findReportRow(id);
+
+        if(row && row.status === "CANCELLED"){
+            alert("Cancelled quotation cannot be printed.");
+            return;
+        }
+
+        // Open directly in a new tab/window. This is more reliable than hidden iframe
+        // because quotation_print.html must load its own Supabase data by id.
+        window.open(`quotation_print.html?id=${id}&type=quotation`, '_blank');
+    }
+
 
     function printPacking(id){
         const row = findReportRow(id);

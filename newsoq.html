@@ -1034,7 +1034,20 @@
     let stockWarningOpen = false;
 
     function isSalesMode(){
-        return (document.getElementById("doc_type")?.value || "") === "sales";
+        const type = (document.getElementById("doc_type")?.value || "").trim();
+        // Hard stock block is only for normal SALES.
+        // SALES PACK / BILL should not block zero stock or over-stock.
+        return type === "sales";
+    }
+
+    function isMinimumQtyWarningMode(){
+        const type = (document.getElementById("doc_type")?.value || "").trim();
+        // Soft reorder/minimum warning works in SALES and SALES PACK / BILL.
+        return type === "sales" || type === "sales_pack";
+    }
+
+    function isSalesPackMode(){
+        return (document.getElementById("doc_type")?.value || "").trim() === "sales_pack";
     }
 
     function parseStockBalance(value){
@@ -1069,11 +1082,13 @@
         });
     }
 
-    function showStockWarning(message, focusEl){
+    function showStockWarning(message, focusEl, title = "NO STOCK WARNING"){
         const overlay = document.getElementById('stock_warning_overlay');
+        const titleEl = document.getElementById('stock_warning_title');
         const msg = document.getElementById('stock_warning_message');
         if(!overlay || !msg) return;
 
+        if(titleEl) titleEl.textContent = title || "NO STOCK WARNING";
         msg.textContent = message || "Selected quantity is more than available stock.";
         stockWarningReturnFocus = focusEl || null;
         stockWarningOpen = true;
@@ -1116,6 +1131,66 @@
         return currentBalance + oldBillQty;
     }
 
+    function getMinimumQtyForRow(row){
+        const rawItem = getRowRawItem(row);
+        const min = parseFloat(rawItem?.minimum_qty ?? rawItem?.min_qty ?? 0);
+        return Number.isFinite(min) ? min : 0;
+    }
+
+    function getMaximumQtyForRow(row){
+        const rawItem = getRowRawItem(row);
+        const max = parseFloat(rawItem?.maximum_qty ?? rawItem?.max_qty ?? 0);
+        return Number.isFinite(max) ? max : 0;
+    }
+
+    function getRemainingStockAfterSale(row){
+        return getEffectiveAvailableStockForRow(row) - getQtyInputValue(row);
+    }
+
+    function getSuggestedOrderQtyForRow(row){
+        const maxQty = getMaximumQtyForRow(row);
+        const remaining = getRemainingStockAfterSale(row);
+        if(maxQty <= 0) return 0;
+        return Math.max(0, maxQty - remaining);
+    }
+
+    function maybeShowMinimumQtyWarning(row, opts = {}){
+        if(!row || !isMinimumQtyWarningMode()) return false;
+        const rawItem = getRowRawItem(row);
+        if(!rawItem) return false;
+        const code = (row.querySelector('.code-inp')?.value || '').trim();
+        const name = (row.querySelector('.name-inp')?.value || '').trim();
+        const qtyInput = row.querySelector('.qty-inp');
+        const qty = getQtyInputValue(row);
+        const minQty = getMinimumQtyForRow(row);
+        if(!code && !name) return false;
+        if(qty <= 0 || minQty <= 0) return false;
+        const remaining = getRemainingStockAfterSale(row);
+        if(remaining >= minQty) return false;
+        const maxQty = getMaximumQtyForRow(row);
+        const suggestQty = getSuggestedOrderQtyForRow(row);
+        const warningKey = `${code}|${qty}|${remaining}|${minQty}|${maxQty}`;
+        if(opts.once !== false && row.dataset.minQtyWarningKey === warningKey) return true;
+        row.dataset.minQtyWarningKey = warningKey;
+        // In SALES PACK / BILL, do not interrupt entry with a center popup.
+        // The warning is shown only as inline amber highlight + tooltip by applyItemRestriction().
+        if(opts.showWarning !== false && !isSalesPackMode()){
+            const lines = [
+                `${name || code} stock will go below minimum qty.`,
+                `Current available stock: ${getEffectiveAvailableStockForRow(row)}`,
+                `Entered sale qty: ${qty}`,
+                `Balance after sale: ${remaining}`,
+                `Minimum qty: ${minQty}`
+            ];
+            if(maxQty > 0){
+                lines.push(`Maximum qty: ${maxQty}`);
+                lines.push(`Suggested order qty: ${suggestQty}`);
+            }
+            showStockWarning(lines.join('\n'), qtyInput, 'REORDER WARNING');
+        }
+        return true;
+    }
+
     function validateSalesRowQty(row, opts = {}){
         if(!row || !isSalesMode()) return true;
 
@@ -1144,6 +1219,7 @@
             return false;
         }
 
+        maybeShowMinimumQtyWarning(row, { showWarning: opts.showMinimumWarning !== false, once: true });
         return true;
     }
 
@@ -1403,8 +1479,8 @@ async function loadStockData() {
 
         for (let attempt = 1; attempt <= 3; attempt++) {
 const stockSelect = canSeeLandingColumn
-                ? 'item_code,item_name,barcode,price1,price2,price3,landing,balance,gst_percent,hsn_code,department'
-                : 'item_code,item_name,barcode,price1,price2,price3,balance,gst_percent,hsn_code,department';
+                ? 'item_code,item_name,barcode,price1,price2,price3,landing,balance,gst_percent,hsn_code,department,minimum_qty,maximum_qty'
+                : 'item_code,item_name,barcode,price1,price2,price3,balance,gst_percent,hsn_code,department,minimum_qty,maximum_qty';
 
             const res = await sb
                 .from('stock_balance_view')
@@ -1774,6 +1850,8 @@ ${data.map((c, idx) => `
                     <th>Code</th>
                     <th>Dept</th>
                     <th>Stock</th>
+                    <th>Min</th>
+                    <th>Max</th>
                     <th>P1</th>
                     <th>P2</th>
                     <th>P3</th>
@@ -1788,6 +1866,8 @@ ${data.map((c, idx) => `
                         <td>${item.item_code}</td>
                         <td>${item.department || 'ALL'}</td>
                         <td>${item.balance || 0}</td>
+                        <td>${item.minimum_qty || 0}</td>
+                        <td>${item.maximum_qty || 0}</td>
                         <td>₹${item.price1 || 0}</td>
                         <td>₹${item.price2 || 0}</td>
                         <td>₹${item.price3 || 0}</td>
@@ -1890,9 +1970,13 @@ ${data.map((c, idx) => `
         qtyInp.addEventListener('input', () => {
             calcForward(id);
             applyItemRestriction(row);
+            if(validateSalesRowQty(row, { showWarning: false, showMinimumWarning: false })){
+                maybeShowMinimumQtyWarning(row, { showWarning: true, once: true });
+            }
         });
         qtyInp.addEventListener('blur', () => {
             validateSalesRowQty(row);
+            maybeShowMinimumQtyWarning(row, { showWarning: true, once: true });
             applyItemRestriction(row);
         });
         discInp.addEventListener('input', () => calcForward(id));
@@ -1944,8 +2028,8 @@ ${data.map((c, idx) => `
         triggerPurchaseHistory(row);
 
         const freshSelect = canSeeLandingColumn
-            ? 'balance, price1, price2, price3, landing'
-            : 'balance, price1, price2, price3';
+            ? 'balance, price1, price2, price3, landing, minimum_qty, maximum_qty'
+            : 'balance, price1, price2, price3, minimum_qty, maximum_qty';
 
         const { data: freshStock, error } = await sb
             .from('stock_balance_view')
@@ -1972,7 +2056,10 @@ ${data.map((c, idx) => `
 
         applyItemRestriction(row);
         if(isSalesMode()){
-            validateSalesRowQty(row, { showWarning: false });
+            validateSalesRowQty(row, { showWarning: false, showMinimumWarning: false });
+        }
+        if(isMinimumQtyWarningMode()){
+            maybeShowMinimumQtyWarning(row, { showWarning: false, once: true });
         }
     }
 
@@ -2420,14 +2507,17 @@ function calcTotal() {
 
         if(
             e.key === 'Enter' &&
-            input.classList.contains('qty-inp') &&
-            isSalesMode()
+            input.classList.contains('qty-inp')
         ){
-            const ok = validateSalesRowQty(row);
-            if(!ok){
-                e.preventDefault();
-                e.stopImmediatePropagation();
-                return;
+            if(isSalesMode()){
+                const ok = validateSalesRowQty(row);
+                if(!ok){
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    return;
+                }
+            } else if(isMinimumQtyWarningMode()){
+                maybeShowMinimumQtyWarning(row, { showWarning: true, once: true });
             }
         }
 
@@ -3303,6 +3393,26 @@ function calcTotal() {
                 codeInp.title = `AVAILABLE STOCK: ${available}`;
                 if(qtyInp) qtyInp.title = `AVAILABLE STOCK: ${available}`;
             }
+            return;
+        }
+
+        const rawItem = getRowRawItem(row);
+        const minQty = getMinimumQtyForRow(row);
+        const remainingAfterSale = getRemainingStockAfterSale(row);
+        const showMinimumWarning = isMinimumQtyWarningMode() && !!rawItem && qty > 0 && minQty > 0 && remainingAfterSale < minQty;
+
+        if(showMinimumWarning){
+            const maxQty = getMaximumQtyForRow(row);
+            const suggestQty = getSuggestedOrderQtyForRow(row);
+            const title = maxQty > 0
+                ? `REORDER NEEDED • Balance after sale: ${remainingAfterSale} • Min: ${minQty} • Suggested order: ${suggestQty}`
+                : `REORDER NEEDED • Balance after sale: ${remainingAfterSale} • Min: ${minQty}`;
+            nameInp.style.backgroundColor = "rgba(245, 158, 11, 0.18)";
+            codeInp.style.backgroundColor = "rgba(245, 158, 11, 0.18)";
+            if(qtyInp) qtyInp.style.backgroundColor = "rgba(245, 158, 11, 0.24)";
+            nameInp.title = title;
+            codeInp.title = title;
+            if(qtyInp) qtyInp.title = title;
             return;
         }
 

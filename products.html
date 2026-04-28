@@ -2,593 +2,701 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <link rel="icon" href="favicon.ico" type="image/x-icon">
-
-<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
-
-<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
-
-<link rel="manifest" href="site.webmanifest">
-  <title>Products Management</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="dashboard.css">
+  <title>Ultra Stock Page</title>
+
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+  <link rel="manifest" href="site.webmanifest">
+
   <script src="common-ui.js"></script>
+
+  <style>
+    :root{
+      --bg:#07111f;
+      --panel:#0c1a2e;
+      --panel2:#10243e;
+      --card:#0f223a;
+      --line:rgba(255,255,255,.12);
+      --text:#eaf2ff;
+      --muted:#9fb2cf;
+      --blue:#38bdf8;
+      --green:#22c55e;
+      --red:#ef4444;
+      --yellow:#facc15;
+      --orange:#fb923c;
+      --purple:#a78bfa;
+      --shadow:0 18px 50px rgba(0,0,0,.35);
+      --radius:18px;
+    }
+
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%;font-family:Segoe UI,Arial,sans-serif;background:radial-gradient(circle at top left,#13345c 0,#07111f 42%,#040914 100%);color:var(--text)}
+    body{overflow:hidden}
+
+    .app{height:100vh;display:grid;grid-template-rows:auto auto 1fr auto;gap:10px;padding:10px}
+
+    .topbar{
+      display:flex;align-items:center;justify-content:space-between;gap:10px;
+      background:linear-gradient(135deg,rgba(56,189,248,.22),rgba(167,139,250,.11));
+      border:1px solid var(--line);border-radius:var(--radius);padding:10px 12px;box-shadow:var(--shadow)
+    }
+    .titlebox{display:flex;align-items:center;gap:10px;min-width:0}
+    .logo{width:42px;height:42px;border-radius:14px;background:linear-gradient(135deg,#38bdf8,#22c55e);display:grid;place-items:center;color:#04111f;font-weight:900;box-shadow:0 10px 25px rgba(56,189,248,.25)}
+    h1{font-size:20px;line-height:1;margin:0;white-space:nowrap}
+    .sub{font-size:12px;color:var(--muted);margin-top:3px}
+    .top-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+
+    button,.btn{
+      border:0;border-radius:12px;padding:10px 12px;font-weight:800;cursor:pointer;color:#06121f;background:#dbeafe;
+      box-shadow:0 6px 16px rgba(0,0,0,.18);transition:.15s transform,.15s opacity,.15s background
+    }
+    button:hover{transform:translateY(-1px);opacity:.95}
+    button:disabled{opacity:.5;cursor:not-allowed;transform:none}
+    .primary{background:linear-gradient(135deg,#38bdf8,#60a5fa);color:#03101d}
+    .success{background:linear-gradient(135deg,#22c55e,#86efac);color:#03150a}
+    .danger{background:linear-gradient(135deg,#ef4444,#fb7185);color:#fff}
+    .warn{background:linear-gradient(135deg,#facc15,#fb923c);color:#1f1200}
+    .ghost{background:rgba(255,255,255,.08);color:var(--text);border:1px solid var(--line)}
+
+    .toolbar{
+      display:grid;grid-template-columns:1.4fr .65fr .65fr .65fr auto;gap:8px;
+      background:rgba(12,26,46,.86);border:1px solid var(--line);border-radius:var(--radius);padding:10px;box-shadow:var(--shadow)
+    }
+    input,select,textarea{
+      width:100%;border:1px solid var(--line);background:rgba(255,255,255,.08);color:var(--text);
+      border-radius:12px;padding:10px 11px;font-size:14px;outline:none
+    }
+    select option{background:#0c1a2e;color:#fff}
+    input:focus,select:focus{border-color:rgba(56,189,248,.7);box-shadow:0 0 0 3px rgba(56,189,248,.14)}
+    label{font-size:12px;color:var(--muted);display:block;margin-bottom:4px;font-weight:700}
+    .field{min-width:0}
+
+    .main{
+      display:grid;grid-template-columns:410px 1fr;gap:10px;min-height:0
+    }
+
+    .panel{background:rgba(12,26,46,.9);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);min-height:0;overflow:hidden}
+    .panel-head{display:flex;align-items:center;justify-content:space-between;padding:12px;border-bottom:1px solid var(--line);background:rgba(255,255,255,.04)}
+    .panel-title{font-size:15px;font-weight:900}
+    .form-wrap{height:100%;overflow:auto;padding:12px}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+    .full{grid-column:1/-1}
+    .form-section{border:1px solid var(--line);border-radius:16px;padding:10px;margin-bottom:10px;background:rgba(255,255,255,.035)}
+    .section-title{font-size:12px;font-weight:900;color:#bae6fd;margin-bottom:8px;letter-spacing:.04em;text-transform:uppercase}
+    .hint{font-size:11px;color:var(--muted);margin-top:4px}
+
+    .table-panel{display:grid;grid-template-rows:auto 1fr;min-height:0}
+    .stats{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .pill{border:1px solid var(--line);background:rgba(255,255,255,.07);padding:7px 9px;border-radius:999px;font-size:12px;color:var(--muted);font-weight:800}
+    .pill b{color:#fff}
+
+    .table-wrap{overflow:auto;min-height:0;position:relative}
+    table{width:100%;border-collapse:separate;border-spacing:0;font-size:13px;min-width:1260px}
+    thead th{position:sticky;top:0;z-index:3;background:#10243e;color:#dbeafe;text-align:left;font-size:12px;padding:10px;border-bottom:1px solid var(--line);white-space:nowrap}
+    tbody td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.075);color:#e6f0ff;vertical-align:middle;white-space:nowrap}
+    tbody tr:hover{background:rgba(56,189,248,.09)}
+    tbody tr.selected{background:rgba(34,197,94,.12)}
+    .num{text-align:right;font-variant-numeric:tabular-nums}
+    .code{font-weight:900;color:#bfdbfe}
+    .muted{color:var(--muted)}
+    .mini-btn{padding:7px 8px;border-radius:10px;font-size:12px;box-shadow:none}
+    .row-actions{display:flex;gap:6px}
+    .editable-cell{background:rgba(250,204,21,.12);outline:1px dashed rgba(250,204,21,.45);border-radius:6px}
+    .changed{background:rgba(34,197,94,.16)!important;outline:1px solid rgba(34,197,94,.45)}
+
+    .toast{position:fixed;right:14px;bottom:14px;z-index:9999;display:none;max-width:520px;padding:13px 15px;border-radius:16px;box-shadow:var(--shadow);font-weight:800;border:1px solid var(--line)}
+    .toast.success{display:block;background:rgba(34,197,94,.95);color:#03150a}
+    .toast.error{display:block;background:rgba(239,68,68,.96);color:#fff}
+    .toast.warn{display:block;background:rgba(250,204,21,.96);color:#1f1200}
+    .toast.info{display:block;background:rgba(56,189,248,.96);color:#04111f}
+
+    .suggest-box{position:absolute;z-index:9000;background:#081629;border:1px solid rgba(56,189,248,.45);border-radius:14px;box-shadow:var(--shadow);max-height:260px;overflow:auto;display:none}
+    .suggest-item{padding:9px 11px;border-bottom:1px solid rgba(255,255,255,.08);cursor:pointer;font-size:13px}
+    .suggest-item:hover,.suggest-item.active{background:rgba(56,189,248,.18)}
+    .suggest-title{font-weight:900;color:#fff}
+    .suggest-sub{font-size:11px;color:var(--muted);margin-top:2px}
+
+    .footerbar{display:flex;align-items:center;justify-content:space-between;gap:10px;background:rgba(12,26,46,.86);border:1px solid var(--line);border-radius:var(--radius);padding:8px 10px;color:var(--muted);font-size:12px}
+    .kbd{background:rgba(255,255,255,.1);border:1px solid var(--line);border-radius:6px;padding:2px 6px;color:#fff;font-weight:800}
+
+    @media(max-width:1100px){
+      body{overflow:auto}.app{height:auto;min-height:100vh}.main{grid-template-columns:1fr}.toolbar{grid-template-columns:1fr 1fr}.table-wrap{max-height:70vh}.topbar{align-items:flex-start;flex-direction:column}.top-actions{justify-content:flex-start}
+    }
+    @media(max-width:650px){
+      .app{padding:6px}.toolbar{grid-template-columns:1fr}.grid2,.grid3{grid-template-columns:1fr}h1{font-size:17px}.top-actions button{padding:9px 10px;font-size:12px}
+    }
+
+    @media print{
+      body{background:#fff;color:#000;overflow:visible}.topbar,.toolbar,.form-wrap,.footerbar,.row-actions,.select-col{display:none!important}.app{display:block;height:auto;padding:0}.main{display:block}.panel{box-shadow:none;border:0}.panel-head{background:#fff;color:#000;border-bottom:1px solid #000}.table-wrap{overflow:visible}table{min-width:0;font-size:10px}thead th{position:static;background:#eee;color:#000}tbody td{color:#000;border-color:#ddd}.muted{color:#333}
+    }
+  </style>
 </head>
-<body class="dashboard-page">
-  <header>
-    <h1>Products</h1>
-    <button id="addSingleBtn">+ Add Single Item</button>
-    <button id="addBulkBtn">+ Add Bulk Items</button>
-    <button id="editSingleBtn">✎ Edit Single Item</button>
-    <button id="editBulkBtn">✎ Edit Bulk Items</button>
-    <button id="deleteSingleBtn">🗑 Delete Single Item</button>
-    <button id="deleteBulkBtn">🗑 Delete Multiple Items</button>
-    <button id="enableBulkEditBtn">Enable Bulk Edit</button>
-    <button id="disableBulkEditBtn" style="display:none">Disable Bulk Edit</button>
-    <button id="saveAllBtn" style="display:none">💾 Save All Changes</button>
-    <button id="discardBtn" style="display:none">✖ Discard Changes</button>
-    <input type="file" id="bulkUpload" accept=".csv,.xlsx" style="display:none">
-  </header>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="titlebox">
+        <div class="logo">V</div>
+        <div>
+          <h1>Ultra Stock Page</h1>
+          <div class="sub">VAJRA LIGHTS & ELECTRICALS · Fast stock item creation and price correction</div>
+        </div>
+      </div>
+      <div class="top-actions">
+        <button class="ghost" type="button" onclick="location.href='dashboard.html'">🏠 Dashboard</button>
+        <button class="ghost" type="button" onclick="location.href='hsn.html'">🧾 HSN</button>
+        <button class="ghost" type="button" onclick="location.href='stock_ledger.html'">📘 Ledger</button>
+        <button class="primary" id="newBtn" type="button">＋ New Item</button>
+      </div>
+    </header>
 
-  <!-- Banner container -->
-  <div id="banner" class="banner" style="display:none"></div>
-
-  <main>
-    <!-- Form for add/edit single product -->
-    <section class="card">
-      <form id="productForm" class="inline-form">
-        <label>Item Code
-          <input type="text" id="itemCode" required>
-        </label>
-        <label>Item Name
-          <input type="text" id="itemName" required>
-        </label>
-        <label>HSN Code
-          <input type="text" id="hsnSearch" placeholder="Type to search HSN..." required>
-          <select id="hsnDropdown"></select>
-        </label>
-        <label>GST %
-          <input type="number" id="gstPercent" step="0.01" readonly>
-        </label>
-
-        <label>Purchase Price
-          <input type="number" id="purchasePrice" step="0.01">
-        </label>
-        <label>Purchase Price + GST
-          <input type="number" id="purchasePriceGST" step="0.01">
-        </label>
-        <label>Landing Price + GST
-          <input type="number" id="landingPriceGST" step="0.01">
-        </label>
-
-        <!-- Retail -->
-        <label>Retail Price
-          <input type="number" id="retailPrice" step="0.01">
-        </label>
-        <label>Retail Price %
-          <input type="number" id="retailPricePercent" step="0.01">
-        </label>
-        <label>Retail Price + GST
-          <input type="number" id="retailPriceGST" step="0.01">
-        </label>
-
-        <!-- Wholesale -->
-        <label>Wholesale Price
-          <input type="number" id="wholesalePrice" step="0.01">
-        </label>
-        <label>Wholesale Price %
-          <input type="number" id="wholesalePricePercent" step="0.01">
-        </label>
-        <label>Wholesale Price + GST
-          <input type="number" id="wholesalePriceGST" step="0.01">
-        </label>
-
-        <!-- Special -->
-        <label>Special Price
-          <input type="number" id="specialPrice" step="0.01">
-        </label>
-        <label>Special Price %
-          <input type="number" id="specialPricePercent" step="0.01">
-        </label>
-        <label>Special Price + GST
-          <input type="number" id="specialPriceGST" step="0.01">
-        </label>
-
-        <label>Department
-          <input type="text" id="department" required>
-        </label>
-        <label>Online / Offline
-          <select id="onlineOffline" required>
-            <option value="Online">Online</option>
-            <option value="Offline">Offline</option>
-          </select>
-        </label>
-        <label>Image
-          <input type="file" id="imageUpload" accept="image/*">
-        </label>
-        <button type="submit" id="saveBtn" class="save-btn">Save Product</button>
-      </form>
+    <section class="toolbar">
+      <div class="field">
+        <label>Search Item Code / Name / HSN</label>
+        <input id="searchBox" autocomplete="off" placeholder="Type code or item name...  Example: ETIRA 12 PLATE">
+      </div>
+      <div class="field">
+        <label>Department</label>
+        <select id="departmentFilter">
+          <option value="ALL">All Departments</option>
+          <option value="ELECTRICAL">ELECTRICAL</option>
+          <option value="PLUMBING">PLUMBING</option>
+          <option value="INTERLOCK">INTERLOCK</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Missing Data</label>
+        <select id="missingFilter">
+          <option value="ALL">All Items</option>
+          <option value="HSN">Missing HSN</option>
+          <option value="GST">Missing GST</option>
+          <option value="PURCHASE">Missing Purchase</option>
+          <option value="LANDING">Missing Landing</option>
+          <option value="PRICE1">Missing Price1</option>
+          <option value="PRICE2">Missing Price2</option>
+          <option value="PRICE3">Missing Price3</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Rows</label>
+        <select id="limitFilter">
+          <option value="300">300 Fast</option>
+          <option value="1000">1000</option>
+          <option value="3000">3000</option>
+          <option value="ALL">All Loaded</option>
+        </select>
+      </div>
+      <div class="field" style="display:flex;align-items:end;gap:8px">
+        <button class="primary" id="refreshBtn" type="button">↻ Load</button>
+        <button class="warn" id="bulkEditBtn" type="button">✎ Bulk Edit</button>
+      </div>
     </section>
 
-    <!-- Products table -->
-    <section class="card">
-      <table class="dashboard-table">
-        <thead>
-          <tr>
-            <th><input type="checkbox" id="selectAll"></th>
-            <th>Item Code</th>
-            <th>Name</th>
-            <th>HSN</th>
-            <th>Purchase+GST</th>
-            <th>Landing+GST</th>
-            <th>Retail+GST</th>
-            <th>Wholesale+GST</th>
-            <th>Special+GST</th>
-            <th>Department</th>
-            <th>Online/Offline</th>
-            <th>Image</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody id="productTableBody"></tbody>
-      </table>
-    </section>
-  </main>
+    <main class="main">
+      <section class="panel">
+        <div class="panel-head">
+          <div class="panel-title" id="formTitle">Add / Edit Stock Item</div>
+          <button class="ghost mini-btn" id="clearBtn" type="button">Clear</button>
+        </div>
+        <div class="form-wrap">
+          <form id="stockForm">
+            <div class="form-section">
+              <div class="section-title">Item Details</div>
+              <div class="grid2">
+                <div class="field">
+                  <label>Item Code *</label>
+                  <input id="itemCode" required autocomplete="off" placeholder="Example: 15W">
+                </div>
+                <div class="field">
+                  <label>Department *</label>
+                  <select id="department" required>
+                    <option value="ALL">ALL</option>
+                    <option value="ELECTRICAL">ELECTRICAL</option>
+                    <option value="PLUMBING">PLUMBING</option>
+                    <option value="INTERLOCK">INTERLOCK</option>
+                  </select>
+                </div>
+                <div class="field full">
+                  <label>Item Name *</label>
+                  <input id="itemName" required autocomplete="off" placeholder="Type full item name">
+                </div>
+                <div class="field full">
+                  <label>Barcode</label>
+                  <input id="barcode" autocomplete="off" placeholder="Optional barcode">
+                </div>
+              </div>
+            </div>
 
-  <!-- Supabase + JS -->
+            <div class="form-section">
+              <div class="section-title">HSN + GST</div>
+              <div class="grid2">
+                <div class="field full" style="position:relative">
+                  <label>Search HSN</label>
+                  <input id="hsnSearch" autocomplete="off" placeholder="Type HSN code or description">
+                  <div id="hsnSuggest" class="suggest-box"></div>
+                  <div class="hint">Select from hsn.html table. Saves HSN Code + GST % into stock_items.</div>
+                </div>
+                <div class="field">
+                  <label>HSN Code</label>
+                  <input id="hsnCode" autocomplete="off" placeholder="HSN Code">
+                </div>
+                <div class="field">
+                  <label>GST %</label>
+                  <input id="gstPercent" type="number" step="0.01" placeholder="0.00">
+                </div>
+              </div>
+            </div>
+
+            <div class="form-section">
+              <div class="section-title">Purchase + Landing</div>
+              <div class="grid3">
+                <div class="field">
+                  <label>Purchase</label>
+                  <input id="purchasePrice" type="number" step="0.01">
+                </div>
+                <div class="field">
+                  <label>Purchase + GST</label>
+                  <input id="purchasePriceGst" type="number" step="0.01">
+                </div>
+                <div class="field">
+                  <label>Landing</label>
+                  <input id="landing" type="number" step="0.01">
+                </div>
+              </div>
+            </div>
+
+            <div class="form-section">
+              <div class="section-title">Selling Prices</div>
+              <div class="grid3">
+                <div class="field"><label>Price1 %</label><input id="price1Percent" type="number" step="0.01"></div>
+                <div class="field"><label>Price1</label><input id="price1" type="number" step="0.01"></div>
+                <div class="field"><label>Price1 + GST</label><input id="price1Gst" type="number" step="0.01"></div>
+
+                <div class="field"><label>Price2 %</label><input id="price2Percent" type="number" step="0.01"></div>
+                <div class="field"><label>Price2</label><input id="price2" type="number" step="0.01"></div>
+                <div class="field"><label>Price2 + GST</label><input id="price2Gst" type="number" step="0.01"></div>
+
+                <div class="field"><label>Price3 %</label><input id="price3Percent" type="number" step="0.01"></div>
+                <div class="field"><label>Price3</label><input id="price3" type="number" step="0.01"></div>
+                <div class="field"><label>Price3 + GST</label><input id="price3Gst" type="number" step="0.01"></div>
+              </div>
+              <div class="hint">% calculation uses Landing as base. Price + GST fields are what your sales page normally uses.</div>
+            </div>
+
+            <div class="form-section">
+              <div class="section-title">Stock Warning Limits</div>
+              <div class="grid2">
+                <div class="field"><label>Minimum Qty</label><input id="minQty" type="number" step="0.01"></div>
+                <div class="field"><label>Maximum Qty</label><input id="maxQty" type="number" step="0.01"></div>
+              </div>
+            </div>
+
+            <div class="grid2">
+              <button class="success" type="submit" id="saveBtn">💾 Save Item</button>
+              <button class="ghost" type="button" id="resetBtn">Reset</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <section class="panel table-panel">
+        <div class="panel-head">
+          <div class="stats">
+            <span class="pill">Loaded: <b id="loadedCount">0</b></span>
+            <span class="pill">Showing: <b id="showingCount">0</b></span>
+            <span class="pill">Changed: <b id="changedCount">0</b></span>
+          </div>
+          <div class="top-actions">
+            <button class="success mini-btn" id="saveBulkBtn" type="button" style="display:none">💾 Save Bulk</button>
+            <button class="ghost mini-btn" id="cancelBulkBtn" type="button" style="display:none">Cancel Bulk</button>
+            <button class="danger mini-btn" id="deleteSelectedBtn" type="button">🗑 Delete Selected</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table id="stockTable">
+            <thead>
+              <tr>
+                <th class="select-col"><input type="checkbox" id="selectAll"></th>
+                <th>Code</th>
+                <th>Item Name</th>
+                <th>HSN</th>
+                <th class="num">GST%</th>
+                <th class="num">Purchase</th>
+                <th class="num">Purchase+GST</th>
+                <th class="num">Landing</th>
+                <th class="num">P1%</th>
+                <th class="num">Price1+GST</th>
+                <th class="num">P2%</th>
+                <th class="num">Price2+GST</th>
+                <th class="num">P3%</th>
+                <th class="num">Price3+GST</th>
+                <th>Dept</th>
+                <th class="num">Min</th>
+                <th class="num">Max</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="stockBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footerbar">
+      <div><span class="kbd">Ctrl</span> + <span class="kbd">S</span> save · <span class="kbd">Esc</span> clear form · Double click row to edit</div>
+      <div id="statusText">Ready</div>
+    </footer>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabaseClient.js"></script>
   <script src="page_permissions.js"></script>
+
   <script>
-    const supabaseClient = window.sbcc; // supabase client from supabaseClient.js
-  document.addEventListener("DOMContentLoaded", async () => {
-  const ok = await requirePageAccess("purchase");
-  if (!ok) return;
-  });
+    const sb = window.sbcc;
 
-// Elements
-const form = document.getElementById("productForm");
-const tableBody = document.getElementById("productTableBody");
-const itemCodeInput = document.getElementById("itemCode");
-const hsnSearch = document.getElementById("hsnSearch");
-const hsnDropdown = document.getElementById("hsnDropdown");
-const gstPercentInput = document.getElementById("gstPercent");
+    const els = {
+      form: document.getElementById('stockForm'),
+      formTitle: document.getElementById('formTitle'),
+      stockBody: document.getElementById('stockBody'),
+      searchBox: document.getElementById('searchBox'),
+      departmentFilter: document.getElementById('departmentFilter'),
+      missingFilter: document.getElementById('missingFilter'),
+      limitFilter: document.getElementById('limitFilter'),
+      loadedCount: document.getElementById('loadedCount'),
+      showingCount: document.getElementById('showingCount'),
+      changedCount: document.getElementById('changedCount'),
+      statusText: document.getElementById('statusText'),
+      toast: document.getElementById('toast'),
+      hsnSuggest: document.getElementById('hsnSuggest'),
+      hsnSearch: document.getElementById('hsnSearch')
+    };
 
-const purchasePrice = document.getElementById("purchasePrice");
-const purchasePriceGST = document.getElementById("purchasePriceGST");
-const landingPriceGST = document.getElementById("landingPriceGST");
+    const f = {
+      itemCode: document.getElementById('itemCode'), itemName: document.getElementById('itemName'), barcode: document.getElementById('barcode'), department: document.getElementById('department'),
+      hsnCode: document.getElementById('hsnCode'), gstPercent: document.getElementById('gstPercent'),
+      purchasePrice: document.getElementById('purchasePrice'), purchasePriceGst: document.getElementById('purchasePriceGst'), landing: document.getElementById('landing'),
+      price1Percent: document.getElementById('price1Percent'), price1: document.getElementById('price1'), price1Gst: document.getElementById('price1Gst'),
+      price2Percent: document.getElementById('price2Percent'), price2: document.getElementById('price2'), price2Gst: document.getElementById('price2Gst'),
+      price3Percent: document.getElementById('price3Percent'), price3: document.getElementById('price3'), price3Gst: document.getElementById('price3Gst'),
+      minQty: document.getElementById('minQty'), maxQty: document.getElementById('maxQty')
+    };
 
-const retailPrice = document.getElementById("retailPrice");
-const retailPricePercent = document.getElementById("retailPricePercent");
-const retailPriceGST = document.getElementById("retailPriceGST");
+    let allItems = [];
+    let filteredItems = [];
+    let allHSN = [];
+    let editingDbId = null;
+    let bulkMode = false;
+    let pending = {};
+    let searchTimer = null;
 
-const wholesalePrice = document.getElementById("wholesalePrice");
-const wholesalePricePercent = document.getElementById("wholesalePricePercent");
-const wholesalePriceGST = document.getElementById("wholesalePriceGST");
+    function n(v){ const x = parseFloat(v); return Number.isFinite(x) ? x : 0; }
+    function money(v){ const x = n(v); return x ? x.toFixed(2) : ''; }
+    function esc(s){ return String(s ?? '').replace(/[&<>'"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[m])); }
+    function addGST(base,gst){ return +(n(base) * (1 + n(gst)/100)).toFixed(2); }
+    function removeGST(gross,gst){ const g=n(gst); return g ? +(n(gross)/(1+g/100)).toFixed(2) : n(gross); }
+    function withPercent(base,pct){ return +(n(base) * (1 + n(pct)/100)).toFixed(2); }
 
-const specialPrice = document.getElementById("specialPrice");
-const specialPricePercent = document.getElementById("specialPricePercent");
-const specialPriceGST = document.getElementById("specialPriceGST");
-
-let editingId = null;
-let currentHSN = null;
-let bulkEditEnabled = false;
-let pendingChanges = {};
-
-// Helpers
-function showBanner(message, type = "success") {
-  const banner = document.getElementById("banner");
-  banner.textContent = message;
-  banner.className = "banner banner-" + type;
-  banner.style.display = "block";
-  setTimeout(() => { banner.style.display = "none"; }, 3000);
-}
-function toNum(v) { return parseFloat(v) || 0; }
-function addGST(base, gst) { return +(base + (base * gst / 100)).toFixed(2); }
-function removeGST(gross, gst) { return +(gross / (1 + gst / 100)).toFixed(2); }
-
-// Auto-generate item code
-async function generateItemCode() {
-  const { data, error } = await supabaseClient
-    .from("products")
-    .select("item_code")
-    .order("product_id", { ascending: false })
-    .limit(50);
-
-  if (error || !data || data.length === 0) return "ITEM-001";
-
-  let lastValid = null;
-  for (const row of data) {
-    const match = row.item_code && row.item_code.match(/^ITEM-(\d+)$/);
-    if (match) {
-      lastValid = parseInt(match[1]);
-      break;
+    function toast(msg,type='info'){
+      els.toast.textContent = msg;
+      els.toast.className = 'toast ' + type;
+      clearTimeout(window.__toastTimer);
+      window.__toastTimer = setTimeout(()=>{ els.toast.className='toast'; }, 3200);
     }
-  }
-  if (!lastValid) return "ITEM-001";
-  const nextNum = lastValid + 1;
-  return `ITEM-${String(nextNum).padStart(3, "0")}`;
-}
+    function status(msg){ els.statusText.textContent = msg; }
 
-document.addEventListener("DOMContentLoaded", async () => {
-  if (!itemCodeInput.value) {
-    itemCodeInput.value = await generateItemCode();
-  }
-  loadProducts();
-});
+    function getVal(key){ return f[key].value.trim(); }
+    function setVal(key,val){ f[key].value = val ?? ''; }
 
-// HSN search
-hsnSearch.addEventListener("input", async () => {
-  const term = hsnSearch.value.trim();
-  if (!term) { hsnDropdown.innerHTML = ""; return; }
-  const { data, error } = await supabaseClient
-    .from("hsn_codes")
-    .select("*")
-    .or(`hsn_code.ilike.%${term}%,description.ilike.%${term}%`)
-    .limit(20);
-  if (error) return console.error(error);
-  hsnDropdown.innerHTML = "";
-  data.forEach(h => {
-    const opt = document.createElement("option");
-    opt.value = h.hsn_id;
-    opt.textContent = `${h.hsn_code} — ${h.description} (GST ${h.gst_percent}%)`;
-    hsnDropdown.appendChild(opt);
-  });
-});
-
-// HSN change → load GST%
-hsnDropdown.addEventListener("change", async () => {
-  const selectedId = hsnDropdown.value;
-  if (!selectedId) return;
-  gstPercentInput.value = "…";
-  const { data, error } = await supabaseClient
-    .from("hsn_codes")
-    .select("*")
-    .eq("hsn_id", selectedId)
-    .single();
-  if (error || !data) {
-    gstPercentInput.value = "";
-    console.error(error);
-    return;
-  }
-  currentHSN = data;
-  gstPercentInput.value = parseFloat(data.gst_percent).toFixed(2);
-});
-
-// Pricing rules
-purchasePrice.addEventListener("input", () => {
-  const gst = toNum(gstPercentInput.value);
-  const base = toNum(purchasePrice.value);
-  purchasePriceGST.value = addGST(base, gst);
-  landingPriceGST.value = purchasePriceGST.value;
-});
-purchasePriceGST.addEventListener("input", () => {
-  const gst = toNum(gstPercentInput.value);
-  const gross = toNum(purchasePriceGST.value);
-  const base = removeGST(gross, gst);
-  purchasePrice.value = base;
-  landingPriceGST.value = purchasePriceGST.value;
-});
-
-// Retail logic (percent → Retail+GST)
-retailPricePercent.addEventListener("input", () => {
-  const baseWithGST = toNum(landingPriceGST.value);
-  const percent = toNum(retailPricePercent.value);
-  retailPriceGST.value = +(baseWithGST + (baseWithGST * percent / 100)).toFixed(2);
-  const gst = toNum(gstPercentInput.value);
-  retailPrice.value = removeGST(toNum(retailPriceGST.value), gst);
-});
-retailPrice.addEventListener("input", () => {
-  const gst = toNum(gstPercentInput.value);
-  retailPriceGST.value = addGST(toNum(retailPrice.value), gst);
-});
-retailPriceGST.addEventListener("input", () => {
-  const gst = toNum(gstPercentInput.value);
-  retailPrice.value = removeGST(toNum(retailPriceGST.value), gst);
-});
-
-// Wholesale logic (percent → Wholesale+GST)
-wholesalePricePercent.addEventListener("input", () => {
-  const baseWithGST = toNum(landingPriceGST.value);
-  const percent = toNum(wholesalePricePercent.value);
-  wholesalePriceGST.value = +(baseWithGST + (baseWithGST * percent / 100)).toFixed(2);
-  const gst = toNum(gstPercentInput.value);
-  wholesalePrice.value = removeGST(toNum(wholesalePriceGST.value), gst);
-});
-wholesalePrice.addEventListener("input", () => {
-  const gst = toNum(gstPercentInput.value);
-  wholesalePriceGST.value = addGST(toNum(wholesalePrice.value), gst);
-});
-wholesalePriceGST.addEventListener("input", () => {
-  const gst = toNum(gstPercentInput.value);
-  wholesalePrice.value = removeGST(toNum(wholesalePriceGST.value), gst);
-});
-
-// Special logic (percent → Special+GST)
-specialPricePercent.addEventListener("input", () => {
-  const baseWithGST = toNum(landingPriceGST.value);
-  const percent = toNum(specialPricePercent.value);
-  specialPriceGST.value = +(baseWithGST + (baseWithGST * percent / 100)).toFixed(2);
-  const gst = toNum(gstPercentInput.value);
-  specialPrice.value = removeGST(toNum(specialPriceGST.value), gst);
-});
-specialPrice.addEventListener("input", () => {
-  const gst = toNum(gstPercentInput.value);
-  specialPriceGST.value = addGST(toNum(specialPrice.value), gst);
-});
-specialPriceGST.addEventListener("input", () => {
-  const gst = toNum(gstPercentInput.value);
-  specialPrice.value = removeGST(toNum(specialPriceGST.value), gst);
-});
-
-// Load products
-async function loadProducts() {
-  const { data, error } = await supabaseClient
-    .from("products")
-    .select("*, hsn_codes(hsn_code)")
-    .order("product_id", { ascending: true });
-  if (error) return showBanner("Error loading products: " + error.message, "error");
-  renderProducts(data);
-}
-
-function renderProducts(list) {
-  tableBody.innerHTML = "";
-  list.forEach(p => {
-    const row = document.createElement("tr");
-    row.innerHTML = `
-      <td><input type="checkbox" class="rowSelect" value="${p.product_id}"></td>
-      <td>${p.item_code}</td>
-      <td ${bulkEditEnabled ? 'contenteditable="true"' : ''} data-field="item_name" data-id="${p.product_id}">${p.item_name}</td>
-      <td>${p.hsn_codes ? p.hsn_codes.hsn_code : ""}</td>
-      <td ${bulkEditEnabled ? 'contenteditable="true"' : ''} data-field="purchase_price_gst" data-id="${p.product_id}">${p.purchase_price_gst}</td>
-      <td ${bulkEditEnabled ? 'contenteditable="true"' : ''} data-field="landing_price_gst" data-id="${p.product_id}">${p.landing_price_gst}</td>
-      <td ${bulkEditEnabled ? 'contenteditable="true"' : ''} data-field="retail_price_gst" data-id="${p.product_id}">${p.retail_price_gst}</td>
-      <td ${bulkEditEnabled ? 'contenteditable="true"' : ''} data-field="wholesale_price_gst" data-id="${p.product_id}">${p.wholesale_price_gst}</td>
-      <td ${bulkEditEnabled ? 'contenteditable="true"' : ''} data-field="special_price_gst" data-id="${p.product_id}">${p.special_price_gst}</td>
-      <td ${bulkEditEnabled ? 'contenteditable="true"' : ''} data-field="department" data-id="${p.product_id}">${p.department}</td>
-      <td>${p.online_offline}</td>
-      <td>${p.image_url ? `<img src="${p.image_url}" width="50">` : ""}</td>
-      <td>
-        <button onclick="editProduct(${p.product_id})">Edit</button>
-        <button onclick="deleteProduct(${p.product_id})">Delete</button>
-      </td>
-    `;
-    tableBody.appendChild(row);
-  });
-}
-
-// ✅ Save product
-form.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const product = {
-    item_code: itemCodeInput.value.trim(),
-    item_name: document.getElementById("itemName").value.trim(),
-    hsn_id: hsnDropdown.value || null,
-    purchase_price: toNum(purchasePrice.value),
-    purchase_price_gst: toNum(purchasePriceGST.value),
-    landing_price_gst: toNum(landingPriceGST.value),
-    retail_price: toNum(retailPrice.value),
-    retail_price_gst: toNum(retailPriceGST.value),
-    wholesale_price: toNum(wholesalePrice.value),
-    wholesale_price_gst: toNum(wholesalePriceGST.value),
-    special_price: toNum(specialPrice.value),
-    special_price_gst: toNum(specialPriceGST.value),
-    department: document.getElementById("department").value.trim(),
-    online_offline: document.getElementById("onlineOffline").value,
-    image_url: "" // handle image upload separately
-  };
-
-  try {
-    if (editingId) {
-      const { error } = await supabaseClient.from("products").update(product).eq("product_id", editingId);
-      if (error) throw error;
-      showBanner("Product updated successfully!", "success");
-    } else {
-      const { error } = await supabaseClient.from("products").insert([product]);
-      if (error) throw error;
-      showBanner("Product added successfully!", "success");
+    function itemPayload(){
+      return {
+        item_code: getVal('itemCode').toUpperCase(),
+        item_name: getVal('itemName').toUpperCase(),
+        barcode: getVal('barcode') || null,
+        hsn_code: getVal('hsnCode') || null,
+        gst_percent: n(getVal('gstPercent')),
+        purchase_price: n(getVal('purchasePrice')),
+        purchase_price_gst: n(getVal('purchasePriceGst')),
+        landing: n(getVal('landing')),
+        price1_percent: n(getVal('price1Percent')),
+        price1: n(getVal('price1')),
+        price1_gst: n(getVal('price1Gst')),
+        price2_percent: n(getVal('price2Percent')),
+        price2: n(getVal('price2')),
+        price2_gst: n(getVal('price2Gst')),
+        price3_percent: n(getVal('price3Percent')),
+        price3: n(getVal('price3')),
+        price3_gst: n(getVal('price3Gst')),
+        department: getVal('department') || 'ALL',
+        minimum_qty: n(getVal('minQty')),
+        maximum_qty: n(getVal('maxQty'))
+      };
     }
 
-    form.reset();
-    editingId = null;
-    if (!itemCodeInput.value) {
-      itemCodeInput.value = await generateItemCode();
+    function clearForm(){
+      editingDbId = null;
+      els.form.reset();
+      setVal('department','ALL');
+      els.formTitle.textContent = 'Add / Edit Stock Item';
+      document.getElementById('saveBtn').textContent = '💾 Save Item';
+      f.itemCode.focus();
     }
-    document.getElementById("saveBtn").textContent = "Save Product";
-    loadProducts();
-  } catch (err) {
-    showBanner("Error saving product: " + err.message, "error");
-  }
-});
 
-// ✅ Edit product
-window.editProduct = async function(id) {
-  const { data, error } = await supabaseClient.from("products").select("*").eq("product_id", id).single();
-  if (error) {
-    showBanner("Error loading product: " + error.message, "error");
-    return;
-  }
-
-  editingId = id;
-  itemCodeInput.value = data.item_code;
-  document.getElementById("itemName").value = data.item_name;
-  purchasePrice.value = data.purchase_price;
-  purchasePriceGST.value = data.purchase_price_gst;
-  landingPriceGST.value = data.landing_price_gst;
-  retailPrice.value = data.retail_price;
-  retailPriceGST.value = data.retail_price_gst;
-  wholesalePrice.value = data.wholesale_price;
-  wholesalePriceGST.value = data.wholesale_price_gst;
-  specialPrice.value = data.special_price;
-  specialPriceGST.value = data.special_price_gst;
-  document.getElementById("department").value = data.department;
-  document.getElementById("onlineOffline").value = data.online_offline;
-  document.getElementById("saveBtn").textContent = "Update Product";
-};
-
-// ✅ Delete product
-window.deleteProduct = async function(id) {
-  if (!confirm("Are you sure you want to delete this product?")) return;
-  const { error } = await supabaseClient.from("products").delete().eq("product_id", id);
-  if (error) {
-    showBanner("Error deleting product: " + error.message, "error");
-  } else {
-    showBanner("Product deleted successfully!", "success");
-    loadProducts();
-  }
-};
-
-// ✅ Row selection highlight
-tableBody.addEventListener("change", (e) => {
-  if (e.target.classList.contains("rowSelect")) {
-    const row = e.target.closest("tr");
-    if (e.target.checked) {
-      row.classList.add("selected");
-    } else {
-      row.classList.remove("selected");
+    function fillForm(p){
+      editingDbId = p.id;
+      setVal('itemCode', p.item_code); setVal('itemName', p.item_name); setVal('barcode', p.barcode); setVal('department', p.department || 'ALL');
+      setVal('hsnCode', p.hsn_code); setVal('gstPercent', p.gst_percent);
+      setVal('purchasePrice', p.purchase_price); setVal('purchasePriceGst', p.purchase_price_gst); setVal('landing', p.landing);
+      setVal('price1Percent', p.price1_percent); setVal('price1', p.price1); setVal('price1Gst', p.price1_gst);
+      setVal('price2Percent', p.price2_percent); setVal('price2', p.price2); setVal('price2Gst', p.price2_gst);
+      setVal('price3Percent', p.price3_percent); setVal('price3', p.price3); setVal('price3Gst', p.price3_gst);
+      setVal('minQty', p.minimum_qty ?? p.min_qty ?? ''); setVal('maxQty', p.maximum_qty ?? p.max_qty ?? '');
+      els.hsnSearch.value = p.hsn_code || '';
+      els.formTitle.textContent = 'Editing: ' + (p.item_code || 'Item');
+      document.getElementById('saveBtn').textContent = '✅ Update Item';
+      window.scrollTo({top:0,behavior:'smooth'});
     }
-  }
-});
 
-// ✅ Select all toggle
-document.getElementById("selectAll").addEventListener("change", (e) => {
-  const checked = e.target.checked;
-  document.querySelectorAll(".rowSelect").forEach(cb => {
-    cb.checked = checked;
-    const row = cb.closest("tr");
-    if (checked) {
-      row.classList.add("selected");
-    } else {
-      row.classList.remove("selected");
+    async function loadHSN(){
+      const {data,error} = await sb.from('hsn_codes').select('hsn_id,hsn_code,description,gst_percent').order('hsn_code',{ascending:true});
+      if(error){ console.warn(error); toast('HSN loading failed: ' + error.message,'warn'); return; }
+      allHSN = data || [];
     }
-  });
-});
 
-// ✅ Delete multiple items
-document.getElementById("deleteBulkBtn").addEventListener("click", async () => {
-  const selected = Array.from(document.querySelectorAll(".rowSelect:checked")).map(cb => cb.value);
-  if (selected.length === 0) {
-    showBanner("No products selected.", "warning");
-    return;
-  }
-  if (!confirm(`Delete ${selected.length} products?`)) return;
+    async function loadStock(){
+      status('Loading stock items...');
+      const {data,error} = await sb.from('stock_items')
+        .select('id,item_code,item_name,barcode,hsn_code,gst_percent,purchase_price,purchase_price_gst,landing,price1_percent,price1,price1_gst,price2_percent,price2,price2_gst,price3_percent,price3,price3_gst,department,minimum_qty,maximum_qty')
+        .order('item_code',{ascending:true});
+      if(error){ toast('Stock loading failed: ' + error.message,'error'); status('Load failed'); return; }
+      allItems = data || [];
+      els.loadedCount.textContent = allItems.length;
+      applyFilters();
+      status('Loaded successfully');
+    }
 
-  const { error } = await supabaseClient.from("products").delete().in("product_id", selected);
-  if (error) {
-    showBanner("Error deleting products: " + error.message, "error");
-  } else {
-    showBanner("Products deleted successfully!", "success");
-    loadProducts();
-  }
-});
+    function searchable(p){ return `${p.item_code||''} ${p.item_name||''} ${p.hsn_code||''}`.toLowerCase(); }
+    function smartMatch(p,term){
+      if(!term) return true;
+      const hay = searchable(p);
+      return term.toLowerCase().split(/\s+/).filter(Boolean).every(x => hay.includes(x));
+    }
+    function missingOk(p,mode){
+      if(mode === 'ALL') return true;
+      if(mode === 'HSN') return !p.hsn_code;
+      if(mode === 'GST') return !n(p.gst_percent);
+      if(mode === 'PURCHASE') return !n(p.purchase_price) && !n(p.purchase_price_gst);
+      if(mode === 'LANDING') return !n(p.landing);
+      if(mode === 'PRICE1') return !n(p.price1_gst);
+      if(mode === 'PRICE2') return !n(p.price2_gst);
+      if(mode === 'PRICE3') return !n(p.price3_gst);
+      return true;
+    }
 
-// ✅ Bulk upload (CSV parsing)
-document.getElementById("addBulkBtn").addEventListener("click", () => {
-  document.getElementById("bulkUpload").click();
-});
-document.getElementById("bulkUpload").addEventListener("change", async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = async (evt) => {
-    const text = evt.target.result;
-    const rows = text.split("\n").map(r => r.split(","));
-    const products = [];
-    for (let i = 1; i < rows.length; i++) {
-      const r = rows[i];
-      if (!r || r.length < 5) continue;
-      const itemCode = await generateItemCode();
-      products.push({
-        item_code: itemCode,
-        item_name: r[0],
-        hsn_id: null,
-        purchase_price: toNum(r[2]),
-        purchase_price_gst: toNum(r[3]),
-        landing_price_gst: toNum(r[4]),
-        retail_price: toNum(r[5]),
-        retail_price_gst: toNum(r[6]),
-        wholesale_price: toNum(r[7]),
-        wholesale_price_gst: toNum(r[8]),
-        special_price: toNum(r[9]),
-        special_price_gst: toNum(r[10]),
-        department: r[11],
-        online_offline: r[12],
-        image_url: ""
+    function applyFilters(){
+      const term = els.searchBox.value.trim();
+      const dept = els.departmentFilter.value;
+      const miss = els.missingFilter.value;
+      let list = allItems.filter(p => smartMatch(p,term) && (dept === 'ALL' || (p.department || 'ALL') === dept) && missingOk(p,miss));
+      const lim = els.limitFilter.value;
+      if(lim !== 'ALL') list = list.slice(0, parseInt(lim,10));
+      filteredItems = list;
+      renderTable(list);
+    }
+
+    function renderTable(list){
+      const html = list.map(p => `
+        <tr data-id="${p.id}">
+          <td class="select-col"><input type="checkbox" class="rowCheck" value="${p.id}"></td>
+          <td class="code">${esc(p.item_code)}</td>
+          <td ${cellEdit('item_name',p)}>${esc(p.item_name)}</td>
+          <td ${cellEdit('hsn_code',p)}>${esc(p.hsn_code)}</td>
+          <td class="num" ${cellEditRaw('gst_percent',p)}>${money(p.gst_percent)}</td>
+          <td class="num" ${cellEditRaw('purchase_price',p)}>${money(p.purchase_price)}</td>
+          <td class="num" ${cellEditRaw('purchase_price_gst',p)}>${money(p.purchase_price_gst)}</td>
+          <td class="num" ${cellEditRaw('landing',p)}>${money(p.landing)}</td>
+          <td class="num" ${cellEditRaw('price1_percent',p)}>${money(p.price1_percent)}</td>
+          <td class="num" ${cellEditRaw('price1_gst',p)}>${money(p.price1_gst)}</td>
+          <td class="num" ${cellEditRaw('price2_percent',p)}>${money(p.price2_percent)}</td>
+          <td class="num" ${cellEditRaw('price2_gst',p)}>${money(p.price2_gst)}</td>
+          <td class="num" ${cellEditRaw('price3_percent',p)}>${money(p.price3_percent)}</td>
+          <td class="num" ${cellEditRaw('price3_gst',p)}>${money(p.price3_gst)}</td>
+          <td ${cellEdit('department',p)}>${esc(p.department || 'ALL')}</td>
+          <td class="num" ${cellEditRaw('minimum_qty',p)}>${money(p.minimum_qty)}</td>
+          <td class="num" ${cellEditRaw('maximum_qty',p)}>${money(p.maximum_qty)}</td>
+          <td><div class="row-actions"><button class="mini-btn primary" onclick="editById(${p.id})">Edit</button><button class="mini-btn danger" onclick="deleteById(${p.id})">Delete</button></div></td>
+        </tr>`).join('');
+      els.stockBody.innerHTML = html || `<tr><td colspan="18" class="muted" style="text-align:center;padding:28px">No items found</td></tr>`;
+      els.showingCount.textContent = list.length;
+      updateChangedCount();
+    }
+    function cellEdit(field,p){ return bulkMode ? `contenteditable="true" data-field="${field}" data-id="${p.id}" class="editable-cell"` : ''; }
+    function cellEditRaw(field,p){ return bulkMode ? `contenteditable="true" data-field="${field}" data-id="${p.id}" class="editable-cell"` : ''; }
+
+    window.editById = function(id){
+      const p = allItems.find(x => String(x.id) === String(id));
+      if(p) fillForm(p);
+    }
+
+    window.deleteById = async function(id){
+      const p = allItems.find(x => String(x.id) === String(id));
+      if(!confirm(`Delete item ${p?.item_code || id}?`)) return;
+      const {error} = await sb.from('stock_items').delete().eq('id', id);
+      if(error){ toast('Delete failed: ' + error.message,'error'); return; }
+      toast('Item deleted','success');
+      await loadStock();
+    }
+
+    async function saveItem(e){
+      e.preventDefault();
+      const payload = itemPayload();
+      if(!payload.item_code || !payload.item_name){ toast('Item code and item name required','warn'); return; }
+      try{
+        let res;
+        if(editingDbId){
+          res = await sb.from('stock_items').update(payload).eq('id', editingDbId);
+        }else{
+          res = await sb.from('stock_items').insert([payload]);
+        }
+        if(res.error) throw res.error;
+        toast(editingDbId ? 'Item updated successfully' : 'Item saved successfully','success');
+        clearForm();
+        await loadStock();
+      }catch(err){ toast('Save failed: ' + err.message,'error'); }
+    }
+
+    function wirePriceLogic(){
+      f.purchasePrice.addEventListener('input',()=>{
+        const gst=n(f.gstPercent.value); f.purchasePriceGst.value = addGST(f.purchasePrice.value,gst); if(!n(f.landing.value)) f.landing.value = f.purchasePriceGst.value;
+      });
+      f.purchasePriceGst.addEventListener('input',()=>{
+        const gst=n(f.gstPercent.value); f.purchasePrice.value = removeGST(f.purchasePriceGst.value,gst); if(!n(f.landing.value)) f.landing.value = f.purchasePriceGst.value;
+      });
+      f.gstPercent.addEventListener('input',()=>{
+        if(n(f.purchasePrice.value)) f.purchasePriceGst.value = addGST(f.purchasePrice.value,f.gstPercent.value);
+        ['price1','price2','price3'].forEach(k=>{ if(n(f[k].value)) f[k+'Gst'].value = addGST(f[k].value,f.gstPercent.value); });
+      });
+      [['price1Percent','price1','price1Gst'],['price2Percent','price2','price2Gst'],['price3Percent','price3','price3Gst']].forEach(([pct,base,gross])=>{
+        f[pct].addEventListener('input',()=>{ f[gross].value = withPercent(f.landing.value,f[pct].value); f[base].value = removeGST(f[gross].value,f.gstPercent.value); });
+        f[base].addEventListener('input',()=>{ f[gross].value = addGST(f[base].value,f.gstPercent.value); });
+        f[gross].addEventListener('input',()=>{ f[base].value = removeGST(f[gross].value,f.gstPercent.value); });
       });
     }
-    const { error } = await supabaseClient.from("products").insert(products);
-    if (error) {
-      showBanner("Error bulk inserting: " + error.message, "error");
-    } else {
-      showBanner("Bulk products added successfully!", "success");
-      loadProducts();
+
+    function positionSuggest(){
+      const r = els.hsnSearch.getBoundingClientRect();
+      els.hsnSuggest.style.left = r.left + 'px'; els.hsnSuggest.style.top = (r.bottom + 4) + 'px'; els.hsnSuggest.style.width = r.width + 'px';
     }
-  };
-  reader.readAsText(file);
-});
-
-// ✅ Bulk edit mode toggle
-document.getElementById("enableBulkEditBtn").addEventListener("click", () => {
-  bulkEditEnabled = true;
-  document.getElementById("enableBulkEditBtn").style.display = "none";
-  document.getElementById("disableBulkEditBtn").style.display = "inline-block";
-  document.getElementById("saveAllBtn").style.display = "inline-block";
-  document.getElementById("discardBtn").style.display = "inline-block";
-  loadProducts();
-});
-document.getElementById("disableBulkEditBtn").addEventListener("click", () => {
-  bulkEditEnabled = false;
-  pendingChanges = {};
-  document.getElementById("disableBulkEditBtn").style.display = "none";
-  document.getElementById("saveAllBtn").style.display = "none";
-  document.getElementById("discardBtn").style.display = "none";
-  document.getElementById("enableBulkEditBtn").style.display = "inline-block";
-  loadProducts();
-});
-
-// ✅ Track edits and highlight cells
-tableBody.addEventListener("input", (e) => {
-  if (bulkEditEnabled && e.target.hasAttribute("contenteditable")) {
-    const id = e.target.dataset.id;
-    const field = e.target.dataset.field;
-    const value = e.target.textContent.trim();
-    if (!pendingChanges[id]) pendingChanges[id] = {};
-    pendingChanges[id][field] = value;
-    e.target.classList.add("edited-cell");
-  }
-});
-
-// ✅ Save all pending changes
-document.getElementById("saveAllBtn").addEventListener("click", async () => {
-  const updates = Object.entries(pendingChanges);
-  if (updates.length === 0) {
-    showBanner("No changes to save.", "warning");
-    return;
-  }
-  try {
-    for (const [id, fields] of updates) {
-      const { error } = await supabaseClient.from("products").update(fields).eq("product_id", id);
-      if (error) throw error;
+    function showHSNSuggest(){
+      const term = els.hsnSearch.value.trim().toLowerCase();
+      if(!term){ els.hsnSuggest.style.display='none'; return; }
+      const list = allHSN.filter(h => `${h.hsn_code||''} ${h.description||''}`.toLowerCase().includes(term)).slice(0,40);
+      if(!list.length){ els.hsnSuggest.innerHTML='<div class="suggest-item muted">No HSN found</div>'; }
+      else{
+        els.hsnSuggest.innerHTML = list.map((h,i)=>`<div class="suggest-item" data-idx="${i}" data-code="${esc(h.hsn_code)}" data-gst="${esc(h.gst_percent)}"><div class="suggest-title">${esc(h.hsn_code)} · GST ${esc(h.gst_percent)}%</div><div class="suggest-sub">${esc(h.description)}</div></div>`).join('');
+      }
+      positionSuggest(); els.hsnSuggest.style.display='block';
     }
-    showBanner("All changes saved successfully!", "success");
-    pendingChanges = {};
-    document.querySelectorAll(".edited-cell").forEach(cell => cell.classList.remove("edited-cell"));
-    loadProducts();
-  } catch (err) {
-    showBanner("Error saving changes: " + err.message, "error");
-  }
-});
 
-// ✅ Discard all pending changes
-document.getElementById("discardBtn").addEventListener("click", () => {
-  if (!confirm("Discard all unsaved changes?")) return;
-  pendingChanges = {};
-  document.querySelectorAll(".edited-cell").forEach(cell => cell.classList.remove("edited-cell"));
-  loadProducts();
-  showBanner("All unsaved changes discarded.", "warning");
-});
+    function updateChangedCount(){ els.changedCount.textContent = Object.keys(pending).length; }
+    function setBulkMode(on){
+      bulkMode = on; pending = {};
+      document.getElementById('saveBulkBtn').style.display = on ? 'inline-block' : 'none';
+      document.getElementById('cancelBulkBtn').style.display = on ? 'inline-block' : 'none';
+      document.getElementById('bulkEditBtn').textContent = on ? 'Bulk Edit ON' : '✎ Bulk Edit';
+      renderTable(filteredItems);
+      toast(on ? 'Bulk edit enabled. Edit cells and click Save Bulk.' : 'Bulk edit cancelled', on ? 'info' : 'warn');
+    }
+
+    async function saveBulk(){
+      const entries = Object.entries(pending);
+      if(!entries.length){ toast('No bulk changes to save','warn'); return; }
+      if(!confirm(`Save ${entries.length} changed item(s)?`)) return;
+      try{
+        for(const [id,fields] of entries){
+          const clean = {};
+          for(const [k,v] of Object.entries(fields)){
+            if(['gst_percent','purchase_price','purchase_price_gst','landing','price1_percent','price1_gst','price2_percent','price2_gst','price3_percent','price3_gst','minimum_qty','maximum_qty'].includes(k)) clean[k]=n(v);
+            else clean[k]=String(v||'').trim().toUpperCase();
+          }
+          const {error} = await sb.from('stock_items').update(clean).eq('id', id);
+          if(error) throw error;
+        }
+        toast('Bulk changes saved','success'); setBulkMode(false); await loadStock();
+      }catch(err){ toast('Bulk save failed: ' + err.message,'error'); }
+    }
+
+    async function deleteSelected(){
+      const ids = Array.from(document.querySelectorAll('.rowCheck:checked')).map(x=>x.value);
+      if(!ids.length){ toast('Select items first','warn'); return; }
+      if(!confirm(`Delete ${ids.length} selected item(s)?`)) return;
+      const {error} = await sb.from('stock_items').delete().in('id', ids);
+      if(error){ toast('Delete selected failed: ' + error.message,'error'); return; }
+      toast('Selected items deleted','success'); await loadStock();
+    }
+
+    async function init(){
+      try{
+        if(typeof requirePageAccess === 'function'){
+          const ok = await requirePageAccess('purchase');
+          if(!ok) return;
+        }
+      }catch(e){ console.warn(e); }
+      wirePriceLogic();
+      await loadHSN();
+      await loadStock();
+      f.itemCode.focus();
+    }
+
+    els.form.addEventListener('submit', saveItem);
+    document.getElementById('clearBtn').addEventListener('click', clearForm);
+    document.getElementById('resetBtn').addEventListener('click', clearForm);
+    document.getElementById('newBtn').addEventListener('click', clearForm);
+    document.getElementById('refreshBtn').addEventListener('click', loadStock);
+    document.getElementById('bulkEditBtn').addEventListener('click',()=>setBulkMode(!bulkMode));
+    document.getElementById('cancelBulkBtn').addEventListener('click',()=>setBulkMode(false));
+    document.getElementById('saveBulkBtn').addEventListener('click', saveBulk);
+    document.getElementById('deleteSelectedBtn').addEventListener('click', deleteSelected);
+    document.getElementById('selectAll').addEventListener('change', e => document.querySelectorAll('.rowCheck').forEach(cb => {cb.checked=e.target.checked; cb.closest('tr')?.classList.toggle('selected', cb.checked)}));
+
+    ['searchBox','departmentFilter','missingFilter','limitFilter'].forEach(id=>{
+      document.getElementById(id).addEventListener('input',()=>{ clearTimeout(searchTimer); searchTimer=setTimeout(applyFilters,90); });
+      document.getElementById(id).addEventListener('change',applyFilters);
+    });
+
+    els.stockBody.addEventListener('dblclick', e=>{
+      const tr=e.target.closest('tr'); if(!tr) return; editById(tr.dataset.id);
+    });
+    els.stockBody.addEventListener('change', e=>{
+      if(e.target.classList.contains('rowCheck')) e.target.closest('tr')?.classList.toggle('selected', e.target.checked);
+    });
+    els.stockBody.addEventListener('input', e=>{
+      const cell = e.target.closest('[contenteditable][data-field]'); if(!cell) return;
+      const id=cell.dataset.id, field=cell.dataset.field, value=cell.textContent.trim();
+      if(!pending[id]) pending[id]={}; pending[id][field]=value; cell.classList.add('changed'); updateChangedCount();
+    });
+
+    els.hsnSearch.addEventListener('input', showHSNSuggest);
+    els.hsnSearch.addEventListener('focus', showHSNSuggest);
+    els.hsnSuggest.addEventListener('click', e=>{
+      const item = e.target.closest('.suggest-item[data-code]'); if(!item) return;
+      f.hsnCode.value = item.dataset.code; f.gstPercent.value = item.dataset.gst; els.hsnSearch.value = item.dataset.code; els.hsnSuggest.style.display='none';
+      f.gstPercent.dispatchEvent(new Event('input'));
+    });
+    document.addEventListener('click', e=>{ if(!e.target.closest('#hsnSearch') && !e.target.closest('#hsnSuggest')) els.hsnSuggest.style.display='none'; });
+    window.addEventListener('resize', positionSuggest);
+
+    document.addEventListener('keydown', e=>{
+      if(e.key === 'Escape'){ clearForm(); }
+      if((e.ctrlKey || e.metaKey) && e.key.toLowerCase()==='s'){ e.preventDefault(); els.form.requestSubmit(); }
+    });
+
+    document.addEventListener('DOMContentLoaded', init);
   </script>
 </body>
 </html>

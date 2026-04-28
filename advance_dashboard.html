@@ -2,14 +2,13 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>VAJRA - Advance Control</title>
+<title>VAJRA - Order Control Dashboard</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabaseClient.js"></script>
 <script src="page_permissions.js"></script>
 <script src="common-ui.js"></script>
-
 
 <style>
 :root{
@@ -20,6 +19,8 @@
   --green:#16a34a;
   --red:#dc2626;
   --amber:#d97706;
+  --purple:#7c3aed;
+  --orange:#ea580c;
   --line:#e5e7eb;
   --muted:#64748b;
 }
@@ -46,41 +47,30 @@ body{
   flex-wrap:wrap;
   align-items:center;
 }
-h1{margin:0;font-size:22px}
-.sub{font-size:13px;opacity:.85;margin-top:4px}
-.btn{
+h1{margin:0;font-size:22px}.sub{font-size:13px;opacity:.85;margin-top:4px}.btn{
   border:0;
   border-radius:12px;
   padding:9px 13px;
   font-weight:800;
   cursor:pointer;
-}
-.btn-white{background:white;color:#111827}
-.btn-blue{background:var(--blue);color:white}
-.btn-green{background:var(--green);color:white}
-.btn-red{background:var(--red);color:white}
-.btn-dark{background:var(--dark);color:white}
-.main{padding:14px}
-.cards{
+  transition:.18s ease;
+  white-space:nowrap;
+}.btn:hover{transform:translateY(-1px);filter:brightness(1.04)}.btn-white{background:white;color:#111827}.btn-blue{background:var(--blue);color:white}.btn-green{background:var(--green);color:white}.btn-red{background:var(--red);color:white}.btn-dark{background:var(--dark);color:white}.btn-purple{background:var(--purple);color:white}.btn-orange{background:var(--orange);color:white}.main{padding:14px}.cards{
   display:grid;
-  grid-template-columns:repeat(5,1fr);
+  grid-template-columns:repeat(7,1fr);
   gap:12px;
   margin-bottom:14px;
-}
-.card{
+}.card{
   background:white;
   border:1px solid var(--line);
   border-radius:18px;
   padding:14px;
   box-shadow:0 8px 24px rgba(15,23,42,.08);
-}
-.card small{color:var(--muted);font-weight:700}
-.card div{
-  font-size:22px;
+}.card small{color:var(--muted);font-weight:700}.card div{
+  font-size:20px;
   font-weight:950;
   margin-top:7px;
-}
-.toolbar{
+}.toolbar{
   background:white;
   border:1px solid var(--line);
   border-radius:18px;
@@ -90,27 +80,23 @@ h1{margin:0;font-size:22px}
   flex-wrap:wrap;
   margin-bottom:14px;
   box-shadow:0 8px 24px rgba(15,23,42,.06);
-}
-.input{
+}.input{
   padding:10px 12px;
   border:1px solid var(--line);
   border-radius:12px;
   min-width:160px;
   font-size:14px;
-}
-.tablebox{
+}.tablebox{
   background:white;
   border:1px solid var(--line);
   border-radius:18px;
   overflow:auto;
   box-shadow:0 8px 24px rgba(15,23,42,.08);
-}
-table{
+}table{
   width:100%;
-  min-width:1200px;
+  min-width:1320px;
   border-collapse:collapse;
-}
-th{
+}th{
   background:#f1f5f9;
   padding:11px;
   font-size:12px;
@@ -119,38 +105,26 @@ th{
   position:sticky;
   top:0;
   z-index:5;
-}
-td{
+}td{
   padding:11px;
   border-top:1px solid var(--line);
   font-size:14px;
-}
-tr:hover{background:#f8fafc}
-.money{font-weight:950;white-space:nowrap}
-.badge{
+}tr:hover{background:#f8fafc}.money{font-weight:950;white-space:nowrap}.badge{
   padding:5px 9px;
   border-radius:999px;
   font-size:12px;
   font-weight:900;
   display:inline-block;
-}
-.fresh{background:#dcfce7;color:#166534}
-.warn{background:#fef3c7;color:#92400e}
-.danger{background:#fee2e2;color:#991b1b}
-.pending{background:#dbeafe;color:#1d4ed8}
-.actions{
+  white-space:nowrap;
+}.fresh{background:#dcfce7;color:#166534}.warn{background:#fef3c7;color:#92400e}.danger{background:#fee2e2;color:#991b1b}.pending{background:#dbeafe;color:#1d4ed8}.fullpaid{background:#dcfce7;color:#166534;border:1px solid #86efac}.credit{background:#fee2e2;color:#991b1b;border:1px solid #fecaca}.partial{background:#fef3c7;color:#92400e;border:1px solid #fde68a}.actions{
   display:flex;
   gap:6px;
   flex-wrap:wrap;
-}
-.empty{
+}.empty{
   text-align:center;
   padding:35px;
   color:var(--muted);
-}
-.oldrow{background:#fff1f2}
-.midrow{background:#fffbeb}
-.modal-bg{
+}.oldrow{background:#fff1f2}.midrow{background:#fffbeb}.fullpaidrow{background:#ecfdf5}.creditrow{background:#fff1f2}.creditrow td:first-child{border-left:5px solid var(--red)}.fullpaidrow td:first-child{border-left:5px solid var(--green)}.midrow td:first-child{border-left:5px solid var(--amber)}.modal-bg{
   display:none;
   position:fixed;
   inset:0;
@@ -159,47 +133,44 @@ tr:hover{background:#f8fafc}
   align-items:center;
   justify-content:center;
   padding:14px;
-}
-.modal{
+}.modal{
   background:white;
   width:100%;
-  max-width:820px;
+  max-width:860px;
   max-height:90vh;
   overflow:auto;
   border-radius:22px;
   padding:18px;
-}
-.modal-head{
+}.modal-head{
   display:flex;
   justify-content:space-between;
   align-items:center;
   border-bottom:1px solid var(--line);
   padding-bottom:10px;
   margin-bottom:12px;
-}
-.grid{
+}.grid{
   display:grid;
   grid-template-columns:repeat(2,1fr);
   gap:10px;
-}
-.box{
+}.box{
   background:#f8fafc;
   border:1px solid var(--line);
   border-radius:14px;
   padding:12px;
+}.label{font-size:12px;color:var(--muted);font-weight:700}.value{font-weight:950;margin-top:5px}.notice{
+  background:#fff7ed;
+  border:1px solid #fed7aa;
+  color:#9a3412;
+  border-radius:14px;
+  padding:11px 13px;
+  margin-bottom:14px;
+  font-weight:800;
 }
-.label{font-size:12px;color:var(--muted);font-weight:700}
-.value{font-weight:950;margin-top:5px}
-@media(max-width:950px){
-  .cards{grid-template-columns:repeat(2,1fr)}
-}
-@media(max-width:600px){
-  .cards{grid-template-columns:1fr}
-  .input,.toolbar .btn{width:100%}
-  .grid{grid-template-columns:1fr}
-}
+@media(max-width:1300px){.cards{grid-template-columns:repeat(4,1fr)}}
+@media(max-width:950px){.cards{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){.cards{grid-template-columns:1fr}.input,.toolbar .btn{width:100%}.grid{grid-template-columns:1fr}}
 @media print{
-  .toolbar,.actions,.header button,.modal-bg{display:none!important}
+  .toolbar,.actions,.header button,.modal-bg,.notice{display:none!important}
   body{background:white}
   .header{background:white;color:black;box-shadow:none;border-bottom:2px solid black}
   .card,.tablebox{box-shadow:none;border:1px solid black}
@@ -213,8 +184,8 @@ tr:hover{background:#f8fafc}
 <div class="header">
   <div class="headrow">
     <div>
-      <h1>Advance Control Dashboard</h1>
-      <div class="sub">Pending sales order advances, follow-up, conversion and collection control</div>
+      <h1>Order Control Dashboard</h1>
+      <div class="sub">Credit orders + partial advance + fully paid orders not converted to sales bill</div>
     </div>
     <div>
       <button class="btn btn-white" onclick="location.href='dashboard.html'">Dashboard</button>
@@ -226,11 +197,17 @@ tr:hover{background:#f8fafc}
 
 <div class="main">
 
+  <div class="notice">
+    ✅ This page shows ALL unconverted sales orders: 🔴 credit/no payment, 🟡 partial payment, and 🟢 fully paid but not billed.
+  </div>
+
   <div class="cards">
-    <div class="card"><small>Pending Customers</small><div id="cCustomers">0</div></div>
+    <div class="card"><small>Customers</small><div id="cCustomers">0</div></div>
     <div class="card"><small>Order Amount</small><div id="cOrder">₹0</div></div>
     <div class="card"><small>Advance Received</small><div id="cAdvance">₹0</div></div>
     <div class="card"><small>Balance To Collect</small><div id="cBalance">₹0</div></div>
+    <div class="card"><small>Credit / No Payment</small><div id="cCredit">0</div></div>
+    <div class="card"><small>Fully Paid Not Billed</small><div id="cFullPaid">0</div></div>
     <div class="card"><small>Overdue 30+ Days</small><div id="cOverdue">0</div></div>
   </div>
 
@@ -239,8 +216,15 @@ tr:hover{background:#f8fafc}
     <input class="input" type="date" id="fromDate" onchange="loadAdvances()">
     <input class="input" type="date" id="toDate" onchange="loadAdvances()">
 
+    <select class="input" id="paymentFilter" onchange="render()">
+      <option value="ALL">All Unconverted Orders</option>
+      <option value="CREDIT">Credit / No Payment Only</option>
+      <option value="PARTIAL">Partial Payment Only</option>
+      <option value="FULL">Fully Paid Not Billed Only</option>
+    </select>
+
     <select class="input" id="ageFilter" onchange="render()">
-      <option value="ALL">All Pending</option>
+      <option value="ALL">All Age</option>
       <option value="FRESH">Fresh 0-14 Days</option>
       <option value="MID">15-29 Days</option>
       <option value="OLD">Overdue 30+ Days</option>
@@ -282,7 +266,7 @@ tr:hover{background:#f8fafc}
 <div class="modal-bg" id="modal">
   <div class="modal">
     <div class="modal-head">
-      <h2 style="margin:0">Advance Details</h2>
+      <h2 style="margin:0">Order Details</h2>
       <button class="btn btn-red" onclick="closeModal()">Close</button>
     </div>
     <div id="modalBody"></div>
@@ -333,8 +317,8 @@ function money(v){
   });
 }
 
-function safe(v){ return v === null || v === undefined || v === "" ? "-" : v; }
-
+function safe(v){ return v === null || v === undefined || v === "" ? "-" : escapeHtml(v); }
+function rawSafe(v){ return v === null || v === undefined || v === "" ? "-" : v; }
 function val(row,key){ return row?.[CONFIG[key]]; }
 
 function getTotal(row){ return n(val(row,"total")); }
@@ -342,8 +326,17 @@ function getAdvance(row){ return n(val(row,"advance")); }
 
 function getBalance(row){
   const b = val(row,"balance");
-  if(b !== null && b !== undefined && b !== "") return n(b);
+  if(b !== null && b !== undefined && b !== "") return Math.max(0, n(b));
   return Math.max(0, getTotal(row) - getAdvance(row));
+}
+
+function getPaymentType(row){
+  const adv = getAdvance(row);
+  const bal = getBalance(row);
+
+  if(adv <= 0) return "CREDIT";
+  if(bal <= 0) return "FULL";
+  return "PARTIAL";
 }
 
 function ageDays(dateStr){
@@ -353,26 +346,29 @@ function ageDays(dateStr){
   return Math.floor((new Date() - d) / 86400000);
 }
 
-function isPendingAdvance(row){
-  const advance = getAdvance(row);
-  const balance = getBalance(row);
+function isUnconvertedOrder(row){
   const converted = row[CONFIG.converted];
   const status = String(row[CONFIG.status] || "").toLowerCase();
 
-  if(advance <= 0) return false;
-  if(balance <= 0) return false;
+  // Must NOT be converted to sales bill.
   if(converted === true) return false;
+
+  // Hide cancelled/closed/completed/converted rows.
   if(status.includes("closed")) return false;
   if(status.includes("completed")) return false;
   if(status.includes("cancel")) return false;
   if(status.includes("converted")) return false;
 
+  // ✅ Includes all active unconverted orders:
+  // 1) Credit / no payment
+  // 2) Partial payment
+  // 3) Fully paid but not converted to bill
   return true;
 }
 
 async function loadAdvances(){
   const tbody = document.getElementById("tbody");
-  tbody.innerHTML = `<tr><td colspan="11" class="empty">Loading advance orders...</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="11" class="empty">Loading unconverted sales orders...</td></tr>`;
 
   const from = document.getElementById("fromDate").value;
   const to = document.getElementById("toDate").value;
@@ -389,11 +385,11 @@ async function loadAdvances(){
 
   if(error){
     console.error(error);
-    tbody.innerHTML = `<tr><td colspan="11" class="empty">Error loading advance data<br>${error.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="11" class="empty">Error loading order control data<br>${escapeHtml(error.message)}</td></tr>`;
     return;
   }
 
-  allRows = (data || []).filter(isPendingAdvance);
+  allRows = (data || []).filter(isUnconvertedOrder);
   fillSalesmanFilter();
   render();
 }
@@ -405,7 +401,7 @@ function fillSalesmanFilter(){
   const names = [...new Set(allRows.map(r => String(val(r,"salesman") || "").trim()).filter(Boolean))];
 
   sel.innerHTML = `<option value="ALL">All Salesman</option>` +
-    names.map(x => `<option value="${x}">${x}</option>`).join("");
+    names.map(x => `<option value="${escapeHtml(x)}">${escapeHtml(x)}</option>`).join("");
 
   sel.value = names.includes(old) ? old : "ALL";
 }
@@ -413,6 +409,7 @@ function fillSalesmanFilter(){
 function render(){
   const q = document.getElementById("searchBox").value.toLowerCase().trim();
   const ageFilter = document.getElementById("ageFilter").value;
+  const paymentFilter = document.getElementById("paymentFilter").value;
   const salesman = document.getElementById("salesmanFilter").value;
 
   filteredRows = allRows.filter(row => {
@@ -424,34 +421,46 @@ function render(){
     ].join(" ").toLowerCase();
 
     const age = ageDays(val(row,"date"));
+    const type = getPaymentType(row);
 
     let ageOk = true;
     if(ageFilter === "FRESH") ageOk = age <= 14;
     if(ageFilter === "MID") ageOk = age >= 15 && age <= 29;
     if(ageFilter === "OLD") ageOk = age >= 30;
 
+    let paymentOk = paymentFilter === "ALL" || paymentFilter === type;
     let salesmanOk = salesman === "ALL" || String(val(row,"salesman") || "") === salesman;
 
-    return text.includes(q) && ageOk && salesmanOk;
+    return text.includes(q) && ageOk && paymentOk && salesmanOk;
   });
 
   const tbody = document.getElementById("tbody");
 
   if(filteredRows.length === 0){
-    tbody.innerHTML = `<tr><td colspan="11" class="empty">No pending advance orders found</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="11" class="empty">No unconverted sales orders found</td></tr>`;
     updateTotals([]);
     return;
   }
 
   tbody.innerHTML = filteredRows.map((row,i)=>{
     const age = ageDays(val(row,"date"));
-    const cls = age >= 30 ? "oldrow" : age >= 15 ? "midrow" : "";
+    const bal = getBalance(row);
+    const type = getPaymentType(row);
+    const cls = type === "CREDIT" ? "creditrow" : type === "FULL" ? "fullpaidrow" : age >= 30 ? "oldrow" : age >= 15 ? "midrow" : "";
 
-    const badge = age >= 30
+    const ageBadge = age >= 30
       ? `<span class="badge danger">${age} days</span>`
       : age >= 15
         ? `<span class="badge warn">${age} days</span>`
         : `<span class="badge fresh">${age} days</span>`;
+
+    const statusBadge = type === "CREDIT"
+      ? `<span class="badge credit">CREDIT - NO PAYMENT</span>`
+      : type === "FULL"
+        ? `<span class="badge fullpaid">FULLY PAID - NOT BILLED</span>`
+        : `<span class="badge partial">PARTIAL PAYMENT</span>`;
+
+    const balanceStyle = type === "FULL" ? "color:var(--green)" : "color:var(--red)";
 
     return `
       <tr class="${cls}">
@@ -462,15 +471,15 @@ function render(){
         <td>${safe(val(row,"salesman"))}</td>
         <td class="money">${money(getTotal(row))}</td>
         <td class="money" style="color:var(--green)">${money(getAdvance(row))}</td>
-        <td class="money" style="color:var(--red)">${money(getBalance(row))}</td>
-        <td>${badge}</td>
-        <td><span class="badge pending">PENDING</span></td>
+        <td class="money" style="${balanceStyle}">${money(bal)}</td>
+        <td>${ageBadge}</td>
+        <td>${statusBadge}</td>
         <td>
           <div class="actions">
             <button class="btn btn-blue" onclick="viewDetails(${i})">View</button>
             <button class="btn btn-dark" onclick="convertToBill(${i})">Convert</button>
-            <button class="btn btn-green" onclick="collectBalance(${i})">Collect</button>
-            <button class="btn btn-red" onclick="sendReminder(${i})">Remind</button>
+            ${bal > 0 ? `<button class="btn btn-green" onclick="collectBalance(${i})">Collect</button>` : ""}
+            <button class="btn ${type === "FULL" ? "btn-purple" : type === "CREDIT" ? "btn-orange" : "btn-red"}" onclick="sendReminder(${i})">${type === "FULL" ? "Bill Alert" : type === "CREDIT" ? "Credit Alert" : "Remind"}</button>
           </div>
         </td>
       </tr>
@@ -482,13 +491,16 @@ function render(){
 
 function updateTotals(rows){
   const cust = new Set();
-  let order = 0, adv = 0, bal = 0, overdue = 0;
+  let order = 0, adv = 0, bal = 0, overdue = 0, fullPaid = 0, credit = 0;
 
   rows.forEach(r=>{
+    const type = getPaymentType(r);
     cust.add(String(val(r,"mobile") || val(r,"customer") || r.id));
     order += getTotal(r);
     adv += getAdvance(r);
     bal += getBalance(r);
+    if(type === "FULL") fullPaid++;
+    if(type === "CREDIT") credit++;
     if(ageDays(val(r,"date")) >= 30) overdue++;
   });
 
@@ -496,11 +508,20 @@ function updateTotals(rows){
   document.getElementById("cOrder").innerText = money(order);
   document.getElementById("cAdvance").innerText = money(adv);
   document.getElementById("cBalance").innerText = money(bal);
+  document.getElementById("cCredit").innerText = credit;
+  document.getElementById("cFullPaid").innerText = fullPaid;
   document.getElementById("cOverdue").innerText = overdue;
 }
 
 function viewDetails(i){
   const r = filteredRows[i];
+  const bal = getBalance(r);
+  const type = getPaymentType(r);
+  const statusText = type === "CREDIT"
+    ? "CREDIT ORDER - NO PAYMENT RECEIVED"
+    : type === "FULL"
+      ? "FULLY PAID - NOT CONVERTED TO SALES BILL"
+      : "PARTIAL PAYMENT - BALANCE PENDING";
 
   document.getElementById("modalBody").innerHTML = `
     <div class="grid">
@@ -512,15 +533,15 @@ function viewDetails(i){
       <div class="box"><div class="label">Age</div><div class="value">${ageDays(val(r,"date"))} days</div></div>
       <div class="box"><div class="label">Order Amount</div><div class="value">${money(getTotal(r))}</div></div>
       <div class="box"><div class="label">Advance Received</div><div class="value" style="color:var(--green)">${money(getAdvance(r))}</div></div>
-      <div class="box"><div class="label">Balance To Collect</div><div class="value" style="color:var(--red)">${money(getBalance(r))}</div></div>
-      <div class="box"><div class="label">Status</div><div class="value">PENDING ADVANCE</div></div>
+      <div class="box"><div class="label">Balance To Collect</div><div class="value" style="color:${type === "FULL" ? "var(--green)" : "var(--red)"}">${money(bal)}</div></div>
+      <div class="box"><div class="label">Status</div><div class="value">${statusText}</div></div>
       <div class="box" style="grid-column:1/-1"><div class="label">Remarks</div><div class="value">${safe(val(r,"remarks"))}</div></div>
     </div>
     <br>
     <div class="actions">
       <button class="btn btn-dark" onclick="convertToBill(${i})">Convert To Bill</button>
-      <button class="btn btn-green" onclick="collectBalance(${i})">Collect Balance</button>
-      <button class="btn btn-red" onclick="sendReminder(${i})">WhatsApp Reminder</button>
+      ${bal > 0 ? `<button class="btn btn-green" onclick="collectBalance(${i})">Collect Balance</button>` : ""}
+      <button class="btn ${type === "FULL" ? "btn-purple" : type === "CREDIT" ? "btn-orange" : "btn-red"}" onclick="sendReminder(${i})">${type === "FULL" ? "Send Billing Alert" : type === "CREDIT" ? "Send Credit Alert" : "WhatsApp Reminder"}</button>
     </div>
   `;
 
@@ -541,8 +562,8 @@ function collectBalance(i){
   const r = filteredRows[i];
 
   const params = new URLSearchParams({
-    name: val(r,"customer") || "",
-    mobile: val(r,"mobile") || "",
+    name: rawSafe(val(r,"customer")) === "-" ? "" : rawSafe(val(r,"customer")),
+    mobile: rawSafe(val(r,"mobile")) === "-" ? "" : rawSafe(val(r,"mobile")),
     amount: getBalance(r),
     ref: "sales_order_advance",
     id: r[CONFIG.id]
@@ -558,18 +579,45 @@ function cleanMobile(m){
 function sendReminder(i){
   const r = filteredRows[i];
   const mobile = cleanMobile(val(r,"mobile"));
+  const bal = getBalance(r);
+  const type = getPaymentType(r);
 
-  const msg =
-`Dear ${safe(val(r,"customer"))},
+  let msg = "";
+
+  if(type === "FULL"){
+    msg = `Dear ${rawSafe(val(r,"customer"))},
+
+Your sales order payment is fully received, but billing/conversion is still pending.
+
+Order No: ${rawSafe(val(r,"orderNo"))}
+Order Amount: ${money(getTotal(r))}
+Advance Received: ${money(getAdvance(r))}
+Balance: ${money(bal)}
+
+Please contact VAJRA LIGHTS to complete billing/delivery.`;
+  }else if(type === "CREDIT"){
+    msg = `Dear ${rawSafe(val(r,"customer"))},
+
+Your sales order is pending and no payment has been received yet.
+
+Order No: ${rawSafe(val(r,"orderNo"))}
+Order Amount: ${money(getTotal(r))}
+Advance Received: ${money(getAdvance(r))}
+Balance To Collect: ${money(bal)}
+
+Please contact VAJRA LIGHTS to complete payment/billing.`;
+  }else{
+    msg = `Dear ${rawSafe(val(r,"customer"))},
 
 Your sales order is still pending.
 
-Order No: ${safe(val(r,"orderNo"))}
+Order No: ${rawSafe(val(r,"orderNo"))}
 Order Amount: ${money(getTotal(r))}
 Advance Received: ${money(getAdvance(r))}
-Balance To Collect: ${money(getBalance(r))}
+Balance To Collect: ${money(bal)}
 
 Please contact VAJRA LIGHTS to complete this order.`;
+  }
 
   if(mobile.length >= 10){
     window.open(`https://wa.me/91${mobile}?text=${encodeURIComponent(msg)}`, "_blank");
@@ -579,25 +627,42 @@ Please contact VAJRA LIGHTS to complete this order.`;
 }
 
 function shareSummary(){
-  let order = 0, adv = 0, bal = 0, old = 0;
+  let order = 0, adv = 0, bal = 0, old = 0, fullPaid = 0, pendingBalance = 0, credit = 0;
 
   filteredRows.forEach(r=>{
+    const type = getPaymentType(r);
     order += getTotal(r);
     adv += getAdvance(r);
     bal += getBalance(r);
+    if(type === "FULL") fullPaid++;
+    if(type === "CREDIT") credit++;
+    if(type === "PARTIAL") pendingBalance++;
     if(ageDays(val(r,"date")) >= 30) old++;
   });
 
   const msg =
-`VAJRA ADVANCE SUMMARY
+`VAJRA ORDER CONTROL SUMMARY
 
-Pending Orders: ${filteredRows.length}
+Total Unconverted Orders: ${filteredRows.length}
+Credit / No Payment Orders: ${credit}
+Partial Payment Orders: ${pendingBalance}
+Fully Paid Not Billed: ${fullPaid}
+
 Order Amount: ${money(order)}
 Advance Received: ${money(adv)}
 Balance To Collect: ${money(bal)}
 Overdue 30+ Days: ${old}`;
 
   window.open("https://wa.me/?text=" + encodeURIComponent(msg), "_blank");
+}
+
+function escapeHtml(text){
+  return String(text ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
 </script>
 

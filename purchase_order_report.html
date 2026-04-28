@@ -2,264 +2,821 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Purchase Order Report - VAJRA</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Purchase Order Report</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabaseClient.js"></script>
-  <script src="page_permissions.js"></script>
   <script src="common-ui.js"></script>
+
+
   <style>
     :root{
-      --bg:#f6f8fc;
-      --panel:#fff;
-      --line:#dbe4f0;
-      --text:#0f172a;
-      --muted:#64748b;
-      --blue:#2563eb;
-      --green:#16a34a;
-      --orange:#ea580c;
-      --red:#dc2626;
-      --head:#eef4fb;
-      --shadow:0 10px 30px rgba(15,23,42,.08);
+      --bg:#07111f;
+      --panel:#0b1729;
+      --panel2:#101f35;
+      --card:#12243c;
+      --line:rgba(148,163,184,.22);
+      --text:#eef6ff;
+      --muted:#9fb0c6;
+      --accent:#38bdf8;
+      --accent2:#22c55e;
+      --danger:#fb7185;
+      --warning:#f59e0b;
+      --purple:#a78bfa;
+      --shadow:0 18px 50px rgba(0,0,0,.35);
+      --radius:18px;
     }
     *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);font-family:Segoe UI,Roboto,Arial,sans-serif;color:var(--text);padding:18px}
-    .wrap{max-width:1600px;margin:0 auto}
-    .top{display:flex;justify-content:space-between;align-items:end;gap:12px;flex-wrap:wrap;margin-bottom:14px}
-    .top h1{margin:0;font-size:28px}
-    .top small{color:var(--muted)}
-    .panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:14px;margin-bottom:12px}
-    .filters{display:grid;grid-template-columns:repeat(6,minmax(140px,1fr));gap:10px}
-    .field{display:flex;flex-direction:column}
-    .field label{font-size:12px;font-weight:800;color:#475569;margin-bottom:6px;text-transform:uppercase}
-    .field input,.field select{
-      height:40px;border:1px solid var(--line);border-radius:10px;padding:0 12px;background:#fff;outline:none
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(56,189,248,.16), transparent 32%),
+        radial-gradient(circle at top right, rgba(167,139,250,.12), transparent 30%),
+        linear-gradient(180deg,#050b14,#091426 55%,#06101d);
+      color:var(--text);
+      min-height:100vh;
     }
-    .field input:focus,.field select:focus{border-color:#93c5fd;box-shadow:0 0 0 3px rgba(37,99,235,.10)}
-    .btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
-    .btn{border:none;border-radius:12px;padding:11px 18px;font-weight:800;cursor:pointer}
-    .btn.primary{background:#2563eb;color:#fff}
-    .btn.gray{background:#f1f5f9;color:#334155}
-    .btn.warn{background:#fff7ed;color:#9a3412}
-    .btn.danger{background:#fef2f2;color:#b91c1c}
-    .cards{display:flex;gap:12px;flex-wrap:wrap}
-    .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 14px;min-width:180px}
-    .card span{display:block;font-size:11px;color:var(--muted);text-transform:uppercase;font-weight:800}
-    .card strong{font-size:24px}
-    .table-wrap{overflow:auto;border:1px solid var(--line);border-radius:14px;background:#fff}
-    table{width:100%;border-collapse:collapse;min-width:1400px}
-    thead{background:var(--head);position:sticky;top:0;z-index:2}
-    th,td{padding:10px 8px;border-bottom:1px solid #edf2f7;font-size:13px;text-align:left}
-    th{font-size:12px;text-transform:uppercase;color:#334155}
-    tr:hover td{background:#f8fbff}
-    .badge{display:inline-block;padding:6px 10px;border-radius:999px;font-size:11px;font-weight:800}
-    .pending{background:#fff7ed;color:#9a3412}
-    .partial{background:#eff6ff;color:#1d4ed8}
-    .received,.completed{background:#f0fdf4;color:#166534}
-    .cancelled{background:#fef2f2;color:#991b1b}
-    @media print{
-      .no-print{display:none !important}
-      body{padding:0;background:#fff}
-      .panel{box-shadow:none}
+    .app{padding:14px;max-width:1500px;margin:0 auto}
+    .topbar{
+      display:flex;
+      gap:12px;
+      align-items:center;
+      justify-content:space-between;
+      padding:14px 16px;
+      background:rgba(11,23,41,.84);
+      backdrop-filter:blur(16px);
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      position:sticky;
+      top:8px;
+      z-index:50;
     }
-    @media (max-width:1100px){
-      .filters{grid-template-columns:repeat(2,minmax(140px,1fr))}
+    .title{display:flex;align-items:center;gap:12px}
+    .logo{
+      width:44px;height:44px;border-radius:14px;
+      display:grid;place-items:center;
+      background:linear-gradient(135deg,#38bdf8,#2563eb);
+      font-weight:900;
+      box-shadow:0 10px 25px rgba(56,189,248,.26);
     }
-    @media (max-width:700px){
+    h1{font-size:20px;margin:0;letter-spacing:.2px}
+    .sub{font-size:12px;color:var(--muted);margin-top:2px}
+    .actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
+    button,.btn{
+      border:0;
+      border-radius:12px;
+      padding:10px 12px;
+      font-weight:800;
+      cursor:pointer;
+      color:white;
+      background:#1f3657;
+      transition:.18s ease;
+      text-decoration:none;
+      display:inline-flex;
+      align-items:center;
+      gap:7px;
+      white-space:nowrap;
+      font-size:13px;
+    }
+    button:hover,.btn:hover{transform:translateY(-1px);filter:brightness(1.1)}
+    button:disabled{opacity:.45;cursor:not-allowed;transform:none}
+    .primary{background:linear-gradient(135deg,#0284c7,#2563eb)}
+    .green{background:linear-gradient(135deg,#16a34a,#15803d)}
+    .danger{background:linear-gradient(135deg,#e11d48,#be123c)}
+    .warn{background:linear-gradient(135deg,#f59e0b,#d97706)}
+    .ghost{background:rgba(255,255,255,.08);border:1px solid var(--line)}
+    .filters{
+      margin-top:14px;
+      display:grid;
+      grid-template-columns:1.2fr .8fr .8fr .8fr .8fr .8fr auto;
+      gap:10px;
+      padding:14px;
+      border-radius:var(--radius);
+      border:1px solid var(--line);
+      background:rgba(11,23,41,.72);
+      box-shadow:var(--shadow);
+    }
+    input,select{
+      width:100%;
+      background:#071426;
+      border:1px solid rgba(148,163,184,.28);
+      color:var(--text);
+      outline:none;
+      border-radius:12px;
+      padding:11px 12px;
+      font-weight:700;
+      min-height:42px;
+    }
+    input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(56,189,248,.12)}
+    label{display:block;font-size:11px;color:var(--muted);margin:0 0 5px 2px;font-weight:800;text-transform:uppercase;letter-spacing:.5px}
+    .stats{
+      margin-top:14px;
+      display:grid;
+      grid-template-columns:repeat(5,1fr);
+      gap:10px;
+    }
+    .stat{
+      border:1px solid var(--line);
+      background:rgba(16,31,53,.82);
+      border-radius:var(--radius);
+      padding:14px;
+      min-height:86px;
+      box-shadow:0 12px 30px rgba(0,0,0,.24);
+    }
+    .stat .name{font-size:12px;color:var(--muted);font-weight:800;text-transform:uppercase}
+    .stat .val{font-size:24px;font-weight:950;margin-top:6px}
+    .stat .small{font-size:12px;color:var(--muted);margin-top:3px}
+    .tablewrap{
+      margin-top:14px;
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      overflow:hidden;
+      background:rgba(11,23,41,.78);
+      box-shadow:var(--shadow);
+    }
+    .tablehead{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      padding:12px 14px;
+      border-bottom:1px solid var(--line);
+      background:rgba(255,255,255,.035);
+    }
+    .tabletitle{font-weight:950}
+    .hint{font-size:12px;color:var(--muted)}
+    table{width:100%;border-collapse:separate;border-spacing:0}
+    th,td{
+      padding:11px 10px;
+      border-bottom:1px solid rgba(148,163,184,.14);
+      text-align:left;
+      font-size:13px;
+      vertical-align:top;
+    }
+    th{
+      position:sticky;
+      top:92px;
+      z-index:20;
+      background:#102039;
+      color:#dbeafe;
+      font-size:12px;
+      text-transform:uppercase;
+      letter-spacing:.45px;
+    }
+    tr:hover td{background:rgba(56,189,248,.045)}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    .right{text-align:right}
+    .center{text-align:center}
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding:5px 9px;
+      border-radius:999px;
+      font-size:11px;
+      font-weight:950;
+      border:1px solid rgba(255,255,255,.12);
+      white-space:nowrap;
+    }
+    .b-open{background:rgba(56,189,248,.12);color:#7dd3fc}
+    .b-partial{background:rgba(245,158,11,.14);color:#fbbf24}
+    .b-closed{background:rgba(34,197,94,.13);color:#86efac}
+    .b-cancel{background:rgba(251,113,133,.15);color:#fda4af}
+    .row-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+    .iconbtn{padding:8px 9px;border-radius:10px;font-size:12px}
+    .empty{
+      padding:35px;
+      text-align:center;
+      color:var(--muted);
+      font-weight:800;
+    }
+    .loader{
+      width:18px;height:18px;border-radius:50%;
+      border:3px solid rgba(255,255,255,.25);
+      border-top-color:#fff;
+      animation:spin .8s linear infinite;
+      display:none;
+    }
+    .loading .loader{display:inline-block}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .modal{
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,.66);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index:100;
+      padding:14px;
+    }
+    .modal.show{display:flex}
+    .modalbox{
+      width:min(1100px,100%);
+      max-height:90vh;
+      overflow:auto;
+      background:#081427;
+      border:1px solid var(--line);
+      border-radius:22px;
+      box-shadow:0 30px 80px rgba(0,0,0,.58);
+    }
+    .modalhead{
+      position:sticky;top:0;z-index:3;
+      background:#0c1b31;
+      border-bottom:1px solid var(--line);
+      padding:14px;
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      align-items:center;
+    }
+    .modalbody{padding:14px}
+    .detailgrid{
+      display:grid;
+      grid-template-columns:repeat(4,1fr);
+      gap:10px;
+      margin-bottom:14px;
+    }
+    .detail{
+      background:rgba(255,255,255,.045);
+      border:1px solid var(--line);
+      border-radius:14px;
+      padding:11px;
+    }
+    .detail b{display:block;font-size:11px;color:var(--muted);margin-bottom:4px;text-transform:uppercase}
+    .print-area{display:none}
+    @media(max-width:1050px){
+      .filters{grid-template-columns:1fr 1fr 1fr}
+      .stats{grid-template-columns:1fr 1fr}
+      th{top:0}
+    }
+    @media(max-width:720px){
+      .app{padding:8px}
+      .topbar{position:relative;top:0;align-items:flex-start;flex-direction:column}
+      .actions{justify-content:flex-start}
       .filters{grid-template-columns:1fr}
-      .btn{width:100%}
+      .stats{grid-template-columns:1fr}
+      .tablewrap{overflow:auto}
+      table{min-width:1050px}
+      .detailgrid{grid-template-columns:1fr}
+    }
+    @media print{
+      body{background:#fff;color:#000}
+      .app,.modal{display:none!important}
+      .print-area{display:block;padding:18px;color:#000;font-family:Arial,sans-serif}
+      .print-title{text-align:center;font-size:18px;font-weight:900;margin-bottom:4px}
+      .print-sub{text-align:center;font-size:12px;margin-bottom:12px}
+      .print-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;font-size:12px;margin-bottom:10px}
+      .print-meta div{border:1px solid #222;padding:6px}
+      .print-table{width:100%;border-collapse:collapse;font-size:11px}
+      .print-table th,.print-table td{border:1px solid #222;padding:5px;color:#000}
+      .print-table th{background:#eee;color:#000;position:static}
+      .print-right{text-align:right}
+      .print-foot{margin-top:28px;display:flex;justify-content:space-between;font-size:12px}
     }
   </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="top">
-    <div>
-      <h1>Purchase Order Report</h1>
-      <small>Shows order quantity, received quantity, pending quantity, print, cancel, and status from manual purchase deduction flow.</small>
+  <div class="app">
+    <div class="topbar">
+      <div class="title">
+        <div class="logo">PO</div>
+        <div>
+          <h1>Purchase Order Report</h1>
+          <div class="sub">View, print, edit, cancel and track pending purchase orders</div>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="ghost" onclick="location.href='dashboard.html'">🏠 Dashboard</button>
+        <button class="primary" onclick="location.href='purchase_order.html'">➕ New PO</button>
+        <button class="green" onclick="exportCSV()">⬇️ CSV</button>
+        <button class="warn" onclick="loadOrders()">↻ Refresh</button>
+      </div>
     </div>
-  </div>
 
-  <div class="panel no-print">
     <div class="filters">
-      <div class="field">
+      <div>
+        <label>Search</label>
+        <input id="searchBox" placeholder="PO number, supplier, mobile, item code, item name..." oninput="debouncedLoad()" />
+      </div>
+      <div>
         <label>From Date</label>
-        <input type="date" id="fromDate">
+        <input id="fromDate" type="date" onchange="loadOrders()" />
       </div>
-      <div class="field">
+      <div>
         <label>To Date</label>
-        <input type="date" id="toDate">
+        <input id="toDate" type="date" onchange="loadOrders()" />
       </div>
-      <div class="field">
-        <label>Supplier</label>
-        <input id="supplierFilter" placeholder="Supplier name">
-      </div>
-      <div class="field">
-        <label>Item</label>
-        <input id="itemFilter" placeholder="Item code or name">
-      </div>
-      <div class="field">
+      <div>
         <label>Status</label>
-        <select id="statusFilter">
-          <option value="">ALL</option>
-          <option value="PENDING">PENDING</option>
-          <option value="PARTIAL">PARTIAL</option>
-          <option value="RECEIVED">RECEIVED</option>
-          <option value="COMPLETED">COMPLETED</option>
-          <option value="CANCELLED">CANCELLED</option>
+        <select id="statusFilter" onchange="loadOrders()">
+          <option value="">All Status</option>
+          <option value="OPEN">Open</option>
+          <option value="PARTIAL">Partial</option>
+          <option value="CLOSED">Closed</option>
+          <option value="CANCELLED">Cancelled</option>
         </select>
       </div>
-      <div class="field">
-        <label>Only Pending</label>
-        <select id="pendingOnly">
-          <option value="NO">NO</option>
-          <option value="YES">YES</option>
+      <div>
+        <label>Pending</label>
+        <select id="pendingFilter" onchange="loadOrders()">
+          <option value="">All Orders</option>
+          <option value="pending">Pending Qty Only</option>
+          <option value="no_pending">No Pending</option>
         </select>
+      </div>
+      <div>
+        <label>Rows</label>
+        <select id="limitRows" onchange="loadOrders()">
+          <option value="50">50</option>
+          <option value="100" selected>100</option>
+          <option value="250">250</option>
+          <option value="500">500</option>
+        </select>
+      </div>
+      <div style="display:flex;align-items:end">
+        <button id="loadBtn" class="primary" style="width:100%;justify-content:center" onclick="loadOrders()">
+          <span class="loader"></span> Load
+        </button>
       </div>
     </div>
-    <div class="btns">
-      <button class="btn primary" onclick="loadReport()">Load Report</button>
-      <button class="btn gray" onclick="resetFilters()">Reset</button>
-      <button class="btn warn" onclick="window.print()">Print</button>
+
+    <div class="stats">
+      <div class="stat"><div class="name">Total Orders</div><div class="val" id="stOrders">0</div><div class="small">Filtered list</div></div>
+      <div class="stat"><div class="name">Order Value</div><div class="val" id="stValue">₹0</div><div class="small">Total payable</div></div>
+      <div class="stat"><div class="name">Total Qty</div><div class="val" id="stQty">0</div><div class="small">Ordered quantity</div></div>
+      <div class="stat"><div class="name">Pending Qty</div><div class="val" id="stPending">0</div><div class="small">Balance to receive</div></div>
+      <div class="stat"><div class="name">Cancelled</div><div class="val" id="stCancelled">0</div><div class="small">Cancelled PO</div></div>
+    </div>
+
+    <div class="tablewrap">
+      <div class="tablehead">
+        <div>
+          <div class="tabletitle">Purchase Orders</div>
+          <div class="hint">Tip: click View to see item wise pending details</div>
+        </div>
+        <div class="hint" id="resultInfo">Ready</div>
+      </div>
+      <div style="overflow:auto;max-height:calc(100vh - 330px)">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:110px">PO No</th>
+              <th style="width:105px">Date</th>
+              <th>Supplier</th>
+              <th style="width:110px">Mobile</th>
+              <th class="right" style="width:105px">Items</th>
+              <th class="right" style="width:105px">Qty</th>
+              <th class="right" style="width:110px">Pending</th>
+              <th class="right" style="width:120px">Payable</th>
+              <th style="width:105px">Status</th>
+              <th style="width:230px" class="right">Action</th>
+            </tr>
+          </thead>
+          <tbody id="orderBody">
+            <tr><td colspan="10" class="empty">Loading purchase orders...</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 
-  <div class="panel">
-    <div class="cards">
-      <div class="card"><span>Total Rows</span><strong id="cRows">0</strong></div>
-      <div class="card"><span>Total Ordered Qty</span><strong id="cOrdered">0</strong></div>
-      <div class="card"><span>Total Received Qty</span><strong id="cReceived">0</strong></div>
-      <div class="card"><span>Total Pending Qty</span><strong id="cPending">0</strong></div>
+  <div id="detailModal" class="modal">
+    <div class="modalbox">
+      <div class="modalhead">
+        <div>
+          <div style="font-weight:950;font-size:18px" id="modalTitle">Purchase Order</div>
+          <div class="hint" id="modalSub"></div>
+        </div>
+        <div class="actions">
+          <button class="green" onclick="printCurrent()">🖨️ Print</button>
+          <button class="ghost" onclick="closeModal()">✕ Close</button>
+        </div>
+      </div>
+      <div class="modalbody" id="modalBody"></div>
     </div>
   </div>
 
-  <div class="panel">
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>PO No</th>
-            <th>Date</th>
-            <th>Supplier</th>
-            <th>Item Code</th>
-            <th>Item Name</th>
-            <th>Ordered</th>
-            <th>Received</th>
-            <th>Pending</th>
-            <th>Price</th>
-            <th>Item Status</th>
-            <th>PO Status</th>
-            <th>Remark</th>
-            <th class="no-print">Action</th>
-          </tr>
-        </thead>
-        <tbody id="reportBody"></tbody>
-      </table>
-    </div>
-  </div>
-</div>
+  <div id="printArea" class="print-area"></div>
 
 <script>
-const sb = window.sbcc;
-let currentRows = [];
+/* ===================== SUPABASE CONFIG =====================
+   If your main project already creates window.sbcc, this file will use it.
+   Otherwise add your own Supabase URL and ANON KEY below.
+============================================================ */
+const sb = window.sbcc || (window.supabase && SUPABASE_URL.includes("supabase.co")
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null);
 
-document.addEventListener("DOMContentLoaded", async () => {
-  if (typeof requirePageAccess === "function") {
-    const ok = await requirePageAccess("purchase");
-    if (!ok) return;
-  }
-  const today = new Date().toISOString().slice(0,10);
-  document.getElementById("fromDate").value = today.slice(0,8) + "01";
-  document.getElementById("toDate").value = today;
-  await loadReport();
-});
+let allOrders = [];
+let currentOrder = null;
+let currentItems = [];
+let timer = null;
 
-function badgeClass(v){
-  const s = String(v || "").toLowerCase();
-  if (s === "pending") return "badge pending";
-  if (s === "partial") return "badge partial";
-  if (s === "received") return "badge received";
-  if (s === "completed") return "badge completed";
-  if (s === "cancelled") return "badge cancelled";
-  return "badge";
+function todayISO(){
+  const d = new Date();
+  return d.toISOString().slice(0,10);
+}
+function monthStartISO(){
+  const d = new Date();
+  return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0,10);
+}
+function fmtDate(v){
+  if(!v) return "-";
+  const d = new Date(v);
+  if(isNaN(d)) return v;
+  return d.toLocaleDateString("en-IN");
+}
+function money(n){
+  const x = Number(n || 0);
+  return "₹" + x.toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+function num(n){
+  const x = Number(n || 0);
+  return x.toLocaleString("en-IN",{maximumFractionDigits:2});
+}
+function safe(v){
+  return String(v ?? "").replace(/[&<>"']/g, s => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+  }[s]));
+}
+function poNo(o){
+  return o.purchase_order_number || o.po_number || o.order_number || o.id || "-";
+}
+function getStatus(o){
+  const s = String(o.status || "").toUpperCase();
+  if(s) return s;
+  if(o.cancelled || o.is_cancelled) return "CANCELLED";
+  const pending = Number(o.pending_qty || 0);
+  const qty = Number(o.total_qty || 0);
+  if(qty > 0 && pending <= 0) return "CLOSED";
+  if(pending > 0 && pending < qty) return "PARTIAL";
+  return "OPEN";
+}
+function badge(status){
+  const s = String(status || "OPEN").toUpperCase();
+  const cls = s === "CANCELLED" ? "b-cancel" : s === "CLOSED" ? "b-closed" : s === "PARTIAL" ? "b-partial" : "b-open";
+  return `<span class="badge ${cls}">${safe(s)}</span>`;
+}
+function debouncedLoad(){
+  clearTimeout(timer);
+  timer = setTimeout(loadOrders, 280);
 }
 
-function resetFilters(){
-  document.getElementById("supplierFilter").value = "";
-  document.getElementById("itemFilter").value = "";
-  document.getElementById("statusFilter").value = "";
-  document.getElementById("pendingOnly").value = "NO";
-  loadReport();
+async function init(){
+  document.getElementById("fromDate").value = monthStartISO();
+  document.getElementById("toDate").value = todayISO();
+  await loadOrders();
 }
 
-async function loadReport(){
-  let query = sb
-    .from("purchase_order_report_view")
-    .select("*")
-    .order("purchase_order_id", { ascending:false });
+async function loadOrders(){
+  const btn = document.getElementById("loadBtn");
+  btn.classList.add("loading");
+  document.getElementById("resultInfo").textContent = "Loading...";
+  const tbody = document.getElementById("orderBody");
+  tbody.innerHTML = `<tr><td colspan="10" class="empty">Loading...</td></tr>`;
 
-  const fromDate = document.getElementById("fromDate").value;
-  const toDate = document.getElementById("toDate").value;
-  const supplier = document.getElementById("supplierFilter").value.trim();
-  const item = document.getElementById("itemFilter").value.trim();
-  const status = document.getElementById("statusFilter").value;
-  const pendingOnly = document.getElementById("pendingOnly").value;
-
-  if (fromDate) query = query.gte("order_date", fromDate);
-  if (toDate) query = query.lte("order_date", toDate);
-  if (supplier) query = query.ilike("supplier_name", "%" + supplier + "%");
-  if (item) query = query.or(`item_code.ilike.%${item}%,item_name.ilike.%${item}%`);
-  if (status) query = query.or(`item_status.eq.${status},po_status.eq.${status}`);
-  if (pendingOnly === "YES") query = query.gt("pending_qty", 0).eq("is_cancelled", false);
-
-  const { data, error } = await query;
-  if (error) {
-    console.error(error);
-    document.getElementById("reportBody").innerHTML = `<tr><td colspan="13">Error loading report: ${error.message}</td></tr>`;
+  if(!sb){
+    tbody.innerHTML = `<tr><td colspan="10" class="empty">Supabase is not configured. Add SUPABASE_URL and SUPABASE_ANON_KEY in this file, or load your global window.sbcc.</td></tr>`;
+    btn.classList.remove("loading");
     return;
   }
 
-  currentRows = data || [];
-  renderReport();
+  try{
+    const from = document.getElementById("fromDate").value;
+    const to = document.getElementById("toDate").value;
+    const search = document.getElementById("searchBox").value.trim().toLowerCase();
+    const status = document.getElementById("statusFilter").value;
+    const pendingFilter = document.getElementById("pendingFilter").value;
+    const limit = Number(document.getElementById("limitRows").value || 100);
+
+    let q = sb.from("purchase_order_details")
+      .select("*")
+      .order("order_date", { ascending:false })
+      .limit(limit);
+
+    if(from) q = q.gte("order_date", from);
+    if(to) q = q.lte("order_date", to);
+
+    const {data, error} = await q;
+    if(error) throw error;
+
+    let rows = data || [];
+
+    // Load items summary for all visible orders.
+    const ids = rows.map(r => r.id).filter(Boolean);
+    let itemRows = [];
+    if(ids.length){
+      const {data: items, error: itemErr} = await sb.from("purchase_order_item_details")
+        .select("*")
+        .in("purchase_order_id", ids);
+      if(itemErr) console.warn("Item summary load warning:", itemErr);
+      itemRows = items || [];
+    }
+
+    const grouped = {};
+    itemRows.forEach(it => {
+      const k = it.purchase_order_id;
+      if(!grouped[k]) grouped[k] = [];
+      grouped[k].push(it);
+    });
+
+    rows = rows.map(o => {
+      const items = grouped[o.id] || [];
+      const totalQty = items.reduce((a,it)=> a + Number(it.quantity || it.qty || 0), 0);
+      const receivedQty = items.reduce((a,it)=> a + Number(it.received_qty || 0), 0);
+      const pendingQty = items.reduce((a,it)=> {
+        const q = Number(it.quantity || it.qty || 0);
+        const r = Number(it.received_qty || 0);
+        const direct = it.pending_qty;
+        return a + (direct === null || direct === undefined ? Math.max(q-r,0) : Number(direct || 0));
+      }, 0);
+      const payable = Number(o.payable || o.total_amount || o.invoice_amount || items.reduce((a,it)=>a + (Number(it.quantity || it.qty || 0) * Number(it.price || it.purchase_price_gst || it.purchase_price || 0)),0));
+      return {...o, _items:items, total_items:items.length, total_qty:totalQty, received_qty:receivedQty, pending_qty:pendingQty, payable_calc:payable, status_calc:getStatus({...o,total_qty:totalQty,pending_qty:pendingQty})};
+    });
+
+    if(search){
+      rows = rows.filter(o => {
+        const hay = [
+          poNo(o), o.supplier_name, o.mobile, o.supplier_mobile, o.gst_number, o.address,
+          ...(o._items || []).flatMap(it => [it.item_code, it.item_name, it.barcode])
+        ].join(" ").toLowerCase();
+        return hay.includes(search);
+      });
+    }
+    if(status){
+      rows = rows.filter(o => String(o.status_calc).toUpperCase() === status);
+    }
+    if(pendingFilter === "pending"){
+      rows = rows.filter(o => Number(o.pending_qty || 0) > 0 && String(o.status_calc) !== "CANCELLED");
+    }
+    if(pendingFilter === "no_pending"){
+      rows = rows.filter(o => Number(o.pending_qty || 0) <= 0 || String(o.status_calc) === "CLOSED");
+    }
+
+    allOrders = rows;
+    renderOrders(rows);
+    renderStats(rows);
+  }catch(err){
+    console.error(err);
+    tbody.innerHTML = `<tr><td colspan="10" class="empty">Error: ${safe(err.message || err)}</td></tr>`;
+    document.getElementById("resultInfo").textContent = "Error";
+  }finally{
+    btn.classList.remove("loading");
+  }
 }
 
-function renderReport(){
-  const body = document.getElementById("reportBody");
-  body.innerHTML = "";
-
-  if (!currentRows.length) {
-    body.innerHTML = `<tr><td colspan="13">No rows found.</td></tr>`;
-    setCards([]);
+function renderOrders(rows){
+  const tbody = document.getElementById("orderBody");
+  document.getElementById("resultInfo").textContent = `${rows.length} order(s) shown`;
+  if(!rows.length){
+    tbody.innerHTML = `<tr><td colspan="10" class="empty">No purchase orders found</td></tr>`;
     return;
   }
-
-  for (const r of currentRows) {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>PO-${r.po_number}</td>
-      <td>${r.order_date || ""}</td>
-      <td>${r.supplier_name || ""}</td>
-      <td>${r.item_code || ""}</td>
-      <td>${r.item_name || ""}</td>
-      <td>${Number(r.quantity || 0).toFixed(2)}</td>
-      <td>${Number(r.received_qty || 0).toFixed(2)}</td>
-      <td>${Number(r.pending_qty || 0).toFixed(2)}</td>
-      <td>${r.price == null ? "" : Number(r.price).toFixed(2)}</td>
-      <td><span class="${badgeClass(r.item_status)}">${r.item_status || ""}</span></td>
-      <td><span class="${badgeClass(r.po_status)}">${r.po_status || ""}</span></td>
-      <td>${r.item_remark || r.po_remark || ""}</td>
-      <td class="no-print">
-        <button class="btn gray" onclick="printSingle(${r.purchase_order_id})">Print</button>
-        <button class="btn danger" onclick="cancelPO(${r.purchase_order_id})">Cancel</button>
+  tbody.innerHTML = rows.map(o => {
+    const status = o.status_calc || getStatus(o);
+    const cancelled = status === "CANCELLED";
+    return `<tr>
+      <td class="mono"><b>${safe(poNo(o))}</b></td>
+      <td>${fmtDate(o.order_date || o.purchase_order_date || o.bill_date || o.created_at)}</td>
+      <td><b>${safe(o.supplier_name || "-")}</b><div class="hint">${safe(o.gst_number || o.address || "")}</div></td>
+      <td>${safe(o.supplier_mobile || o.mobile || "-")}</td>
+      <td class="right">${num(o.total_items)}</td>
+      <td class="right">${num(o.total_qty)}</td>
+      <td class="right"><b style="color:${Number(o.pending_qty)>0 ? '#fbbf24' : '#86efac'}">${num(o.pending_qty)}</b></td>
+      <td class="right"><b>${money(o.payable_calc)}</b></td>
+      <td>${badge(status)}</td>
+      <td class="right">
+        <div class="row-actions">
+          <button class="iconbtn primary" onclick="viewOrder(${o.id})">View</button>
+          <button class="iconbtn green" onclick="printOrder(${o.id})">Print</button>
+          <button class="iconbtn ghost" onclick="editOrder(${o.id})" ${cancelled ? "disabled" : ""}>Edit</button>
+          <button class="iconbtn danger" onclick="cancelOrder(${o.id})" ${cancelled ? "disabled" : ""}>Cancel</button>
+        </div>
       </td>
-    `;
-    body.appendChild(tr);
-  }
-
-  setCards(currentRows);
+    </tr>`;
+  }).join("");
 }
 
-function setCards(rows){
-  const sum = rows.reduce((a,r) => {
-    a.rows += 1;
-    a
+function renderStats(rows){
+  const totalOrders = rows.length;
+  const value = rows.reduce((a,o)=>a+Number(o.payable_calc||0),0);
+  const qty = rows.reduce((a,o)=>a+Number(o.total_qty||0),0);
+  const pending = rows.reduce((a,o)=>a+Number(o.pending_qty||0),0);
+  const cancelled = rows.filter(o=>String(o.status_calc).toUpperCase()==="CANCELLED").length;
+  document.getElementById("stOrders").textContent = totalOrders;
+  document.getElementById("stValue").textContent = money(value);
+  document.getElementById("stQty").textContent = num(qty);
+  document.getElementById("stPending").textContent = num(pending);
+  document.getElementById("stCancelled").textContent = cancelled;
+}
+
+async function readOrder(id){
+  let order = allOrders.find(o => Number(o.id) === Number(id));
+  if(!order){
+    const {data, error} = await sb.from("purchase_order_details").select("*").eq("id", id).single();
+    if(error) throw error;
+    order = data;
+  }
+  let {data: items, error} = await sb.from("purchase_order_item_details")
+    .select("*")
+    .eq("purchase_order_id", id)
+    .order("id", {ascending:true});
+  if(error) throw error;
+  items = items || [];
+  currentOrder = order;
+  currentItems = items;
+  return {order, items};
+}
+
+async function viewOrder(id){
+  try{
+    const {order, items} = await readOrder(id);
+    const totalQty = items.reduce((a,it)=>a+Number(it.quantity||it.qty||0),0);
+    const pendingQty = items.reduce((a,it)=>{
+      const q = Number(it.quantity||it.qty||0);
+      const r = Number(it.received_qty||0);
+      return a + (it.pending_qty == null ? Math.max(q-r,0) : Number(it.pending_qty||0));
+    },0);
+    const value = Number(order.payable || order.total_amount || order.invoice_amount || items.reduce((a,it)=>a + Number(it.quantity||it.qty||0)*Number(it.price||it.purchase_price_gst||it.purchase_price||0),0));
+    document.getElementById("modalTitle").textContent = `Purchase Order ${poNo(order)}`;
+    document.getElementById("modalSub").textContent = `${fmtDate(order.order_date || order.bill_date || order.created_at)} • ${order.supplier_name || ""}`;
+    document.getElementById("modalBody").innerHTML = `
+      <div class="detailgrid">
+        <div class="detail"><b>Supplier</b>${safe(order.supplier_name || "-")}</div>
+        <div class="detail"><b>Mobile</b>${safe(order.supplier_mobile || order.mobile || "-")}</div>
+        <div class="detail"><b>GST No</b>${safe(order.gst_number || "-")}</div>
+        <div class="detail"><b>Status</b>${badge(getStatus({...order,total_qty:totalQty,pending_qty:pendingQty}))}</div>
+        <div class="detail"><b>Total Items</b>${num(items.length)}</div>
+        <div class="detail"><b>Total Qty</b>${num(totalQty)}</div>
+        <div class="detail"><b>Pending Qty</b>${num(pendingQty)}</div>
+        <div class="detail"><b>Value</b>${money(value)}</div>
+      </div>
+      <div class="tablewrap" style="margin-top:0">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:110px">Code</th>
+              <th>Item Name</th>
+              <th class="right">Order Qty</th>
+              <th class="right">Received</th>
+              <th class="right">Pending</th>
+              <th class="right">Price</th>
+              <th class="right">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${items.map(it => {
+              const q = Number(it.quantity || it.qty || 0);
+              const r = Number(it.received_qty || 0);
+              const p = it.pending_qty == null ? Math.max(q-r,0) : Number(it.pending_qty || 0);
+              const price = Number(it.price || it.purchase_price_gst || it.purchase_price || 0);
+              return `<tr>
+                <td class="mono">${safe(it.item_code || "")}</td>
+                <td><b>${safe(it.item_name || "")}</b><div class="hint">${safe(it.department || it.barcode || "")}</div></td>
+                <td class="right">${num(q)}</td>
+                <td class="right">${num(r)}</td>
+                <td class="right"><b style="color:${p>0 ? '#fbbf24':'#86efac'}">${num(p)}</b></td>
+                <td class="right">${money(price)}</td>
+                <td class="right">${money(q*price)}</td>
+              </tr>`;
+            }).join("")}
+          </tbody>
+        </table>
+      </div>`;
+    document.getElementById("detailModal").classList.add("show");
+  }catch(err){
+    alert("View failed: " + (err.message || err));
+  }
+}
+
+function closeModal(){
+  document.getElementById("detailModal").classList.remove("show");
+}
+
+function editOrder(id){
+  location.href = `purchase_order.html?edit=${encodeURIComponent(id)}`;
+}
+
+async function cancelOrder(id){
+  const order = allOrders.find(o=>Number(o.id)===Number(id));
+  if(!confirm(`Cancel purchase order ${poNo(order || {id})}?`)) return;
+  try{
+    const {error} = await sb.from("purchase_order_details")
+      .update({status:"CANCELLED", cancelled:true, cancelled_at:new Date().toISOString()})
+      .eq("id", id);
+    if(error) throw error;
+    await loadOrders();
+  }catch(err){
+    alert("Cancel failed: " + (err.message || err) + "\\n\\nIf your table does not have cancelled/cancelled_at columns, keep only status='CANCELLED' in cancelOrder().");
+  }
+}
+
+async function printOrder(id){
+  try{
+    const {order, items} = await readOrder(id);
+    makePrint(order, items);
+    setTimeout(()=>window.print(),80);
+  }catch(err){
+    alert("Print failed: " + (err.message || err));
+  }
+}
+function printCurrent(){
+  if(currentOrder) {
+    makePrint(currentOrder, currentItems || []);
+    setTimeout(()=>window.print(),80);
+  }
+}
+function makePrint(order, items){
+  const totalQty = items.reduce((a,it)=>a+Number(it.quantity||it.qty||0),0);
+  const pendingQty = items.reduce((a,it)=>{
+    const q = Number(it.quantity||it.qty||0);
+    const r = Number(it.received_qty||0);
+    return a + (it.pending_qty == null ? Math.max(q-r,0) : Number(it.pending_qty||0));
+  },0);
+  const html = `
+    <div class="print-title">VAJRA LIGHTS & ELECTRICALS</div>
+    <div class="print-sub">PURCHASE ORDER</div>
+    <div class="print-meta">
+      <div><b>PO No:</b> ${safe(poNo(order))}</div>
+      <div><b>Date:</b> ${fmtDate(order.order_date || order.bill_date || order.created_at)}</div>
+      <div><b>Status:</b> ${safe(getStatus({...order,total_qty:totalQty,pending_qty:pendingQty}))}</div>
+      <div><b>Supplier:</b> ${safe(order.supplier_name || "-")}</div>
+      <div><b>Mobile:</b> ${safe(order.supplier_mobile || order.mobile || "-")}</div>
+      <div><b>GST:</b> ${safe(order.gst_number || "-")}</div>
+    </div>
+    <table class="print-table">
+      <thead>
+        <tr>
+          <th>SL</th><th>Item Code</th><th>Item Name</th>
+          <th>Qty</th><th>Received</th><th>Pending</th><th>Price</th><th>Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${items.map((it,i)=>{
+          const q = Number(it.quantity||it.qty||0);
+          const r = Number(it.received_qty||0);
+          const p = it.pending_qty == null ? Math.max(q-r,0) : Number(it.pending_qty||0);
+          const price = Number(it.price || it.purchase_price_gst || it.purchase_price || 0);
+          return `<tr>
+            <td>${i+1}</td>
+            <td>${safe(it.item_code || "")}</td>
+            <td>${safe(it.item_name || "")}</td>
+            <td class="print-right">${num(q)}</td>
+            <td class="print-right">${num(r)}</td>
+            <td class="print-right">${num(p)}</td>
+            <td class="print-right">${money(price)}</td>
+            <td class="print-right">${money(q*price)}</td>
+          </tr>`;
+        }).join("")}
+      </tbody>
+    </table>
+    <div class="print-meta" style="margin-top:10px">
+      <div><b>Total Items:</b> ${items.length}</div>
+      <div><b>Total Qty:</b> ${num(totalQty)}</div>
+      <div><b>Pending Qty:</b> ${num(pendingQty)}</div>
+    </div>
+    <div class="print-foot">
+      <div>Prepared By: __________________</div>
+      <div>Checked By: __________________</div>
+      <div>Authorized By: __________________</div>
+    </div>
+  `;
+  document.getElementById("printArea").innerHTML = html;
+}
+
+function exportCSV(){
+  if(!allOrders.length){ alert("No data to export"); return; }
+  const rows = [
+    ["PO No","Date","Supplier","Mobile","GST","Items","Qty","Pending Qty","Payable","Status"]
+  ];
+  allOrders.forEach(o => rows.push([
+    poNo(o),
+    fmtDate(o.order_date || o.bill_date || o.created_at),
+    o.supplier_name || "",
+    o.supplier_mobile || o.mobile || "",
+    o.gst_number || "",
+    o.total_items || 0,
+    o.total_qty || 0,
+    o.pending_qty || 0,
+    o.payable_calc || 0,
+    o.status_calc || ""
+  ]));
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(",")).join("\\n");
+  const blob = new Blob([csv], {type:"text/csv;charset=utf-8"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "purchase_order_report.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+document.addEventListener("keydown", e => {
+  if(e.key === "Escape") closeModal();
+});
+init();
+</script>
+</body>
+</html>

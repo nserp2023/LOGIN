@@ -97,6 +97,13 @@
             box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
         }
 
+        #payment_type:disabled {
+            background: #fef3c7;
+            color: #92400e;
+            font-weight: 900;
+            cursor: not-allowed;
+        }
+
         .w-xs { width: 60px; }
         .w-sm { width: 100px; }
         .w-md { width: 140px; }
@@ -980,6 +987,19 @@
             }
 
             toggleRemarkField();
+
+            if(type === "sales_order"){
+                const paymentTypeEl = document.getElementById("payment_type");
+                const paidAmountEl = document.getElementById("paid_amount");
+                if(paymentTypeEl){
+                    paymentTypeEl.value = "CREDIT";
+                    paymentTypeEl.dataset.justChangedToCredit = "0";
+                }
+                if(paidAmountEl && !paidAmountEl.value){
+                    paidAmountEl.value = "0.00";
+                }
+            }
+
             syncPaymentUI();
         });
 
@@ -1139,6 +1159,25 @@
         return document.getElementById("doc_type")?.value || "sales";
     }
 
+    function forceSalesOrderCreditMode() {
+        const docType = getCurrentDocType();
+        const paymentTypeEl = document.getElementById("payment_type");
+        const paidAmountEl = document.getElementById("paid_amount");
+
+        if (!paymentTypeEl || !paidAmountEl) return;
+
+        if (docType === "sales_order") {
+            paymentTypeEl.value = "CREDIT";
+            paymentTypeEl.disabled = true;
+            paymentTypeEl.dataset.justChangedToCredit = "0";
+            paidAmountEl.disabled = false;
+            paidAmountEl.placeholder = "Advance Amount";
+        } else {
+            paymentTypeEl.disabled = false;
+            paidAmountEl.placeholder = "0.00";
+        }
+    }
+
     function getCurrentRoundedGrandTotal() {
         return Math.round(
             getMoneyValue(document.getElementById("display_grand_total")?.innerText || "0")
@@ -1169,9 +1208,11 @@
 
         if (!showPayment) {
             paymentTypeEl.value = "CASH";
+            paymentTypeEl.disabled = false;
             paymentTypeEl.dataset.justChangedToCredit = "0";
             paidAmountEl.value = "0.00";
             paidAmountEl.disabled = true;
+            paidAmountEl.placeholder = "0.00";
             if (paidLabel) paidLabel.textContent = "Paid Amount";
             balanceText.innerText = "₹0.00";
             return;
@@ -1181,7 +1222,20 @@
             paidLabel.textContent = docType === "sales_order" ? "Advance" : "Credit Paid";
         }
 
-        const paymentType = String(paymentTypeEl.value || "CASH").toUpperCase();
+        if (docType === "sales_order") {
+            paymentTypeEl.value = "CREDIT";
+            paymentTypeEl.disabled = true;
+            paymentTypeEl.dataset.justChangedToCredit = "0";
+            paidAmountEl.disabled = false;
+            paidAmountEl.placeholder = "Advance Amount";
+        } else {
+            paymentTypeEl.disabled = false;
+            paidAmountEl.placeholder = "0.00";
+        }
+
+        const paymentType = docType === "sales_order"
+            ? "CREDIT"
+            : String(paymentTypeEl.value || "CASH").toUpperCase();
 
         if (paymentType === "CASH") {
             paidAmountEl.value = total.toFixed(2);
@@ -1212,6 +1266,13 @@
 
         if (paymentTypeEl && !paymentTypeEl.dataset.boundCreditFix) {
             paymentTypeEl.addEventListener("change", (e) => {
+                if (getCurrentDocType() === "sales_order") {
+                    e.target.value = "CREDIT";
+                    e.target.dataset.justChangedToCredit = "0";
+                    syncPaymentUI(true);
+                    return;
+                }
+
                 if ((e.target.value || "").toUpperCase() === "CREDIT") {
                     e.target.dataset.justChangedToCredit = "1";
                 } else {
@@ -2711,7 +2772,12 @@ function calcTotal() {
                 ) || 0
             };
 
-            const paymentType = String(document.getElementById("payment_type")?.value || "CASH").toUpperCase();
+            let paymentType = String(document.getElementById("payment_type")?.value || "CASH").toUpperCase();
+            if (docType === "sales_order") {
+                paymentType = "CREDIT";
+                const paymentTypeEl = document.getElementById("payment_type");
+                if (paymentTypeEl) paymentTypeEl.value = "CREDIT";
+            }
 
             const exactTotal = parseFloat(head.total || 0) || 0;
             const roundedTotal = Math.round(exactTotal);
@@ -2720,7 +2786,7 @@ function calcTotal() {
             let paidAmount = parseFloat(document.getElementById("paid_amount")?.value) || 0;
             paidAmount = Math.max(0, Math.min(roundedTotal, paidAmount));
 
-            if (paymentType === "CASH" && ["sales", "sales_pack", "sales_order"].includes(docType)) {
+            if (paymentType === "CASH" && ["sales", "sales_pack"].includes(docType)) {
                 paidAmount = roundedTotal;
             }
 
@@ -2743,7 +2809,7 @@ function calcTotal() {
                 throw new Error("Customer Name or Mobile is required for CREDIT sales order.");
             }
 
-            if (["sales", "sales_pack", "sales_order"].includes(docType) && paymentType === "CASH" && Math.abs(roundedTotal - paidAmount) > 0.009) {
+            if (["sales", "sales_pack"].includes(docType) && paymentType === "CASH" && Math.abs(roundedTotal - paidAmount) > 0.009) {
                 throw new Error("Cash bill must be fully paid.");
             }
 
@@ -3488,7 +3554,7 @@ barcodeInput.addEventListener("keydown", async function (e) {
         const paymentTypeEl = document.getElementById("payment_type");
         const paidAmountEl = document.getElementById("paid_amount");
         if (paymentTypeEl) {
-            paymentTypeEl.value = String(head.payment_type || "CASH").toUpperCase();
+            paymentTypeEl.value = type === "sales_order" ? "CREDIT" : String(head.payment_type || "CASH").toUpperCase();
             paymentTypeEl.dataset.justChangedToCredit = "0";
         }
         if (paidAmountEl) {

@@ -595,6 +595,7 @@
           <div class="chip">Editable master grid</div>
           <div class="chip">All filtered rows loaded</div>
           <div class="chip">Only edited rows save</div>
+          <div class="chip">Qty hidden for safety</div>
           <div class="chip">Reorder levels ready</div>
         </div>
       </div>
@@ -683,7 +684,6 @@
               <th class="med-col"><button class="sort-btn" onclick="toggleSort('hsn_code')">HSN <span class="sort-ind" id="sort_hsn_code">↕</span></button></th>
               <th class="med-col"><button class="sort-btn" onclick="toggleSort('barcode')">Barcode <span class="sort-ind" id="sort_barcode">↕</span></button></th>
               <th class="med-col"><button class="sort-btn" onclick="toggleSort('department')">Department <span class="sort-ind" id="sort_department">↕</span></button></th>
-              <th class="small-col"><button class="sort-btn" onclick="toggleSort('quantity')">Qty <span class="sort-ind" id="sort_quantity">↕</span></button></th>
               <th class="small-col"><button class="sort-btn" onclick="toggleSort('minimum_qty')">Min Qty <span class="sort-ind" id="sort_minimum_qty">↕</span></button></th>
               <th class="small-col"><button class="sort-btn" onclick="toggleSort('maximum_qty')">Max Qty <span class="sort-ind" id="sort_maximum_qty">↕</span></button></th>
               <th class="small-col"><button class="sort-btn" onclick="toggleSort('purchase_price')">Purchase <span class="sort-ind" id="sort_purchase_price">↕</span></button></th>
@@ -705,7 +705,7 @@
             </tr>
           </thead>
           <tbody id="gridBody">
-            <tr><td colspan="25" class="center muted" style="padding:26px;">Loading stock items...</td></tr>
+            <tr><td colspan="24" class="center muted" style="padding:26px;">Loading stock items...</td></tr>
           </tbody>
         </table>
       </div>
@@ -738,11 +738,11 @@
 
     const textFields = new Set(['hsn_code','item_code','item_name','barcode','department']);
     const numericFields = new Set([
-      'quantity','minimum_qty','maximum_qty','purchase_price','purchase_price_gst','landing',
+      'minimum_qty','maximum_qty','purchase_price','purchase_price_gst','landing',
       'price1_percent','price1','price1_gst','price2_percent','price2','price2_gst','price3_percent','price3','price3_gst','gst_percent'
     ]);
     const editableFields = [
-      'item_code','item_name','hsn_code','barcode','department','quantity','minimum_qty','maximum_qty',
+      'item_code','item_name','hsn_code','barcode','department','minimum_qty','maximum_qty',
       'purchase_price','purchase_price_gst','landing','price1_percent','price1','price1_gst','price2_percent','price2','price2_gst',
       'price3_percent','price3','price3_gst','gst_percent'
     ];
@@ -992,7 +992,7 @@
       } catch (err) {
         console.error(err);
         setStatus('ERROR');
-        document.getElementById('gridBody').innerHTML = `<tr><td colspan="25" class="center" style="padding:26px;color:#fda4af;">${escapeHtml(err.message || 'Failed to load data')}</td></tr>`;
+        document.getElementById('gridBody').innerHTML = `<tr><td colspan="24" class="center" style="padding:26px;color:#fda4af;">${escapeHtml(err.message || 'Failed to load data')}</td></tr>`;
         toast(`Load failed: ${err.message || err}`, 'error', 6000);
       } finally {
         state.loading = false;
@@ -1022,7 +1022,7 @@
     function renderRows() {
       const body = document.getElementById('gridBody');
       if (!state.rows.length) {
-        body.innerHTML = '<tr><td colspan="25" class="center muted" style="padding:26px;">No stock items found for this filter.</td></tr>';
+        body.innerHTML = '<tr><td colspan="24" class="center muted" style="padding:26px;">No stock items found for this filter.</td></tr>';
         return;
       }
 
@@ -1038,7 +1038,6 @@
             <td>${fieldCell(row,'hsn_code')}</td>
             <td>${fieldCell(row,'barcode')}</td>
             <td>${fieldCell(row,'department')}</td>
-            <td>${fieldCell(row,'quantity')}</td>
             <td>${fieldCell(row,'minimum_qty')}</td>
             <td>${fieldCell(row,'maximum_qty')}</td>
             <td>${fieldCell(row,'purchase_price')}</td>
@@ -1543,7 +1542,7 @@
         toast('No visible rows to export', 'info');
         return;
       }
-      const cols = ['id','item_code','item_name','hsn_code','barcode','department','quantity','minimum_qty','maximum_qty','purchase_price','purchase_price_gst','landing','price1_percent','price1','price1_gst','price2_percent','price2','price2_gst','price3_percent','price3','price3_gst','gst_percent','created_at'];
+      const cols = ['id','item_code','item_name','hsn_code','barcode','department','minimum_qty','maximum_qty','purchase_price','purchase_price_gst','landing','price1_percent','price1','price1_gst','price2_percent','price2','price2_gst','price3_percent','price3','price3_gst','gst_percent','created_at'];
       const lines = [cols.join(',')];
       for (const row of state.rows) {
         lines.push(cols.map(c => csvSafe(row[c])).join(','));

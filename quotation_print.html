@@ -2,134 +2,364 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Quotation Print</title>
-
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quotation Print - VAJRA LIGHTS</title>
+<link rel="icon" href="favicon.ico" type="image/x-icon">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabaseClient.js"></script>
 <style>
+  * { box-sizing: border-box; }
+
   body {
     font-family: Arial, sans-serif;
-    margin: 20px;
+    margin: 0;
+    padding: 18px;
     color: #000;
+    background: #fff;
   }
 
-  .header {
+  .print-page {
+    width: 100%;
+    max-width: 210mm;
+    margin: 0 auto;
+    background: #fff;
+  }
+
+  .top-title {
     text-align: center;
+    border-bottom: 2px solid #000;
+    padding-bottom: 8px;
     margin-bottom: 10px;
   }
 
-  .header h2 {
+  .shop-name {
+    font-size: 24px;
+    font-weight: 900;
+    letter-spacing: .5px;
     margin: 0;
-    font-size: 22px;
   }
 
-  .info {
-    display: flex;
-    justify-content: space-between;
+  .shop-sub {
+    font-size: 12px;
+    font-weight: 700;
+    margin-top: 3px;
+    line-height: 1.35;
+  }
+
+  .quote-title {
+    text-align: center;
+    font-size: 19px;
+    font-weight: 900;
+    margin: 10px 0;
+    text-decoration: underline;
+  }
+
+  .info-box {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
     margin-bottom: 10px;
     font-size: 13px;
   }
 
+  .info-card {
+    border: 1px solid #000;
+    padding: 8px;
+    min-height: 72px;
+    line-height: 1.45;
+  }
+
+  .right { text-align: right; }
+  .center { text-align: center; }
+
   table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 14px;
+    font-size: 13.5px;
   }
 
   th, td {
     border: 1px solid #000;
-    padding: 6px;
+    padding: 7px 6px;
+    vertical-align: top;
   }
 
   th {
-    background: #eee;
+    background: #f1f1f1;
+    font-weight: 900;
+    text-align: left;
   }
 
-  .center {
+  .sl-col { width: 42px; text-align: center; }
+  .code-col { width: 150px; }
+  .qty-col { width: 80px; text-align: center; }
+
+  .bottom-total {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 10px;
+  }
+
+  .total-box {
+    border: 2px solid #000;
+    padding: 9px 12px;
+    min-width: 260px;
+    text-align: right;
+    font-size: 17px;
+    font-weight: 900;
+  }
+
+  .note {
+    margin-top: 14px;
+    font-size: 12px;
+    line-height: 1.45;
+  }
+
+  .signature-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-top: 42px;
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .signature-box {
+    border-top: 1px solid #000;
+    padding-top: 6px;
     text-align: center;
   }
 
-  .total-section {
-    margin-top: 10px;
-    text-align: right;
-    font-size: 16px;
-    font-weight: bold;
+  .screen-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-bottom: 12px;
+  }
+
+  .screen-actions button {
+    border: 0;
+    border-radius: 8px;
+    padding: 9px 14px;
+    font-weight: 900;
+    background: #111827;
+    color: white;
+    cursor: pointer;
+  }
+
+  .error-box {
+    border: 2px solid #b91c1c;
+    color: #b91c1c;
+    padding: 14px;
+    font-weight: 900;
+    margin-top: 20px;
+    text-align: center;
+  }
+
+  @page {
+    size: A4;
+    margin: 8mm;
   }
 
   @media print {
     body {
-      margin: 5mm;
+      padding: 0;
+      margin: 0;
+    }
+
+    .screen-actions {
+      display: none !important;
+    }
+
+    .print-page {
+      max-width: none;
+      width: 100%;
+    }
+
+    th {
+      background: #f1f1f1 !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
     }
   }
 </style>
 </head>
-
 <body>
 
-<div class="header">
-  <h2>QUOTATION</h2>
+<div class="screen-actions">
+  <button onclick="window.print()">🖨 Print</button>
+  <button onclick="window.close()">✖ Close</button>
 </div>
 
-<div class="info">
-  <div>
-    <strong>Customer:</strong> <span id="custName"></span><br>
-    <strong>Mobile:</strong> <span id="custMobile"></span>
+<div class="print-page" id="printPage">
+  <div class="top-title">
+    <h1 class="shop-name">VAJRA LIGHTS & ELECTRICALS</h1>
+    <div class="shop-sub">
+      Lights • Electricals • Plumbing • Interlock<br>
+      Contact: 9495160771, 8606808063
+    </div>
   </div>
 
-  <div style="text-align:right;">
-    <strong>Quotation No:</strong> <span id="qNo"></span><br>
-    <strong>Date:</strong> <span id="qDate"></span>
+  <div class="quote-title">QUOTATION</div>
+
+  <div class="info-box">
+    <div class="info-card">
+      <strong>Customer:</strong> <span id="customerName"></span><br>
+      <strong>Mobile:</strong> <span id="customerMobile"></span><br>
+      <strong>Address:</strong> <span id="customerAddress"></span>
+    </div>
+
+    <div class="info-card right">
+      <strong>Quotation No:</strong> <span id="quotationNo"></span><br>
+      <strong>Date:</strong> <span id="quotationDate"></span><br>
+      <strong>Salesman:</strong> <span id="salesman"></span>
+    </div>
   </div>
-</div>
 
-<table>
-  <thead>
-    <tr>
-      <th style="width:25%;">Item Code</th>
-      <th>Item Name</th>
-      <th style="width:15%;" class="center">Qty</th>
-    </tr>
-  </thead>
-  <tbody id="itemsTable"></tbody>
-</table>
+  <table>
+    <thead>
+      <tr>
+        <th class="sl-col">SL</th>
+        <th class="code-col">Item Code</th>
+        <th>Item Name</th>
+        <th class="qty-col">Qty</th>
+      </tr>
+    </thead>
+    <tbody id="itemsBody">
+      <tr><td colspan="4" class="center">Loading items...</td></tr>
+    </tbody>
+  </table>
 
-<div class="total-section">
-  Total Amount: ₹ <span id="grandTotal">0.00</span>
+  <div class="bottom-total">
+    <div class="total-box">
+      Total Bill Amount: ₹ <span id="grandTotal">0</span>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>Note:</strong> This quotation print does not show GST, price, or item amount. Total shown is before GST / quotation total as saved.
+  </div>
+
+  <div class="signature-row">
+    <div class="signature-box">Customer Signature</div>
+    <div class="signature-box">For VAJRA LIGHTS & ELECTRICALS</div>
+  </div>
 </div>
 
 <script>
-  const quotation = JSON.parse(localStorage.getItem("printQuotation"));
+  const sb = window.sbcc;
 
-  document.getElementById("custName").innerText = quotation.customer_name || "";
-  document.getElementById("custMobile").innerText = quotation.customer_mobile || "";
-  document.getElementById("qNo").innerText = quotation.quotation_number || "";
-  document.getElementById("qDate").innerText = quotation.bill_date || "";
+  function qs(name){
+    return new URLSearchParams(window.location.search).get(name);
+  }
 
-  const table = document.getElementById("itemsTable");
+  function moneyNoDecimal(v){
+    const n = Number(v || 0);
+    return n.toLocaleString('en-IN', { maximumFractionDigits: 0 });
+  }
 
-  let total = 0;
+  function safe(v){
+    return String(v ?? '');
+  }
 
-  quotation.items.forEach(item => {
-    const price = Number(item.sales_price || item.price || 0); // used internally only
+  function formatDate(v){
+    if(!v) return '';
+    const d = new Date(v);
+    if(Number.isNaN(d.getTime())) return v;
+    return d.toLocaleDateString('en-IN');
+  }
+
+  function getBeforeGstLineTotal(item){
     const qty = Number(item.quantity || 0);
-    const amount = price * qty;
 
-    total += amount;
+    // Priority 1: saved before GST sales price
+    if(item.sales_price !== null && item.sales_price !== undefined && item.sales_price !== ''){
+      return Number(item.sales_price || 0) * qty;
+    }
 
-    const row = `
-      <tr>
-        <td>${item.item_code || ""}</td>
-        <td>${item.item_name || ""}</td>
-        <td class="center">${qty}</td>
-      </tr>
-    `;
+    // Priority 2: price after discount, before GST
+    const basePrice = Number(item.price || 0);
+    const disc = Number(item.discount_percent || 0);
+    const netPrice = basePrice - (basePrice * disc / 100);
+    return netPrice * qty;
+  }
 
-    table.insertAdjacentHTML("beforeend", row);
-  });
+  async function loadQuotationPrint(){
+    const id = qs('id');
 
-  document.getElementById("grandTotal").innerText = total.toFixed(2);
+    if(!id){
+      document.getElementById('itemsBody').innerHTML = `<tr><td colspan="4"><div class="error-box">Quotation ID missing in URL.</div></td></tr>`;
+      return;
+    }
 
-  window.onload = () => {
-    window.print();
-  };
+    if(!sb){
+      document.getElementById('itemsBody').innerHTML = `<tr><td colspan="4"><div class="error-box">Supabase client not found. Check supabaseClient.js.</div></td></tr>`;
+      return;
+    }
+
+    const { data: q, error: qErr } = await sb
+      .from('quotation_details')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if(qErr || !q){
+      console.error(qErr);
+      document.getElementById('itemsBody').innerHTML = `<tr><td colspan="4"><div class="error-box">Quotation not found.</div></td></tr>`;
+      return;
+    }
+
+    document.getElementById('customerName').textContent = safe(q.customer_name);
+    document.getElementById('customerMobile').textContent = safe(q.customer_mobile);
+    document.getElementById('customerAddress').textContent = safe(q.address);
+    document.getElementById('quotationNo').textContent = `${q.series_code || ''}${q.series_code ? '-' : ''}${q.quotation_number || ''}`;
+    document.getElementById('quotationDate').textContent = formatDate(q.quotation_date || q.bill_date || q.created_at);
+    document.getElementById('salesman').textContent = safe(q.salesman || q.created_by);
+
+    const { data: items, error: iErr } = await sb
+      .from('quotation_item_details')
+      .select('*')
+      .eq('quotation_id', id)
+      .order('id', { ascending: true });
+
+    if(iErr){
+      console.error(iErr);
+      document.getElementById('itemsBody').innerHTML = `<tr><td colspan="4"><div class="error-box">Items loading failed: ${iErr.message}</div></td></tr>`;
+      return;
+    }
+
+    const body = document.getElementById('itemsBody');
+    body.innerHTML = '';
+
+    if(!items || !items.length){
+      body.innerHTML = `<tr><td colspan="4" class="center">No items found for this quotation.</td></tr>`;
+    } else {
+      let calcTotal = 0;
+
+      items.forEach((item, index) => {
+        calcTotal += getBeforeGstLineTotal(item);
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="sl-col">${index + 1}</td>
+          <td>${safe(item.item_code)}</td>
+          <td>${safe(item.item_name)}</td>
+          <td class="qty-col">${Number(item.quantity || 0)}</td>
+        `;
+        body.appendChild(tr);
+      });
+
+      const savedTotal = Number(q.total_amount || 0);
+      const finalTotal = savedTotal > 0 ? savedTotal : calcTotal;
+      document.getElementById('grandTotal').textContent = moneyNoDecimal(finalTotal);
+    }
+
+    setTimeout(() => {
+      window.print();
+    }, 500);
+  }
+
+  document.addEventListener('DOMContentLoaded', loadQuotationPrint);
 </script>
 
 </body>

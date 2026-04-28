@@ -507,6 +507,87 @@
         }
     }
 
+    function getCleanIndianMobile(mobile){
+        let m = String(mobile || '').replace(/\D/g, '');
+        if(m.length > 10 && m.startsWith('91')) m = m.slice(-10);
+        if(m.length > 10) m = m.slice(-10);
+        return m;
+    }
+
+    function downloadBlob(blob, fileName){
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1500);
+    }
+
+    function showWhatsAppGodModeHelper({ copied, downloaded, mobile, text }){
+        const old = document.getElementById('waGodModeOverlay');
+        if(old) old.remove();
+
+        const overlay = document.createElement('div');
+        overlay.id = 'waGodModeOverlay';
+        overlay.style.cssText = `
+            position:fixed; inset:0; z-index:999999;
+            background:rgba(0,0,0,.72); backdrop-filter:blur(6px);
+            display:flex; align-items:center; justify-content:center; padding:18px;
+        `;
+
+        overlay.innerHTML = `
+            <div style="width:min(520px,96vw); background:linear-gradient(135deg,#092018,#064e3b); color:white; border:1px solid rgba(255,255,255,.18); border-radius:22px; box-shadow:0 28px 80px rgba(0,0,0,.5); overflow:hidden; font-family:Arial,sans-serif;">
+                <div style="padding:18px 20px; background:rgba(255,255,255,.08); display:flex; align-items:center; justify-content:space-between; gap:12px;">
+                    <div style="font-size:20px; font-weight:900;">🚀 WhatsApp God Mode</div>
+                    <button type="button" id="waGodClose" style="background:#ef4444;color:white;border:0;border-radius:999px;padding:8px 12px;font-weight:900;cursor:pointer;">✕</button>
+                </div>
+                <div style="padding:22px; line-height:1.55;">
+                    <div style="font-size:17px;font-weight:800;margin-bottom:12px;">WhatsApp Web opened ${mobile ? 'for +' + '91' + mobile : ''}</div>
+                    ${copied ? `
+                        <div style="background:rgba(34,197,94,.20); border:1px solid rgba(34,197,94,.45); padding:14px; border-radius:16px; margin-bottom:12px;">
+                            ✅ Bill image copied to clipboard.<br>
+                            <b>Go to WhatsApp chat and press CTRL + V</b>, then press Enter/send.
+                        </div>
+                    ` : `
+                        <div style="background:rgba(245,158,11,.20); border:1px solid rgba(245,158,11,.50); padding:14px; border-radius:16px; margin-bottom:12px;">
+                            ⚠ Browser blocked image clipboard copy.
+                            ${downloaded ? '<br>✅ Bill image downloaded. Attach it in WhatsApp Web.' : ''}
+                        </div>
+                    `}
+                    <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:16px;">
+                        <button type="button" id="waCopyTextBtn" style="flex:1;min-width:150px;background:#22c55e;color:#052e1a;border:0;border-radius:14px;padding:12px;font-weight:900;cursor:pointer;">Copy Text</button>
+                        <button type="button" id="waOpenAgainBtn" style="flex:1;min-width:150px;background:#facc15;color:#3b2500;border:0;border-radius:14px;padding:12px;font-weight:900;cursor:pointer;">Open Again</button>
+                    </div>
+                    <div style="font-size:12px;opacity:.8;margin-top:14px;">Desktop browsers do not allow websites to auto-paste or auto-send files inside WhatsApp Web. This is the fastest allowed method.</div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+
+        document.getElementById('waGodClose').onclick = () => overlay.remove();
+        overlay.addEventListener('click', e => { if(e.target === overlay) overlay.remove(); });
+
+        document.getElementById('waCopyTextBtn').onclick = async () => {
+            try {
+                await navigator.clipboard.writeText(text || '');
+                alert('✅ WhatsApp text copied.');
+            } catch(e) {
+                alert('Could not copy text.');
+            }
+        };
+
+        document.getElementById('waOpenAgainBtn').onclick = () => {
+            const encodedText = encodeURIComponent(text || '');
+            const waUrl = mobile
+                ? `https://web.whatsapp.com/send?phone=91${mobile}&text=${encodedText}`
+                : `https://web.whatsapp.com/?text=${encodedText}`;
+            window.open(waUrl, '_blank');
+        };
+    }
+
     async function shareWhatsAppImage(id){
         const row = findReportRow(id);
         if(!row){
@@ -525,17 +606,53 @@
             const fileName = `bill_${row.series_code || ''}_${row[numberField] || id}.png`.replace(/\s+/g, '_');
             const file = new File([blob], fileName, { type: 'image/png' });
             const text = buildWhatsAppMessage(row);
+            const encodedText = encodeURIComponent(text);
+            const mobile = getCleanIndianMobile(row.customer_mobile);
+            const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-            if (navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
+            // MOBILE: Direct system share with image + text
+            if (isMobile && navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
                 await navigator.share({
                     title: 'VAJRA Bill',
                     text,
                     files: [file]
                 });
-            } else {
-                shareWhatsAppText(id);
-                alert('Image share is not supported on this device/browser. Opened WhatsApp text share instead.');
+                return;
             }
+
+            // DESKTOP: Best allowed method — copy image, open exact WhatsApp chat
+            let copied = false;
+            let downloaded = false;
+
+            try {
+                if(navigator.clipboard && window.ClipboardItem){
+                    await navigator.clipboard.write([
+                        new ClipboardItem({ 'image/png': blob })
+                    ]);
+                    copied = true;
+                }
+            } catch(clipErr){
+                console.warn('Image clipboard copy failed:', clipErr);
+            }
+
+            if(!copied){
+                downloadBlob(blob, fileName);
+                downloaded = true;
+            }
+
+            const waUrl = mobile
+                ? `https://web.whatsapp.com/send?phone=91${mobile}&text=${encodedText}`
+                : `https://web.whatsapp.com/?text=${encodedText}`;
+
+            window.open(waUrl, '_blank');
+
+            showWhatsAppGodModeHelper({
+                copied,
+                downloaded,
+                mobile,
+                text
+            });
+
         } catch (err) {
             console.error(err);
             shareWhatsAppText(id);

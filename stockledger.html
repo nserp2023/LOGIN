@@ -11,7 +11,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 
 <link rel="manifest" href="site.webmanifest">
-  <title>Stock Report - VAJRA LIGHTS</title>
+  <title>Readable Stock Ledger ASC - VAJRA LIGHTS</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabaseClient.js"></script>
@@ -453,16 +453,239 @@
       .stats{grid-template-columns: repeat(2, 1fr);}
       .title h1{font-size:22px;}
     }
+  
+/* =========================
+   ULTRA READABLE VERSION
+   ========================= */
+html, body{
+  font-size:16px;
+  line-height:1.62;
+}
+
+body.readable-zoom{
+  zoom:1.16;
+}
+
+.title h1{
+  font-size:34px;
+  font-weight:950;
+}
+
+.title p{
+  font-size:15px;
+}
+
+.panel{
+  padding:18px;
+}
+
+.input, .select, .btn{
+  height:50px;
+  font-size:16px;
+  font-weight:800;
+}
+
+.field label{
+  font-size:14px;
+  font-weight:900;
+}
+
+.card{
+  padding:18px;
+}
+
+.card .label{
+  font-size:14px;
+  font-weight:900;
+}
+
+.card .value{
+  font-size:32px;
+}
+
+.card .sub{
+  font-size:13px;
+}
+
+thead th{
+  font-size:14px;
+  padding:16px 14px;
+  color:#d7e4ff;
+}
+
+tbody td{
+  font-size:16px;
+  padding:18px 14px;
+}
+
+.name-cell{
+  font-size:17px;
+  font-weight:950;
+}
+
+.code-cell{
+  font-size:14px;
+  margin-top:3px;
+}
+
+.mono{
+  font-size:15px;
+  font-weight:800;
+}
+
+.status-pill{
+  font-size:14px;
+  min-width:110px;
+  padding:8px 12px;
+}
+
+.expand-btn{
+  min-width:104px;
+  height:42px;
+  font-size:15px;
+}
+
+.details-box{
+  padding:18px;
+}
+
+.subpanel{
+  padding:16px;
+}
+
+.subpanel h3{
+  font-size:20px;
+  font-weight:950;
+}
+
+.mini-table{
+  min-width:1150px;
+}
+
+.mini-table th{
+  font-size:15px;
+  padding:15px 12px;
+  color:#e0eaff;
+  font-weight:950;
+}
+
+.mini-table td{
+  font-size:16px;
+  padding:16px 12px;
+  font-weight:700;
+}
+
+.mini-table-wrap{
+  max-height:560px;
+}
+
+.staff-filter{
+  height:44px;
+  width:230px;
+  font-size:15px;
+}
+
+.staff-badge{
+  font-size:14px;
+  max-width:250px;
+  padding:7px 12px;
+}
+
+.type-badge{
+  font-size:14px;
+  padding:8px 12px;
+}
+
+.effect-in, .effect-out, .effect-zero,
+.balance-pos, .balance-neg{
+  font-size:18px;
+}
+
+.risk-badge{
+  font-size:12px;
+  padding:4px 9px;
+}
+
+.movement-summary{
+  grid-template-columns: repeat(3, minmax(170px, 1fr));
+  gap:14px;
+}
+
+.movement-card{
+  padding:16px;
+  min-height:92px;
+}
+
+.movement-card .mini-label{
+  font-size:13px;
+}
+
+.movement-card .mini-value{
+  font-size:26px;
+  line-height:1.2;
+}
+
+.movement-insight{
+  font-size:17px;
+  padding:14px 16px;
+}
+
+.trend-box{
+  padding:14px;
+}
+
+.footer-note{
+  font-size:14px;
+}
+
+body.compact-columns .hide-compact{
+  display:none !important;
+}
+
+body.compact-columns table{
+  min-width:1050px;
+}
+
+@media (max-width: 1000px){
+  .movement-summary{
+    grid-template-columns: repeat(2, 1fr);
+  }
+  body.readable-zoom{
+    zoom:1;
+  }
+}
+
+@media (max-width: 760px){
+  html, body{
+    font-size:15px;
+  }
+  .title h1{
+    font-size:26px;
+  }
+  .card .value{
+    font-size:26px;
+  }
+  tbody td{
+    font-size:15px;
+    padding:14px 10px;
+  }
+  .mini-table th, .mini-table td{
+    font-size:14px;
+  }
+}
+
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="topbar">
       <div class="title">
-        <h1>Super Stock Report</h1>
-        <p>Live stock from <span class="mono">stock_balance_view</span> and grouped document movement from <span class="mono">stock_transaction_final</span>.</p>
+        <h1>Readable Stock Ledger</h1>
+        <p>Easy-to-read stock ledger with larger text, cleaner movement details, staff filter, and visual stock flow.</p>
       </div>
       <div class="chip-row">
+        <button class="btn secondary" onclick="toggleReadableZoom()">🔍 Zoom</button>
+        <button class="btn secondary" onclick="toggleColumnMode()">📋 Compact / Full</button>
         <button class="btn secondary" onclick="location.href='stock_correction.html'">Stock Correction</button>
       </div>
     </div>
@@ -534,11 +757,11 @@
               <th style="width:90px">Action</th>
               <th style="width:120px">Item Code</th>
               <th>Item Name</th>
-              <th style="width:140px">Barcode</th>
-              <th style="width:90px">HSN</th>
+              <th class="hide-compact" style="width:140px">Barcode</th>
+              <th class="hide-compact" style="width:90px">HSN</th>
               <th class="num" style="width:120px">Stock</th>
-              <th class="num" style="width:130px">Purchase</th>
-              <th class="num" style="width:130px">Purchase+GST</th>
+              <th class="num hide-compact" style="width:130px">Purchase</th>
+              <th class="num hide-compact" style="width:130px">Purchase+GST</th>
               <th class="num" style="width:120px">Landing</th>
               <th class="num" style="width:120px">P1</th>
               <th class="num" style="width:120px">P2</th>
@@ -552,7 +775,7 @@
           </tbody>
         </table>
       </div>
-      <div class="footer-note">Tip: click <b>Details</b> to see ultra visual stock movement with staff filter, bill number, customer/supplier, effect, and running balance.</div>
+      <div class="footer-note">Tip: use <b>Compact / Full</b> to hide/show less important columns. Click <b>Details</b> for readable movement history.</div>
     </div>
   </div>
 
@@ -567,6 +790,11 @@
     let filteredRows = [];
     let detailsCache = {};
     let sortState = {};
+
+    function getDefaultSort(itemCode){
+      if(!sortState[itemCode]) sortState[itemCode] = 'asc';
+      return sortState[itemCode];
+    }
 
     const els = {
       searchInput: document.getElementById('searchInput'),
@@ -730,11 +958,11 @@ function applyFilters(){
               <div class="name-cell">${esc(row.item_name)}</div>
               <div class="code-cell">GST ${money(row.gst_percent)}%</div>
             </td>
-            <td class="mono">${esc(row.barcode)}</td>
-            <td class="mono">${esc(row.hsn_code)}</td>
+            <td class="mono hide-compact">${esc(row.barcode)}</td>
+            <td class="mono hide-compact">${esc(row.hsn_code)}</td>
             <td class="num"><b>${qtyFmt(row.balance)}</b></td>
-            <td class="num">${money(row.purchase_price)}</td>
-            <td class="num">${money(row.purchase_price_gst)}</td>
+            <td class="num hide-compact">${money(row.purchase_price)}</td>
+            <td class="num hide-compact">${money(row.purchase_price_gst)}</td>
             <td class="num">${money(row.landing)}</td>
             <td class="num">${money(row.price1)}</td>
             <td class="num">${money(row.price2)}</td>
@@ -748,7 +976,7 @@ function applyFilters(){
               <div class="details-box">
                 <div class="subpanel" style="grid-column:1 / -1;">
                   <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
-                    <h3 style="margin:0;">Grouped Movement by Reference</h3>
+                    <h3 style="margin:0;">Stock Movement Details</h3>
                     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
                       <input type="date" id="detailFrom_${esc(rawKey)}" class="input" style="height:36px;width:160px;padding:0 10px;" />
                       <input type="date" id="detailTo_${esc(rawKey)}" class="input" style="height:36px;width:160px;padding:0 10px;" />
@@ -756,7 +984,7 @@ function applyFilters(){
                         <option value="">All Billed By</option>
                       </select>
                       <button class="expand-btn" onclick="applyDetailDateFilter('${key}')">Filter</button>
-                      <button class="expand-btn" onclick="toggleSort('${key}')">Asc / Desc</button>
+                      <button class="expand-btn" onclick="toggleSort('${key}')">Old/New</button>
                     </div>
                   </div>
                   <div class="mini-table-wrap" id="groupWrap_${esc(rawKey)}">
@@ -777,7 +1005,7 @@ function applyFilters(){
         .from('stock_transaction_final')
         .select('*')
         .eq('item_code', itemCode)
-        .order('last_updated', { ascending: false })
+        .order('last_updated', { ascending: true })
         .limit(300);
 
       const grouped = groupedRes.data || [];
@@ -932,7 +1160,7 @@ function applyFilters(){
     }
 
     function renderGroupedTable(rows, itemCode, extra = {}){
-      const isAsc = sortState[itemCode] === 'asc';
+      const isAsc = getDefaultSort(itemCode) === 'asc';
 
       const fromEl = document.getElementById(`detailFrom_${itemCode}`);
       const toEl = document.getElementById(`detailTo_${itemCode}`);
@@ -1065,7 +1293,7 @@ function applyFilters(){
           </div>
         </div>
 
-        <div class="movement-summary" style="grid-template-columns: repeat(4, minmax(150px, 1fr));">
+        <div class="movement-summary">
           <div class="movement-card">
             <div class="mini-label">Est. Profit</div>
             <div class="mini-value effect-in">₹${money(estimatedProfit)}</div>
@@ -1087,7 +1315,7 @@ function applyFilters(){
         <div class="movement-insight">💡 ${esc(insight)}</div>
 
         <div class="trend-box open">
-          <canvas id="${esc(chartId)}" height="72"></canvas>
+          <canvas id="${esc(chartId)}" height="105"></canvas>
         </div>
 
         <table class="mini-table">
@@ -1228,6 +1456,20 @@ function applyFilters(){
       setTimeout(() => row.scrollIntoView({ behavior:'smooth', block:'nearest' }), 50);
     }
     window.toggleDetails = toggleDetails;
+
+
+    function toggleReadableZoom(){
+      document.body.classList.toggle('readable-zoom');
+    }
+    window.toggleReadableZoom = toggleReadableZoom;
+
+    function toggleColumnMode(){
+      document.body.classList.toggle('compact-columns');
+    }
+    window.toggleColumnMode = toggleColumnMode;
+
+    // Start with fewer columns so the report is easier to read.
+    document.body.classList.add('compact-columns');
 
     function exportCSV(){
       if(!filteredRows.length) return;

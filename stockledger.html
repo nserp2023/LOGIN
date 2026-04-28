@@ -11,7 +11,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 
 <link rel="manifest" href="site.webmanifest">
-  <title>Readable Stock Ledger ASC - VAJRA LIGHTS</title>
+  <title>Readable Stock Ledger + Reorder Filter - VAJRA LIGHTS</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabaseClient.js"></script>
@@ -174,7 +174,7 @@
       width:100%;
       border-collapse:separate;
       border-spacing:0;
-      min-width:1450px;
+      min-width:1750px;
     }
 
     thead th{
@@ -231,7 +231,7 @@
 
     .pill-ok{background:rgba(34,197,94,.14); color:#86efac; border-color:rgba(34,197,94,.32);}
     .pill-low{background:rgba(245,158,11,.14); color:#fcd34d; border-color:rgba(245,158,11,.32);}
-    .pill-zero{background:rgba(244,63,94,.14); color:#fda4af; border-color:rgba(244,63,94,.32);}
+    .pill-zero{background:rgba(244,63,94,.14); color:#fda4af; border-color:rgba(244,63,94,.32);}\n    .pill-order{background:rgba(168,85,247,.16); color:#ddd6fe; border-color:rgba(168,85,247,.36);} \n    .order-qty{color:#ddd6fe;font-weight:950;}\n    .reorder-row td{background:linear-gradient(180deg, rgba(88,28,135,.20), rgba(15,23,42,.84)) !important;}
 
     .expand-btn{
       min-width:82px;
@@ -680,8 +680,8 @@ body.compact-columns table{
   <div class="wrap">
     <div class="topbar">
       <div class="title">
-        <h1>Readable Stock Ledger</h1>
-        <p>Easy-to-read stock ledger with larger text, cleaner movement details, staff filter, and visual stock flow.</p>
+        <h1>Readable Stock Ledger + Reorder Filter</h1>
+        <p>Easy-to-read stock ledger with minimum/maximum qty, suggested order qty, movement details, staff filter, and visual stock flow.</p>
       </div>
       <div class="chip-row">
         <button class="btn secondary" onclick="toggleReadableZoom()">🔍 Zoom</button>
@@ -697,13 +697,10 @@ body.compact-columns table{
           <input id="searchInput" class="input" placeholder="Type item name / code / barcode" />
         </div>
         <div class="field">
-          <label>Status</label>
+          <label>View Items</label>
           <select id="statusFilter" class="select">
-            <option value="all">All</option>
-            <option value="positive">In Stock</option>
-            <option value="low">Low Stock</option>
-            <option value="zero">Zero Stock</option>
-            <option value="negative">Negative Stock</option>
+            <option value="all">All Items</option>
+            <option value="reorder">Reorder Items</option>
           </select>
         </div>
         <div class="field">
@@ -716,10 +713,6 @@ body.compact-columns table{
             <option value="value_desc">Value High-Low</option>
             <option value="value_asc">Value Low-High</option>
           </select>
-        </div>
-        <div class="field">
-          <label>Low Stock Limit</label>
-          <input id="lowStockLimit" class="input" type="number" min="0" step="1" value="5" />
         </div>
         <div class="field">
           <label>Rows</label>
@@ -735,8 +728,8 @@ body.compact-columns table{
       </div>
       <div class="legend">
         <span class="status-pill pill-ok">Normal</span>
-        <span class="status-pill pill-low">Low Stock</span>
         <span class="status-pill pill-zero">Zero / Negative</span>
+        <span class="status-pill pill-order">Reorder Needed</span>
       </div>
     </div>
 
@@ -744,8 +737,9 @@ body.compact-columns table{
       <div class="card"><div class="label">Total Items</div><div class="value" id="statItems">0</div><div class="sub">All visible items</div></div>
       <div class="card"><div class="label">Total Stock Qty</div><div class="value" id="statQty">0</div><div class="sub">Sum of visible balances</div></div>
       <div class="card"><div class="label">Zero Stock</div><div class="value" id="statZero">0</div><div class="sub">Items with zero balance</div></div>
-      <div class="card"><div class="label">Low Stock</div><div class="value" id="statLow">0</div><div class="sub">Based on low stock limit</div></div>
       <div class="card"><div class="label">Negative Stock</div><div class="value" id="statNegative">0</div><div class="sub">Items below zero</div></div>
+      <div class="card"><div class="label">Reorder Items</div><div class="value" id="statReorder">0</div><div class="sub">Stock below minimum qty</div></div>
+      <div class="card"><div class="label">Suggested Order Qty</div><div class="value" id="statSuggestedQty">0</div><div class="sub">Qty needed up to maximum</div></div>
       <div class="card"><div class="label">Stock Value</div><div class="value" id="statValue">0</div><div class="sub">Balance × landing</div></div>
     </div>
 
@@ -760,6 +754,9 @@ body.compact-columns table{
               <th class="hide-compact" style="width:140px">Barcode</th>
               <th class="hide-compact" style="width:90px">HSN</th>
               <th class="num" style="width:120px">Stock</th>
+              <th class="num" style="width:120px">Min Qty</th>
+              <th class="num" style="width:120px">Max Qty</th>
+              <th class="num" style="width:150px">Order Suggestion</th>
               <th class="num hide-compact" style="width:130px">Purchase</th>
               <th class="num hide-compact" style="width:130px">Purchase+GST</th>
               <th class="num" style="width:120px">Landing</th>
@@ -771,11 +768,11 @@ body.compact-columns table{
             </tr>
           </thead>
           <tbody id="reportBody">
-            <tr><td colspan="14" class="loading">Loading stock report...</td></tr>
+            <tr><td colspan="17" class="loading">Loading stock report...</td></tr>
           </tbody>
         </table>
       </div>
-      <div class="footer-note">Tip: use <b>Compact / Full</b> to hide/show less important columns. Click <b>Details</b> for readable movement history.</div>
+      <div class="footer-note">Tip: use <b>Compact / Full</b> to hide/show less important columns. Use <b>View Items = Reorder Items</b> to see items below minimum qty. Click <b>Details</b> for readable movement history.</div>
     </div>
   </div>
 
@@ -800,7 +797,6 @@ body.compact-columns table{
       searchInput: document.getElementById('searchInput'),
       statusFilter: document.getElementById('statusFilter'),
       sortBy: document.getElementById('sortBy'),
-      lowStockLimit: document.getElementById('lowStockLimit'),
       pageSize: document.getElementById('pageSize'),
       refreshBtn: document.getElementById('refreshBtn'),
       exportBtn: document.getElementById('exportBtn'),
@@ -808,8 +804,9 @@ body.compact-columns table{
       statItems: document.getElementById('statItems'),
       statQty: document.getElementById('statQty'),
       statZero: document.getElementById('statZero'),
-      statLow: document.getElementById('statLow'),
       statNegative: document.getElementById('statNegative'),
+      statReorder: document.getElementById('statReorder'),
+      statSuggestedQty: document.getElementById('statSuggestedQty'),
       statValue: document.getElementById('statValue')
     };
 
@@ -832,16 +829,26 @@ body.compact-columns table{
       });
     }
 
-    function getStatus(balance, lowLimit){
-      const qty = toNum(balance);
+    function getReorderInfo(row){
+      const stock = toNum(row.balance);
+      const min = toNum(row.minimum_qty);
+      const max = toNum(row.maximum_qty);
+      const hasLevels = min > 0 && max > 0;
+      const needed = hasLevels && stock < min ? Math.max(0, max - stock) : 0;
+      return { min, max, needed, reorder: needed > 0 };
+    }
+
+    function getStatus(row){
+      const qty = toNum(row.balance);
+      const order = getReorderInfo(row);
+      if(order.reorder) return { text:'Reorder', cls:'pill-order' };
       if(qty < 0) return { text:'Negative', cls:'pill-zero' };
       if(qty === 0) return { text:'Zero', cls:'pill-zero' };
-      if(qty <= lowLimit) return { text:'Low', cls:'pill-low' };
       return { text:'Normal', cls:'pill-ok' };
     }
 
     async function loadStockReport(){
-      els.reportBody.innerHTML = `<tr><td colspan="14" class="loading">Loading stock report...</td></tr>`;
+      els.reportBody.innerHTML = `<tr><td colspan="17" class="loading">Loading stock report...</td></tr>`;
       stockRows = [];
       filteredRows = [];
       detailsCache = {};
@@ -858,7 +865,7 @@ body.compact-columns table{
 
         if(error){
           console.error(error);
-          els.reportBody.innerHTML = `<tr><td colspan="14" class="empty">Failed to load stock report: ${esc(error.message)}</td></tr>`;
+          els.reportBody.innerHTML = `<tr><td colspan="17" class="empty">Failed to load stock report: ${esc(error.message)}</td></tr>`;
           return;
         }
 
@@ -875,7 +882,6 @@ function applyFilters(){
   const q = normalize(els.searchInput.value);
   const status = els.statusFilter.value;
   const sortBy = els.sortBy.value;
-  const lowLimit = toNum(els.lowStockLimit.value);
   const pageSize = toNum(els.pageSize.value) || 100;
 
   const terms = q ? q.split(/\s+/).filter(Boolean) : [];
@@ -895,10 +901,7 @@ function applyFilters(){
       terms.every(term => searchFields.some(field => field.includes(term)));
 
     let matchStatus = true;
-    if(status === 'positive') matchStatus = balance > 0;
-    else if(status === 'low') matchStatus = balance > 0 && balance <= lowLimit;
-    else if(status === 'zero') matchStatus = balance === 0;
-    else if(status === 'negative') matchStatus = balance < 0;
+    if(status === 'reorder') matchStatus = getReorderInfo(row).reorder;
 
     return matchText && matchStatus;
   });
@@ -917,39 +920,43 @@ function applyFilters(){
     }
   });
 
-  updateStats(filteredRows, lowLimit);
-  renderTable(filteredRows.slice(0, pageSize), lowLimit);
+  updateStats(filteredRows);
+  renderTable(filteredRows.slice(0, pageSize));
 }
-    function updateStats(rows, lowLimit){
+    function updateStats(rows){
       const totalItems = rows.length;
       const totalQty = rows.reduce((s,r)=>s + toNum(r.balance), 0);
       const zero = rows.filter(r => toNum(r.balance) === 0).length;
-      const low = rows.filter(r => toNum(r.balance) > 0 && toNum(r.balance) <= lowLimit).length;
       const negative = rows.filter(r => toNum(r.balance) < 0).length;
+      const reorderRows = rows.filter(r => getReorderInfo(r).reorder);
+      const reorder = reorderRows.length;
+      const suggestedQty = reorderRows.reduce((s,r)=>s + getReorderInfo(r).needed, 0);
       const value = rows.reduce((s,r)=>s + (toNum(r.balance) * toNum(r.landing)), 0);
 
       els.statItems.textContent = totalItems;
       els.statQty.textContent = qtyFmt(totalQty);
       els.statZero.textContent = zero;
-      els.statLow.textContent = low;
       els.statNegative.textContent = negative;
+      els.statReorder.textContent = reorder;
+      els.statSuggestedQty.textContent = qtyFmt(suggestedQty);
       els.statValue.textContent = money(value);
     }
 
-    function renderTable(rows, lowLimit){
+    function renderTable(rows){
       if(!rows.length){
-        els.reportBody.innerHTML = `<tr><td colspan="14" class="empty">No stock items found.</td></tr>`;
+        els.reportBody.innerHTML = `<tr><td colspan="17" class="empty">No stock items found.</td></tr>`;
         return;
       }
 
       els.reportBody.innerHTML = rows.map((row, idx) => {
-        const status = getStatus(row.balance, lowLimit);
+        const status = getStatus(row);
+        const order = getReorderInfo(row);
         const stockValue = toNum(row.balance) * toNum(row.landing);
         const rawKey = row.item_code || `row_${idx}`;
         const key = String(rawKey).replace(/'/g, "\\'");
 
         return `
-          <tr class="data-row" data-code="${esc(rawKey)}">
+          <tr class="data-row ${order.reorder ? 'reorder-row' : ''}" data-code="${esc(rawKey)}">
             <td><button class="expand-btn" onclick="toggleDetails('${key}')">Details</button></td>
             <td>
               <div class="mono">${esc(row.item_code)}</div>
@@ -961,6 +968,9 @@ function applyFilters(){
             <td class="mono hide-compact">${esc(row.barcode)}</td>
             <td class="mono hide-compact">${esc(row.hsn_code)}</td>
             <td class="num"><b>${qtyFmt(row.balance)}</b></td>
+            <td class="num">${qtyFmt(order.min)}</td>
+            <td class="num">${qtyFmt(order.max)}</td>
+            <td class="num order-qty"><b>${order.reorder ? qtyFmt(order.needed) : '-'}</b></td>
             <td class="num hide-compact">${money(row.purchase_price)}</td>
             <td class="num hide-compact">${money(row.purchase_price_gst)}</td>
             <td class="num">${money(row.landing)}</td>
@@ -972,7 +982,7 @@ function applyFilters(){
           </tr>
 
           <tr class="details-row" id="details_${esc(rawKey)}">
-            <td colspan="14" class="details-cell">
+            <td colspan="17" class="details-cell">
               <div class="details-box">
                 <div class="subpanel" style="grid-column:1 / -1;">
                   <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
@@ -1474,16 +1484,17 @@ function applyFilters(){
     function exportCSV(){
       if(!filteredRows.length) return;
 
-      const lowLimit = toNum(els.lowStockLimit.value);
-      const header = ['Item Code','Item Name','Barcode','HSN','Stock','Purchase','Purchase+GST','Landing','P1','P2','P3','Stock Value','Status'];
+          const header = ['Item Code','Item Name','Barcode','HSN','Stock','Minimum Qty','Maximum Qty','Suggested Order Qty','Purchase','Purchase+GST','Landing','P1','P2','P3','Stock Value','Status'];
 
       const lines = filteredRows.map(r => {
-        const status = getStatus(r.balance, lowLimit).text;
+        const status = getStatus(r).text;
         const stockValue = toNum(r.balance) * toNum(r.landing);
 
+        const order = getReorderInfo(r);
         return [
           r.item_code, r.item_name, r.barcode, r.hsn_code,
-          qtyFmt(r.balance), money(r.purchase_price), money(r.purchase_price_gst), money(r.landing),
+          qtyFmt(r.balance), qtyFmt(order.min), qtyFmt(order.max), order.reorder ? qtyFmt(order.needed) : '',
+          money(r.purchase_price), money(r.purchase_price_gst), money(r.landing),
           money(r.price1), money(r.price2), money(r.price3), money(stockValue), status
         ].map(v => `"${String(v ?? '').replace(/"/g,'""')}"`).join(',');
       });
@@ -1508,7 +1519,6 @@ function applyFilters(){
 
     els.statusFilter.addEventListener('change', applyFilters);
     els.sortBy.addEventListener('change', applyFilters);
-    els.lowStockLimit.addEventListener('input', applyFilters);
     els.pageSize.addEventListener('change', applyFilters);
     els.refreshBtn.addEventListener('click', loadStockReport);
     els.exportBtn.addEventListener('click', exportCSV);

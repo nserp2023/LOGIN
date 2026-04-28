@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>VAJRA | Stock Correction Ultra Pro</title>
+  <title>VAJRA | Stock Correction Ultra Pro + Reorder Levels</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
       <script src="supabaseClient.js"></script>
           <script src="common-ui.js"></script>
@@ -472,7 +472,9 @@
     [data-field="price2_gst"],
     [data-field="price3"],
     [data-field="price3_gst"],
-    [data-field="gst_percent"] { min-width: 120px; }
+    [data-field="gst_percent"],
+    [data-field="minimum_qty"],
+    [data-field="maximum_qty"] { min-width: 120px; }
 
 
 
@@ -526,6 +528,16 @@
       .stats { grid-template-columns: 1fr; }
       .footer-bar { padding-bottom: max(14px, env(safe-area-inset-bottom)); }
     }
+  
+    .sql-note {
+      margin: 0 0 14px;
+      border: 1px solid rgba(251,191,36,.24);
+      background: rgba(120,53,15,.18);
+      color: #fde68a;
+      padding: 12px 14px;
+      border-radius: 16px;
+      font-weight: 800;
+    }
   </style>
 </head>
 <body>
@@ -535,7 +547,7 @@
         <div class="brand-mark">V</div>
         <div>
           <h1>VAJRA Stock Correction Ultra Pro</h1>
-          <p>Excel style full filtered list • inline editing • missing data filters • save only edited items</p>
+          <p>Excel style full filtered list • inline editing • min/max reorder levels • save only edited items</p>
         </div>
       </div>
       <div class="top-actions">
@@ -570,17 +582,20 @@
       </div>
     </div>
 
+    <div class="sql-note">Before using Min Qty / Max Qty, run this once in Supabase SQL: <code>alter table public.stock_items add column if not exists minimum_qty numeric default 0, add column if not exists maximum_qty numeric default 0;</code></div>
+
     <section class="panel">
       <div class="panel-head">
         <div>
           <div class="panel-title">Filter, Search & Correct Stock Master</div>
-          <div class="panel-sub">Search by HSN, item code, item name, barcode, department and missing values.</div>
+          <div class="panel-sub">Search by HSN, item code, item name, barcode, department, missing values, and correct minimum / maximum reorder levels.</div>
         </div>
         <div class="chips">
           <button class="btn primary" onclick="toggleTopSection()">Show / Hide Filters</button>
           <div class="chip">Editable master grid</div>
           <div class="chip">All filtered rows loaded</div>
           <div class="chip">Only edited rows save</div>
+          <div class="chip">Reorder levels ready</div>
         </div>
       </div>
 
@@ -641,6 +656,9 @@
             <option value="NO_PRICE3">NO P3</option>
             <option value="NO_PRICE3_GST">NO P3+GST</option>
             <option value="NO_GST">NO GST %</option>
+            <option value="NO_MINIMUM_QTY">NO MINIMUM QTY</option>
+            <option value="NO_MAXIMUM_QTY">NO MAXIMUM QTY</option>
+            <option value="NO_REORDER_LEVELS">NO MIN / MAX QTY</option>
           </select>
         </div>
       </div>
@@ -666,6 +684,8 @@
               <th class="med-col"><button class="sort-btn" onclick="toggleSort('barcode')">Barcode <span class="sort-ind" id="sort_barcode">↕</span></button></th>
               <th class="med-col"><button class="sort-btn" onclick="toggleSort('department')">Department <span class="sort-ind" id="sort_department">↕</span></button></th>
               <th class="small-col"><button class="sort-btn" onclick="toggleSort('quantity')">Qty <span class="sort-ind" id="sort_quantity">↕</span></button></th>
+              <th class="small-col"><button class="sort-btn" onclick="toggleSort('minimum_qty')">Min Qty <span class="sort-ind" id="sort_minimum_qty">↕</span></button></th>
+              <th class="small-col"><button class="sort-btn" onclick="toggleSort('maximum_qty')">Max Qty <span class="sort-ind" id="sort_maximum_qty">↕</span></button></th>
               <th class="small-col"><button class="sort-btn" onclick="toggleSort('purchase_price')">Purchase <span class="sort-ind" id="sort_purchase_price">↕</span></button></th>
               <th class="small-col"><button class="sort-btn" onclick="toggleSort('purchase_price_gst')">Purchase+GST <span class="sort-ind" id="sort_purchase_price_gst">↕</span></button></th>
               <th class="small-col"><button class="sort-btn" onclick="toggleSort('landing')">Landing <span class="sort-ind" id="sort_landing">↕</span></button></th>
@@ -685,7 +705,7 @@
             </tr>
           </thead>
           <tbody id="gridBody">
-            <tr><td colspan="23" class="center muted" style="padding:26px;">Loading stock items...</td></tr>
+            <tr><td colspan="25" class="center muted" style="padding:26px;">Loading stock items...</td></tr>
           </tbody>
         </table>
       </div>
@@ -718,11 +738,11 @@
 
     const textFields = new Set(['hsn_code','item_code','item_name','barcode','department']);
     const numericFields = new Set([
-      'quantity','purchase_price','purchase_price_gst','landing',
+      'quantity','minimum_qty','maximum_qty','purchase_price','purchase_price_gst','landing',
       'price1_percent','price1','price1_gst','price2_percent','price2','price2_gst','price3_percent','price3','price3_gst','gst_percent'
     ]);
     const editableFields = [
-      'item_code','item_name','hsn_code','barcode','department','quantity',
+      'item_code','item_name','hsn_code','barcode','department','quantity','minimum_qty','maximum_qty',
       'purchase_price','purchase_price_gst','landing','price1_percent','price1','price1_gst','price2_percent','price2','price2_gst',
       'price3_percent','price3','price3_gst','gst_percent'
     ];
@@ -906,6 +926,12 @@
           return query.or('price3_gst.is.null,price3_gst.eq.0');
         case 'NO_GST':
           return query.or('gst_percent.is.null,gst_percent.eq.0');
+        case 'NO_MINIMUM_QTY':
+          return query.or('minimum_qty.is.null,minimum_qty.eq.0');
+        case 'NO_MAXIMUM_QTY':
+          return query.or('maximum_qty.is.null,maximum_qty.eq.0');
+        case 'NO_REORDER_LEVELS':
+          return query.or('minimum_qty.is.null,minimum_qty.eq.0,maximum_qty.is.null,maximum_qty.eq.0');
         default:
           return query;
       }
@@ -966,7 +992,7 @@
       } catch (err) {
         console.error(err);
         setStatus('ERROR');
-        document.getElementById('gridBody').innerHTML = `<tr><td colspan="23" class="center" style="padding:26px;color:#fda4af;">${escapeHtml(err.message || 'Failed to load data')}</td></tr>`;
+        document.getElementById('gridBody').innerHTML = `<tr><td colspan="25" class="center" style="padding:26px;color:#fda4af;">${escapeHtml(err.message || 'Failed to load data')}</td></tr>`;
         toast(`Load failed: ${err.message || err}`, 'error', 6000);
       } finally {
         state.loading = false;
@@ -996,7 +1022,7 @@
     function renderRows() {
       const body = document.getElementById('gridBody');
       if (!state.rows.length) {
-        body.innerHTML = '<tr><td colspan="23" class="center muted" style="padding:26px;">No stock items found for this filter.</td></tr>';
+        body.innerHTML = '<tr><td colspan="25" class="center muted" style="padding:26px;">No stock items found for this filter.</td></tr>';
         return;
       }
 
@@ -1013,6 +1039,8 @@
             <td>${fieldCell(row,'barcode')}</td>
             <td>${fieldCell(row,'department')}</td>
             <td>${fieldCell(row,'quantity')}</td>
+            <td>${fieldCell(row,'minimum_qty')}</td>
+            <td>${fieldCell(row,'maximum_qty')}</td>
             <td>${fieldCell(row,'purchase_price')}</td>
             <td>${fieldCell(row,'purchase_price_gst')}</td>
             <td>${fieldCell(row,'landing')}</td>
@@ -1171,8 +1199,8 @@
       const err = state.rowErrorMap.get(id);
       tr.classList.toggle('dirty', dirty);
       tr.classList.toggle('error-row', !!err);
-      const badgeCell = tr.children[21];
-      const btnCell = tr.children[22];
+      const badgeCell = tr.children[23];
+      const btnCell = tr.children[24];
       if (badgeCell) badgeCell.innerHTML = `<div class="row-meta">${dirty ? '<span class="badge warn">Edited</span>' : '<span class="badge ok">Saved</span>'}${err ? `<span class="badge err">${escapeHtml(err)}</span>` : ''}</div>`;
       const btn = btnCell?.querySelector(`#saveRowBtn_${id}`);
       if (btn) btn.disabled = !dirty;
@@ -1444,8 +1472,14 @@
         if (numericFields.has(key) && payload[key] !== null && payload[key] !== '') {
           const n = Number(payload[key]);
           if (!Number.isFinite(n)) throw new Error(`Invalid number in ${key}`);
+          if ((key === 'minimum_qty' || key === 'maximum_qty') && n < 0) throw new Error(`${key} cannot be negative`);
           payload[key] = n;
         }
+      }
+      const minQty = Object.prototype.hasOwnProperty.call(payload, 'minimum_qty') ? Number(payload.minimum_qty || 0) : null;
+      const maxQty = Object.prototype.hasOwnProperty.call(payload, 'maximum_qty') ? Number(payload.maximum_qty || 0) : null;
+      if (minQty !== null && maxQty !== null && maxQty > 0 && minQty > maxQty) {
+        throw new Error('Minimum Qty cannot be greater than Maximum Qty');
       }
     }
 
@@ -1509,7 +1543,7 @@
         toast('No visible rows to export', 'info');
         return;
       }
-      const cols = ['id','item_code','item_name','hsn_code','barcode','department','quantity','purchase_price','purchase_price_gst','landing','price1_percent','price1','price1_gst','price2_percent','price2','price2_gst','price3_percent','price3','price3_gst','gst_percent','created_at'];
+      const cols = ['id','item_code','item_name','hsn_code','barcode','department','quantity','minimum_qty','maximum_qty','purchase_price','purchase_price_gst','landing','price1_percent','price1','price1_gst','price2_percent','price2','price2_gst','price3_percent','price3','price3_gst','gst_percent','created_at'];
       const lines = [cols.join(',')];
       for (const row of state.rows) {
         lines.push(cols.map(c => csvSafe(row[c])).join(','));

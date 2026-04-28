@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stock Conversion - VAJRA LIGHTS</title>
+
+<link rel="icon" href="favicon.ico" type="image/x-icon">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabaseClient.js"></script>
+<script src="page_permissions.js"></script>
+<script src="common-ui.js"></script>
+
+<style>
+:root{
+  --bg:#07111f;
+  --panel:#0d1b2f;
+  --panel2:#10243d;
+  --text:#eaf3ff;
+  --muted:#93a9c7;
+  --line:#263b5c;
+  --blue:#38bdf8;
+  --green:#22c55e;
+  --red:#ef4444;
+  --yellow:#facc15;
+  --violet:#a855f7;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:Arial,system-ui,sans-serif;
+  background:linear-gradient(135deg,#050b14,#0b1f38);
+  color:var(--text);
+}
+.header{
+  position:sticky;
+  top:0;
+  z-index:50;
+  background:#07111f;
+  border-bottom:1px solid var(--line);
+  padding:14px 18px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+}
+.header h2{margin:0;font-size:22px}
+.wrap{max-width:1500px;margin:auto;padding:16px}
+.card{
+  background:linear-gradient(180deg,rgba(13,27,47,.98),rgba(8,17,31,.98));
+  border:1px solid var(--line);
+  border-radius:18px;
+  padding:16px;
+  margin-bottom:16px;
+  box-shadow:0 14px 35px rgba(0,0,0,.28);
+}
+.grid{
+  display:grid;
+  grid-template-columns:1fr 1.2fr;
+  gap:16px;
+}
+h3{margin:0 0 12px;font-size:18px}
+label{
+  display:block;
+  color:var(--muted);
+  font-size:13px;
+  font-weight:700;
+  margin-bottom:6px;
+}
+input,textarea,select{
+  width:100%;
+  height:46px;
+  border-radius:12px;
+  border:1px solid var(--line);
+  background:#071323;
+  color:var(--text);
+  padding:0 12px;
+  font-size:15px;
+  outline:none;
+}
+textarea{height:70px;padding:10px 12px;resize:vertical}
+input:focus,textarea:focus,select:focus{border-color:var(--blue)}
+.row{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+  margin-bottom:12px;
+}
+.full{margin-bottom:12px}
+.btn{
+  border:0;
+  border-radius:12px;
+  padding:12px 16px;
+  font-weight:900;
+  cursor:pointer;
+  color:white;
+}
+.btn-blue{background:linear-gradient(180deg,#38bdf8,#0284c7)}
+.btn-green{background:linear-gradient(180deg,#22c55e,#15803d)}
+.btn-red{background:linear-gradient(180deg,#ef4444,#b91c1c)}
+.btn-dark{background:#14243b;border:1px solid var(--line)}
+.btn-violet{background:linear-gradient(180deg,#a855f7,#7e22ce)}
+.actions{display:flex;gap:10px;flex-wrap:wrap}
+.suggest{position:relative}
+.list{
+  display:none;
+  position:absolute;
+  left:0;right:0;top:75px;
+  background:#08172a;
+  border:1px solid var(--line);
+  border-radius:14px;
+  max-height:320px;
+  overflow:auto;
+  z-index:100;
+}
+.item{
+  padding:10px 12px;
+  border-bottom:1px solid #16304f;
+  cursor:pointer;
+}
+.item:hover{background:#123456}
+.item b{display:block;color:white}
+.item small{color:var(--muted)}
+.summary{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:12px;
+}
+.box{
+  background:#08172a;
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:14px;
+}
+.box span{color:var(--muted);font-size:12px}
+.box b{display:block;margin-top:5px;font-size:24px}
+table{
+  width:100%;
+  border-collapse:collapse;
+  min-width:900px;
+}
+th,td{
+  border-bottom:1px solid var(--line);
+  padding:10px;
+  text-align:left;
+}
+th{
+  background:#0b1f38;
+  color:#b8d8ff;
+  position:sticky;
+  top:0;
+}
+.table-wrap{
+  overflow:auto;
+  border:1px solid var(--line);
+  border-radius:14px;
+  max-height:430px;
+}
+.small-btn{
+  border:0;
+  border-radius:10px;
+  padding:8px 10px;
+  cursor:pointer;
+  font-weight:800;
+}
+.badge{
+  padding:5px 9px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:900;
+}
+.in{background:#123f21;color:#baffcb}
+.out{background:#3f1212;color:#ffb4b4}
+.msg{
+  display:none;
+  margin-top:12px;
+  padding:12px;
+  border-radius:12px;
+  font-weight:800;
+}
+.ok{background:#0d3b22;color:#bdffd5}
+.err{background:#481515;color:#ffc5c5}
+.warn{background:#45340b;color:#ffe699}
+@media(max-width:900px){
+  .grid,.row,.summary{grid-template-columns:1fr}
+  .header h2{font-size:18px}
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">
+  <h2>🔁 Ultra Stock Conversion</h2>
+  <div class="actions">
+    <button class="btn btn-dark" onclick="location.href='stock_ledger.html'">Stock Ledger</button>
+    <button class="btn btn-dark" onclick="location.href='dashboard.html'">Dashboard</button>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="grid">
+
+    <div class="card">
+      <h3>From Item - Stock Reduce</h3>
+
+      <div class="full suggest">
+        <label>Search Source Item</label>
+        <input id="fromSearch" autocomplete="off" placeholder="Type item code / name / barcode">
+        <div id="fromList" class="list"></div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Item Code</label>
+          <input id="fromCode" readonly>
+        </div>
+        <div>
+          <label>Current Stock</label>
+          <input id="fromStock" readonly>
+        </div>
+      </div>
+
+      <div class="full">
+        <label>Item Name</label>
+        <input id="fromName" readonly>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Reduce Qty</label>
+          <input id="fromQty" type="number" min="0" step="0.01" placeholder="Example: 1">
+        </div>
+        <div>
+          <label>Balance After</label>
+          <input id="fromAfter" readonly>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>To Items - Stock Increase</h3>
+
+      <div class="actions" style="margin-bottom:12px">
+        <button class="btn btn-blue" onclick="addToRow()">+ Add Target Item</button>
+        <button class="btn btn-violet" onclick="autoRatio()">Auto Ratio</button>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:36%">Search Item</th>
+              <th>Code</th>
+              <th class="num">Stock</th>
+              <th class="num">Add Qty</th>
+              <th class="num">After</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="toBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="card">
+    <h3>Conversion Details</h3>
+
+    <div class="row">
+      <div>
+        <label>Conversion No</label>
+        <input id="conversionNo" readonly>
+      </div>
+      <div>
+        <label>Date</label>
+        <input id="conversionDate" type="date">
+      </div>
+    </div>
+
+    <div class="full">
+      <label>Remarks</label>
+      <textarea id="remarks" placeholder="Example: 1 box converted to 10 pieces"></textarea>
+    </div>
+
+    <div class="summary">
+      <div class="box"><span>Stock Out</span><b id="sumOut">0</b></div>
+      <div class="box"><span>Stock In Lines</span><b id="sumLines">0</b></div>
+      <div class="box"><span>Total In Qty</span><b id="sumIn">0</b></div>
+      <div class="box"><span>Status</span><b id="sumStatus">Ready</b></div>
+    </div>
+
+    <div class="actions" style="margin-top:16px">
+      <button class="btn btn-green" onclick="saveConversion()">💾 Save Conversion</button>
+      <button class="btn btn-red" onclick="clearForm()">Reset</button>
+      <button class="btn btn-blue" onclick="loadHistory()">Refresh History</button>
+    </div>
+
+    <div id="msg" class="msg"></div>
+  </div>
+
+  <div class="card">
+    <h3>Recent Conversions</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>No</th>
+            <th>Date</th>
+            <th>From Item</th>
+            <th>Out</th>
+            <th>To Items</th>
+            <th>Remarks</th>
+          </tr>
+        </thead>
+        <tbody id="historyBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const sb = window.sbcc;
+
+let stockItems = [];
+let selectedFrom = null;
+let toRows = [];
+
+document.addEventListener("DOMContentLoaded", async () => {
+  if(typeof requirePageAccess === "function"){
+    const ok = await requirePageAccess("stock_conversion");
+    if(!ok) return;
+  }
+
+  conversionDate.value = new Date().toISOString().slice(0,10);
+  makeConversionNo();
+
+  await loadStock();
+  addToRow();
+  bindFromSearch();
+  loadHistory();
+
+  fromQty.addEventListener("input", updateSummary);
+});
+
+function makeConversionNo(){
+  const d = new Date();
+  conversionNo.value =
+    "SC-" +
+    d.getFullYear().toString().slice(2) +
+    String(d.getMonth()+1).padStart(2,"0") +
+    String(d.getDate()).padStart(2,"0") +
+    "-" + String(Date.now()).slice(-5);
+}
+
+async function loadStock(){
+  stockItems = [];
+  let from = 0;
+  const size = 1000;
+
+  while(true){
+    const {data,error} = await sb
+      .from("stock_balance_view")
+      .select("*")
+      .range(from, from + size - 1)
+      .order("item_name",{ascending:true});
+
+    if(error){
+      showMsg("Stock loading failed: " + error.message, "err");
+      return;
+    }
+
+    stockItems.push(...(data || []));
+    if(!data || data.length < size) break;
+    from += size;
+  }
+}
+
+function bindFromSearch(){
+  fromSearch.addEventListener("input", () => {
+    renderSuggestions(fromSearch.value, fromList, (it) => {
+      selectedFrom = it;
+      fromSearch.value = `${it.item_code} - ${it.item_name}`;
+      fromCode.value = it.item_code || "";
+      fromName.value = it.item_name || "";
+      fromStock.value = qty(it.balance);
+      fromList.style.display = "none";
+      updateSummary();
+    });
+  });
+
+  document.addEventListener("click", e => {
+    if(!fromSearch.parentElement.contains(e.target)) fromList.style.display = "none";
+  });
+}
+
+function addToRow(){
+  const id = "r" + Date.now() + Math.floor(Math.random()*999);
+  toRows.push({id, item:null});
+
+  const tr = document.createElement("tr");
+  tr.id = id;
+  tr.innerHTML = `
+    <td class="suggest">
+      <input class="toSearch" autocomplete="off" placeholder="Type item">
+      <div class="list"></div>
+    </td>
+    <td><input class="toCode" readonly></td>
+    <td><input class="toStock" readonly></td>
+    <td><input class="toQty" type="number" min="0" step="0.01"></td>
+    <td><input class="toAfter" readonly></td>
+    <td><button class="small-btn" onclick="removeToRow('${id}')">❌</button></td>
+  `;
+  toBody.appendChild(tr);
+
+  const search = tr.querySelector(".toSearch");
+  const list = tr.querySelector(".list");
+  const qtyInput = tr.querySelector(".toQty");
+
+  search.addEventListener("input", () => {
+    renderSuggestions(search.value, list, (it) => {
+      const row = toRows.find(r => r.id === id);
+      row.item = it;
+
+      search.value = `${it.item_code} - ${it.item_name}`;
+      tr.querySelector(".toCode").value = it.item_code || "";
+      tr.querySelector(".toStock").value = qty(it.balance);
+      list.style.display = "none";
+      updateSummary();
+    });
+  });
+
+  qtyInput.addEventListener("input", updateSummary);
+
+  document.addEventListener("click", e => {
+    if(!search.parentElement.contains(e.target)) list.style.display = "none";
+  });
+}
+
+function removeToRow(id){
+  document.getElementById(id)?.remove();
+  toRows = toRows.filter(r => r.id !== id);
+  updateSummary();
+
+  if(toRows.length === 0) addToRow();
+}
+
+function renderSuggestions(value, list, onSelect){
+  const q = normalize(value);
+  list.innerHTML = "";
+
+  if(!q){
+    list.style.display = "none";
+    return;
+  }
+
+  const words = q.split(" ").filter(Boolean);
+
+  const found = stockItems.filter(it => {
+    const hay = normalize(`${it.item_code || ""} ${it.item_name || ""} ${it.barcode || ""}`);
+    return words.every(w => hay.includes(w));
+  }).slice(0,80);
+
+  found.forEach(it => {
+    const div = document.createElement("div");
+    div.className = "item";
+    div.innerHTML = `
+      <b>${esc(it.item_code)} - ${esc(it.item_name)}</b>
+      <small>Stock: ${qty(it.balance)} | GST: ${money(it.gst_percent)}%</small>
+    `;
+    div.onclick = () => onSelect(it);
+    list.appendChild(div);
+  });
+
+  list.style.display = found.length ? "block" : "none";
+}
+
+function updateSummary(){
+  const outQty = Number(fromQty.value || 0);
+  const fromBal = selectedFrom ? Number(selectedFrom.balance || 0) : 0;
+  fromAfter.value = qty(fromBal - outQty);
+
+  let totalIn = 0;
+  let lineCount = 0;
+  let status = "Ready";
+
+  toRows.forEach(r => {
+    const tr = document.getElementById(r.id);
+    if(!tr) return;
+
+    const q = Number(tr.querySelector(".toQty").value || 0);
+    const bal = r.item ? Number(r.item.balance || 0) : 0;
+
+    tr.querySelector(".toAfter").value = qty(bal + q);
+
+    if(r.item && q > 0){
+      totalIn += q;
+      lineCount++;
+    }
+  });
+
+  if(!selectedFrom) status = "Select From";
+  else if(outQty <= 0) status = "Enter Out Qty";
+  else if(outQty > fromBal) status = "Low Stock";
+  else if(lineCount === 0) status = "Add To Item";
+
+  sumOut.textContent = qty(outQty);
+  sumLines.textContent = lineCount;
+  sumIn.textContent = qty(totalIn);
+  sumStatus.textContent = status;
+}
+
+function autoRatio(){
+  const outQty = Number(fromQty.value || 0);
+  if(outQty <= 0){
+    showMsg("First enter From Qty.", "warn");
+    return;
+  }
+
+  const ratio = prompt("Enter conversion ratio. Example: 1 BOX = 10 PCS, type 10");
+  const r = Number(ratio || 0);
+
+  if(r <= 0) return;
+
+  const first = toRows[0];
+  if(first){
+    const tr = document.getElementById(first.id);
+    if(tr) tr.querySelector(".toQty").value = qty(outQty * r);
+  }
+
+  updateSummary();
+}
+
+async function saveConversion(){
+  try{
+    hideMsg();
+
+    const conversion_no = conversionNo.value;
+    const conversion_date = conversionDate.value;
+    const outQty = Number(fromQty.value || 0);
+    const remarkText = remarks.value || "";
+
+    if(!selectedFrom) throw new Error("Select source item.");
+    if(outQty <= 0) throw new Error("Enter reduce qty.");
+    if(outQty > Number(selectedFrom.balance || 0)) throw new Error("Source item stock is not enough.");
+
+    const validTo = [];
+
+    for(const r of toRows){
+      const tr = document.getElementById(r.id);
+      if(!tr || !r.item) continue;
+
+      const q = Number(tr.querySelector(".toQty").value || 0);
+      if(q <= 0) continue;
+
+      if(r.item.item_code === selectedFrom.item_code){
+        throw new Error("From item and To item cannot be same.");
+      }
+
+      validTo.push({item:r.item, qty:q});
+    }
+
+    if(validTo.length === 0) throw new Error("Add at least one target item with qty.");
+
+    const user = JSON.parse(localStorage.getItem("userProfile") || "{}");
+    const created_by =
+      user.full_name ||
+      user.username ||
+      user.email ||
+      localStorage.getItem("loggedUser") ||
+      "";
+
+    const header = {
+      conversion_no,
+      conversion_date,
+      from_item_code:selectedFrom.item_code,
+      from_item_name:selectedFrom.item_name,
+      from_qty:outQty,
+      to_item_code:validTo.length === 1 ? validTo[0].item.item_code : "MULTI",
+      to_item_name:validTo.length === 1 ? validTo[0].item.item_name : "MULTI ITEMS",
+      to_qty:validTo.reduce((s,r)=>s+r.qty,0),
+      remarks:remarkText,
+      created_by
+    };
+
+    const {error:headErr} = await sb
+      .from("stock_conversion_details")
+      .insert(header);
+
+    if(headErr) throw headErr;
+
+    const conversionItems = [
+      {
+        conversion_no,
+        item_code:selectedFrom.item_code,
+        item_name:selectedFrom.item_name,
+        qty_out:outQty,
+        qty_in:0
+      },
+      ...validTo.map(r => ({
+        conversion_no,
+        item_code:r.item.item_code,
+        item_name:r.item.item_name,
+        qty_out:0,
+        qty_in:r.qty
+      }))
+    ];
+
+    await sb.from("stock_conversion_items").insert(conversionItems);
+
+    const ledgerRows = [
+      {
+        item_code:selectedFrom.item_code,
+        item_name:selectedFrom.item_name,
+        qty_in:0,
+        qty_out:outQty,
+        txn_type:"STOCK CONVERSION",
+        reference_id:conversion_no,
+        remarks:`Conversion OUT. ${remarkText}`
+      },
+      ...validTo.map(r => ({
+        item_code:r.item.item_code,
+        item_name:r.item.item_name,
+        qty_in:r.qty,
+        qty_out:0,
+        txn_type:"STOCK CONVERSION",
+        reference_id:conversion_no,
+        remarks:`Conversion IN from ${selectedFrom.item_code}. ${remarkText}`
+      }))
+    ];
+
+    const {error:ledErr} = await sb
+      .from("stock_ledger")
+      .insert(ledgerRows);
+
+    if(ledErr) throw ledErr;
+
+    showMsg("Stock conversion saved successfully. Stock ledger updated.", "ok");
+
+    clearForm(false);
+    await loadStock();
+    await loadHistory();
+
+  }catch(err){
+    showMsg("Save failed: " + err.message, "err");
+  }
+}
+
+async function loadHistory(){
+  historyBody.innerHTML = `<tr><td colspan="6">Loading...</td></tr>`;
+
+  const {data,error} = await sb
+    .from("stock_conversion_details")
+    .select("*")
+    .order("id",{ascending:false})
+    .limit(100);
+
+  if(error){
+    historyBody.innerHTML = `<tr><td colspan="6">${esc(error.message)}</td></tr>`;
+    return;
+  }
+
+  historyBody.innerHTML = "";
+
+  for(const r of data || []){
+    const {data:items} = await sb
+      .from("stock_conversion_items")
+      .select("*")
+      .eq("conversion_no", r.conversion_no);
+
+    const toText = (items || [])
+      .filter(x => Number(x.qty_in || 0) > 0)
+      .map(x => `${esc(x.item_code)} - ${esc(x.item_name)} <span class="badge in">+${qty(x.qty_in)}</span>`)
+      .join("<br>");
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><b>${esc(r.conversion_no)}</b></td>
+      <td>${esc(r.conversion_date)}</td>
+      <td>${esc(r.from_item_code)} - ${esc(r.from_item_name)}</td>
+      <td><span class="badge out">-${qty(r.from_qty)}</span></td>
+      <td>${toText || "-"}</td>
+      <td>${esc(r.remarks || "")}</td>
+    `;
+    historyBody.appendChild(tr);
+  }
+}
+
+function clearForm(newNo=true){
+  selectedFrom = null;
+  toRows = [];
+
+  fromSearch.value = "";
+  fromCode.value = "";
+  fromName.value = "";
+  fromStock.value = "";
+  fromQty.value = "";
+  fromAfter.value = "";
+  remarks.value = "";
+
+  toBody.innerHTML = "";
+  addToRow();
+
+  conversionDate.value = new Date().toISOString().slice(0,10);
+  if(newNo) makeConversionNo();
+
+  updateSummary();
+}
+
+function showMsg(text,type){
+  msg.textContent = text;
+  msg.className = "msg " + type;
+  msg.style.display = "block";
+}
+function hideMsg(){msg.style.display="none"}
+
+function normalize(v){
+  return String(v || "").toLowerCase().replace(/\s+/g," ").trim();
+}
+function esc(v){
+  return String(v ?? "").replace(/[&<>"']/g,m=>({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+  }[m]));
+}
+function qty(v){
+  const n = Number(v || 0);
+  return Number.isInteger(n) ? String(n) : n.toFixed(2);
+}
+function money(v){
+  return Number(v || 0).toFixed(2);
+}
+</script>
+
+</body>
+</html>

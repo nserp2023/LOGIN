@@ -181,17 +181,40 @@ function clean(v){return String(v || "").trim();}
 function norm(v){return String(v || "").toLowerCase().replace(/[^a-z0-9]+/g," ").replace(/\s+/g," ").trim();}
 function esc(v){return String(v ?? "").replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));}
 
+let loadedPOId = null;
+let currentMode = "new";
+
 document.addEventListener("DOMContentLoaded", async () => {
   if(typeof requirePageAccess === "function"){
     const ok = await requirePageAccess("purchase");
     if(!ok) return;
   }
+
   byId("orderDate").valueAsDate = new Date();
   bindHeaderEvents();
   bindButtons();
   bindEntryFocusMode();
-  await Promise.all([loadStockData(), loadLastPrices(), loadPendingData(), loadNextPONumber()]);
+
+  await Promise.all([loadStockData(), loadLastPrices(), loadPendingData()]);
   byId("stockCountChip").textContent = stockData.length + " stock items loaded";
+
+  const params = new URLSearchParams(window.location.search);
+  const printKey = params.get("print") || params.get("po") || params.get("po_number") || params.get("po_no");
+  const editKey = params.get("edit") || params.get("id");
+
+  if(printKey){
+    currentMode = "print";
+    await loadPOForViewOrPrint(printKey, true);
+    return;
+  }
+
+  if(editKey){
+    currentMode = "edit";
+    await loadPOForViewOrPrint(editKey, false);
+    return;
+  }
+
+  await loadNextPONumber();
   addRow();
 });
 
@@ -553,6 +576,107 @@ function collectRows(){
   return rows;
 }
 
+
+function clearPOForm(){
+  byId("supplierGst").value = "";
+  byId("supplierName").value = "";
+  byId("supplierMobile").value = "";
+  byId("supplierAddress").value = "";
+  byId("headerRemark").value = "";
+  byId("items").innerHTML = "";
+  currentRowId = 0;
+  loadedPOId = null;
+  calcAll();
+}
+
+function getPOValue(o, keys, fallback=""){
+  for(const k of keys){
+    if(o && o[k] != null && o[k] !== "") return o[k];
+  }
+  return fallback;
+}
+
+async function fetchPOHeader(key){
+  const raw = clean(key);
+  if(!raw) throw new Error("PO reference missing");
+
+  let q;
+  const isNumeric = /^\d+$/.test(raw);
+
+  if(isNumeric){
+    q = sb.from("purchase_order_details").select("*").eq("id", Number(raw)).maybeSingle();
+    let res = await q;
+    if(!res.error && res.data) return res.data;
+  }
+
+  const candidates = ["po_number", "purchase_order_number", "order_number"];
+  for(const col of candidates){
+    const res = await sb.from("purchase_order_details").select("*").eq(col, raw).maybeSingle();
+    if(!res.error && res.data) return res.data;
+    if(res.error && !String(res.error.message || "").includes(col)) console.warn("PO lookup warning", col, res.error);
+  }
+
+  throw new Error("Purchase Order not found: " + raw);
+}
+
+async function loadPOForViewOrPrint(key, autoPrint=false){
+  try{
+    setStatus("Loading Purchase Order...");
+    hideDropdown();
+    clearPOForm();
+
+    const po = await fetchPOHeader(key);
+    loadedPOId = po.id;
+
+    const poNumber = getPOValue(po, ["po_number", "purchase_order_number", "order_number"], po.id);
+    byId("poNumber").value = poNumber || "";
+    byId("orderDate").value = (getPOValue(po, ["order_date", "purchase_order_date", "bill_date", "created_at"], "") || "").slice(0,10);
+    byId("supplierGst").value = getPOValue(po, ["supplier_gst", "gst_number"], "");
+    byId("supplierName").value = getPOValue(po, ["supplier_name", "name"], "");
+    byId("supplierMobile").value = getPOValue(po, ["supplier_mobile", "mobile"], "");
+    byId("supplierAddress").value = getPOValue(po, ["supplier_address", "address"], "");
+    byId("headerRemark").value = getPOValue(po, ["remark", "remarks", "notes"], "");
+    byId("poStatusBadge").textContent = String(getPOValue(po, ["status"], "PENDING") || "PENDING").toUpperCase();
+
+    const {data:items, error:itemErr} = await sb
+      .from("purchase_order_item_details")
+      .select("*")
+      .eq("purchase_order_id", po.id)
+      .order("id", {ascending:true});
+
+    if(itemErr) throw itemErr;
+
+    (items || []).forEach(it => {
+      const stock = stockData.find(x => String(x.item_code || "") === String(it.item_code || ""));
+      addRow({
+        item_code: it.item_code || "",
+        item_name: it.item_name || "",
+        quantity: it.quantity ?? it.qty ?? 1,
+        price: it.price ?? it.purchase_price_gst ?? it.purchase_price ?? "",
+        remark: it.remark || it.remarks || "",
+        received_qty: it.received_qty || 0,
+        balance: stock ? stock.balance : null,
+        is_new_item: it.is_new_item || false
+      });
+    });
+
+    if(!(items || []).length) addRow();
+    calcAll();
+
+    if(autoPrint){
+      setEntryMode(false, true);
+      setStatus("Purchase Order loaded. Opening print...");
+      setTimeout(() => printPO(), 650);
+    }else{
+      setStatus("Purchase Order loaded for editing/viewing.");
+    }
+  }catch(err){
+    console.error(err);
+    setStatus("PO load failed: " + (err.message || err), true);
+    if(!document.querySelector("#items .item-row")) addRow();
+  }
+}
+
 async function savePO(){
   try{
     hideDropdown();
@@ -570,16 +694,31 @@ async function savePO(){
     const created_by = authData?.user?.email || "";
     const headerBase = {po_number, order_date, supplier_name, supplier_gst, supplier_address, remark, status:"PENDING", created_by};
     let header, headErr;
-    ({data: header, error: headErr} = await sb.from("purchase_order_details").insert([{...headerBase, supplier_mobile}]).select().single());
-    if(headErr && String(headErr.message || "").includes("supplier_mobile")){
-      const remark2 = supplier_mobile ? (remark ? remark + " | " : "") + "MOBILE: " + supplier_mobile : remark;
-      ({data: header, error: headErr} = await sb.from("purchase_order_details").insert([{...headerBase, remark: remark2}]).select().single());
+
+    if(currentMode === "edit" && loadedPOId){
+      ({data: header, error: headErr} = await sb.from("purchase_order_details").update({...headerBase, supplier_mobile}).eq("id", loadedPOId).select().single());
+      if(headErr && String(headErr.message || "").includes("supplier_mobile")){
+        const remark2 = supplier_mobile ? (remark ? remark + " | " : "") + "MOBILE: " + supplier_mobile : remark;
+        ({data: header, error: headErr} = await sb.from("purchase_order_details").update({...headerBase, remark: remark2}).eq("id", loadedPOId).select().single());
+      }
+      if(headErr) throw headErr;
+      const del = await sb.from("purchase_order_item_details").delete().eq("purchase_order_id", loadedPOId);
+      if(del.error) throw del.error;
+    }else{
+      ({data: header, error: headErr} = await sb.from("purchase_order_details").insert([{...headerBase, supplier_mobile}]).select().single());
+      if(headErr && String(headErr.message || "").includes("supplier_mobile")){
+        const remark2 = supplier_mobile ? (remark ? remark + " | " : "") + "MOBILE: " + supplier_mobile : remark;
+        ({data: header, error: headErr} = await sb.from("purchase_order_details").insert([{...headerBase, remark: remark2}]).select().single());
+      }
+      if(headErr) throw headErr;
     }
-    if(headErr) throw headErr;
-    const payload = items.map(x => ({purchase_order_id: header.id, item_code:x.item_code, item_name:x.item_name, is_new_item:x.is_new_item, quantity:x.quantity, received_qty:0, price:x.price, remark:x.remark, status:"PENDING"}));
+
+    const payload = items.map(x => ({purchase_order_id: header.id, item_code:x.item_code, item_name:x.item_name, is_new_item:x.is_new_item, quantity:x.quantity, received_qty:0, pending_qty:x.quantity, price:x.price, remark:x.remark, status:"PENDING"}));
     const {error:itemErr} = await sb.from("purchase_order_item_details").insert(payload);
     if(itemErr) throw itemErr;
-    setStatus("Purchase order saved successfully.");
+    setStatus(currentMode === "edit" ? "Purchase order updated successfully." : "Purchase order saved successfully.");
+    currentMode = "new";
+    loadedPOId = null;
     await afterSaveReset();
   }catch(err){ console.error(err); setStatus("Save failed: " + (err.message || err), true); }
 }

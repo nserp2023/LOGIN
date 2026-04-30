@@ -1438,7 +1438,7 @@
             .insert([{
                 voucher_no: voucherNo,
                 txn_date: billDate,
-                txn_type: "payment",
+                txn_type: docType === "sales_order" ? "receipt" : "payment",
                 party_name: customerName || "CUSTOMER",
                 amount: amount,
                 remarks: remarks,

@@ -34,9 +34,9 @@
       background:linear-gradient(180deg,#f7faff 0%,#eef4fb 100%);
       color:var(--text);
       font:14px/1.4 "Segoe UI",system-ui,-apple-system,sans-serif;
-      padding-bottom:112px;
+      padding-bottom:170px;
     }
-    .wrap{max-width:1600px;margin:0 auto;padding:16px 14px 24px}
+    .wrap{max-width:1600px;margin:0 auto;padding:16px 14px 96px}
     .topbar{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:12px}
     .brand h1{margin:0;font-size:26px;letter-spacing:.2px}
     .brand small{color:var(--muted);font-size:13px}
@@ -64,11 +64,11 @@
     .summary-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 12px;box-shadow:var(--shadow)}
     .summary-card span{display:block;font-size:11px;text-transform:uppercase;color:var(--muted);font-weight:900;letter-spacing:.05em}
     .summary-card strong{display:block;margin-top:2px;font-size:19px;color:#17213a}
-    .table-shell{overflow:auto;border:1px solid var(--line2);border-radius:14px;background:var(--card2);padding:10px}
-    .grid{display:grid;grid-template-columns:58px 130px 320px 90px 105px 110px 170px 96px 120px 100px 54px;gap:8px;align-items:center;min-width:1380px}
+    .table-shell{overflow:auto;border:1px solid var(--line2);border-radius:14px;background:var(--card2);padding:10px 10px 120px;max-height:calc(100vh - 330px);scroll-behavior:smooth}
+    .grid{display:grid;grid-template-columns:58px 140px minmax(360px,1.8fr) 95px 110px 115px minmax(190px,1fr) 130px 54px;gap:8px;align-items:center;min-width:1260px}
     .grid.hdr{position:sticky;top:0;z-index:3;background:linear-gradient(180deg,#f9fbff 0%,#f5f9ff 100%);border-bottom:1px solid var(--line);padding:0 0 10px;margin-bottom:10px}
     .grid.hdr>div{font-size:12px;color:#52637e;font-weight:900;text-transform:uppercase;padding:0 4px}
-    #items .grid{background:#fff;border:1px solid var(--line);border-radius:12px;padding:8px;margin-bottom:8px}
+    #items .grid{background:#fff;border:1px solid var(--line);border-radius:12px;padding:8px;margin-bottom:8px;scroll-margin-bottom:190px;scroll-margin-top:90px}
     #items .grid:nth-child(even){background:#fbfdff}
     .cell-muted{text-align:center;font-weight:800;color:#5b6e8a;background:#f3f7fc;border:1px solid var(--line);min-height:42px;display:flex;align-items:center;justify-content:center;border-radius:10px;padding:0 8px}
     .amount-cell{color:#123762;font-weight:900;background:#eef6ff}
@@ -86,8 +86,8 @@
     .sticky{position:fixed;left:0;right:0;bottom:0;background:rgba(255,255,255,.95);backdrop-filter:blur(8px);border-top:1px solid var(--line);box-shadow:0 -10px 28px rgba(24,39,75,.08);padding:10px 14px;z-index:100}
     .sticky-inner{max-width:1600px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}.sticky-note{color:var(--muted);font-size:12px;font-weight:800}
     .pending-popup-overlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(15,23,42,.35);backdrop-filter:blur(5px);z-index:30000;padding:18px}.pending-popup-overlay.show{display:flex}.pending-popup{width:min(92vw,520px);background:#fff;color:#14213d;border:1px solid #fed7aa;border-radius:18px;box-shadow:0 24px 70px rgba(124,45,18,.28);padding:20px}.pending-popup h3{margin:0 0 10px;color:#c2410c;font-size:22px}.pending-popup p{margin:0 0 14px;color:#334155;line-height:1.55;white-space:pre-line}.pending-popup .popup-actions{display:flex;justify-content:flex-end;gap:10px}.pending-popup button{height:40px;padding:0 16px;border:none;border-radius:12px;font-weight:900;cursor:pointer}.pending-popup .ok-btn{background:#ea580c;color:white}.pending-popup .soft-btn{background:#ffedd5;color:#9a3412}
-    @media(max-width:900px){body{padding-bottom:150px}.wrap{padding:10px 8px 24px}.header-grid{grid-template-columns:repeat(2,minmax(220px,1fr))}.summary-strip{grid-template-columns:repeat(2,minmax(150px,1fr))}.btn{width:100%}.btns{width:100%}.sticky-inner{flex-direction:column;align-items:stretch}.dropdown{min-width:calc(100vw - 20px);left:10px!important}.opt{grid-template-columns:110px 1fr}.opt .hide-mobile{display:none}}
-    @media print{body{background:#fff;padding:0}.wrap{padding:0}.topbar,.chips,.btns,.sticky,.statusline{display:none!important}.panel{box-shadow:none;border:none;padding:0}.summary-strip{display:none}.table-shell{border:none;padding:0;overflow:visible}.grid{min-width:0;grid-template-columns:42px 95px 1fr 60px 75px 85px 105px 70px 80px 65px;gap:3px}.grid.hdr>div{font-size:10px}#items .grid{break-inside:avoid;border-bottom:1px solid #ccc;border-radius:0;margin:0;padding:4px}.grid input{border:none!important;padding:0;min-height:24px}.btn.danger,.delete-col{display:none!important}.pending-box{font-size:9px;padding:2px}.cell-muted{min-height:24px;border:none;background:#fff}.amount-cell{background:#fff}.brand-print{display:block!important;text-align:center;margin-bottom:12px}.print-header{display:block!important;margin-bottom:10px}}
+    @media(max-width:900px){body{padding-bottom:210px}.wrap{padding:10px 8px 24px}.header-grid{grid-template-columns:repeat(2,minmax(220px,1fr))}.summary-strip{grid-template-columns:repeat(2,minmax(150px,1fr))}.btn{width:100%}.btns{width:100%}.sticky-inner{flex-direction:column;align-items:stretch}.dropdown{min-width:calc(100vw - 20px);left:10px!important}.opt{grid-template-columns:110px 1fr}.opt .hide-mobile{display:none}}
+    @media print{body{background:#fff;padding:0}.wrap{padding:0}.topbar,.chips,.btns,.sticky,.statusline{display:none!important}.panel{box-shadow:none;border:none;padding:0}.summary-strip{display:none}.table-shell{border:none;padding:0;overflow:visible;max-height:none}.grid{min-width:0;grid-template-columns:42px 95px 1fr 60px 75px 85px 105px 80px 45px;gap:3px}.grid.hdr>div{font-size:10px}#items .grid{break-inside:avoid;border-bottom:1px solid #ccc;border-radius:0;margin:0;padding:4px}.grid input{border:none!important;padding:0;min-height:24px}.btn.danger,.delete-col{display:none!important}.pending-box{font-size:9px;padding:2px}.cell-muted{min-height:24px;border:none;background:#fff}.amount-cell{background:#fff}.brand-print{display:block!important;text-align:center;margin-bottom:12px}.print-header{display:block!important;margin-bottom:10px}}
     .brand-print,.print-header{display:none}
   </style>
 </head>
@@ -123,14 +123,14 @@
     <div class="panel">
       <div class="panel-head"><div><h2>Order Items</h2><small>Search old items using code or name. Type new items manually if not found.</small></div><div class="btns"><button class="btn gray" id="addRowTop">+ Add Row</button><button class="btn soft" id="printTop">Print</button><button class="btn primary" id="saveTop">Save Purchase Order</button></div></div>
       <div class="table-shell">
-        <div class="grid hdr"><div>#</div><div>Item Code</div><div>Item Name / Search</div><div>Qty</div><div>Price</div><div>Amount</div><div>Remark</div><div>Received</div><div>Pending</div><div>Type</div><div></div></div>
+        <div class="grid hdr"><div>#</div><div>Item Code</div><div>Item Name / Search</div><div>Qty</div><div>Price</div><div>Amount</div><div>Remark</div><div>Pending</div><div></div></div>
         <div id="items"></div>
       </div>
       <div class="statusline" id="saveStatus">READY</div>
     </div>
   </div>
 
-  <div class="sticky"><div class="sticky-inner"><div class="sticky-note">Enter = next • Shift+Enter = back • Arrow keys select dropdown • New items can be typed manually</div><div class="btns"><button class="btn gray" id="addRowBottom">+ Add Row</button><button class="btn soft" id="printBottom">Print</button><button class="btn primary" id="saveBottom">Save Purchase Order</button></div></div></div>
+  <div class="sticky"><div class="sticky-inner"><div class="sticky-note">Enter = next • Empty row will not add new row • Shift+Enter = back • Arrow keys select dropdown</div><div class="btns"><button class="btn gray" id="addRowBottom">+ Add Row</button><button class="btn soft" id="printBottom">Print</button><button class="btn primary" id="saveBottom">Save Purchase Order</button></div></div></div>
 
   <div id="pendingPopupOverlay" class="pending-popup-overlay" tabindex="-1" aria-hidden="true"><div class="pending-popup"><h3>Pending Order Already Exists</h3><p id="pendingPopupMessage"></p><div class="popup-actions"><button type="button" class="soft-btn" onclick="closePendingPopup()">OK, Continue</button><button type="button" class="ok-btn" onclick="focusPendingPopupQty()">Change Qty</button></div></div></div>
 
@@ -257,6 +257,7 @@ function addRow(prefill = {}){
   const id = currentRowId++;
   const row = document.createElement("div");
   row.className = "grid item-row";
+  row.dataset.received = String(prefill.received_qty || 0);
   row.innerHTML = `
     <div class="cell-muted serial">${id + 1}</div>
     <div><input class="item-code" value="${esc(prefill.item_code || "")}" autocomplete="off"></div>
@@ -265,9 +266,7 @@ function addRow(prefill = {}){
     <div><input class="price" type="number" step="0.01" value="${prefill.price ?? ""}"></div>
     <div class="cell-muted amount-cell amount">0.00</div>
     <div><input class="remark" value="${esc(prefill.remark || "")}"></div>
-    <div class="cell-muted received">${fmt2(prefill.received_qty || 0)}</div>
     <div class="pending pending-box"><div class="old">OLD: 0.00</div><div class="new">NEW: 0.00</div><div class="total">TOT: 0.00</div></div>
-    <div class="cell-muted row-type ${prefill.is_new_item ? "type-new" : "type-stock"}">${prefill.is_new_item ? "NEW" : "STOCK"}</div>
     <div class="delete-col"><button class="btn danger" type="button">×</button></div>`;
   byId("items").appendChild(row);
 
@@ -288,10 +287,22 @@ function addRow(prefill = {}){
   const nav = [codeInp,nameInp,qtyInp,priceInp,remarkInp];
   nav.forEach((el, idx) => el.addEventListener("keydown", e => {
     if(dropdown && ["ArrowDown","ArrowUp","Enter","Escape"].includes(e.key)) return;
+
     if(e.key === "Enter" && !e.shiftKey){
       e.preventDefault();
-      if(idx < nav.length - 1) focusAndSelect(nav[idx + 1]);
-      else focusNewRow(addRow());
+
+      if(!rowHasItem(row)){
+        focusAndSelect(idx === 0 ? nameInp : codeInp);
+        return;
+      }
+
+      if(idx < nav.length - 1){
+        focusAndSelect(nav[idx + 1]);
+      }else{
+        const last = getLastRow();
+        if(last && last !== row && !rowHasItem(last)) focusAndSelect(last.querySelector(".item-name"));
+        else focusNewRow(addRow());
+      }
     } else if(e.key === "Enter" && e.shiftKey){
       e.preventDefault();
       if(idx > 0) focusAndSelect(nav[idx - 1]);
@@ -303,8 +314,18 @@ function addRow(prefill = {}){
   return row;
 }
 
-function focusNewRow(row){ setTimeout(() => { const inp = row?.querySelector(".item-name"); inp?.focus(); inp?.select?.(); }, 0); }
-function focusAndSelect(el){ setTimeout(() => { el?.focus(); el?.select?.(); }, 0); }
+function rowHasItem(row){ return !!(clean(row?.querySelector(".item-code")?.value) || clean(row?.querySelector(".item-name")?.value)); }
+function getLastRow(){ const rows = document.querySelectorAll("#items .item-row"); return rows[rows.length - 1] || null; }
+function getReceived(row){ return Number(row?.dataset?.received || 0); }
+function focusNewRow(row){ setTimeout(() => { const inp = row?.querySelector(".item-name"); focusAndSelect(inp); }, 0); }
+function focusAndSelect(el){
+  setTimeout(() => {
+    if(!el) return;
+    el.focus();
+    el.select?.();
+    try{ el.closest(".item-row")?.scrollIntoView({block:"center", inline:"nearest", behavior:"smooth"}); }catch(_e){}
+  }, 0);
+}
 function renumberRows(){ document.querySelectorAll("#items .item-row").forEach((r,i) => r.querySelector(".serial").textContent = i + 1); }
 
 function showItemDropdown(input){
@@ -315,7 +336,7 @@ function showItemDropdown(input){
     fillRowFromStock(row, item);
     const oldPending = Number(pendingMap[item.item_code] || 0);
     const qty = num(row.querySelector(".qty").value);
-    const received = num(row.querySelector(".received").textContent);
+    const received = getReceived(row);
     const newPending = Math.max(0, qty - received);
     if(oldPending > 0) showPendingPopup(item.item_name || item.item_code, oldPending, newPending, oldPending + newPending, row.querySelector(".qty"));
   }, "item");
@@ -330,7 +351,7 @@ function fillRowFromStock(row, item){
   row.querySelector(".item-code").classList.remove("new-item");
   row.querySelector(".item-name").classList.remove("new-item");
   const type = row.querySelector(".row-type");
-  type.textContent = "STOCK"; type.className = "cell-muted row-type type-stock";
+  if(type){ type.textContent = "STOCK"; type.className = "cell-muted row-type type-stock"; }
   if(lastPrices[item.item_code] != null){ row.querySelector(".price").value = lastPrices[item.item_code]; }
   calcRow(row); updatePending(row); calcAll();
 }
@@ -341,7 +362,7 @@ function markNewIfManual(row){
   if((name || code) && !row.dataset.code){
     row.querySelector(".item-name").classList.add("new-item");
     const type = row.querySelector(".row-type");
-    type.textContent = "NEW"; type.className = "cell-muted row-type type-new";
+    if(type){ type.textContent = "NEW"; type.className = "cell-muted row-type type-new"; }
     updatePending(row);
   }
 }
@@ -356,7 +377,7 @@ function updatePending(row){
   const code = row.dataset.code || row.querySelector(".item-name").dataset.code || row.querySelector(".item-code").dataset.code || "";
   const oldPending = code ? Number(pendingMap[code] || 0) : 0;
   const qty = num(row.querySelector(".qty").value);
-  const received = num(row.querySelector(".received").textContent);
+  const received = getReceived(row);
   const newPending = Math.max(0, qty - received);
   const total = oldPending + newPending;
   const el = row.querySelector(".pending");

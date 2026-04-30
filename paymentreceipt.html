@@ -811,7 +811,14 @@
     }
 
     function isSalesOrderAdvance(row){
-        return String(row?.reference_type || "").trim() === "sales_order_advance";
+        const refType = String(row?.reference_type || "").trim().toLowerCase();
+        const voucher = String(row?.voucher_no || "").trim().toLowerCase();
+        const note = String(row?.remarks || "").trim().toLowerCase();
+
+        return refType === "sales_order_advance"
+            || voucher.includes("sales_order_advance")
+            || voucher.startsWith("auto-sales_order_advance")
+            || note.includes("advance for sales order");
     }
 
     function transactionNeedsApproval(row){
@@ -903,7 +910,7 @@
 
         const { data: txn, error: readError } = await sb
             .from("cash_transactions")
-            .select("id, txn_type, approval_status, reference_type")
+            .select("id, txn_type, approval_status, reference_type, voucher_no, remarks")
             .eq("id", id)
             .maybeSingle();
 

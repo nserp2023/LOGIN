@@ -1442,7 +1442,10 @@
                 party_name: customerName || "CUSTOMER",
                 amount: amount,
                 remarks: remarks,
-                approval_status: "pending",
+                // Sales order advance must wait for approval in Payment / Receipt page.
+                approval_status: docType === "sales_order" ? "pending" : "approved",
+                approved_by: docType === "sales_order" ? null : "AUTO",
+                approved_at: docType === "sales_order" ? null : new Date().toISOString(),
                 reference_type: refType,
                 reference_id: headerId
             }]);

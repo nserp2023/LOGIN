@@ -1670,42 +1670,101 @@
       if (el) el.innerText = text || "";
     }
 
+    function todayLocalISODate(){
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+    }
+
+    function moneyFromRow(row, keys){
+      for(const key of keys){
+        const n = Number(row?.[key] || 0);
+        if(Number.isFinite(n) && n) return n;
+      }
+      return 0;
+    }
+
+    function isSalesOrderAdvanceCashTxn(row){
+      const text = `${row?.voucher_no || ""} ${row?.reference_type || ""} ${row?.remarks || ""}`.toLowerCase().replace(/[\s\-_]+/g, "");
+      return text.includes("salesorderadvance") || text.includes("advanceforsalesorder");
+    }
+
+    async function safeSelectToday(table, dateColumn, columns = "*"){
+      try{
+        const { data, error } = await sb.from(table).select(columns).eq(dateColumn, todayLocalISODate());
+        if(error) throw error;
+        return Array.isArray(data) ? data : [];
+      }catch(err){
+        console.warn(`Dashboard skipped ${table}.${dateColumn}:`, err.message || err);
+        return [];
+      }
+    }
+
+    async function getDirectDashboardSummary(){
+      const salesRows = await safeSelectToday("sales_details", "bill_date", "*");
+      const packRows = await safeSelectToday("sales_packing_details", "packing_date", "*");
+      const cashRows = await safeSelectToday("cash_transactions", "txn_date", "*");
+      const returnRows = await safeSelectToday("sales_return_details", "return_date", "*");
+
+      let today_cash_sales = 0;
+      let today_credit_sales = 0;
+      salesRows.forEach(row => {
+        const paymentType = String(row.payment_type || "CASH").trim().toUpperCase();
+        const amount = moneyFromRow(row, ["payable", "invoice_amount", "total_amount"]);
+        if(paymentType === "CREDIT") today_credit_sales += amount;
+        else today_cash_sales += amount;
+      });
+
+      const salesIds = new Set(salesRows.map(r => String(r.id || "")));
+      packRows.forEach(row => {
+        const linkedSalesId = String(row.sales_id || "");
+        if(linkedSalesId && salesIds.has(linkedSalesId)) return;
+        today_cash_sales += moneyFromRow(row, ["packing_amount", "payable", "invoice_amount", "total_amount"]);
+      });
+
+      let today_receipt = 0;
+      let today_payment = 0;
+      let pending_payments = 0;
+      cashRows.forEach(row => {
+        const txnType = String(row.txn_type || "").trim().toLowerCase();
+        const status = String(row.approval_status || "").trim().toLowerCase();
+        const amount = Number(row.amount || 0) || 0;
+        if(txnType === "receipt" && status === "approved") today_receipt += amount;
+        if(txnType === "payment" && status === "approved") today_payment += amount;
+        if(status === "pending" && (txnType === "payment" || isSalesOrderAdvanceCashTxn(row))) pending_payments += 1;
+      });
+
+      let today_sales_return = 0;
+      let pending_returns = 0;
+      returnRows.forEach(row => {
+        const status = String(row.approval_status || "").trim().toLowerCase();
+        const accepted = row.is_accepted === true || status === "approved";
+        if(accepted) today_sales_return += moneyFromRow(row, ["total_return_amount", "payable", "total_amount"]);
+        else pending_returns += 1;
+      });
+
+      return {
+        today_cash_sales,
+        today_credit_sales,
+        today_receipt,
+        today_sales_return,
+        today_payment,
+        pending_payments,
+        pending_returns,
+        today_balance: today_cash_sales + today_receipt - today_sales_return - today_payment
+      };
+    }
+
     async function loadTodayDashboardSummary() {
       try {
-        const { data, error } = await sb.rpc("get_today_dashboard_summary");
-
-        if (error) {
-          console.error("Dashboard summary RPC error:", error);
-          alert("Failed to load today's dashboard summary.");
-          return;
-        }
-
-        const row = Array.isArray(data) ? data[0] : (data || {});
-
-        const todaySales = Number(
-          row?.today_cash_sales ??
-          row?.cash_sales ??
-          row?.today_sales_cash ??
-          row?.today_sales ??
-          0
-        );
-
-        const todayCreditSales = Number(
-          row?.today_credit_sales ??
-          row?.credit_sales ??
-          0
-        );
-
-        const todayReceipt = Number(row?.today_receipt || 0);
-        const todaySalesReturn = Number(row?.today_sales_return || 0);
-        const todayPayment = Number(row?.today_payment || 0);
-        const pendingPayments = Number(row?.pending_payments || 0);
-        const pendingReturns = Number(row?.pending_returns || 0);
-
-        const todayBalance = Number(
-          row?.today_balance ??
-          (todaySales + todayReceipt - todaySalesReturn - todayPayment)
-        );
+        const row = await getDirectDashboardSummary();
+        const todaySales = Number(row.today_cash_sales || 0);
+        const todayCreditSales = Number(row.today_credit_sales || 0);
+        const todayReceipt = Number(row.today_receipt || 0);
+        const todaySalesReturn = Number(row.today_sales_return || 0);
+        const todayPayment = Number(row.today_payment || 0);
+        const pendingPayments = Number(row.pending_payments || 0);
+        const pendingReturns = Number(row.pending_returns || 0);
+        const todayBalance = Number(row.today_balance || 0);
 
         setText("todaySales", formatCurrency(todaySales));
         setText("todaySalesHero", formatCurrency(todaySales));

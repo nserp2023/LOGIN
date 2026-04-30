@@ -4,12 +4,9 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <link rel="icon" href="favicon.ico" type="image/x-icon">
-
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
-
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
-
 <link rel="manifest" href="site.webmanifest">
 <title>Payment / Receipt - VAJRA LIGHTS</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -21,6 +18,7 @@
         --primary:#2563eb;
         --success:#059669;
         --danger:#dc2626;
+        --warning:#f59e0b;
         --bg:#f1f5f9;
         --card:#ffffff;
         --text:#1e293b;
@@ -42,7 +40,7 @@
     }
 
     .container{
-        max-width:1000px;
+        max-width:1100px;
         margin:auto;
     }
 
@@ -55,9 +53,7 @@
         margin-bottom:16px;
     }
 
-    h1,h2{
-        margin:0 0 12px;
-    }
+    h1,h2{ margin:0 0 12px; }
 
     .title-row{
         display:flex;
@@ -80,9 +76,7 @@
         position:relative;
     }
 
-    .field.full{
-        grid-column:1 / -1;
-    }
+    .field.full{ grid-column:1 / -1; }
 
     label{
         font-size:13px;
@@ -165,14 +159,9 @@
         border-bottom:1px solid #f1f5f9;
     }
 
-    .autocomplete-item:last-child{
-        border-bottom:none;
-    }
-
+    .autocomplete-item:last-child{ border-bottom:none; }
     .autocomplete-item.active,
-    .autocomplete-item:hover{
-        background:var(--hover);
-    }
+    .autocomplete-item:hover{ background:var(--hover); }
 
     .search-box{
         display:grid;
@@ -190,7 +179,7 @@
     table{
         width:100%;
         border-collapse:collapse;
-        min-width:720px;
+        min-width:900px;
         background:#fff;
     }
 
@@ -199,6 +188,7 @@
         border-bottom:1px solid #e2e8f0;
         text-align:left;
         font-size:14px;
+        vertical-align:middle;
     }
 
     th{
@@ -238,80 +228,74 @@
     .success-msg{ color:var(--success); }
     .error-msg{ color:var(--danger); }
 
-    @media (max-width: 900px){
-        .grid{
-            grid-template-columns:repeat(2, 1fr);
-        }
+    .accept-btn{
+        background:#16a34a;
+        color:#fff;
+        border:none;
+        padding:8px 12px;
+        border-radius:8px;
+        font-size:13px;
+        font-weight:700;
+        cursor:pointer;
+        min-height:36px;
+        width:auto;
+    }
 
-        .search-box{
-            grid-template-columns:1fr 1fr;
-        }
+    .accept-btn:hover{ opacity:0.95; }
+    .accept-btn:disabled{
+        background:#94a3b8;
+        cursor:not-allowed;
+    }
+
+    .status-badge{
+        display:inline-block;
+        padding:6px 10px;
+        border-radius:999px;
+        font-size:12px;
+        font-weight:700;
+        white-space:nowrap;
+    }
+
+    .status-pending{
+        background:#fef3c7;
+        color:#92400e;
+    }
+
+    .status-approved{
+        background:#dcfce7;
+        color:#166534;
+    }
+
+    .status-rejected{
+        background:#fee2e2;
+        color:#991b1b;
+    }
+
+    .status-info{
+        background:#dbeafe;
+        color:#1d4ed8;
+    }
+
+    .type-note{
+        display:block;
+        margin-top:4px;
+        font-size:11px;
+        color:#64748b;
+        font-weight:700;
+    }
+
+    @media (max-width: 900px){
+        .grid{ grid-template-columns:repeat(2, 1fr); }
+        .search-box{ grid-template-columns:1fr 1fr; }
     }
 
     @media (max-width: 600px){
-        body{
-            padding:10px;
-        }
-
-        .card{
-            padding:12px;
-        }
-
-        .grid{
-            grid-template-columns:1fr;
-        }
-
-        .search-box{
-            grid-template-columns:1fr;
-        }
-
-        input, select, textarea, button{
-            font-size:16px;
-        }
+        body{ padding:10px; }
+        .card{ padding:12px; }
+        .grid{ grid-template-columns:1fr; }
+        .search-box{ grid-template-columns:1fr; }
+        input, select, textarea, button{ font-size:16px; }
     }
-.accept-btn{
-    background:#16a34a;
-    color:#fff;
-    border:none;
-    padding:8px 12px;
-    border-radius:8px;
-    font-size:13px;
-    font-weight:700;
-    cursor:pointer;
-}
-
-.accept-btn:hover{
-    opacity:0.95;
-}
-
-.accept-btn:disabled{
-    background:#94a3b8;
-    cursor:not-allowed;
-}
-
-.status-badge{
-    display:inline-block;
-    padding:6px 10px;
-    border-radius:999px;
-    font-size:12px;
-    font-weight:700;
-}
-
-.status-pending{
-    background:#fef3c7;
-    color:#92400e;
-}
-
-.status-approved{
-    background:#dcfce7;
-    color:#166534;
-}
-
-.status-rejected{
-    background:#fee2e2;
-    color:#991b1b;
-}
-
 </style>
 </head>
 <body>
@@ -424,11 +408,12 @@
     // =========================
     // 1. SUPABASE CONNECTION
     // =========================
-    const sb = window.sbcc; // supabase client from supabaseClient.js
-  document.addEventListener("DOMContentLoaded", async () => {
-  const ok = await requirePageAccess("paymentreceipt");
-  if (!ok) return;
-  });
+    const sb = window.sbcc;
+
+    document.addEventListener("DOMContentLoaded", async () => {
+        const ok = await requirePageAccess("paymentreceipt");
+        if (!ok) return;
+    });
 
     // =========================
     // 2. ELEMENTS
@@ -455,6 +440,7 @@
     let suggestionItems = [];
     let activeSuggestionIndex = -1;
     let isSaving = false;
+    let isApproving = false;
 
     // =========================
     // 3. INITIAL LOAD
@@ -601,7 +587,7 @@
             div.className = "autocomplete-item";
             div.dataset.index = index;
 
-            const safeName = item.party_name;
+            const safeName = escapeHtml(item.party_name || "");
             const regex = new RegExp(`(${escapeRegExp(query)})`, "ig");
             div.innerHTML = safeName.replace(regex, "<strong>$1</strong>");
 
@@ -633,7 +619,7 @@
     }
 
     function escapeRegExp(string){
-        return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        return String(string || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     }
 
     // =========================
@@ -711,17 +697,19 @@
             const partyId = await ensurePartyExists(party);
 
             const { error } = await sb
-    .from("cash_transactions")
-    .insert([{
-        voucher_no: voucher,
-        txn_date: date,
-        txn_type: type,
-        party_id: partyId,
-        party_name: party,
-        amount: amt,
-        remarks: note || null,
-        approval_status: type === "receipt" ? "approved" : "pending"
-    }]);
+                .from("cash_transactions")
+                .insert([{
+                    voucher_no: voucher,
+                    txn_date: date,
+                    txn_type: type,
+                    party_id: partyId,
+                    party_name: party,
+                    amount: amt,
+                    remarks: note || null,
+                    // Manual receipts are normal cash received and do not need approval.
+                    // Payments need approval before dashboard calculation.
+                    approval_status: type === "receipt" ? "approved" : "pending"
+                }]);
 
             if(error) throw error;
 
@@ -786,7 +774,7 @@
     async function loadTransactions(nameFilter = ""){
         let query = sb
             .from("cash_transactions")
-            .select("id, txn_date, voucher_no, txn_type, party_name, amount, remarks, approval_status, approved_by, approved_at")
+            .select("id, txn_date, voucher_no, txn_type, party_name, amount, remarks, approval_status, approved_by, approved_at, reference_type, reference_id")
             .order("txn_date", { ascending: false })
             .order("id", { ascending: false })
             .limit(100);
@@ -813,7 +801,7 @@
             console.error(error);
             resultsBody.innerHTML = `
                 <tr>
-                    <td colspan="6" style="text-align:center; color:red;">Failed to load transactions</td>
+                    <td colspan="7" style="text-align:center; color:red;">Failed to load transactions</td>
                 </tr>
             `;
             return;
@@ -822,49 +810,70 @@
         renderTransactions(data || []);
     }
 
-function renderTransactions(rows){
-    if(!rows.length){
-        resultsBody.innerHTML = `
-            <tr>
-                <td colspan="7" style="text-align:center; color:#64748b;">No transactions found</td>
-            </tr>
-        `;
-        return;
+    function isSalesOrderAdvance(row){
+        return String(row?.reference_type || "").trim() === "sales_order_advance";
     }
 
-    const role = (localStorage.getItem("role") || "staff").toLowerCase();
-    const canApprove = ["manager", "admin", "owner"].includes(role);
+    function transactionNeedsApproval(row){
+        return row?.txn_type === "payment" || isSalesOrderAdvance(row);
+    }
 
-    resultsBody.innerHTML = rows.map(row => {
-        let approveCell = "-";
+    function getTransactionApprovalName(row){
+        if(isSalesOrderAdvance(row)) return "sales order advance";
+        if(row?.txn_type === "payment") return "payment";
+        return "transaction";
+    }
 
-        if(row.txn_type === "payment"){
-            if(row.approval_status === "approved"){
-                approveCell = `<span class="status-badge status-approved">Approved</span>`;
-            } else if(row.approval_status === "rejected"){
-                approveCell = `<span class="status-badge status-rejected">Rejected</span>`;
-            } else if(canApprove){
-                approveCell = `<button class="accept-btn" onclick="approvePayment(${row.id})">Accept</button>`;
-            } else {
-                approveCell = `<span class="status-badge status-pending">Pending</span>`;
-            }
-        } else {
-            approveCell = `<span class="status-badge status-approved">Not Needed</span>`;
+    function renderTransactions(rows){
+        if(!rows.length){
+            resultsBody.innerHTML = `
+                <tr>
+                    <td colspan="7" style="text-align:center; color:#64748b;">No transactions found</td>
+                </tr>
+            `;
+            return;
         }
 
-        return `
-            <tr>
-                <td>${formatDate(row.txn_date)}</td>
-                <td>${row.voucher_no}</td>
-                <td><span class="${row.txn_type}">${row.txn_type}</span></td>
-                <td>${escapeHtml(row.party_name || "")}</td>
-                <td class="amount">${Number(row.amount).toFixed(2)}</td>
-                <td>${escapeHtml(row.remarks || "")}</td>
-                <td>${approveCell}</td>
-            </tr>
-        `;
-    }).join("");
-}
+        const role = (localStorage.getItem("role") || "staff").toLowerCase();
+        const canApprove = ["manager", "admin", "owner"].includes(role);
+
+        resultsBody.innerHTML = rows.map(row => {
+            const needsApproval = transactionNeedsApproval(row);
+            const approvalStatus = String(row.approval_status || "").toLowerCase();
+            let approveCell = "-";
+
+            if(needsApproval){
+                if(approvalStatus === "approved"){
+                    approveCell = `<span class="status-badge status-approved">Approved</span>`;
+                } else if(approvalStatus === "rejected"){
+                    approveCell = `<span class="status-badge status-rejected">Rejected</span>`;
+                } else if(canApprove){
+                    approveCell = `<button class="accept-btn" onclick="approveTransaction(${row.id})">Accept</button>`;
+                } else {
+                    approveCell = `<span class="status-badge status-pending">Pending</span>`;
+                }
+            } else {
+                approveCell = `<span class="status-badge status-approved">Not Needed</span>`;
+            }
+
+            const typeNote = isSalesOrderAdvance(row)
+                ? `<span class="type-note">Sales Order Advance</span>`
+                : "";
+
+            return `
+                <tr>
+                    <td>${formatDate(row.txn_date)}</td>
+                    <td>${escapeHtml(row.voucher_no || "")}</td>
+                    <td><span class="${row.txn_type}">${escapeHtml(row.txn_type || "")}</span>${typeNote}</td>
+                    <td>${escapeHtml(row.party_name || "")}</td>
+                    <td class="amount">${Number(row.amount || 0).toFixed(2)}</td>
+                    <td>${escapeHtml(row.remarks || "")}</td>
+                    <td>${approveCell}</td>
+                </tr>
+            `;
+        }).join("");
+    }
+
     function formatDate(dateStr){
         if(!dateStr) return "";
         const d = new Date(dateStr);
@@ -881,36 +890,71 @@ function renderTransactions(rows){
             .replaceAll("'", "&#039;");
     }
 
-async function approvePayment(id) {
-    const role = (localStorage.getItem("role") || "staff").toLowerCase();
-    const username = localStorage.getItem("username") || "Unknown";
+    async function approveTransaction(id) {
+        if(isApproving) return;
 
-    if (!["admin", "manager", "owner"].includes(role)) {
-        alert("Only admin or manager can approve payment.");
-        return;
+        const role = (localStorage.getItem("role") || "staff").toLowerCase();
+        const username = localStorage.getItem("username") || "Unknown";
+
+        if (!["admin", "manager", "owner"].includes(role)) {
+            alert("Only admin, manager, or owner can approve this transaction.");
+            return;
+        }
+
+        const { data: txn, error: readError } = await sb
+            .from("cash_transactions")
+            .select("id, txn_type, approval_status, reference_type")
+            .eq("id", id)
+            .maybeSingle();
+
+        if(readError || !txn){
+            alert("Could not read transaction for approval.");
+            return;
+        }
+
+        if(!transactionNeedsApproval(txn)){
+            alert("This transaction does not need approval.");
+            await loadTransactions(searchParty.value.trim());
+            return;
+        }
+
+        if(String(txn.approval_status || "").toLowerCase() === "approved"){
+            alert("This transaction is already approved.");
+            await loadTransactions(searchParty.value.trim());
+            return;
+        }
+
+        const approvalName = getTransactionApprovalName(txn);
+        const ok = confirm(`Do you want to approve this ${approvalName}?`);
+        if (!ok) return;
+
+        isApproving = true;
+
+        const { error } = await sb
+            .from("cash_transactions")
+            .update({
+                approval_status: "approved",
+                approved_by: username,
+                approved_at: new Date().toISOString()
+            })
+            .eq("id", id);
+
+        isApproving = false;
+
+        if (error) {
+            alert("Approval failed: " + error.message);
+            return;
+        }
+
+        alert("Transaction approved successfully");
+        await loadTransactions(searchParty.value.trim());
     }
 
-    const ok = confirm("Do you want to approve this payment?");
-    if (!ok) return;
-
-    const { error } = await sb
-        .from("cash_transactions")
-        .update({
-            approval_status: "approved",
-            approved_by: username,
-            approved_at: new Date().toISOString()
-        })
-        .eq("id", id)
-        .eq("txn_type", "payment");
-
-    if (error) {
-        alert("Approval failed: " + error.message);
-        return;
+    // Old function name kept for safety if any old button/cache calls it.
+    async function approvePayment(id){
+        await approveTransaction(id);
     }
 
-    alert("Payment approved successfully");
-    await loadTransactions(searchParty.value.trim());
-}
     // =========================
     // 11. ENTER KEY NAVIGATION
     // =========================
@@ -928,7 +972,6 @@ async function approvePayment(id) {
             field.addEventListener("keydown", function(e){
                 if(e.key !== "Enter") return;
 
-                // allow dropdown selection first
                 if(field === partyName && partySuggestions.style.display === "block"){
                     const items = partySuggestions.querySelectorAll(".autocomplete-item");
                     if(items.length && activeSuggestionIndex >= 0){
@@ -938,7 +981,6 @@ async function approvePayment(id) {
                     }
                 }
 
-                // textarea: Enter should move, not create new line
                 if(field === remarks || field.tagName === "INPUT" || field.tagName === "SELECT" || field.tagName === "BUTTON"){
                     e.preventDefault();
                     const next = orderedFields[index + 1];
@@ -952,8 +994,6 @@ async function approvePayment(id) {
             });
         });
     }
-
-    
 </script>
 </body>
 </html>

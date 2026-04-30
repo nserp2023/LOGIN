@@ -9,6 +9,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <link rel="manifest" href="site.webmanifest">
 <title>Payment / Receipt - VAJRA LIGHTS</title>
+<!-- FIX VERSION: sales_order_advance_approval_2026_04_30 -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabaseClient.js"></script>
 <script src="page_permissions.js"></script>
@@ -447,6 +448,7 @@
     let activeSuggestionIndex = -1;
     let isSaving = false;
     let isApproving = false;
+    let currentUserRole = "";
 
     // =========================
     // 3. INITIAL LOAD
@@ -760,10 +762,21 @@
     // =========================
     // 10. LOAD TRANSACTIONS
     // =========================
-    searchBtn.addEventListener("click", () => loadTransactions(searchParty.value.trim()));
-    searchParty.addEventListener("input", () => loadTransactions(searchParty.value.trim()));
-    searchType.addEventListener("change", () => loadTransactions(searchParty.value.trim()));
-    searchDate.addEventListener("change", () => loadTransactions(searchParty.value.trim()));
+    searchBtn.addEventListener("click", () => {
+        loadTransactions(searchParty.value.trim());
+    });
+
+    searchParty.addEventListener("input", () => {
+        loadTransactions(searchParty.value.trim());
+    });
+
+    searchType.addEventListener("change", () => {
+        loadTransactions(searchParty.value.trim());
+    });
+
+    searchDate.addEventListener("change", () => {
+        loadTransactions(searchParty.value.trim());
+    });
 
     async function loadTransactions(nameFilter = ""){
         let query = sb
@@ -771,34 +784,61 @@
             .select("id, txn_date, voucher_no, txn_type, party_name, amount, remarks, approval_status, approved_by, approved_at, reference_type, reference_id")
             .order("txn_date", { ascending: false })
             .order("id", { ascending: false })
-            .limit(500);
+            .limit(300);
 
         const searchValue = (nameFilter || searchParty.value || "").trim();
         const typeValue = searchType.value;
         const dateValue = searchDate.value;
 
+        // Search by party, voucher number, or remarks. This helps to find AUTO-sales_order_advance rows directly.
         if(searchValue){
             const safe = searchValue.replace(/[%_,]/g, "");
-            query = query.or(`party_name.ilike.%${safe}%,voucher_no.ilike.%${safe}%,remarks.ilike.%${safe}%,reference_type.ilike.%${safe}%`);
+            query = query.or(`party_name.ilike.%${safe}%,voucher_no.ilike.%${safe}%,remarks.ilike.%${safe}%`);
         }
-        if(typeValue) query = query.eq("txn_type", typeValue);
-        if(dateValue) query = query.eq("txn_date", dateValue);
+
+        if(typeValue){
+            query = query.eq("txn_type", typeValue);
+        }
+
+        if(dateValue){
+            query = query.eq("txn_date", dateValue);
+        }
 
         const { data, error } = await query;
+
         if(error){
             console.error(error);
-            resultsBody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:red;">Failed to load transactions</td></tr>`;
+            resultsBody.innerHTML = `
+                <tr>
+                    <td colspan="7" style="text-align:center; color:red;">Failed to load transactions</td>
+                </tr>
+            `;
             return;
         }
+
         renderTransactions(data || []);
     }
 
-    function normalizeText(value){ return String(value ?? "").trim().toLowerCase(); }
-    function normalizeLoose(value){ return normalizeText(value).replace(/[\s\-_]+/g, ""); }
+    // Strong detector for old and new sales order advance rows.
+    // Detects even if reference_type is missing/wrong and voucher/remarks only contain the clue.
+    function normalizeText(value){
+        return String(value ?? "").trim().toLowerCase();
+    }
+
+    function normalizeLoose(value){
+        return normalizeText(value).replace(/[^a-z0-9]/g, "");
+    }
+
+    function rowPackedText(row){
+        return normalizeLoose(`${row?.voucher_no || ""} ${row?.reference_type || ""} ${row?.remarks || ""}`);
+    }
 
     function looksLikePossibleAdvance(row){
-        const packed = normalizeLoose(`${row?.voucher_no || ""} ${row?.reference_type || ""} ${row?.remarks || ""}`);
-        return packed.includes("salesorderadvance") || packed.includes("advanceforsalesorder") || packed.includes("autosalesorderadvance");
+        const packed = rowPackedText(row);
+        return packed.includes("salesorderadvance") ||
+               packed.includes("advanceforsalesorder") ||
+               packed.includes("autosalesorderadvance") ||
+               packed.includes("advanceforsales");
     }
 
     function isSalesOrderAdvance(row){
@@ -807,69 +847,131 @@
         return looksLikePossibleAdvance(row);
     }
 
+    function isProperSalesOrderAdvance(row){
+        return normalizeLoose(row?.reference_type).includes("salesorderadvance");
+    }
+
     function transactionNeedsApproval(row){
         const txn = normalizeText(row?.txn_type);
         const status = normalizeText(row?.approval_status);
-        if(status === "pending" || status === "rejected") return true;
-        if(txn === "payment") return true;
+
+        // Sales Order Advance is a special receipt. It must always be approval-controlled.
         if(isSalesOrderAdvance(row)) return true;
+
+        // Payments are approval-controlled.
+        if(txn === "payment") return true;
+
+        // Any old row that is already pending/rejected should continue to show approval action.
+        if(status === "pending" || status === "rejected") return true;
+
         return false;
     }
 
     function getTransactionApprovalName(row){
-        if(isSalesOrderAdvance(row) || looksLikePossibleAdvance(row)) return "sales order advance";
+        if(isSalesOrderAdvance(row)) return "sales order advance";
         if(normalizeText(row?.txn_type) === "payment") return "payment";
         return "transaction";
     }
 
-    function getCurrentRole(){
-        for(const key of ["role", "user_role", "profile_role"]){
-            const val = localStorage.getItem(key);
-            if(val) return normalizeText(val);
+    async function loadCurrentUserRole(){
+        currentUserRole = "";
+        try{
+            for(const key of ["role", "user_role", "profile_role"]){
+                const val = localStorage.getItem(key);
+                if(val){ currentUserRole = normalizeText(val); break; }
+            }
+
+            const { data: authData } = await sb.auth.getUser();
+            const uid = authData?.user?.id;
+            if(uid){
+                const { data: profile } = await sb
+                    .from("user_profiles")
+                    .select("role")
+                    .eq("id", uid)
+                    .maybeSingle();
+                if(profile?.role){
+                    currentUserRole = normalizeText(profile.role);
+                    localStorage.setItem("role", profile.role);
+                }
+            }
+        }catch(err){
+            console.warn("Role load failed", err);
         }
-        return "";
+    }
+
+    function getCurrentRole(){
+        return currentUserRole || normalizeText(localStorage.getItem("role") || localStorage.getItem("user_role") || localStorage.getItem("profile_role") || "");
     }
 
     function canCurrentUserApprove(){
-        return ["manager", "admin", "owner"].includes(getCurrentRole());
+        const role = getCurrentRole();
+        return ["manager", "admin", "owner"].includes(role);
     }
 
     function renderTransactions(rows){
         if(!rows.length){
-            resultsBody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#64748b;">No transactions found</td></tr>`;
+            resultsBody.innerHTML = `
+                <tr>
+                    <td colspan="7" style="text-align:center; color:#64748b;">No transactions found</td>
+                </tr>
+            `;
             return;
         }
-        const canApprove = canCurrentUserApprove();
+
         resultsBody.innerHTML = rows.map(row => {
-            const txn = normalizeText(row.txn_type);
-            const approvalStatus = normalizeText(row.approval_status || "approved");
-            const salesOrderAdvance = isSalesOrderAdvance(row);
-            const possibleAdvance = looksLikePossibleAdvance(row);
             const needsApproval = transactionNeedsApproval(row);
+            const salesOrderAdvance = isSalesOrderAdvance(row);
+            const properAdvance = isProperSalesOrderAdvance(row);
+            const approvalStatus = normalizeText(row.approval_status || "approved");
             let approveCell = "-";
 
-            if(approvalStatus === "approved" && (txn === "payment" || salesOrderAdvance || possibleAdvance)){
-                approveCell = `<span class="status-badge status-approved">Approved</span>`;
-            } else if(approvalStatus === "rejected"){
-                approveCell = canApprove ? `<button class="accept-btn" onclick="approveTransaction(${row.id})">Approve Again</button>` : `<span class="status-badge status-rejected">Rejected</span>`;
-            } else if(needsApproval || possibleAdvance){
-                approveCell = canApprove ? `<button class="accept-btn" onclick="approveTransaction(${row.id})">Approve</button>` : `<span class="status-badge status-pending">Pending</span>`;
+            if(salesOrderAdvance){
+                if(approvalStatus === "approved" && properAdvance){
+                    approveCell = `<span class="status-badge status-approved">Approved</span>`;
+                } else if(approvalStatus === "approved" && !properAdvance){
+                    approveCell = `<div class="action-stack"><button class="fix-btn" onclick="fixAndApproveSalesOrderAdvance(${row.id})">Fix Advance</button></div>`;
+                } else if(approvalStatus === "rejected"){
+                    approveCell = `<button class="accept-btn" onclick="approveTransaction(${row.id})">Approve Again</button>`;
+                } else {
+                    approveCell = `<button class="accept-btn" onclick="approveTransaction(${row.id})">Approve</button>`;
+                }
+            } else if(needsApproval){
+                if(approvalStatus === "approved"){
+                    approveCell = `<span class="status-badge status-approved">Approved</span>`;
+                } else if(approvalStatus === "rejected"){
+                    approveCell = `<button class="accept-btn" onclick="approveTransaction(${row.id})">Approve Again</button>`;
+                } else {
+                    approveCell = `<button class="accept-btn" onclick="approveTransaction(${row.id})">Approve</button>`;
+                }
             } else {
                 approveCell = `<span class="status-badge status-info">Not Needed</span>`;
             }
 
-            const typeNote = salesOrderAdvance ? `<span class="type-note">Sales Order Advance</span>` : (possibleAdvance ? `<span class="type-note">Possible Sales Order Advance</span>` : "");
+            const typeNote = salesOrderAdvance
+                ? `<span class="type-note">Sales Order Advance</span>`
+                : (looksLikePossibleAdvance(row) ? `<span class="type-note">Possible Sales Order Advance</span>` : "");
+
             return `
                 <tr>
                     <td>${formatDate(row.txn_date)}</td>
                     <td>${escapeHtml(row.voucher_no || "")}</td>
-                    <td><span class="${escapeHtml(txn)}">${escapeHtml(row.txn_type || "")}</span>${typeNote}</td>
+                    <td><span class="${escapeHtml(normalizeText(row.txn_type || ""))}">${escapeHtml(row.txn_type || "")}</span>${typeNote}</td>
                     <td>${escapeHtml(row.party_name || "")}</td>
                     <td class="amount">${Number(row.amount || 0).toFixed(2)}</td>
                     <td>${escapeHtml(row.remarks || "")}</td>
                     <td>${approveCell}</td>
-                </tr>`;
+                </tr>
+            `;
         }).join("");
+    }
+
+    function looksLikePossibleAdvance(row){
+        const text = `${row?.voucher_no || ""} ${row?.reference_type || ""} ${row?.remarks || ""}`.toLowerCase();
+        return text.includes("sales_order") || text.includes("sales order") || text.includes("advance for sales");
+    }
+
+    function normalizeText(value){
+        return String(value || "").trim().toLowerCase();
     }
 
     function formatDate(dateStr){
@@ -880,44 +982,98 @@
     }
 
     function escapeHtml(text){
-        return String(text).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
+        return String(text)
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll('"', "&quot;")
+            .replaceAll("'", "&#039;");
     }
 
     async function approveTransaction(id) {
         if(isApproving) return;
+
+        await loadCurrentUserRole();
         if (!canCurrentUserApprove()) {
-            alert("Only admin, manager, or owner can approve this transaction.");
+            alert("Only admin, manager, or owner can approve this transaction. Current role: " + (getCurrentRole() || "not found"));
             return;
         }
-        const username = localStorage.getItem("username") || localStorage.getItem("user_name") || "Unknown";
+
+        const username = localStorage.getItem("username") || localStorage.getItem("user_name") || getCurrentRole().toUpperCase() || "Unknown";
+
         const { data: txn, error: readError } = await sb
             .from("cash_transactions")
             .select("id, txn_type, approval_status, reference_type, voucher_no, remarks")
             .eq("id", id)
             .maybeSingle();
+
         if(readError || !txn){
             alert("Could not read transaction for approval.");
             return;
         }
-        const ok = confirm(`Do you want to approve this ${getTransactionApprovalName(txn)}?`);
+
+        if(!transactionNeedsApproval(txn) && !looksLikePossibleAdvance(txn)){
+            alert("This transaction does not need approval.");
+            await loadTransactions(searchParty.value.trim());
+            return;
+        }
+
+        const approvalName = getTransactionApprovalName(txn);
+        const ok = confirm(`Do you want to approve this ${approvalName}?`);
         if (!ok) return;
+
         await updateApproval(id, username, isSalesOrderAdvance(txn) || looksLikePossibleAdvance(txn));
+    }
+
+    async function fixAndApproveSalesOrderAdvance(id){
+        if(isApproving) return;
+
+        await loadCurrentUserRole();
+        if (!canCurrentUserApprove()) {
+            alert("Only admin, manager, or owner can approve this transaction. Current role: " + (getCurrentRole() || "not found"));
+            return;
+        }
+
+        const ok = confirm("This row looks like a Sales Order Advance. Mark it as Sales Order Advance and approve it?");
+        if(!ok) return;
+
+        const username = localStorage.getItem("username") || localStorage.getItem("user_name") || getCurrentRole().toUpperCase() || "Unknown";
+        await updateApproval(id, username, true);
     }
 
     async function updateApproval(id, username, markAsSalesOrderAdvance){
         isApproving = true;
-        const updatePayload = { approval_status: "approved", approved_by: username, approved_at: new Date().toISOString() };
-        if(markAsSalesOrderAdvance) updatePayload.reference_type = "sales_order_advance";
-        const { error } = await sb.from("cash_transactions").update(updatePayload).eq("id", id);
+
+        const updatePayload = {
+            approval_status: "approved",
+            approved_by: username,
+            approved_at: new Date().toISOString()
+        };
+
+        if(markAsSalesOrderAdvance){
+            updatePayload.reference_type = "sales_order_advance";
+        }
+
+        const { error } = await sb
+            .from("cash_transactions")
+            .update(updatePayload)
+            .eq("id", id);
+
         isApproving = false;
-        if (error) { alert("Approval failed: " + error.message); return; }
-        alert("Transaction approved successfully");
+
+        if (error) {
+            alert("Approval failed: " + error.message);
+            return;
+        }
+
+        alert(markAsSalesOrderAdvance ? "Sales Order Advance approved successfully" : "Transaction approved successfully");
         await loadTransactions(searchParty.value.trim());
     }
 
-    async function approvePayment(id){ await approveTransaction(id); }
+    async function approvePayment(id){
+        await approveTransaction(id);
+    }
 
-    // =========================
     // 11. ENTER KEY NAVIGATION
     // =========================
     function setupEnterNavigation(){

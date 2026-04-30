@@ -9,7 +9,6 @@
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <link rel="manifest" href="site.webmanifest">
 <title>Payment / Receipt - VAJRA LIGHTS</title>
-<!-- FIX VERSION: sales_order_advance_approval_2026_04_30 -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabaseClient.js"></script>
 <script src="page_permissions.js"></script>
@@ -39,10 +38,7 @@
         padding:14px;
     }
 
-    .container{
-        max-width:1100px;
-        margin:auto;
-    }
+    .container{ max-width:1200px; margin:auto; }
 
     .card{
         background:var(--card);
@@ -69,20 +65,10 @@
         gap:12px;
     }
 
-    .field{
-        display:flex;
-        flex-direction:column;
-        gap:6px;
-        position:relative;
-    }
-
+    .field{ display:flex; flex-direction:column; gap:6px; position:relative; }
     .field.full{ grid-column:1 / -1; }
 
-    label{
-        font-size:13px;
-        font-weight:600;
-        color:var(--muted);
-    }
+    label{ font-size:13px; font-weight:600; color:var(--muted); }
 
     input, select, textarea, button{
         width:100%;
@@ -100,33 +86,13 @@
         box-shadow:0 0 0 3px rgba(37,99,235,0.12);
     }
 
-    textarea{
-        min-height:90px;
-        resize:vertical;
-    }
+    textarea{ min-height:90px; resize:vertical; }
 
-    .btn-row{
-        display:flex;
-        gap:10px;
-        flex-wrap:wrap;
-        margin-top:12px;
-    }
+    .btn-row{ display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
 
-    button{
-        cursor:pointer;
-        border:none;
-        font-weight:700;
-    }
-
-    .btn-primary{
-        background:var(--primary);
-        color:#fff;
-    }
-
-    .btn-secondary{
-        background:#e2e8f0;
-        color:#0f172a;
-    }
+    button{ cursor:pointer; border:none; font-weight:700; }
+    .btn-primary{ background:var(--primary); color:#fff; }
+    .btn-secondary{ background:#e2e8f0; color:#0f172a; }
 
     .badge{
         background:#dbeafe;
@@ -153,35 +119,20 @@
         display:none;
     }
 
-    .autocomplete-item{
-        padding:10px 12px;
-        cursor:pointer;
-        border-bottom:1px solid #f1f5f9;
-    }
-
+    .autocomplete-item{ padding:10px 12px; cursor:pointer; border-bottom:1px solid #f1f5f9; }
     .autocomplete-item:last-child{ border-bottom:none; }
-    .autocomplete-item.active,
-    .autocomplete-item:hover{ background:var(--hover); }
+    .autocomplete-item.active,.autocomplete-item:hover{ background:var(--hover); }
 
     .search-box{
         display:grid;
-        grid-template-columns:2fr 1fr 1fr auto;
+        grid-template-columns:2fr 1fr 1fr 1fr auto;
         gap:10px;
         align-items:end;
     }
 
-    .table-wrap{
-        overflow:auto;
-        border:1px solid var(--border);
-        border-radius:12px;
-    }
+    .table-wrap{ overflow:auto; border:1px solid var(--border); border-radius:12px; }
 
-    table{
-        width:100%;
-        border-collapse:collapse;
-        min-width:900px;
-        background:#fff;
-    }
+    table{ width:100%; border-collapse:collapse; min-width:1050px; background:#fff; }
 
     th, td{
         padding:12px 10px;
@@ -191,40 +142,16 @@
         vertical-align:middle;
     }
 
-    th{
-        background:#f8fafc;
-        position:sticky;
-        top:0;
-        z-index:1;
-    }
+    th{ background:#f8fafc; position:sticky; top:0; z-index:1; }
 
-    .amount{
-        text-align:right;
-        font-weight:700;
-    }
+    tr.need-approval{ background:#fff7ed; }
+    tr.approved-row{ background:#ecfdf5; }
 
-    .payment{
-        color:var(--danger);
-        font-weight:700;
-        text-transform:capitalize;
-    }
-
-    .receipt{
-        color:var(--success);
-        font-weight:700;
-        text-transform:capitalize;
-    }
-
-    .small{
-        font-size:12px;
-        color:var(--muted);
-    }
-
-    .message{
-        margin-top:10px;
-        font-weight:700;
-    }
-
+    .amount{ text-align:right; font-weight:700; }
+    .payment{ color:var(--danger); font-weight:800; text-transform:capitalize; }
+    .receipt{ color:var(--success); font-weight:800; text-transform:capitalize; }
+    .small{ font-size:12px; color:var(--muted); }
+    .message{ margin-top:10px; font-weight:700; }
     .success-msg{ color:var(--success); }
     .error-msg{ color:var(--danger); }
 
@@ -235,7 +162,21 @@
         padding:8px 12px;
         border-radius:8px;
         font-size:13px;
-        font-weight:700;
+        font-weight:800;
+        cursor:pointer;
+        min-height:36px;
+        width:auto;
+        white-space:nowrap;
+    }
+
+    .reject-btn{
+        background:#dc2626;
+        color:#fff;
+        border:none;
+        padding:8px 12px;
+        border-radius:8px;
+        font-size:13px;
+        font-weight:800;
         cursor:pointer;
         min-height:36px;
         width:auto;
@@ -249,25 +190,21 @@
         padding:8px 12px;
         border-radius:8px;
         font-size:13px;
-        font-weight:800;
+        font-weight:900;
         cursor:pointer;
         min-height:36px;
         width:auto;
         white-space:nowrap;
     }
 
-    .accept-btn:hover,.fix-btn:hover{ opacity:0.95; }
-    .accept-btn:disabled,.fix-btn:disabled{
-        background:#94a3b8;
-        cursor:not-allowed;
-    }
+    .accept-btn:disabled,.reject-btn:disabled,.fix-btn:disabled{ background:#94a3b8; cursor:not-allowed; color:#fff; }
 
     .status-badge{
         display:inline-block;
         padding:6px 10px;
         border-radius:999px;
         font-size:12px;
-        font-weight:700;
+        font-weight:800;
         white-space:nowrap;
     }
 
@@ -276,20 +213,8 @@
     .status-rejected{ background:#fee2e2; color:#991b1b; }
     .status-info{ background:#dbeafe; color:#1d4ed8; }
 
-    .type-note{
-        display:block;
-        margin-top:4px;
-        font-size:11px;
-        color:#64748b;
-        font-weight:700;
-    }
-
-    .action-stack{
-        display:flex;
-        gap:8px;
-        flex-wrap:wrap;
-        align-items:center;
-    }
+    .type-note{ display:block; margin-top:4px; font-size:11px; color:#64748b; font-weight:800; }
+    .action-stack{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
 
     @media (max-width: 900px){
         .grid{ grid-template-columns:repeat(2, 1fr); }
@@ -364,8 +289,8 @@
 
         <div class="search-box">
             <div class="field">
-                <label for="searchParty">Name Search</label>
-                <input type="text" id="searchParty" name="searchParty" placeholder="Search by party name / voucher / remarks..." />
+                <label for="searchParty">Search</label>
+                <input type="text" id="searchParty" name="searchParty" placeholder="Search by party / voucher / remarks..." />
             </div>
 
             <div class="field">
@@ -383,6 +308,17 @@
             </div>
 
             <div class="field">
+                <label for="searchStatus">Status</label>
+                <select id="searchStatus" name="searchStatus">
+                    <option value="">All</option>
+                    <option value="pending">Pending</option>
+                    <option value="approved">Approved</option>
+                    <option value="rejected">Rejected</option>
+                    <option value="not_needed">Not Needed</option>
+                </select>
+            </div>
+
+            <div class="field">
                 <button class="btn-primary" id="searchBtn" type="button">Search</button>
             </div>
         </div>
@@ -395,14 +331,15 @@
                         <th>Voucher No</th>
                         <th>Type</th>
                         <th>Party</th>
+                        <th>Linked Bill</th>
                         <th class="amount">Amount</th>
                         <th>Remarks</th>
-                        <th>Approve</th>
+                        <th>Approval</th>
                     </tr>
                 </thead>
                 <tbody id="resultsBody">
                     <tr>
-                        <td colspan="7" style="text-align:center; color:#64748b;">No transactions found</td>
+                        <td colspan="8" style="text-align:center; color:#64748b;">No transactions found</td>
                     </tr>
                 </tbody>
             </table>
@@ -412,19 +349,15 @@
 </div>
 
 <script>
-    // =========================
-    // 1. SUPABASE CONNECTION
-    // =========================
     const sb = window.sbcc;
 
     document.addEventListener("DOMContentLoaded", async () => {
-        const ok = await requirePageAccess("paymentreceipt");
-        if (!ok) return;
+        if (typeof requirePageAccess === "function") {
+            const ok = await requirePageAccess("paymentreceipt");
+            if (!ok) return;
+        }
     });
 
-    // =========================
-    // 2. ELEMENTS
-    // =========================
     const txnType = document.getElementById("txnType");
     const txnDate = document.getElementById("txnDate");
     const voucherNo = document.getElementById("voucherNo");
@@ -437,10 +370,10 @@
     const modeBadge = document.getElementById("modeBadge");
     const formMessage = document.getElementById("formMessage");
     const partySuggestions = document.getElementById("partySuggestions");
-
     const searchParty = document.getElementById("searchParty");
     const searchType = document.getElementById("searchType");
     const searchDate = document.getElementById("searchDate");
+    const searchStatus = document.getElementById("searchStatus");
     const searchBtn = document.getElementById("searchBtn");
     const resultsBody = document.getElementById("resultsBody");
 
@@ -450,401 +383,64 @@
     let isApproving = false;
     let currentUserRole = "";
 
-    // =========================
-    // 3. INITIAL LOAD
-    // =========================
     window.onload = async function(){
         txnDate.value = new Date().toISOString().split("T")[0];
+        searchDate.value = new Date().toISOString().split("T")[0];
         updateTypeUI();
+        await loadCurrentUserRole();
         await generateNextVoucherNo();
         await loadTransactions();
         setupEnterNavigation();
     };
 
-    // =========================
-    // 4. TYPE UI
-    // =========================
-    txnType.addEventListener("change", async () => {
-        updateTypeUI();
-        await generateNextVoucherNo();
-    });
-
-    function updateTypeUI(){
-        if(txnType.value === "payment"){
-            partyLabel.textContent = "Paid To";
-            modeBadge.textContent = "Payment Mode";
-        }else{
-            partyLabel.textContent = "Received From";
-            modeBadge.textContent = "Receipt Mode";
-        }
-    }
-
-    // =========================
-    // 5. NEXT VOUCHER NUMBER
-    // =========================
-    async function generateNextVoucherNo(){
-        const prefix = txnType.value === "payment" ? "PAY" : "REC";
-
-        const { data, error } = await sb
-            .from("cash_transactions")
-            .select("voucher_no")
-            .eq("txn_type", txnType.value)
-            .order("id", { ascending: false })
-            .limit(1);
-
-        if(error){
-            console.error(error);
-            voucherNo.value = `${prefix}-0001`;
-            return;
-        }
-
-        let nextNumber = 1;
-
-        if(data && data.length){
-            const lastVoucher = data[0].voucher_no || "";
-            const match = lastVoucher.match(/(\d+)$/);
-            if(match){
-                nextNumber = parseInt(match[1], 10) + 1;
-            }
-        }
-
-        voucherNo.value = `${prefix}-${String(nextNumber).padStart(4, "0")}`;
-    }
-
-    // =========================
-    // 6. PARTY AUTOCOMPLETE
-    // =========================
-    partyName.addEventListener("input", async function(){
-        activeSuggestionIndex = -1;
-        const q = partyName.value.trim();
-
-        if(!q){
-            hideSuggestions();
-            await loadTransactions();
-            return;
-        }
-
-        await showPartySuggestions(q);
-        await loadTransactions(q);
-    });
-
-    partyName.addEventListener("keydown", function(e){
-        const items = partySuggestions.querySelectorAll(".autocomplete-item");
-
-        if(partySuggestions.style.display === "block" && items.length){
-            if(e.key === "ArrowDown"){
-                e.preventDefault();
-                activeSuggestionIndex = Math.min(activeSuggestionIndex + 1, items.length - 1);
-                highlightSuggestion(items);
-                return;
-            }
-
-            if(e.key === "ArrowUp"){
-                e.preventDefault();
-                activeSuggestionIndex = Math.max(activeSuggestionIndex - 1, 0);
-                highlightSuggestion(items);
-                return;
-            }
-
-            if(e.key === "Enter" && activeSuggestionIndex >= 0){
-                e.preventDefault();
-                items[activeSuggestionIndex].click();
-                return;
-            }
-
-            if(e.key === "Escape"){
-                hideSuggestions();
-            }
-        }
-    });
-
-    document.addEventListener("click", function(e){
-        if(!partySuggestions.contains(e.target) && e.target !== partyName){
-            hideSuggestions();
-        }
-    });
-
-    async function showPartySuggestions(query){
-        const { data, error } = await sb
-            .from("parties")
-            .select("id, party_name")
-            .ilike("party_name", `%${query}%`)
-            .order("party_name", { ascending: true })
-            .limit(8);
-
-        if(error){
-            console.error(error);
-            hideSuggestions();
-            return;
-        }
-
-        suggestionItems = data || [];
-        renderSuggestions(suggestionItems, query);
-    }
-
-    function renderSuggestions(items, query){
-        partySuggestions.innerHTML = "";
-
-        if(!items.length){
-            hideSuggestions();
-            return;
-        }
-
-        items.forEach((item, index) => {
-            const div = document.createElement("div");
-            div.className = "autocomplete-item";
-            div.dataset.index = index;
-
-            const safeName = escapeHtml(item.party_name || "");
-            const regex = new RegExp(`(${escapeRegExp(query)})`, "ig");
-            div.innerHTML = safeName.replace(regex, "<strong>$1</strong>");
-
-            div.addEventListener("click", async () => {
-                partyName.value = item.party_name;
-                hideSuggestions();
-                amount.focus();
-                await loadTransactions(item.party_name);
-            });
-
-            partySuggestions.appendChild(div);
-        });
-
-        partySuggestions.style.display = "block";
-    }
-
-    function highlightSuggestion(items){
-        items.forEach(item => item.classList.remove("active"));
-        if(items[activeSuggestionIndex]){
-            items[activeSuggestionIndex].classList.add("active");
-            items[activeSuggestionIndex].scrollIntoView({ block: "nearest" });
-        }
-    }
-
-    function hideSuggestions(){
-        partySuggestions.style.display = "none";
-        partySuggestions.innerHTML = "";
-        activeSuggestionIndex = -1;
-    }
-
-    function escapeRegExp(string){
-        return String(string || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    }
-
-    // =========================
-    // 7. SAVE PARTY IF NEW
-    // =========================
-    async function ensurePartyExists(name){
-        const cleanName = name.trim();
-        if(!cleanName) return null;
-
-        const { data: existing } = await sb
-            .from("parties")
-            .select("id, party_name")
-            .eq("party_name", cleanName)
-            .maybeSingle();
-
-        if(existing) return existing.id;
-
-        const { data, error } = await sb
-            .from("parties")
-            .insert([{ party_name: cleanName }])
-            .select("id")
-            .single();
-
-        if(error){
-            console.error("Party save error:", error);
-            return null;
-        }
-
-        return data.id;
-    }
-
-    // =========================
-    // 8. SAVE MANUAL TRANSACTION
-    // =========================
-    saveBtn.addEventListener("click", saveTransaction);
-
-    async function saveTransaction(){
-        if(isSaving) return;
-
-        const type = txnType.value;
-        const date = txnDate.value;
-        const voucher = voucherNo.value.trim();
-        const party = partyName.value.trim();
-        const amt = parseFloat(amount.value || 0);
-        const note = remarks.value.trim();
-
-        if(!date){
-            showMessage("Please select date", false);
-            txnDate.focus();
-            return;
-        }
-
-        if(!voucher){
-            showMessage("Voucher number missing", false);
-            return;
-        }
-
-        if(!party){
-            showMessage(`Please enter ${type === "payment" ? "Paid To" : "Received From"} name`, false);
-            partyName.focus();
-            return;
-        }
-
-        if(!amt || amt <= 0){
-            showMessage("Please enter valid amount", false);
-            amount.focus();
-            return;
-        }
-
-        isSaving = true;
-        saveBtn.disabled = true;
-        saveBtn.textContent = "Saving...";
-
-        try{
-            const partyId = await ensurePartyExists(party);
-
-            const { error } = await sb
-                .from("cash_transactions")
-                .insert([{
-                    voucher_no: voucher,
-                    txn_date: date,
-                    txn_type: type,
-                    party_id: partyId,
-                    party_name: party,
-                    amount: amt,
-                    remarks: note || null,
-                    approval_status: type === "receipt" ? "approved" : "pending",
-                    reference_type: type === "receipt" ? "manual_receipt" : "manual_payment"
-                }]);
-
-            if(error) throw error;
-
-            showMessage("Transaction saved successfully", true);
-            await loadTransactions(party);
-            clearForm(false);
-            await generateNextVoucherNo();
-            partyName.focus();
-
-        }catch(err){
-            console.error(err);
-            showMessage(err.message || "Failed to save transaction", false);
-        }finally{
-            isSaving = false;
-            saveBtn.disabled = false;
-            saveBtn.textContent = "Save Entry";
-        }
-    }
-
-    // =========================
-    // 9. CLEAR FORM
-    // =========================
-    clearBtn.addEventListener("click", () => clearForm(true));
-
-    function clearForm(withVoucherRefresh = true){
-        txnDate.value = new Date().toISOString().split("T")[0];
-        partyName.value = "";
-        amount.value = "";
-        remarks.value = "";
-        hideSuggestions();
-        formMessage.textContent = "";
-
-        if(withVoucherRefresh){
-            generateNextVoucherNo();
-        }
-    }
-
-    function showMessage(msg, ok){
-        formMessage.textContent = msg;
-        formMessage.className = "message " + (ok ? "success-msg" : "error-msg");
-    }
-
-    // =========================
-    // 10. LOAD TRANSACTIONS
-    // =========================
-    searchBtn.addEventListener("click", () => {
-        loadTransactions(searchParty.value.trim());
-    });
-
-    searchParty.addEventListener("input", () => {
-        loadTransactions(searchParty.value.trim());
-    });
-
-    searchType.addEventListener("change", () => {
-        loadTransactions(searchParty.value.trim());
-    });
-
-    searchDate.addEventListener("change", () => {
-        loadTransactions(searchParty.value.trim());
-    });
-
-    async function loadTransactions(nameFilter = ""){
-        let query = sb
-            .from("cash_transactions")
-            .select("id, txn_date, voucher_no, txn_type, party_name, amount, remarks, approval_status, approved_by, approved_at, reference_type, reference_id")
-            .order("txn_date", { ascending: false })
-            .order("id", { ascending: false })
-            .limit(300);
-
-        const searchValue = (nameFilter || searchParty.value || "").trim();
-        const typeValue = searchType.value;
-        const dateValue = searchDate.value;
-
-        // Search by party, voucher number, or remarks. This helps to find AUTO-sales_order_advance rows directly.
-        if(searchValue){
-            const safe = searchValue.replace(/[%_,]/g, "");
-            query = query.or(`party_name.ilike.%${safe}%,voucher_no.ilike.%${safe}%,remarks.ilike.%${safe}%`);
-        }
-
-        if(typeValue){
-            query = query.eq("txn_type", typeValue);
-        }
-
-        if(dateValue){
-            query = query.eq("txn_date", dateValue);
-        }
-
-        const { data, error } = await query;
-
-        if(error){
-            console.error(error);
-            resultsBody.innerHTML = `
-                <tr>
-                    <td colspan="7" style="text-align:center; color:red;">Failed to load transactions</td>
-                </tr>
-            `;
-            return;
-        }
-
-        renderTransactions(data || []);
-    }
-
-    // Strong detector for old and new sales order advance rows.
-    // Detects even if reference_type is missing/wrong and voucher/remarks only contain the clue.
     function normalizeText(value){
         return String(value ?? "").trim().toLowerCase();
     }
 
     function normalizeLoose(value){
-        return normalizeText(value).replace(/[^a-z0-9]/g, "");
+        return String(value ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "");
     }
 
-    function rowPackedText(row){
-        return normalizeLoose(`${row?.voucher_no || ""} ${row?.reference_type || ""} ${row?.remarks || ""}`);
+    function escapeHtml(value){
+        return String(value ?? "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
     }
 
-    function looksLikePossibleAdvance(row){
-        const packed = rowPackedText(row);
-        return packed.includes("salesorderadvance") ||
-               packed.includes("advanceforsalesorder") ||
-               packed.includes("autosalesorderadvance") ||
-               packed.includes("advanceforsales");
+    function formatDate(dateValue){
+        if(!dateValue) return "";
+        const parts = String(dateValue).split("-");
+        if(parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+        return String(dateValue);
+    }
+
+    function getCurrentIsoTime(){
+        return new Date().toISOString();
+    }
+
+    function parseSalesOrderAdvanceRefId(row){
+        const voucher = String(row?.voucher_no || "");
+        const match = voucher.match(/AUTO[-_\s]*sales[-_\s]*order[-_\s]*advance[-_\s]*(\d+)/i);
+        if(match) return Number(match[1]) || row?.reference_id || null;
+        return row?.reference_id || null;
+    }
+
+    function rowText(row){
+        return `${row?.voucher_no || ""} ${row?.reference_type || ""} ${row?.remarks || ""}`;
     }
 
     function isSalesOrderAdvance(row){
         const txn = normalizeText(row?.txn_type);
         if(txn && txn !== "receipt") return false;
-        return looksLikePossibleAdvance(row);
+
+        const text = normalizeLoose(rowText(row));
+        return text.includes("salesorderadvance")
+            || text.includes("advanceforsalesorder")
+            || text.includes("autosalesorderadvance")
+            || text.includes("advanceforsales");
     }
 
     function isProperSalesOrderAdvance(row){
@@ -855,22 +451,16 @@
         const txn = normalizeText(row?.txn_type);
         const status = normalizeText(row?.approval_status);
 
-        // Sales Order Advance is a special receipt. It must always be approval-controlled.
+        // VERY IMPORTANT: Sales order advance is a receipt, but it must need approval.
         if(isSalesOrderAdvance(row)) return true;
 
-        // Payments are approval-controlled.
+        // All payments need approval.
         if(txn === "payment") return true;
 
-        // Any old row that is already pending/rejected should continue to show approval action.
+        // Old rows already pending/rejected should continue to show action.
         if(status === "pending" || status === "rejected") return true;
 
         return false;
-    }
-
-    function getTransactionApprovalName(row){
-        if(isSalesOrderAdvance(row)) return "sales order advance";
-        if(normalizeText(row?.txn_type) === "payment") return "payment";
-        return "transaction";
     }
 
     async function loadCurrentUserRole(){
@@ -903,18 +493,267 @@
         return currentUserRole || normalizeText(localStorage.getItem("role") || localStorage.getItem("user_role") || localStorage.getItem("profile_role") || "");
     }
 
-    function canCurrentUserApprove(){
-        const role = getCurrentRole();
-        return ["manager", "admin", "owner"].includes(role);
+    function getLoggedUserName(){
+        return localStorage.getItem("username")
+            || localStorage.getItem("user_name")
+            || localStorage.getItem("staff_name")
+            || getCurrentRole()
+            || "APPROVER";
+    }
+
+    txnType.addEventListener("change", async () => {
+        updateTypeUI();
+        await generateNextVoucherNo();
+    });
+
+    function updateTypeUI(){
+        if(txnType.value === "payment"){
+            partyLabel.textContent = "Paid To";
+            modeBadge.textContent = "Payment Mode";
+        }else{
+            partyLabel.textContent = "Received From";
+            modeBadge.textContent = "Receipt Mode";
+        }
+    }
+
+    async function generateNextVoucherNo(){
+        const prefix = txnType.value === "payment" ? "PAY" : "REC";
+
+        const { data, error } = await sb
+            .from("cash_transactions")
+            .select("voucher_no")
+            .eq("txn_type", txnType.value)
+            .order("id", { ascending: false })
+            .limit(1);
+
+        if(error){
+            console.error(error);
+            voucherNo.value = `${prefix}-0001`;
+            return;
+        }
+
+        let nextNumber = 1;
+        if(data && data.length){
+            const lastVoucher = data[0].voucher_no || "";
+            const match = lastVoucher.match(/(\d+)$/);
+            if(match) nextNumber = parseInt(match[1], 10) + 1;
+        }
+        voucherNo.value = `${prefix}-${String(nextNumber).padStart(4, "0")}`;
+    }
+
+    partyName.addEventListener("input", async function(){
+        activeSuggestionIndex = -1;
+        const q = partyName.value.trim();
+        if(!q){
+            hideSuggestions();
+            return;
+        }
+        await showPartySuggestions(q);
+    });
+
+    partyName.addEventListener("keydown", function(e){
+        const items = partySuggestions.querySelectorAll(".autocomplete-item");
+        if(partySuggestions.style.display === "block" && items.length){
+            if(e.key === "ArrowDown"){
+                e.preventDefault();
+                activeSuggestionIndex = Math.min(activeSuggestionIndex + 1, items.length - 1);
+                setActiveSuggestion(items);
+            }else if(e.key === "ArrowUp"){
+                e.preventDefault();
+                activeSuggestionIndex = Math.max(activeSuggestionIndex - 1, 0);
+                setActiveSuggestion(items);
+            }else if(e.key === "Enter"){
+                if(activeSuggestionIndex >= 0 && items[activeSuggestionIndex]){
+                    e.preventDefault();
+                    items[activeSuggestionIndex].click();
+                }
+            }else if(e.key === "Escape"){
+                hideSuggestions();
+            }
+        }
+    });
+
+    document.addEventListener("click", function(e){
+        if(!partyName.contains(e.target) && !partySuggestions.contains(e.target)) hideSuggestions();
+    });
+
+    function setActiveSuggestion(items){
+        items.forEach(i => i.classList.remove("active"));
+        if(items[activeSuggestionIndex]){
+            items[activeSuggestionIndex].classList.add("active");
+            items[activeSuggestionIndex].scrollIntoView({ block:"nearest" });
+        }
+    }
+
+    function hideSuggestions(){
+        partySuggestions.style.display = "none";
+        partySuggestions.innerHTML = "";
+        suggestionItems = [];
+        activeSuggestionIndex = -1;
+    }
+
+    async function showPartySuggestions(q){
+        const { data, error } = await sb
+            .from("cash_transactions")
+            .select("party_name")
+            .ilike("party_name", `%${q}%`)
+            .limit(30);
+
+        if(error){
+            console.error(error);
+            hideSuggestions();
+            return;
+        }
+
+        const names = [...new Set((data || []).map(x => x.party_name).filter(Boolean))].slice(0, 12);
+        suggestionItems = names;
+        if(!names.length){ hideSuggestions(); return; }
+
+        partySuggestions.innerHTML = names.map(name => `
+            <div class="autocomplete-item" data-name="${escapeHtml(name)}">${escapeHtml(name)}</div>
+        `).join("");
+
+        partySuggestions.querySelectorAll(".autocomplete-item").forEach(item => {
+            item.addEventListener("click", async () => {
+                partyName.value = item.dataset.name;
+                hideSuggestions();
+            });
+        });
+
+        partySuggestions.style.display = "block";
+    }
+
+    saveBtn.addEventListener("click", saveTransaction);
+    clearBtn.addEventListener("click", clearForm);
+
+    async function saveTransaction(){
+        if(isSaving) return;
+
+        const amt = parseFloat(amount.value || "0");
+        const party = partyName.value.trim();
+
+        if(!txnDate.value){ setMessage("Date is required", false); return; }
+        if(!party){ setMessage("Party name is required", false); return; }
+        if(!amt || amt <= 0){ setMessage("Enter a valid amount", false); return; }
+
+        isSaving = true;
+        saveBtn.disabled = true;
+
+        try{
+            // Manual receipts do not need approval. Payments need approval.
+            const initialStatus = txnType.value === "payment" ? "pending" : "approved";
+            const approvedBy = initialStatus === "approved" ? "AUTO" : null;
+            const approvedAt = initialStatus === "approved" ? getCurrentIsoTime() : null;
+
+            const payload = {
+                voucher_no: voucherNo.value.trim(),
+                txn_date: txnDate.value,
+                txn_type: txnType.value,
+                party_name: party,
+                amount: amt,
+                remarks: remarks.value.trim() || null,
+                approval_status: initialStatus,
+                approved_by: approvedBy,
+                approved_at: approvedAt,
+                approval_note: null,
+                reference_id: null,
+                reference_type: null
+            };
+
+            const { error } = await sb.from("cash_transactions").insert([payload]);
+            if(error) throw error;
+
+            setMessage("Saved successfully", true);
+            clearForm(false);
+            await generateNextVoucherNo();
+            await loadTransactions();
+        }catch(err){
+            console.error(err);
+            setMessage("Save failed: " + (err.message || "Unknown error"), false);
+        }finally{
+            isSaving = false;
+            saveBtn.disabled = false;
+        }
+    }
+
+    function clearForm(resetVoucher = true){
+        amount.value = "";
+        partyName.value = "";
+        remarks.value = "";
+        txnDate.value = new Date().toISOString().split("T")[0];
+        hideSuggestions();
+        if(resetVoucher) generateNextVoucherNo();
+    }
+
+    function setMessage(msg, ok){
+        formMessage.textContent = msg;
+        formMessage.className = "message " + (ok ? "success-msg" : "error-msg");
+        if(ok){
+            setTimeout(() => { formMessage.textContent = ""; }, 2500);
+        }
+    }
+
+    searchBtn.addEventListener("click", () => loadTransactions());
+    searchParty.addEventListener("input", debounce(() => loadTransactions(), 350));
+    searchType.addEventListener("change", () => loadTransactions());
+    searchDate.addEventListener("change", () => loadTransactions());
+    searchStatus.addEventListener("change", () => loadTransactions());
+
+    function debounce(fn, delay){
+        let timer;
+        return (...args) => {
+            clearTimeout(timer);
+            timer = setTimeout(() => fn(...args), delay);
+        };
+    }
+
+    async function loadTransactions(){
+        resultsBody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#64748b;">Loading...</td></tr>`;
+
+        let query = sb
+            .from("cash_transactions")
+            .select("id,voucher_no,txn_date,txn_type,party_name,amount,remarks,approval_status,approved_by,approved_at,approval_note,reference_id,reference_type")
+            .order("txn_date", { ascending:false })
+            .order("id", { ascending:false })
+            .limit(500);
+
+        const typeVal = searchType.value.trim();
+        const dateVal = searchDate.value.trim();
+        const textVal = searchParty.value.trim();
+
+        if(typeVal) query = query.eq("txn_type", typeVal);
+        if(dateVal) query = query.eq("txn_date", dateVal);
+
+        const { data, error } = await query;
+        if(error){
+            console.error(error);
+            resultsBody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#dc2626;">Load failed: ${escapeHtml(error.message)}</td></tr>`;
+            return;
+        }
+
+        let rows = data || [];
+
+        if(textVal){
+            const needle = normalizeLoose(textVal);
+            rows = rows.filter(r => normalizeLoose(`${r.party_name || ""} ${r.voucher_no || ""} ${r.remarks || ""} ${r.reference_type || ""}`).includes(needle));
+        }
+
+        const statusFilter = searchStatus.value.trim();
+        if(statusFilter){
+            rows = rows.filter(row => {
+                const needs = transactionNeedsApproval(row);
+                const status = normalizeText(row.approval_status || "approved");
+                if(statusFilter === "not_needed") return !needs;
+                return needs && status === statusFilter;
+            });
+        }
+
+        renderTransactions(rows);
     }
 
     function renderTransactions(rows){
         if(!rows.length){
-            resultsBody.innerHTML = `
-                <tr>
-                    <td colspan="7" style="text-align:center; color:#64748b;">No transactions found</td>
-                </tr>
-            `;
+            resultsBody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:#64748b;">No transactions found</td></tr>`;
             return;
         }
 
@@ -923,40 +762,37 @@
             const salesOrderAdvance = isSalesOrderAdvance(row);
             const properAdvance = isProperSalesOrderAdvance(row);
             const approvalStatus = normalizeText(row.approval_status || "approved");
-            let approveCell = "-";
 
-            if(salesOrderAdvance){
-                if(approvalStatus === "approved" && properAdvance){
+            let approveCell = "";
+
+            if(needsApproval){
+                if(approvalStatus === "approved" && (!salesOrderAdvance || properAdvance)){
                     approveCell = `<span class="status-badge status-approved">Approved</span>`;
-                } else if(approvalStatus === "approved" && !properAdvance){
-                    approveCell = `<div class="action-stack"><button class="fix-btn" onclick="fixAndApproveSalesOrderAdvance(${row.id})">Fix Advance</button></div>`;
-                } else if(approvalStatus === "rejected"){
-                    approveCell = `<button class="accept-btn" onclick="approveTransaction(${row.id})">Approve Again</button>`;
-                } else {
-                    approveCell = `<button class="accept-btn" onclick="approveTransaction(${row.id})">Approve</button>`;
+                }else if(approvalStatus === "approved" && salesOrderAdvance && !properAdvance){
+                    approveCell = `<div class="action-stack"><button class="fix-btn" onclick="fixAndApproveSalesOrderAdvance(${row.id})">Fix Advance</button><span class="status-badge status-approved">Approved</span></div>`;
+                }else if(approvalStatus === "rejected"){
+                    approveCell = `<div class="action-stack"><button class="accept-btn" onclick="approveTransaction(${row.id})">Approve Again</button></div>`;
+                }else{
+                    approveCell = `<div class="action-stack"><button class="accept-btn" onclick="approveTransaction(${row.id})">Accept</button><button class="reject-btn" onclick="rejectTransaction(${row.id})">Reject</button></div>`;
                 }
-            } else if(needsApproval){
-                if(approvalStatus === "approved"){
-                    approveCell = `<span class="status-badge status-approved">Approved</span>`;
-                } else if(approvalStatus === "rejected"){
-                    approveCell = `<button class="accept-btn" onclick="approveTransaction(${row.id})">Approve Again</button>`;
-                } else {
-                    approveCell = `<button class="accept-btn" onclick="approveTransaction(${row.id})">Approve</button>`;
-                }
-            } else {
+            }else{
                 approveCell = `<span class="status-badge status-info">Not Needed</span>`;
             }
 
-            const typeNote = salesOrderAdvance
-                ? `<span class="type-note">Sales Order Advance</span>`
-                : (looksLikePossibleAdvance(row) ? `<span class="type-note">Possible Sales Order Advance</span>` : "");
+            const typeNote = salesOrderAdvance ? `<span class="type-note">Sales Order Advance</span>` : "";
+            const linkedBill = salesOrderAdvance
+                ? `SO-${escapeHtml(String(row.reference_id || parseSalesOrderAdvanceRefId(row) || "-"))}`
+                : "-";
+
+            const rowClass = needsApproval && approvalStatus !== "approved" ? "need-approval" : (approvalStatus === "approved" ? "approved-row" : "");
 
             return `
-                <tr>
+                <tr class="${rowClass}">
                     <td>${formatDate(row.txn_date)}</td>
                     <td>${escapeHtml(row.voucher_no || "")}</td>
                     <td><span class="${escapeHtml(normalizeText(row.txn_type || ""))}">${escapeHtml(row.txn_type || "")}</span>${typeNote}</td>
                     <td>${escapeHtml(row.party_name || "")}</td>
+                    <td>${linkedBill}</td>
                     <td class="amount">${Number(row.amount || 0).toFixed(2)}</td>
                     <td>${escapeHtml(row.remarks || "")}</td>
                     <td>${approveCell}</td>
@@ -965,153 +801,109 @@
         }).join("");
     }
 
-    function looksLikePossibleAdvance(row){
-        const text = `${row?.voucher_no || ""} ${row?.reference_type || ""} ${row?.remarks || ""}`.toLowerCase();
-        return text.includes("sales_order") || text.includes("sales order") || text.includes("advance for sales");
-    }
-
-    function normalizeText(value){
-        return String(value || "").trim().toLowerCase();
-    }
-
-    function formatDate(dateStr){
-        if(!dateStr) return "";
-        const d = new Date(dateStr);
-        if(isNaN(d)) return dateStr;
-        return d.toLocaleDateString("en-GB");
-    }
-
-    function escapeHtml(text){
-        return String(text)
-            .replaceAll("&", "&amp;")
-            .replaceAll("<", "&lt;")
-            .replaceAll(">", "&gt;")
-            .replaceAll('"', "&quot;")
-            .replaceAll("'", "&#039;");
-    }
-
-    async function approveTransaction(id) {
-        if(isApproving) return;
-
-        await loadCurrentUserRole();
-        if (!canCurrentUserApprove()) {
-            alert("Only admin, manager, or owner can approve this transaction. Current role: " + (getCurrentRole() || "not found"));
-            return;
-        }
-
-        const username = localStorage.getItem("username") || localStorage.getItem("user_name") || getCurrentRole().toUpperCase() || "Unknown";
-
-        const { data: txn, error: readError } = await sb
+    async function getTransactionById(id){
+        const { data, error } = await sb
             .from("cash_transactions")
-            .select("id, txn_type, approval_status, reference_type, voucher_no, remarks")
+            .select("id,voucher_no,txn_date,txn_type,party_name,amount,remarks,approval_status,approved_by,approved_at,approval_note,reference_id,reference_type")
             .eq("id", id)
             .maybeSingle();
-
-        if(readError || !txn){
-            alert("Could not read transaction for approval.");
-            return;
-        }
-
-        if(!transactionNeedsApproval(txn) && !looksLikePossibleAdvance(txn)){
-            alert("This transaction does not need approval.");
-            await loadTransactions(searchParty.value.trim());
-            return;
-        }
-
-        const approvalName = getTransactionApprovalName(txn);
-        const ok = confirm(`Do you want to approve this ${approvalName}?`);
-        if (!ok) return;
-
-        await updateApproval(id, username, isSalesOrderAdvance(txn) || looksLikePossibleAdvance(txn));
+        if(error) throw error;
+        return data;
     }
 
-    async function fixAndApproveSalesOrderAdvance(id){
-        if(isApproving) return;
+    async function updateApproval(id, status, note = null){
+        const txn = await getTransactionById(id);
+        if(!txn) throw new Error("Transaction not found");
 
-        await loadCurrentUserRole();
-        if (!canCurrentUserApprove()) {
-            alert("Only admin, manager, or owner can approve this transaction. Current role: " + (getCurrentRole() || "not found"));
-            return;
-        }
-
-        const ok = confirm("This row looks like a Sales Order Advance. Mark it as Sales Order Advance and approve it?");
-        if(!ok) return;
-
-        const username = localStorage.getItem("username") || localStorage.getItem("user_name") || getCurrentRole().toUpperCase() || "Unknown";
-        await updateApproval(id, username, true);
-    }
-
-    async function updateApproval(id, username, markAsSalesOrderAdvance){
-        isApproving = true;
-
-        const updatePayload = {
-            approval_status: "approved",
-            approved_by: username,
-            approved_at: new Date().toISOString()
+        const payload = {
+            approval_status: status,
+            approved_by: status === "approved" ? getLoggedUserName() : null,
+            approved_at: status === "approved" ? getCurrentIsoTime() : null,
+            approval_note: note
         };
 
-        if(markAsSalesOrderAdvance){
-            updatePayload.reference_type = "sales_order_advance";
+        if(isSalesOrderAdvance(txn)){
+            payload.reference_type = "sales_order_advance";
+            const refId = parseSalesOrderAdvanceRefId(txn);
+            if(refId) payload.reference_id = refId;
         }
 
         const { error } = await sb
             .from("cash_transactions")
-            .update(updatePayload)
+            .update(payload)
             .eq("id", id);
 
-        isApproving = false;
+        if(error) throw error;
+    }
 
-        if (error) {
-            alert("Approval failed: " + error.message);
-            return;
+    async function approveTransaction(id){
+        if(isApproving) return;
+        isApproving = true;
+        try{
+            await updateApproval(id, "approved", null);
+            await loadTransactions();
+        }catch(err){
+            console.error(err);
+            alert("Approval failed: " + (err.message || "Unknown error"));
+        }finally{
+            isApproving = false;
         }
-
-        alert(markAsSalesOrderAdvance ? "Sales Order Advance approved successfully" : "Transaction approved successfully");
-        await loadTransactions(searchParty.value.trim());
     }
 
-    async function approvePayment(id){
-        await approveTransaction(id);
+    async function rejectTransaction(id){
+        if(isApproving) return;
+        const note = prompt("Reject reason / note:", "");
+        if(note === null) return;
+        isApproving = true;
+        try{
+            await updateApproval(id, "rejected", note || "Rejected");
+            await loadTransactions();
+        }catch(err){
+            console.error(err);
+            alert("Reject failed: " + (err.message || "Unknown error"));
+        }finally{
+            isApproving = false;
+        }
     }
 
-    // 11. ENTER KEY NAVIGATION
-    // =========================
+    async function fixAndApproveSalesOrderAdvance(id){
+        if(isApproving) return;
+        isApproving = true;
+        try{
+            await updateApproval(id, "approved", null);
+            await loadTransactions();
+        }catch(err){
+            console.error(err);
+            alert("Fix failed: " + (err.message || "Unknown error"));
+        }finally{
+            isApproving = false;
+        }
+    }
+
     function setupEnterNavigation(){
-        const orderedFields = [
-            txnType,
-            txnDate,
-            partyName,
-            amount,
-            remarks,
-            saveBtn
-        ];
-
-        orderedFields.forEach((field, index) => {
-            field.addEventListener("keydown", function(e){
-                if(e.key !== "Enter") return;
-
-                if(field === partyName && partySuggestions.style.display === "block"){
-                    const items = partySuggestions.querySelectorAll(".autocomplete-item");
-                    if(items.length && activeSuggestionIndex >= 0){
-                        e.preventDefault();
-                        items[activeSuggestionIndex].click();
-                        return;
-                    }
-                }
-
-                if(field === remarks || field.tagName === "INPUT" || field.tagName === "SELECT" || field.tagName === "BUTTON"){
+        const order = [txnType, txnDate, amount, partyName, remarks, saveBtn];
+        order.forEach((el, idx) => {
+            el.addEventListener("keydown", (e) => {
+                if(e.key === "Enter" && el.tagName !== "TEXTAREA"){
                     e.preventDefault();
-                    const next = orderedFields[index + 1];
-                    if(next){
-                        next.focus();
-                        if(next.select) next.select();
-                    }else{
-                        saveTransaction();
-                    }
+                    const next = order[idx + 1];
+                    if(next) next.focus();
+                    else saveBtn.click();
                 }
             });
         });
+
+        remarks.addEventListener("keydown", (e) => {
+            if(e.key === "Enter" && e.ctrlKey){
+                e.preventDefault();
+                saveBtn.click();
+            }
+        });
     }
+
+    window.approveTransaction = approveTransaction;
+    window.rejectTransaction = rejectTransaction;
+    window.fixAndApproveSalesOrderAdvance = fixAndApproveSalesOrderAdvance;
 </script>
 </body>
 </html>

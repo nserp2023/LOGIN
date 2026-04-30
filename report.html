@@ -190,6 +190,47 @@
             white-space:normal;
             line-height:1.35;
         }
+
+
+        .followup-report-cell {
+            max-width:240px;
+            white-space:normal;
+        }
+
+        .followup-wrap{
+            display:flex;
+            flex-direction:column;
+            align-items:flex-start;
+            gap:5px;
+            max-width:240px;
+        }
+
+        .followup-btn{
+            background:#38bdf8;
+            color:#042f3d;
+            font-size:12px;
+            padding:5px 9px;
+            border-radius:999px;
+            box-shadow:0 2px 8px rgba(56,189,248,.25);
+        }
+
+        .followup-btn:hover{
+            background:#7dd3fc;
+        }
+
+        .followup-text{
+            font-size:11px;
+            color:#9ae6b4;
+            font-weight:800;
+            line-height:1.35;
+            word-break:break-word;
+        }
+
+        .followup-empty{
+            color:rgba(255,255,255,.45);
+            font-size:11px;
+            font-weight:700;
+        }
     </style>
 </head>
 <body>
@@ -240,6 +281,7 @@
             <th>Created By</th>
             <th>Total</th>
             <th id="remark_header" style="display:none;">Remark</th>
+            <th id="followup_header" style="display:none;">Follow Up</th>
             <th>WhatsApp</th>
             <th>Print</th>
             <th>Edit / Cancel</th>
@@ -256,6 +298,15 @@
 
     function normalizeText(v){
         return String(v || "").trim().toLowerCase();
+    }
+
+    function escapeHTML(v){
+        return String(v || "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
     }
 
     function getCreatedByValue(row){
@@ -662,11 +713,54 @@
 
     function toggleRemarkColumn(){
         const type = document.getElementById("report_type").value;
-        const header = document.getElementById("remark_header");
+        const remarkHeader = document.getElementById("remark_header");
+        const followupHeader = document.getElementById("followup_header");
+        const showQuotationExtra = (type === "quotation");
 
-        if(header){
-            header.style.display = (type === "quotation") ? "" : "none";
+        if(remarkHeader){
+            remarkHeader.style.display = showQuotationExtra ? "" : "none";
         }
+
+        if(followupHeader){
+            followupHeader.style.display = showQuotationExtra ? "" : "none";
+        }
+    }
+
+    async function saveFollowUp(id){
+        const row = findReportRow(id);
+
+        if(!row){
+            alert("Quotation not found.");
+            return;
+        }
+
+        const oldMsg = row.follow_up || "";
+        const msg = prompt("Enter follow-up note:", oldMsg);
+
+        if(msg === null) return;
+
+        const cleanMsg = msg.trim();
+
+        const { error } = await sb
+            .from("quotation_details")
+            .update({ follow_up: cleanMsg })
+            .eq("id", id);
+
+        if(error){
+            alert("Follow up save failed: " + error.message);
+            console.error(error);
+            return;
+        }
+
+        row.follow_up = cleanMsg;
+
+        const box = document.getElementById(`followup-text-${id}`);
+        if(box){
+            box.className = cleanMsg ? "followup-text" : "followup-empty";
+            box.innerText = cleanMsg || "No follow up";
+        }
+
+        alert("✅ Follow up saved.");
     }
 
     async function loadReport() {
@@ -775,7 +869,15 @@
                 <td>₹${amount.toFixed(2)}</td>
 
                 ${type === "quotation" ? `
-                    <td class="remark-report-cell">${s.remark || ''}</td>
+                    <td class="remark-report-cell">${escapeHTML(s.remark || '')}</td>
+                    <td class="followup-report-cell">
+                        <div class="followup-wrap">
+                            <button class="followup-btn" onclick="event.stopPropagation(); saveFollowUp(${s.id})">📞 Follow Up</button>
+                            <div id="followup-text-${s.id}" class="${s.follow_up ? 'followup-text' : 'followup-empty'}">
+                                ${s.follow_up ? escapeHTML(s.follow_up) : 'No follow up'}
+                            </div>
+                        </div>
+                    </td>
                 ` : ''}
 
                 <td class="wa-col">
@@ -826,7 +928,7 @@
             </tr>
 
             <tr id="details-${s.id}" style="display:none;">
-                <td colspan="${type === 'quotation' ? 12 : 11}">
+                <td colspan="${type === 'quotation' ? 13 : 11}">
                     <div id="items-${s.id}">Loading...</div>
                 </td>
             </tr>
@@ -837,7 +939,7 @@
         <tr class="total-row">
             <td colspan="7">TOTAL ACTIVE BILLS ONLY</td>
             <td>₹${totalSum.toFixed(2)}</td>
-            ${type === "quotation" ? `<td></td>` : ''}
+            ${type === "quotation" ? `<td></td><td></td>` : ''}
             <td colspan="3"></td>
         </tr>
         `;

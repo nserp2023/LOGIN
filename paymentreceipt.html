@@ -238,10 +238,25 @@
         cursor:pointer;
         min-height:36px;
         width:auto;
+        white-space:nowrap;
     }
 
-    .accept-btn:hover{ opacity:0.95; }
-    .accept-btn:disabled{
+    .fix-btn{
+        background:#f59e0b;
+        color:#111827;
+        border:none;
+        padding:8px 12px;
+        border-radius:8px;
+        font-size:13px;
+        font-weight:800;
+        cursor:pointer;
+        min-height:36px;
+        width:auto;
+        white-space:nowrap;
+    }
+
+    .accept-btn:hover,.fix-btn:hover{ opacity:0.95; }
+    .accept-btn:disabled,.fix-btn:disabled{
         background:#94a3b8;
         cursor:not-allowed;
     }
@@ -255,25 +270,10 @@
         white-space:nowrap;
     }
 
-    .status-pending{
-        background:#fef3c7;
-        color:#92400e;
-    }
-
-    .status-approved{
-        background:#dcfce7;
-        color:#166534;
-    }
-
-    .status-rejected{
-        background:#fee2e2;
-        color:#991b1b;
-    }
-
-    .status-info{
-        background:#dbeafe;
-        color:#1d4ed8;
-    }
+    .status-pending{ background:#fef3c7; color:#92400e; }
+    .status-approved{ background:#dcfce7; color:#166534; }
+    .status-rejected{ background:#fee2e2; color:#991b1b; }
+    .status-info{ background:#dbeafe; color:#1d4ed8; }
 
     .type-note{
         display:block;
@@ -281,6 +281,13 @@
         font-size:11px;
         color:#64748b;
         font-weight:700;
+    }
+
+    .action-stack{
+        display:flex;
+        gap:8px;
+        flex-wrap:wrap;
+        align-items:center;
     }
 
     @media (max-width: 900px){
@@ -357,7 +364,7 @@
         <div class="search-box">
             <div class="field">
                 <label for="searchParty">Name Search</label>
-                <input type="text" id="searchParty" name="searchParty" placeholder="Search by party name..." />
+                <input type="text" id="searchParty" name="searchParty" placeholder="Search by party name / voucher / remarks..." />
             </div>
 
             <div class="field">
@@ -705,8 +712,6 @@
                     party_name: party,
                     amount: amt,
                     remarks: note || null,
-                    // Manual receipts are normal cash received and do not need approval.
-                    // Payments need approval before dashboard calculation.
                     approval_status: type === "receipt" ? "approved" : "pending",
                     reference_type: type === "receipt" ? "manual_receipt" : "manual_payment"
                 }]);
@@ -777,14 +782,16 @@
             .select("id, txn_date, voucher_no, txn_type, party_name, amount, remarks, approval_status, approved_by, approved_at, reference_type, reference_id")
             .order("txn_date", { ascending: false })
             .order("id", { ascending: false })
-            .limit(200);
+            .limit(300);
 
-        const partySearchValue = (nameFilter || searchParty.value || "").trim();
+        const searchValue = (nameFilter || searchParty.value || "").trim();
         const typeValue = searchType.value;
         const dateValue = searchDate.value;
 
-        if(partySearchValue){
-            query = query.ilike("party_name", `%${partySearchValue}%`);
+        // Search by party, voucher number, or remarks. This helps to find AUTO-sales_order_advance rows directly.
+        if(searchValue){
+            const safe = searchValue.replace(/[%_,]/g, "");
+            query = query.or(`party_name.ilike.%${safe}%,voucher_no.ilike.%${safe}%,remarks.ilike.%${safe}%`);
         }
 
         if(typeValue){
@@ -810,24 +817,51 @@
         renderTransactions(data || []);
     }
 
+    // Strong detector for old and new sales order advance rows.
+    // It detects by reference_type, voucher number, remarks, and positive receipt type.
     function isSalesOrderAdvance(row){
-        const refType = String(row?.reference_type || "").trim().toLowerCase();
-        const voucher = String(row?.voucher_no || "").trim().toLowerCase();
-        const note = String(row?.remarks || "").trim().toLowerCase();
+        const refType = normalizeText(row?.reference_type);
+        const voucher = normalizeText(row?.voucher_no);
+        const note = normalizeText(row?.remarks);
+        const txn = normalizeText(row?.txn_type);
 
-        return refType === "sales_order_advance"
-            || voucher.startsWith("auto-sales_order_advance")
-            || note.includes("advance for sales order");
+        const hasSalesOrderAdvanceText =
+            refType.includes("sales_order_advance") ||
+            refType.includes("sales order advance") ||
+            voucher.includes("sales_order_advance") ||
+            voucher.includes("sales-order-advance") ||
+            voucher.includes("sales order advance") ||
+            note.includes("advance for sales order") ||
+            note.includes("sales order advance");
+
+        return txn === "receipt" && hasSalesOrderAdvanceText;
     }
 
     function transactionNeedsApproval(row){
-        return row?.txn_type === "payment" || isSalesOrderAdvance(row);
+        const txn = normalizeText(row?.txn_type);
+        if(txn === "payment") return true;
+        if(isSalesOrderAdvance(row)) return true;
+        return false;
     }
 
     function getTransactionApprovalName(row){
         if(isSalesOrderAdvance(row)) return "sales order advance";
-        if(row?.txn_type === "payment") return "payment";
+        if(normalizeText(row?.txn_type) === "payment") return "payment";
         return "transaction";
+    }
+
+    function getCurrentRole(){
+        const keys = ["role", "user_role", "profile_role"];
+        for(const key of keys){
+            const val = localStorage.getItem(key);
+            if(val) return normalizeText(val);
+        }
+        return "";
+    }
+
+    function canCurrentUserApprove(){
+        const role = getCurrentRole();
+        return ["manager", "admin", "owner"].includes(role);
     }
 
     function renderTransactions(rows){
@@ -840,12 +874,12 @@
             return;
         }
 
-        const role = (localStorage.getItem("role") || "staff").toLowerCase();
-        const canApprove = ["manager", "admin", "owner"].includes(role);
+        const canApprove = canCurrentUserApprove();
 
         resultsBody.innerHTML = rows.map(row => {
             const needsApproval = transactionNeedsApproval(row);
-            const approvalStatus = String(row.approval_status || "").toLowerCase();
+            const salesOrderAdvance = isSalesOrderAdvance(row);
+            const approvalStatus = normalizeText(row.approval_status || "pending");
             let approveCell = "-";
 
             if(needsApproval){
@@ -854,23 +888,26 @@
                 } else if(approvalStatus === "rejected"){
                     approveCell = `<span class="status-badge status-rejected">Rejected</span>`;
                 } else if(canApprove){
-                    approveCell = `<button class="accept-btn" onclick="approveTransaction(${row.id})">Accept</button>`;
+                    approveCell = `<button class="accept-btn" onclick="approveTransaction(${row.id})">Approve</button>`;
                 } else {
                     approveCell = `<span class="status-badge status-pending">Pending</span>`;
                 }
+            } else if(row.txn_type === "receipt" && looksLikePossibleAdvance(row) && canApprove){
+                // Safety for badly saved old rows. If text looks like Sales Order Advance, allow one-click fix.
+                approveCell = `<div class="action-stack"><button class="fix-btn" onclick="fixAndApproveSalesOrderAdvance(${row.id})">Fix + Approve</button></div>`;
             } else {
-                approveCell = `<span class="status-badge status-approved">Not Needed</span>`;
+                approveCell = `<span class="status-badge status-info">Not Needed</span>`;
             }
 
-            const typeNote = isSalesOrderAdvance(row)
+            const typeNote = salesOrderAdvance
                 ? `<span class="type-note">Sales Order Advance</span>`
-                : "";
+                : (looksLikePossibleAdvance(row) ? `<span class="type-note">Possible Sales Order Advance</span>` : "");
 
             return `
                 <tr>
                     <td>${formatDate(row.txn_date)}</td>
                     <td>${escapeHtml(row.voucher_no || "")}</td>
-                    <td><span class="${escapeHtml(row.txn_type || "")}">${escapeHtml(row.txn_type || "")}</span>${typeNote}</td>
+                    <td><span class="${escapeHtml(normalizeText(row.txn_type || ""))}">${escapeHtml(row.txn_type || "")}</span>${typeNote}</td>
                     <td>${escapeHtml(row.party_name || "")}</td>
                     <td class="amount">${Number(row.amount || 0).toFixed(2)}</td>
                     <td>${escapeHtml(row.remarks || "")}</td>
@@ -878,6 +915,15 @@
                 </tr>
             `;
         }).join("");
+    }
+
+    function looksLikePossibleAdvance(row){
+        const text = `${row?.voucher_no || ""} ${row?.reference_type || ""} ${row?.remarks || ""}`.toLowerCase();
+        return text.includes("sales_order") || text.includes("sales order") || text.includes("advance for sales");
+    }
+
+    function normalizeText(value){
+        return String(value || "").trim().toLowerCase();
     }
 
     function formatDate(dateStr){
@@ -899,13 +945,12 @@
     async function approveTransaction(id) {
         if(isApproving) return;
 
-        const role = (localStorage.getItem("role") || "staff").toLowerCase();
-        const username = localStorage.getItem("username") || "Unknown";
-
-        if (!["admin", "manager", "owner"].includes(role)) {
+        if (!canCurrentUserApprove()) {
             alert("Only admin, manager, or owner can approve this transaction.");
             return;
         }
+
+        const username = localStorage.getItem("username") || localStorage.getItem("user_name") || "Unknown";
 
         const { data: txn, error: readError } = await sb
             .from("cash_transactions")
@@ -919,12 +964,16 @@
         }
 
         if(!transactionNeedsApproval(txn)){
+            if(looksLikePossibleAdvance(txn)){
+                await fixAndApproveSalesOrderAdvance(id);
+                return;
+            }
             alert("This transaction does not need approval.");
             await loadTransactions(searchParty.value.trim());
             return;
         }
 
-        if(String(txn.approval_status || "").toLowerCase() === "approved"){
+        if(normalizeText(txn.approval_status) === "approved"){
             alert("This transaction is already approved.");
             await loadTransactions(searchParty.value.trim());
             return;
@@ -934,6 +983,25 @@
         const ok = confirm(`Do you want to approve this ${approvalName}?`);
         if (!ok) return;
 
+        await updateApproval(id, username, isSalesOrderAdvance(txn));
+    }
+
+    async function fixAndApproveSalesOrderAdvance(id){
+        if(isApproving) return;
+
+        if (!canCurrentUserApprove()) {
+            alert("Only admin, manager, or owner can approve this transaction.");
+            return;
+        }
+
+        const ok = confirm("This row looks like a Sales Order Advance. Do you want to mark it as Sales Order Advance and approve it?");
+        if(!ok) return;
+
+        const username = localStorage.getItem("username") || localStorage.getItem("user_name") || "Unknown";
+        await updateApproval(id, username, true);
+    }
+
+    async function updateApproval(id, username, markAsSalesOrderAdvance){
         isApproving = true;
 
         const updatePayload = {
@@ -942,8 +1010,7 @@
             approved_at: new Date().toISOString()
         };
 
-        // If old sales-order-advance rows were saved without reference_type, mark them now.
-        if(isSalesOrderAdvance(txn)){
+        if(markAsSalesOrderAdvance){
             updatePayload.reference_type = "sales_order_advance";
         }
 

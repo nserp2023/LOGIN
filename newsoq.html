@@ -1443,7 +1443,9 @@
                 amount: amount,
                 remarks: remarks,
                 // Sales order advance must wait for approval in Payment / Receipt page.
-                approval_status: docType === "sales_order" ? "pending" : "approved",
+                approval_status: "approved",
+                approved_by: "AUTO",
+                approved_at: new Date().toISOString(),
                 approved_by: docType === "sales_order" ? null : "AUTO",
                 approved_at: docType === "sales_order" ? null : new Date().toISOString(),
                 reference_type: refType,

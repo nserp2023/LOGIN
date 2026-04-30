@@ -290,11 +290,11 @@ function addRow(prefill = {}){
     if(dropdown && ["ArrowDown","ArrowUp","Enter","Escape"].includes(e.key)) return;
     if(e.key === "Enter" && !e.shiftKey){
       e.preventDefault();
-      if(idx < nav.length - 1) nav[idx + 1].focus();
+      if(idx < nav.length - 1) focusAndSelect(nav[idx + 1]);
       else focusNewRow(addRow());
     } else if(e.key === "Enter" && e.shiftKey){
       e.preventDefault();
-      if(idx > 0) nav[idx - 1].focus();
+      if(idx > 0) focusAndSelect(nav[idx - 1]);
     }
   }));
 
@@ -304,6 +304,7 @@ function addRow(prefill = {}){
 }
 
 function focusNewRow(row){ setTimeout(() => { const inp = row?.querySelector(".item-name"); inp?.focus(); inp?.select?.(); }, 0); }
+function focusAndSelect(el){ setTimeout(() => { el?.focus(); el?.select?.(); }, 0); }
 function renumberRows(){ document.querySelectorAll("#items .item-row").forEach((r,i) => r.querySelector(".serial").textContent = i + 1); }
 
 function showItemDropdown(input){

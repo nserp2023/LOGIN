@@ -579,6 +579,7 @@ function renderRows(rows){
         <td>${badge(r.status)}</td>
         <td class="right">
           <div class="row-actions">
+            <button class="smallbtn ghost" onclick="printPO(${r.order_id})">🖨 Print</button>
             <button class="smallbtn green" onclick="openReceiveModal(${r.item_id})" ${cancelled || r.pending_qty<=0 ? "disabled" : ""}>📦 Material Received</button>
             <button class="smallbtn orange" onclick="receiveAllByPO(${r.order_id})" ${cancelled ? "disabled" : ""}>Receive All</button>
             <button class="smallbtn red" onclick="cancelPO(${r.order_id})" ${cancelled ? "disabled" : ""}>Cancel</button>
@@ -737,6 +738,21 @@ async function cancelPO(orderId){
   }catch(err){
     alert("Cancel failed: " + (err.message || err));
   }
+}
+
+
+function printPO(orderId){
+  if(!orderId){
+    alert("Purchase order not found");
+    return;
+  }
+
+  const row = allRows.find(r => Number(r.order_id) === Number(orderId));
+  const po = row ? row.po_no : "";
+
+  // Opens purchase order page in print mode. The purchase_order.html page should load this id/po and print.
+  const url = `purchase_order.html?print_id=${encodeURIComponent(orderId)}&print_po=${encodeURIComponent(po)}`;
+  window.open(url, "_blank");
 }
 
 function exportCSV(){

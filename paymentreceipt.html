@@ -19,7 +19,6 @@
         --success:#059669;
         --danger:#dc2626;
         --warning:#f59e0b;
-        --bg:#f1f5f9;
         --card:#ffffff;
         --text:#1e293b;
         --muted:#64748b;
@@ -652,7 +651,7 @@
     }
 
     // =========================
-    // 8. SAVE TRANSACTION
+    // 8. SAVE MANUAL TRANSACTION
     // =========================
     saveBtn.addEventListener("click", saveTransaction);
 
@@ -708,7 +707,8 @@
                     remarks: note || null,
                     // Manual receipts are normal cash received and do not need approval.
                     // Payments need approval before dashboard calculation.
-                    approval_status: type === "receipt" ? "approved" : "pending"
+                    approval_status: type === "receipt" ? "approved" : "pending",
+                    reference_type: type === "receipt" ? "manual_receipt" : "manual_payment"
                 }]);
 
             if(error) throw error;
@@ -777,7 +777,7 @@
             .select("id, txn_date, voucher_no, txn_type, party_name, amount, remarks, approval_status, approved_by, approved_at, reference_type, reference_id")
             .order("txn_date", { ascending: false })
             .order("id", { ascending: false })
-            .limit(100);
+            .limit(200);
 
         const partySearchValue = (nameFilter || searchParty.value || "").trim();
         const typeValue = searchType.value;
@@ -816,7 +816,6 @@
         const note = String(row?.remarks || "").trim().toLowerCase();
 
         return refType === "sales_order_advance"
-            || voucher.includes("sales_order_advance")
             || voucher.startsWith("auto-sales_order_advance")
             || note.includes("advance for sales order");
     }
@@ -871,7 +870,7 @@
                 <tr>
                     <td>${formatDate(row.txn_date)}</td>
                     <td>${escapeHtml(row.voucher_no || "")}</td>
-                    <td><span class="${row.txn_type}">${escapeHtml(row.txn_type || "")}</span>${typeNote}</td>
+                    <td><span class="${escapeHtml(row.txn_type || "")}">${escapeHtml(row.txn_type || "")}</span>${typeNote}</td>
                     <td>${escapeHtml(row.party_name || "")}</td>
                     <td class="amount">${Number(row.amount || 0).toFixed(2)}</td>
                     <td>${escapeHtml(row.remarks || "")}</td>
@@ -937,13 +936,20 @@
 
         isApproving = true;
 
+        const updatePayload = {
+            approval_status: "approved",
+            approved_by: username,
+            approved_at: new Date().toISOString()
+        };
+
+        // If old sales-order-advance rows were saved without reference_type, mark them now.
+        if(isSalesOrderAdvance(txn)){
+            updatePayload.reference_type = "sales_order_advance";
+        }
+
         const { error } = await sb
             .from("cash_transactions")
-            .update({
-                approval_status: "approved",
-                approved_by: username,
-                approved_at: new Date().toISOString()
-            })
+            .update(updatePayload)
             .eq("id", id);
 
         isApproving = false;

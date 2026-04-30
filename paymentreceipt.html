@@ -760,21 +760,10 @@
     // =========================
     // 10. LOAD TRANSACTIONS
     // =========================
-    searchBtn.addEventListener("click", () => {
-        loadTransactions(searchParty.value.trim());
-    });
-
-    searchParty.addEventListener("input", () => {
-        loadTransactions(searchParty.value.trim());
-    });
-
-    searchType.addEventListener("change", () => {
-        loadTransactions(searchParty.value.trim());
-    });
-
-    searchDate.addEventListener("change", () => {
-        loadTransactions(searchParty.value.trim());
-    });
+    searchBtn.addEventListener("click", () => loadTransactions(searchParty.value.trim()));
+    searchParty.addEventListener("input", () => loadTransactions(searchParty.value.trim()));
+    searchType.addEventListener("change", () => loadTransactions(searchParty.value.trim()));
+    searchDate.addEventListener("change", () => loadTransactions(searchParty.value.trim()));
 
     async function loadTransactions(nameFilter = ""){
         let query = sb
@@ -782,77 +771,59 @@
             .select("id, txn_date, voucher_no, txn_type, party_name, amount, remarks, approval_status, approved_by, approved_at, reference_type, reference_id")
             .order("txn_date", { ascending: false })
             .order("id", { ascending: false })
-            .limit(300);
+            .limit(500);
 
         const searchValue = (nameFilter || searchParty.value || "").trim();
         const typeValue = searchType.value;
         const dateValue = searchDate.value;
 
-        // Search by party, voucher number, or remarks. This helps to find AUTO-sales_order_advance rows directly.
         if(searchValue){
             const safe = searchValue.replace(/[%_,]/g, "");
-            query = query.or(`party_name.ilike.%${safe}%,voucher_no.ilike.%${safe}%,remarks.ilike.%${safe}%`);
+            query = query.or(`party_name.ilike.%${safe}%,voucher_no.ilike.%${safe}%,remarks.ilike.%${safe}%,reference_type.ilike.%${safe}%`);
         }
-
-        if(typeValue){
-            query = query.eq("txn_type", typeValue);
-        }
-
-        if(dateValue){
-            query = query.eq("txn_date", dateValue);
-        }
+        if(typeValue) query = query.eq("txn_type", typeValue);
+        if(dateValue) query = query.eq("txn_date", dateValue);
 
         const { data, error } = await query;
-
         if(error){
             console.error(error);
-            resultsBody.innerHTML = `
-                <tr>
-                    <td colspan="7" style="text-align:center; color:red;">Failed to load transactions</td>
-                </tr>
-            `;
+            resultsBody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:red;">Failed to load transactions</td></tr>`;
             return;
         }
-
         renderTransactions(data || []);
     }
 
-    // Strong detector for old and new sales order advance rows.
-    // It detects by reference_type, voucher number, remarks, and positive receipt type.
+    function normalizeText(value){ return String(value ?? "").trim().toLowerCase(); }
+    function normalizeLoose(value){ return normalizeText(value).replace(/[\s\-_]+/g, ""); }
+
+    function looksLikePossibleAdvance(row){
+        const packed = normalizeLoose(`${row?.voucher_no || ""} ${row?.reference_type || ""} ${row?.remarks || ""}`);
+        return packed.includes("salesorderadvance") || packed.includes("advanceforsalesorder") || packed.includes("autosalesorderadvance");
+    }
+
     function isSalesOrderAdvance(row){
-        const refType = normalizeText(row?.reference_type);
-        const voucher = normalizeText(row?.voucher_no);
-        const note = normalizeText(row?.remarks);
         const txn = normalizeText(row?.txn_type);
-
-        const hasSalesOrderAdvanceText =
-            refType.includes("sales_order_advance") ||
-            refType.includes("sales order advance") ||
-            voucher.includes("sales_order_advance") ||
-            voucher.includes("sales-order-advance") ||
-            voucher.includes("sales order advance") ||
-            note.includes("advance for sales order") ||
-            note.includes("sales order advance");
-
-        return txn === "receipt" && hasSalesOrderAdvanceText;
+        if(txn && txn !== "receipt") return false;
+        return looksLikePossibleAdvance(row);
     }
 
     function transactionNeedsApproval(row){
         const txn = normalizeText(row?.txn_type);
+        const status = normalizeText(row?.approval_status);
+        if(status === "pending" || status === "rejected") return true;
         if(txn === "payment") return true;
         if(isSalesOrderAdvance(row)) return true;
         return false;
     }
 
     function getTransactionApprovalName(row){
-        if(isSalesOrderAdvance(row)) return "sales order advance";
+        if(isSalesOrderAdvance(row) || looksLikePossibleAdvance(row)) return "sales order advance";
         if(normalizeText(row?.txn_type) === "payment") return "payment";
         return "transaction";
     }
 
     function getCurrentRole(){
-        const keys = ["role", "user_role", "profile_role"];
-        for(const key of keys){
+        for(const key of ["role", "user_role", "profile_role"]){
             const val = localStorage.getItem(key);
             if(val) return normalizeText(val);
         }
@@ -860,70 +831,45 @@
     }
 
     function canCurrentUserApprove(){
-        const role = getCurrentRole();
-        return ["manager", "admin", "owner"].includes(role);
+        return ["manager", "admin", "owner"].includes(getCurrentRole());
     }
 
     function renderTransactions(rows){
         if(!rows.length){
-            resultsBody.innerHTML = `
-                <tr>
-                    <td colspan="7" style="text-align:center; color:#64748b;">No transactions found</td>
-                </tr>
-            `;
+            resultsBody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#64748b;">No transactions found</td></tr>`;
             return;
         }
-
         const canApprove = canCurrentUserApprove();
-
         resultsBody.innerHTML = rows.map(row => {
-            const needsApproval = transactionNeedsApproval(row);
+            const txn = normalizeText(row.txn_type);
+            const approvalStatus = normalizeText(row.approval_status || "approved");
             const salesOrderAdvance = isSalesOrderAdvance(row);
-            const approvalStatus = normalizeText(row.approval_status || "pending");
+            const possibleAdvance = looksLikePossibleAdvance(row);
+            const needsApproval = transactionNeedsApproval(row);
             let approveCell = "-";
 
-            if(needsApproval){
-                if(approvalStatus === "approved"){
-                    approveCell = `<span class="status-badge status-approved">Approved</span>`;
-                } else if(approvalStatus === "rejected"){
-                    approveCell = `<span class="status-badge status-rejected">Rejected</span>`;
-                } else if(canApprove){
-                    approveCell = `<button class="accept-btn" onclick="approveTransaction(${row.id})">Approve</button>`;
-                } else {
-                    approveCell = `<span class="status-badge status-pending">Pending</span>`;
-                }
-            } else if(row.txn_type === "receipt" && looksLikePossibleAdvance(row) && canApprove){
-                // Safety for badly saved old rows. If text looks like Sales Order Advance, allow one-click fix.
-                approveCell = `<div class="action-stack"><button class="fix-btn" onclick="fixAndApproveSalesOrderAdvance(${row.id})">Fix + Approve</button></div>`;
+            if(approvalStatus === "approved" && (txn === "payment" || salesOrderAdvance || possibleAdvance)){
+                approveCell = `<span class="status-badge status-approved">Approved</span>`;
+            } else if(approvalStatus === "rejected"){
+                approveCell = canApprove ? `<button class="accept-btn" onclick="approveTransaction(${row.id})">Approve Again</button>` : `<span class="status-badge status-rejected">Rejected</span>`;
+            } else if(needsApproval || possibleAdvance){
+                approveCell = canApprove ? `<button class="accept-btn" onclick="approveTransaction(${row.id})">Approve</button>` : `<span class="status-badge status-pending">Pending</span>`;
             } else {
                 approveCell = `<span class="status-badge status-info">Not Needed</span>`;
             }
 
-            const typeNote = salesOrderAdvance
-                ? `<span class="type-note">Sales Order Advance</span>`
-                : (looksLikePossibleAdvance(row) ? `<span class="type-note">Possible Sales Order Advance</span>` : "");
-
+            const typeNote = salesOrderAdvance ? `<span class="type-note">Sales Order Advance</span>` : (possibleAdvance ? `<span class="type-note">Possible Sales Order Advance</span>` : "");
             return `
                 <tr>
                     <td>${formatDate(row.txn_date)}</td>
                     <td>${escapeHtml(row.voucher_no || "")}</td>
-                    <td><span class="${escapeHtml(normalizeText(row.txn_type || ""))}">${escapeHtml(row.txn_type || "")}</span>${typeNote}</td>
+                    <td><span class="${escapeHtml(txn)}">${escapeHtml(row.txn_type || "")}</span>${typeNote}</td>
                     <td>${escapeHtml(row.party_name || "")}</td>
                     <td class="amount">${Number(row.amount || 0).toFixed(2)}</td>
                     <td>${escapeHtml(row.remarks || "")}</td>
                     <td>${approveCell}</td>
-                </tr>
-            `;
+                </tr>`;
         }).join("");
-    }
-
-    function looksLikePossibleAdvance(row){
-        const text = `${row?.voucher_no || ""} ${row?.reference_type || ""} ${row?.remarks || ""}`.toLowerCase();
-        return text.includes("sales_order") || text.includes("sales order") || text.includes("advance for sales");
-    }
-
-    function normalizeText(value){
-        return String(value || "").trim().toLowerCase();
     }
 
     function formatDate(dateStr){
@@ -934,106 +880,42 @@
     }
 
     function escapeHtml(text){
-        return String(text)
-            .replaceAll("&", "&amp;")
-            .replaceAll("<", "&lt;")
-            .replaceAll(">", "&gt;")
-            .replaceAll('"', "&quot;")
-            .replaceAll("'", "&#039;");
+        return String(text).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
     }
 
     async function approveTransaction(id) {
         if(isApproving) return;
-
         if (!canCurrentUserApprove()) {
             alert("Only admin, manager, or owner can approve this transaction.");
             return;
         }
-
         const username = localStorage.getItem("username") || localStorage.getItem("user_name") || "Unknown";
-
         const { data: txn, error: readError } = await sb
             .from("cash_transactions")
             .select("id, txn_type, approval_status, reference_type, voucher_no, remarks")
             .eq("id", id)
             .maybeSingle();
-
         if(readError || !txn){
             alert("Could not read transaction for approval.");
             return;
         }
-
-        if(!transactionNeedsApproval(txn)){
-            if(looksLikePossibleAdvance(txn)){
-                await fixAndApproveSalesOrderAdvance(id);
-                return;
-            }
-            alert("This transaction does not need approval.");
-            await loadTransactions(searchParty.value.trim());
-            return;
-        }
-
-        if(normalizeText(txn.approval_status) === "approved"){
-            alert("This transaction is already approved.");
-            await loadTransactions(searchParty.value.trim());
-            return;
-        }
-
-        const approvalName = getTransactionApprovalName(txn);
-        const ok = confirm(`Do you want to approve this ${approvalName}?`);
+        const ok = confirm(`Do you want to approve this ${getTransactionApprovalName(txn)}?`);
         if (!ok) return;
-
-        await updateApproval(id, username, isSalesOrderAdvance(txn));
-    }
-
-    async function fixAndApproveSalesOrderAdvance(id){
-        if(isApproving) return;
-
-        if (!canCurrentUserApprove()) {
-            alert("Only admin, manager, or owner can approve this transaction.");
-            return;
-        }
-
-        const ok = confirm("This row looks like a Sales Order Advance. Do you want to mark it as Sales Order Advance and approve it?");
-        if(!ok) return;
-
-        const username = localStorage.getItem("username") || localStorage.getItem("user_name") || "Unknown";
-        await updateApproval(id, username, true);
+        await updateApproval(id, username, isSalesOrderAdvance(txn) || looksLikePossibleAdvance(txn));
     }
 
     async function updateApproval(id, username, markAsSalesOrderAdvance){
         isApproving = true;
-
-        const updatePayload = {
-            approval_status: "approved",
-            approved_by: username,
-            approved_at: new Date().toISOString()
-        };
-
-        if(markAsSalesOrderAdvance){
-            updatePayload.reference_type = "sales_order_advance";
-        }
-
-        const { error } = await sb
-            .from("cash_transactions")
-            .update(updatePayload)
-            .eq("id", id);
-
+        const updatePayload = { approval_status: "approved", approved_by: username, approved_at: new Date().toISOString() };
+        if(markAsSalesOrderAdvance) updatePayload.reference_type = "sales_order_advance";
+        const { error } = await sb.from("cash_transactions").update(updatePayload).eq("id", id);
         isApproving = false;
-
-        if (error) {
-            alert("Approval failed: " + error.message);
-            return;
-        }
-
+        if (error) { alert("Approval failed: " + error.message); return; }
         alert("Transaction approved successfully");
         await loadTransactions(searchParty.value.trim());
     }
 
-    // Old function name kept for safety if any old button/cache calls it.
-    async function approvePayment(id){
-        await approveTransaction(id);
-    }
+    async function approvePayment(id){ await approveTransaction(id); }
 
     // =========================
     // 11. ENTER KEY NAVIGATION

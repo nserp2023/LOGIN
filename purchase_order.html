@@ -65,13 +65,14 @@
     .summary-card span{display:block;font-size:11px;text-transform:uppercase;color:var(--muted);font-weight:900;letter-spacing:.05em}
     .summary-card strong{display:block;margin-top:2px;font-size:19px;color:#17213a}
     .table-shell{overflow:auto;border:1px solid var(--line2);border-radius:14px;background:var(--card2);padding:10px 10px 120px;max-height:calc(100vh - 330px);scroll-behavior:smooth}
-    .grid{display:grid;grid-template-columns:58px 140px minmax(360px,1.8fr) 95px 110px 115px minmax(190px,1fr) 130px 54px;gap:8px;align-items:center;min-width:1260px}
+    .grid{display:grid;grid-template-columns:58px 140px minmax(340px,1.8fr) 92px 95px 110px 115px minmax(185px,1fr) 130px 54px;gap:8px;align-items:center;min-width:1360px}
     .grid.hdr{position:sticky;top:0;z-index:3;background:linear-gradient(180deg,#f9fbff 0%,#f5f9ff 100%);border-bottom:1px solid var(--line);padding:0 0 10px;margin-bottom:10px}
     .grid.hdr>div{font-size:12px;color:#52637e;font-weight:900;text-transform:uppercase;padding:0 4px}
     #items .grid{background:#fff;border:1px solid var(--line);border-radius:12px;padding:8px;margin-bottom:8px;scroll-margin-bottom:190px;scroll-margin-top:90px}
     #items .grid:nth-child(even){background:#fbfdff}
     .cell-muted{text-align:center;font-weight:800;color:#5b6e8a;background:#f3f7fc;border:1px solid var(--line);min-height:42px;display:flex;align-items:center;justify-content:center;border-radius:10px;padding:0 8px}
     .amount-cell{color:#123762;font-weight:900;background:#eef6ff}
+    .stock-cell{color:#0f766e;font-weight:900;background:#ecfdf5}
     .new-item{border-color:#f97316!important;background:#fff7ed!important}
     .type-new{color:#c2410c;background:#fff7ed;border-color:#fed7aa}
     .type-stock{color:#047857;background:#ecfdf5;border-color:#bbf7d0}
@@ -87,7 +88,7 @@
     .sticky-inner{max-width:1600px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}.sticky-note{color:var(--muted);font-size:12px;font-weight:800}
     .pending-popup-overlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(15,23,42,.35);backdrop-filter:blur(5px);z-index:30000;padding:18px}.pending-popup-overlay.show{display:flex}.pending-popup{width:min(92vw,520px);background:#fff;color:#14213d;border:1px solid #fed7aa;border-radius:18px;box-shadow:0 24px 70px rgba(124,45,18,.28);padding:20px}.pending-popup h3{margin:0 0 10px;color:#c2410c;font-size:22px}.pending-popup p{margin:0 0 14px;color:#334155;line-height:1.55;white-space:pre-line}.pending-popup .popup-actions{display:flex;justify-content:flex-end;gap:10px}.pending-popup button{height:40px;padding:0 16px;border:none;border-radius:12px;font-weight:900;cursor:pointer}.pending-popup .ok-btn{background:#ea580c;color:white}.pending-popup .soft-btn{background:#ffedd5;color:#9a3412}
     @media(max-width:900px){body{padding-bottom:210px}.wrap{padding:10px 8px 24px}.header-grid{grid-template-columns:repeat(2,minmax(220px,1fr))}.summary-strip{grid-template-columns:repeat(2,minmax(150px,1fr))}.btn{width:100%}.btns{width:100%}.sticky-inner{flex-direction:column;align-items:stretch}.dropdown{min-width:calc(100vw - 20px);left:10px!important}.opt{grid-template-columns:110px 1fr}.opt .hide-mobile{display:none}}
-    @media print{body{background:#fff;padding:0}.wrap{padding:0}.topbar,.chips,.btns,.sticky,.statusline{display:none!important}.panel{box-shadow:none;border:none;padding:0}.summary-strip{display:none}.table-shell{border:none;padding:0;overflow:visible;max-height:none}.grid{min-width:0;grid-template-columns:42px 95px 1fr 60px 75px 85px 105px 80px 45px;gap:3px}.grid.hdr>div{font-size:10px}#items .grid{break-inside:avoid;border-bottom:1px solid #ccc;border-radius:0;margin:0;padding:4px}.grid input{border:none!important;padding:0;min-height:24px}.btn.danger,.delete-col{display:none!important}.pending-box{font-size:9px;padding:2px}.cell-muted{min-height:24px;border:none;background:#fff}.amount-cell{background:#fff}.brand-print{display:block!important;text-align:center;margin-bottom:12px}.print-header{display:block!important;margin-bottom:10px}}
+    @media print{body{background:#fff;padding:0}.wrap{padding:0}.topbar,.chips,.btns,.sticky,.statusline{display:none!important}.panel{box-shadow:none;border:none;padding:0}.summary-strip{display:none}.table-shell{border:none;padding:0;overflow:visible;max-height:none}.grid{min-width:0;grid-template-columns:42px 85px 1fr 55px 55px 70px 80px 95px 75px 40px;gap:3px}.grid.hdr>div{font-size:10px}#items .grid{break-inside:avoid;border-bottom:1px solid #ccc;border-radius:0;margin:0;padding:4px}.grid input{border:none!important;padding:0;min-height:24px}.btn.danger,.delete-col{display:none!important}.pending-box{font-size:9px;padding:2px}.cell-muted{min-height:24px;border:none;background:#fff}.amount-cell{background:#fff}.brand-print{display:block!important;text-align:center;margin-bottom:12px}.print-header{display:block!important;margin-bottom:10px}}
     .brand-print,.print-header{display:none}
   </style>
 </head>
@@ -123,7 +124,7 @@
     <div class="panel">
       <div class="panel-head"><div><h2>Order Items</h2><small>Search old items using code or name. Type new items manually if not found.</small></div><div class="btns"><button class="btn gray" id="addRowTop">+ Add Row</button><button class="btn soft" id="printTop">Print</button><button class="btn primary" id="saveTop">Save Purchase Order</button></div></div>
       <div class="table-shell">
-        <div class="grid hdr"><div>#</div><div>Item Code</div><div>Item Name / Search</div><div>Qty</div><div>Price</div><div>Amount</div><div>Remark</div><div>Pending</div><div></div></div>
+        <div class="grid hdr"><div>#</div><div>Item Code</div><div>Item Name / Search</div><div>Stock</div><div>Qty</div><div>Price</div><div>Amount</div><div>Remark</div><div>Pending</div><div></div></div>
         <div id="items"></div>
       </div>
       <div class="statusline" id="saveStatus">READY</div>
@@ -258,10 +259,12 @@ function addRow(prefill = {}){
   const row = document.createElement("div");
   row.className = "grid item-row";
   row.dataset.received = String(prefill.received_qty || 0);
+  if(prefill.balance != null) row.dataset.balance = String(prefill.balance);
   row.innerHTML = `
     <div class="cell-muted serial">${id + 1}</div>
     <div><input class="item-code" value="${esc(prefill.item_code || "")}" autocomplete="off"></div>
     <div><input class="item-name" value="${esc(prefill.item_name || "")}" autocomplete="off" placeholder="Type item code or item name"></div>
+    <div class="cell-muted stock-cell current-stock">${prefill.balance != null ? fmt2(prefill.balance) : "—"}</div>
     <div><input class="qty" type="number" step="0.01" value="${prefill.quantity || 1}"></div>
     <div><input class="price" type="number" step="0.01" value="${prefill.price ?? ""}"></div>
     <div class="cell-muted amount-cell amount">0.00</div>
@@ -346,6 +349,9 @@ function fillRowFromStock(row, item){
   row.dataset.code = item.item_code || "";
   row.querySelector(".item-code").value = item.item_code || "";
   row.querySelector(".item-name").value = item.item_name || "";
+  row.dataset.balance = String(item.balance ?? 0);
+  const stockCell = row.querySelector(".current-stock");
+  if(stockCell) stockCell.textContent = fmt2(item.balance || 0);
   row.querySelector(".item-code").dataset.code = item.item_code || "";
   row.querySelector(".item-name").dataset.code = item.item_code || "";
   row.querySelector(".item-code").classList.remove("new-item");
@@ -360,6 +366,9 @@ function markNewIfManual(row){
   const name = clean(row.querySelector(".item-name").value);
   const code = clean(row.querySelector(".item-code").value);
   if((name || code) && !row.dataset.code){
+    delete row.dataset.balance;
+    const stockCell = row.querySelector(".current-stock");
+    if(stockCell) stockCell.textContent = "—";
     row.querySelector(".item-name").classList.add("new-item");
     const type = row.querySelector(".row-type");
     if(type){ type.textContent = "NEW"; type.className = "cell-muted row-type type-new"; }

@@ -1422,15 +1422,28 @@
         const safeBillNo = String(billNo || "0").replace(/[^A-Z0-9_-]/gi, "");
         const voucherNo = `AUTO-${refType}-${headerId}-${safeBillNo}`;
 
-        const { error: deleteError } = await sb
+        // Delete old auto transaction safely.
+        // First delete by voucher_no because old saved rows may not have reference_type saved.
+        const { error: deleteVoucherError } = await sb
+            .from("cash_transactions")
+            .delete()
+            .eq("voucher_no", voucherNo);
+
+        if (deleteVoucherError) {
+            console.error("Auto payment voucher delete error:", deleteVoucherError);
+            throw deleteVoucherError;
+        }
+
+        // Then delete by reference_type + reference_id for newer rows.
+        const { error: deleteRefError } = await sb
             .from("cash_transactions")
             .delete()
             .eq("reference_type", refType)
             .eq("reference_id", headerId);
 
-        if (deleteError) {
-            console.error("Auto payment delete error:", deleteError);
-            throw deleteError;
+        if (deleteRefError) {
+            console.error("Auto payment reference delete error:", deleteRefError);
+            throw deleteRefError;
         }
 
         const { error: insertError } = await sb
@@ -1442,9 +1455,10 @@
                 party_name: customerName || "CUSTOMER",
                 amount: amount,
                 remarks: remarks,
+                // Sales order advance must WAIT for approval in Payment / Receipt page.
                 approval_status: "pending",
-                approved_by: "AUTO",
-                approved_at: new Date().toISOString(),
+                approved_by: null,
+                approved_at: null,
                 reference_type: refType,
                 reference_id: headerId
             }]);

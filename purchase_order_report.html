@@ -109,6 +109,10 @@ input,select{
   font-weight:800;
   outline:none;
 }
+input:focus,select:focus{
+  border-color:rgba(56,189,248,.7);
+  box-shadow:0 0 0 3px rgba(56,189,248,.12);
+}
 .stats{
   margin-top:14px;
   display:grid;
@@ -261,7 +265,7 @@ tr:hover td{background:rgba(56,189,248,.045)}
       <div class="logo">PO</div>
       <div>
         <h1>Ultra Item Wise Purchase Order Report</h1>
-        <div class="sub">Supplier + mobile on every item line, pending control, cancel and material received system</div>
+        <div class="sub">Supplier + mobile on every item line, pending control, cancel and full PO print system</div>
       </div>
     </div>
     <div class="actions">
@@ -275,7 +279,7 @@ tr:hover td{background:rgba(56,189,248,.045)}
   <div class="filters">
     <div>
       <label>Search</label>
-      <input id="searchBox" placeholder="PO no, supplier, mobile, item code, item name..." oninput="debouncedLoad()">
+      <input id="searchBox" placeholder="PO no, supplier, mobile, GST, item code, item name..." oninput="debouncedLoad()">
     </div>
     <div>
       <label>From Date</label>
@@ -320,7 +324,7 @@ tr:hover td{background:rgba(56,189,248,.045)}
     <div class="tablehead">
       <div>
         <div class="tabletitle">Item Details Report</div>
-        <div class="hint">Each row shows supplier name and mobile number with item details</div>
+        <div class="hint">Print button opens full purchase order printout from purchase_order.html</div>
       </div>
       <div class="hint" id="resultInfo">Ready</div>
     </div>
@@ -424,14 +428,17 @@ function monthStartISO(){
   return new Date(d.getFullYear(),d.getMonth(),1).toISOString().slice(0,10);
 }
 function poNo(o){
-  return o.purchase_order_number || o.po_number || o.order_number || o.id || "-";
+  return o.po_number || o.purchase_order_number || o.order_number || o.id || "-";
 }
 function debouncedLoad(){
   clearTimeout(timer);
   timer = setTimeout(loadReport,250);
 }
+function getOrderCancelled(o){
+  return !!(o?.is_cancelled || o?.cancelled || String(o?.status || "").toUpperCase() === "CANCELLED");
+}
 function getRowStatus(r){
-  if(String(r.order_status||"").toUpperCase()==="CANCELLED") return "CANCELLED";
+  if(String(r.order_status||"").toUpperCase()==="CANCELLED" || r.is_cancelled) return "CANCELLED";
   if(Number(r.pending_qty)<=0) return "CLOSED";
   if(Number(r.received_qty)>0) return "PARTIAL";
   return "OPEN";
@@ -493,7 +500,7 @@ async function loadReport(){
       const o = orderMap[it.purchase_order_id] || {};
       const qty = Number(it.quantity || it.qty || 0);
       const received = Number(it.received_qty || 0);
-      const pending = it.pending_qty == null ? Math.max(qty-received,0) : Number(it.pending_qty || 0);
+      const pending = Math.max(qty - received, 0);
       const price = Number(it.price || it.purchase_price_gst || it.purchase_price || 0);
       const row = {
         order_id:o.id,
@@ -503,6 +510,7 @@ async function loadReport(){
         supplier_name:o.supplier_name || "",
         supplier_mobile:o.supplier_mobile || o.mobile || "",
         gst_number:o.supplier_gst || o.gst_number || "",
+        supplier_address:o.supplier_address || o.address || "",
         item_code:it.item_code || "",
         item_name:it.item_name || "",
         department:it.department || "",
@@ -512,6 +520,7 @@ async function loadReport(){
         price:price,
         amount:qty*price,
         order_status:String(o.status || "").toUpperCase(),
+        is_cancelled:getOrderCancelled(o),
         raw_order:o,
         raw_item:it
       };
@@ -522,8 +531,8 @@ async function loadReport(){
     if(search){
       rows = rows.filter(r=>{
         const hay = [
-          r.po_no,r.supplier_name,r.supplier_mobile,r.gst_number,
-          r.item_code,r.item_name,r.department
+          r.po_no,r.supplier_name,r.supplier_mobile,r.gst_number,r.supplier_address,
+          r.item_code,r.item_name,r.department,r.status
         ].join(" ").toLowerCase();
         return hay.includes(search);
       });
@@ -548,6 +557,7 @@ async function loadReport(){
   }catch(err){
     console.error(err);
     tbody.innerHTML = `<tr><td colspan="13" class="empty">Error: ${safe(err.message || err)}</td></tr>`;
+    renderStats([]);
   }
 }
 
@@ -632,11 +642,9 @@ async function saveReceive(){
 
   try{
     const newReceived = Number(receiveRow.received_qty || 0) + receiveNow;
-    const newPending = Math.max(Number(receiveRow.order_qty || 0) - newReceived,0);
 
     const updateObj = {
-      received_qty:newReceived,
-      pending_qty:newPending
+      received_qty:newReceived
     };
 
     const {error} = await sb
@@ -662,15 +670,14 @@ function receiveFullPending(){
 }
 
 async function receiveAllByPO(orderId){
-  if(!confirm("Receive all pending items for this PO?")) return;
+  if(!confirm("Receive all pending items for this PO? This will not affect stock. It only updates PO received quantity.")) return;
 
   try{
     const rows = allRows.filter(r=>Number(r.order_id)===Number(orderId) && r.pending_qty>0);
     for(const r of rows){
       await sb.from("purchase_order_item_details")
         .update({
-          received_qty:r.order_qty,
-          pending_qty:0
+          received_qty:r.order_qty
         })
         .eq("id",r.item_id);
     }
@@ -684,6 +691,21 @@ async function receiveAllByPO(orderId){
 }
 
 async function updatePOStatus(orderId){
+  const {data:po,error:poErr} = await sb
+    .from("purchase_order_details")
+    .select("id,is_cancelled,status")
+    .eq("id",orderId)
+    .maybeSingle();
+
+  if(poErr) throw poErr;
+
+  if(getOrderCancelled(po)){
+    await sb.from("purchase_order_details")
+      .update({status:"CANCELLED"})
+      .eq("id",orderId);
+    return;
+  }
+
   const {data:items,error} = await sb
     .from("purchase_order_item_details")
     .select("*")
@@ -691,22 +713,27 @@ async function updatePOStatus(orderId){
 
   if(error) throw error;
 
-  let totalQty = 0;
-  let receivedQty = 0;
-  let pendingQty = 0;
+  let totalItems = 0;
+  let receivedItems = 0;
+  let partialItems = 0;
 
   (items||[]).forEach(it=>{
     const q = Number(it.quantity || it.qty || 0);
     const r = Number(it.received_qty || 0);
-    const p = it.pending_qty == null ? Math.max(q-r,0) : Number(it.pending_qty || 0);
-    totalQty += q;
-    receivedQty += r;
-    pendingQty += p;
+    totalItems++;
+
+    if(r >= q && q > 0) receivedItems++;
+    else if(r > 0) partialItems++;
   });
 
-  let status = "OPEN";
-  if(totalQty > 0 && pendingQty <= 0) status = "CLOSED";
-  else if(receivedQty > 0) status = "PARTIAL";
+  let status = "PENDING";
+  if(totalItems > 0 && receivedItems === totalItems) status = "COMPLETED";
+  else if(receivedItems > 0 || partialItems > 0) status = "PARTIAL";
+
+  await sb.from("purchase_order_item_details")
+    .update({status:"PENDING"})
+    .eq("purchase_order_id",orderId)
+    .lte("received_qty",0);
 
   await sb.from("purchase_order_details")
     .update({status})
@@ -720,7 +747,7 @@ async function cancelPO(orderId){
     const {error} = await sb.from("purchase_order_details")
       .update({
         status:"CANCELLED",
-        cancelled:true,
+        is_cancelled:true,
         cancelled_at:new Date().toISOString()
       })
       .eq("id",orderId);
@@ -740,13 +767,13 @@ async function cancelPO(orderId){
   }
 }
 
-
 function printPO(orderId){
   if(!orderId){
     alert("Purchase order not found");
     return;
   }
 
+  // purchase_order.html already supports ?print= and will load full PO + auto print.
   const url = `purchase_order.html?print=${encodeURIComponent(orderId)}`;
   window.open(url, "_blank");
 }

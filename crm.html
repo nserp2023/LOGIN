@@ -46,6 +46,7 @@
         linear-gradient(rgba(15,23,42,.72), rgba(15,23,42,.72)),
         url("background.jpg") center/cover fixed no-repeat;
       min-height:100vh;
+      padding-bottom:64px;
     }
 
     .page{
@@ -160,7 +161,7 @@
     .layout{
       margin-top:16px;
       display:grid;
-      grid-template-columns:430px minmax(0, 1fr) 420px;
+      grid-template-columns:1fr;
       gap:16px;
       align-items:start;
     }
@@ -170,11 +171,43 @@
       gap:16px;
     }
 
+    .create-stack{width:100%;}
+    .crm-list-panel{width:100%;}
+    .profile-panel-wrap{width:100%;}
+
     .panel{
       background:var(--panel);
       border-radius:22px;
       box-shadow:var(--shadow);
       overflow:hidden;
+    }
+
+    .panel-create{
+      border-top:7px solid #2563eb;
+      background:linear-gradient(135deg,#eff6ff,#ffffff 68%);
+    }
+
+    .panel-list{
+      border-top:7px solid #059669;
+      background:linear-gradient(135deg,#ecfdf5,#ffffff 68%);
+    }
+
+    .panel-profile{
+      border-top:7px solid #7c3aed;
+      background:linear-gradient(135deg,#f5f3ff,#ffffff 68%);
+    }
+
+    .panel-create .panel-header{background:linear-gradient(135deg,#dbeafe,#ffffff)}
+    .panel-list .panel-header{background:linear-gradient(135deg,#d1fae5,#ffffff)}
+    .panel-profile .panel-header{background:linear-gradient(135deg,#ede9fe,#ffffff)}
+
+    .crm-list-panel{
+      overflow:visible;
+    }
+
+    .crm-list-panel > .panel-header{
+      background:rgba(255,255,255,.98);
+      border-radius:22px 22px 0 0;
     }
 
     .panel-header{
@@ -217,7 +250,7 @@
 
     .form-grid{
       display:grid;
-      grid-template-columns:1fr 1fr;
+      grid-template-columns:repeat(4, minmax(180px, 1fr));
       gap:14px;
     }
 
@@ -271,7 +304,7 @@
 
     .checkbox-grid{
       display:grid;
-      grid-template-columns:repeat(2,1fr);
+      grid-template-columns:repeat(5, minmax(160px, 1fr));
       gap:10px;
       margin-top:4px;
     }
@@ -326,7 +359,7 @@
 
     .toolbar{
       display:grid;
-      grid-template-columns:1.4fr 1fr 1fr 1fr 1fr 1fr;
+      grid-template-columns:1.5fr 1fr .8fr 1fr 1fr;
       gap:12px;
       margin-bottom:14px;
     }
@@ -351,16 +384,59 @@
     }
 
     .table-wrap{
+      max-height:72vh;
       overflow:auto;
       border:1px solid #e2e8f0;
       border-radius:16px;
       background:#fff;
+      scroll-behavior:smooth;
+      width:100%;
     }
+
+    .bottom-x-scroll{
+      position:fixed;
+      left:12px;
+      right:12px;
+      bottom:10px;
+      z-index:50;
+      height:38px;
+      overflow-x:auto;
+      overflow-y:hidden;
+      border:1px solid rgba(148,163,184,.75);
+      border-radius:999px;
+      background:rgba(15,23,42,.88);
+      box-shadow:0 12px 26px rgba(0,0,0,.24);
+      backdrop-filter:blur(8px);
+    }
+
+    .bottom-x-scroll-inner{
+      height:1px;
+    }
+
+    .bottom-x-scroll::before{
+      content:"↔  SIDE SCROLL CRM LIST";
+      position:sticky;
+      left:16px;
+      top:8px;
+      color:#e2e8f0;
+      font-size:11px;
+      font-weight:900;
+      letter-spacing:.5px;
+      pointer-events:none;
+    }
+
+    .bottom-x-scroll::-webkit-scrollbar{height:16px}
+    .bottom-x-scroll::-webkit-scrollbar-track{background:rgba(226,232,240,.22);border-radius:999px}
+    .bottom-x-scroll::-webkit-scrollbar-thumb{background:#93c5fd;border-radius:999px;border:3px solid rgba(15,23,42,.88)}
+    .table-wrap::-webkit-scrollbar{height:14px;width:14px}
+    .table-wrap::-webkit-scrollbar-thumb{background:#94a3b8;border-radius:999px;border:3px solid #fff}
+    .table-wrap::-webkit-scrollbar-track{background:#f1f5f9;border-radius:999px}
 
     table{
       width:100%;
-      min-width:1360px;
+      min-width:min(1120px, calc(100vw - 32px));
       border-collapse:collapse;
+      table-layout:fixed;
     }
 
     th, td{
@@ -369,12 +445,14 @@
       text-align:left;
       vertical-align:top;
       font-size:14px;
+      overflow-wrap:anywhere;
+      word-break:break-word;
     }
 
     thead th{
       position:sticky;
       top:0;
-      z-index:1;
+      z-index:35;
       background:#eff6ff;
       color:#1e3a8a;
       font-size:12px;
@@ -382,6 +460,20 @@
       text-transform:uppercase;
       letter-spacing:.4px;
     }
+
+
+
+    #crmCustomerTable th:nth-child(1), #crmCustomerTable td:nth-child(1){width:62px}
+    #crmCustomerTable th:nth-child(2), #crmCustomerTable td:nth-child(2){width:170px}
+    #crmCustomerTable th:nth-child(3), #crmCustomerTable td:nth-child(3){width:125px}
+    #crmCustomerTable th:nth-child(4), #crmCustomerTable td:nth-child(4){width:130px}
+    #crmCustomerTable th:nth-child(5), #crmCustomerTable td:nth-child(5){width:210px}
+    #crmCustomerTable th:nth-child(6), #crmCustomerTable td:nth-child(6){width:105px}
+    #crmCustomerTable th:nth-child(7), #crmCustomerTable td:nth-child(7){width:120px}
+    #crmCustomerTable th:nth-child(8), #crmCustomerTable td:nth-child(8){width:105px}
+    #crmCustomerTable th:nth-child(9), #crmCustomerTable td:nth-child(9){width:125px}
+    #crmCustomerTable th:nth-child(10), #crmCustomerTable td:nth-child(10){width:260px}
+    #crmCustomerTable th:nth-child(11), #crmCustomerTable td:nth-child(11){width:185px}
 
     tbody tr:hover{
       background:#f8fafc;
@@ -592,14 +684,22 @@
       font-size:13px;
     }
 
+    .btn-purple{background:var(--purple);color:#fff}.btn-purple:hover{background:#6d28d9}
+    .closed-toggle-wrap{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px;padding:12px 14px;border:1px solid #dbeafe;border-radius:16px;background:linear-gradient(135deg,#eff6ff,#f8fafc)}
+    .closed-toggle-title{font-weight:900;color:#1e3a8a;font-size:14px}.closed-toggle-sub{margin-top:4px;color:#64748b;font-size:12px;line-height:1.4}
+    .detail-card{display:grid;gap:8px;min-width:260px}.detail-title{font-weight:900;font-size:14px;color:#0f172a;line-height:1.3}.detail-text{color:#475569;font-size:12px;line-height:1.45;white-space:normal}.detail-mini-grid{display:flex;flex-wrap:wrap;gap:6px}
+    .age-pill{display:inline-block;padding:5px 9px;border-radius:999px;font-size:11px;font-weight:900;background:#f1f5f9;color:#334155;margin:2px}.age-danger{background:#fee2e2;color:#991b1b}.age-warning{background:#fef3c7;color:#92400e}.age-ok{background:#dcfce7;color:#166534}.closed-row{opacity:.82;background:#f8fafc}
+    .old-detail-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.old-detail-box{border:1px solid #e2e8f0;border-radius:14px;padding:12px;background:#f8fafc}.old-detail-box .k{font-size:11px;color:#64748b;font-weight:900;text-transform:uppercase;letter-spacing:.3px}.old-detail-box .v{margin-top:6px;font-size:14px;font-weight:800;color:#0f172a;line-height:1.35;word-break:break-word}
+
     @media (max-width:1500px){
-      .layout{grid-template-columns:430px 1fr}
-      .profile-panel-wrap{grid-column:1 / -1}
+      .form-grid{grid-template-columns:repeat(3, minmax(180px, 1fr))}
+      .checkbox-grid{grid-template-columns:repeat(3, minmax(160px, 1fr))}
     }
 
     @media (max-width:1100px){
       .stats{grid-template-columns:repeat(3,1fr)}
-      .layout{grid-template-columns:1fr}
+      .form-grid{grid-template-columns:1fr 1fr}
+      .checkbox-grid{grid-template-columns:repeat(2,1fr)}
       .toolbar{grid-template-columns:1fr 1fr}
     }
 
@@ -613,7 +713,13 @@
       .toolbar{grid-template-columns:1fr}
       .topbar-actions{width:100%}
       .topbar-actions .btn{flex:1}
-      table{min-width:1180px}
+      table{min-width:1080px}
+    }
+
+    @media (max-width:900px){
+      thead th{top:0}
+      table{min-width:980px}
+      th,td{font-size:13px;padding:10px 8px}
     }
 
     @media (max-width:480px){
@@ -621,6 +727,7 @@
       .btn{width:100%}
       .form-actions .btn{width:100%}
       .metric-grid{grid-template-columns:1fr}
+      .old-detail-grid{grid-template-columns:1fr}
     }
   </style>
 </head>
@@ -637,6 +744,7 @@
 
       <div class="topbar-actions">
         <button class="btn btn-light" id="backBtn">⬅ Back</button>
+        <button class="btn btn-purple" id="closedToggleBtn">👁 View Solved / Closed</button>
         <button class="btn btn-primary" id="newCustomerBtn">＋ New Customer</button>
       </div>
     </div>
@@ -647,7 +755,7 @@
         <div class="value" id="totalCustomers">0</div>
       </div>
       <div class="stat">
-        <div class="label">Filtered Results</div>
+        <div class="label">Visible Results</div>
         <div class="value" id="filteredCustomers">0</div>
       </div>
       <div class="stat">
@@ -663,19 +771,19 @@
         <div class="value" id="openComplaintsCount">0</div>
       </div>
       <div class="stat">
-        <div class="label">Solved Complaints</div>
+        <div class="label">Solved / Closed</div>
         <div class="value" id="solvedComplaintsCount">0</div>
       </div>
     </div>
 
     <div class="layout">
-      <!-- LEFT -->
-      <div class="stack">
-        <section class="panel">
+      <!-- TOP CREATE FORM -->
+      <div class="stack create-stack">
+        <section class="panel panel-create">
           <div class="panel-header">
             <div>
               <h2 id="formTitle">Create CRM Customer</h2>
-              <p id="formSubtitle">Add customer, enquiry, complaint, follow-up and solution tracking</p>
+              <p id="formSubtitle">Fast entry only. Old details and solution history are shown in the profile section below.</p>
             </div>
             <div class="badge" id="modeBadge">CREATE MODE</div>
           </div>
@@ -706,16 +814,6 @@
                 </div>
 
                 <div class="field">
-                  <label for="gstNumber">GST Number</label>
-                  <input type="text" id="gstNumber" placeholder="ENTER GST NUMBER">
-                </div>
-
-                <div class="field">
-                  <label for="stateCode">State Code</label>
-                  <input type="text" id="stateCode" placeholder="EXAMPLE 32">
-                </div>
-
-                <div class="field">
                   <label for="priority">Priority</label>
                   <select id="priority">
                     <option value="LOW">LOW</option>
@@ -740,16 +838,6 @@
                   </select>
                 </div>
 
-                <div class="field">
-                  <label for="complaintStatus">Complaint Status</label>
-                  <select id="complaintStatus">
-                    <option value="OPEN">OPEN</option>
-                    <option value="IN PROGRESS">IN PROGRESS</option>
-                    <option value="SOLVED">SOLVED</option>
-                    <option value="CLOSED">CLOSED</option>
-                  </select>
-                </div>
-
                 <div class="field full">
                   <label for="complaintTitle">Complaint / Enquiry Title</label>
                   <input type="text" id="complaintTitle" placeholder="EXAMPLE: FAN NOT WORKING / CUSTOMER ASKED FOR CHIMNEY DEMO">
@@ -765,42 +853,6 @@
                   <input type="text" id="assignedTo" placeholder="STAFF NAME / TECHNICIAN">
                 </div>
 
-                <div class="field">
-                  <label for="lastContactDate">Last Contact Date</label>
-                  <input type="date" id="lastContactDate" style="text-transform:none;">
-                </div>
-
-                <div class="field">
-                  <label for="complaintSolvedDate">Solved Date</label>
-                  <input type="date" id="complaintSolvedDate" style="text-transform:none;">
-                </div>
-
-                <div class="field full">
-                  <label>Customer Interest Categories</label>
-                  <div class="checkbox-grid">
-                    <label class="check-item"><input type="checkbox" value="ELECTRICAL SWITCHES" class="interest-check"> ELECTRICAL SWITCHES</label>
-                    <label class="check-item"><input type="checkbox" value="CHIMNEY" class="interest-check"> CHIMNEY</label>
-                    <label class="check-item"><input type="checkbox" value="HOB" class="interest-check"> HOB</label>
-                    <label class="check-item"><input type="checkbox" value="FANS" class="interest-check"> FANS</label>
-                    <label class="check-item"><input type="checkbox" value="LIGHTS" class="interest-check"> LIGHTS</label>
-                    <label class="check-item"><input type="checkbox" value="PLUMBING" class="interest-check"> PLUMBING</label>
-                    <label class="check-item"><input type="checkbox" value="SANITARY" class="interest-check"> SANITARY</label>
-                    <label class="check-item"><input type="checkbox" value="INTERIOR DECOR" class="interest-check"> INTERIOR DECOR</label>
-                    <label class="check-item"><input type="checkbox" value="INTERLOCK" class="interest-check"> INTERLOCK</label>
-                    <label class="check-item"><input type="checkbox" value="OTHER" class="interest-check"> OTHER</label>
-                  </div>
-                </div>
-
-                <div class="field full">
-                  <label for="customerNotes">Notes / Requirement / Complaint Details</label>
-                  <textarea id="customerNotes" placeholder="ENTER CUSTOMER REQUIREMENT, ISSUE DETAILS, SITE DETAILS, FOLLOW-UP REMARKS"></textarea>
-                </div>
-
-                <div class="field full">
-                  <label for="solutionNotes">Solution / Action Taken</label>
-                  <textarea id="solutionNotes" placeholder="ENTER WHAT WAS DONE, SPARE CHANGED, VISIT DETAILS, FINAL SOLUTION"></textarea>
-                  <div class="helper">Use the Solve button later to mark issue as solved instantly.</div>
-                </div>
               </div>
 
               <div class="form-actions">
@@ -811,37 +863,34 @@
           </div>
         </section>
 
-        <section class="panel">
-          <div class="panel-header">
-            <div>
-              <h2>Today / Pending Follow-ups</h2>
-              <p>Quick view of customer reminders, complaints and pending actions</p>
-            </div>
-          </div>
-          <div class="panel-body">
-            <div id="followupList" class="followup-list">
-              <div class="empty">Loading follow-ups...</div>
-            </div>
-          </div>
-        </section>
       </div>
 
-      <!-- CENTER -->
-      <section class="panel">
+      <!-- BOTTOM CRM LIST -->
+      <section class="panel panel-list crm-list-panel">
         <div class="panel-header">
           <div>
             <h2>CRM Customer List</h2>
-            <p>Search, filter, edit, solve, reopen and review customer complaints professionally</p>
+            <p>Active complaints are shown by default. Solved and closed complaints are hidden by default. Use the button to check completed old work.</p>
           </div>
         </div>
 
         <div class="panel-body">
+          <div class="closed-toggle-wrap">
+            <div>
+              <div class="closed-toggle-title" id="closedModeTitle">Active CRM View</div>
+              <div class="closed-toggle-sub" id="closedModeSub">Solved and closed complaints are hidden. Use the button to check old completed complaint details whenever needed.</div>
+            </div>
+            <button class="btn btn-purple" id="closedToggleBtn2">👁 View Solved / Closed</button>
+          </div>
+
           <div class="quick-filters">
-            <button class="chip active" data-quick="ALL">ALL</button>
+            <button class="chip active" data-quick="ALL">ACTIVE / ALL</button>
             <button class="chip" data-quick="TODAY">TODAY FOLLOW-UP</button>
+            <button class="chip" data-quick="PENDING">PENDING FOLLOW-UP</button>
             <button class="chip" data-quick="OVERDUE">OVERDUE</button>
             <button class="chip" data-quick="OPENCOMPLAINT">OPEN COMPLAINT</button>
             <button class="chip" data-quick="SOLVED">SOLVED</button>
+            <button class="chip" data-quick="CLOSED">CLOSED</button>
           </div>
 
           <div class="toolbar">
@@ -853,7 +902,6 @@
               <option value="MEDIUM">MEDIUM</option>
               <option value="HIGH">HIGH</option>
             </select>
-            <input type="text" id="interestFilter" placeholder="SEARCH INTEREST...">
             <select id="statusFilter">
               <option value="">ALL STATUS</option>
               <option value="OPEN">OPEN</option>
@@ -864,8 +912,8 @@
             <input type="text" id="addressFilter" placeholder="SEARCH ADDRESS...">
           </div>
 
-          <div class="table-wrap">
-            <table>
+          <div class="table-wrap" id="crmTableWrap">
+            <table id="crmCustomerTable">
               <thead>
                 <tr>
                   <th>ID</th>
@@ -877,21 +925,20 @@
                   <th>Status</th>
                   <th>Priority</th>
                   <th>Next Follow-up</th>
-                  <th>Interest</th>
-                  <th>Complaint / Notes</th>
+                  <th>Old Details / Last Work</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody id="customerTableBody">
-                <tr><td colspan="12" class="empty">Loading CRM customers...</td></tr>
+                <tr><td colspan="11" class="empty">Loading CRM customers...</td></tr>
               </tbody>
             </table>
           </div>
         </div>
       </section>
 
-      <!-- RIGHT PROFILE -->
-      <section class="panel profile-panel-wrap">
+      <!-- CUSTOMER OLD DETAILS / PROFILE -->
+      <section class="panel panel-profile profile-panel-wrap">
         <div class="panel-header">
           <div>
             <h2>Customer Profile</h2>
@@ -903,6 +950,10 @@
         </div>
       </section>
     </div>
+  </div>
+
+  <div class="bottom-x-scroll" id="bottomXScroll" aria-label="CRM table horizontal scroll">
+    <div class="bottom-x-scroll-inner" id="bottomXScrollInner"></div>
   </div>
 
   <script>
@@ -919,36 +970,31 @@
     let editingId = null;
     let selectedCustomerId = null;
     let quickFilter = "ALL";
+    let showClosedComplaints = false;
 
     const form = document.getElementById("customerForm");
     const statusBox = document.getElementById("statusBox");
     const saveBtn = document.getElementById("saveBtn");
     const resetBtn = document.getElementById("resetBtn");
     const newCustomerBtn = document.getElementById("newCustomerBtn");
+    const closedToggleBtn = document.getElementById("closedToggleBtn");
+    const closedToggleBtn2 = document.getElementById("closedToggleBtn2");
     const backBtn = document.getElementById("backBtn");
 
     const customerName = document.getElementById("customerName");
     const customerMobile = document.getElementById("customerMobile");
     const salesman = document.getElementById("salesman");
     const customerAddress = document.getElementById("customerAddress");
-    const gstNumber = document.getElementById("gstNumber");
-    const stateCode = document.getElementById("stateCode");
     const priority = document.getElementById("priority");
     const nextFollowupDate = document.getElementById("nextFollowupDate");
-    const customerNotes = document.getElementById("customerNotes");
-    const solutionNotes = document.getElementById("solutionNotes");
     const crmType = document.getElementById("crmType");
-    const complaintStatus = document.getElementById("complaintStatus");
     const complaintTitle = document.getElementById("complaintTitle");
     const complaintOpenDate = document.getElementById("complaintOpenDate");
     const assignedTo = document.getElementById("assignedTo");
-    const lastContactDate = document.getElementById("lastContactDate");
-    const complaintSolvedDate = document.getElementById("complaintSolvedDate");
 
     const searchInput = document.getElementById("searchInput");
     const salesmanFilter = document.getElementById("salesmanFilter");
     const priorityFilter = document.getElementById("priorityFilter");
-    const interestFilter = document.getElementById("interestFilter");
     const statusFilter = document.getElementById("statusFilter");
     const addressFilter = document.getElementById("addressFilter");
 
@@ -962,6 +1008,8 @@
     const overdueFollowups = document.getElementById("overdueFollowups");
     const openComplaintsCount = document.getElementById("openComplaintsCount");
     const solvedComplaintsCount = document.getElementById("solvedComplaintsCount");
+    const closedModeTitle = document.getElementById("closedModeTitle");
+    const closedModeSub = document.getElementById("closedModeSub");
 
     const formTitle = document.getElementById("formTitle");
     const formSubtitle = document.getElementById("formSubtitle");
@@ -970,6 +1018,8 @@
     document.addEventListener("DOMContentLoaded", async () => {
       enableUppercase();
       bindEvents();
+      bindEnterJump();
+      bindBottomTableScroll();
       await loadCustomers();
       resetForm();
     });
@@ -982,6 +1032,9 @@
         customerName.focus();
       });
 
+      closedToggleBtn.addEventListener("click", toggleClosedComplaints);
+      closedToggleBtn2.addEventListener("click", toggleClosedComplaints);
+
       backBtn.addEventListener("click", () => {
         if (window.history.length > 1) window.history.back();
         else window.location.href = "dashboard.html";
@@ -990,8 +1043,7 @@
       searchInput.addEventListener("input", renderCustomers);
       salesmanFilter.addEventListener("input", renderCustomers);
       priorityFilter.addEventListener("change", renderCustomers);
-      interestFilter.addEventListener("input", renderCustomers);
-      statusFilter.addEventListener("change", renderCustomers);
+      statusFilter.addEventListener("change", () => { showClosedComplaints = ["SOLVED", "CLOSED"].includes(normalize(statusFilter.value)); updateClosedButtons(); renderCustomers(); renderFollowups(); });
       addressFilter.addEventListener("input", renderCustomers);
 
       document.querySelectorAll(".chip").forEach(chip => {
@@ -999,7 +1051,41 @@
           document.querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
           chip.classList.add("active");
           quickFilter = chip.dataset.quick;
+          showClosedComplaints = ["SOLVED", "CLOSED"].includes(quickFilter);
+          if (quickFilter === "SOLVED") statusFilter.value = "SOLVED";
+          if (quickFilter === "CLOSED") statusFilter.value = "CLOSED";
+          if (!showClosedComplaints && statusFilter.value === "CLOSED") statusFilter.value = "";
+          updateClosedButtons();
           renderCustomers();
+          renderFollowups();
+        });
+      });
+    }
+
+    function bindEnterJump() {
+      const fields = Array.from(form.querySelectorAll("input, select, textarea, button"))
+        .filter(el => !el.disabled && el.type !== "hidden" && el.offsetParent !== null);
+
+      fields.forEach((el, index) => {
+        el.addEventListener("keydown", (e) => {
+          if (e.key !== "Enter") return;
+
+          if (el.tagName === "TEXTAREA" && !e.ctrlKey) {
+            return;
+          }
+
+          e.preventDefault();
+          const direction = e.shiftKey ? -1 : 1;
+          const next = fields[index + direction];
+
+          if (next) {
+            next.focus();
+            if (typeof next.select === "function" && ["INPUT", "TEXTAREA"].includes(next.tagName)) {
+              setTimeout(() => next.select(), 0);
+            }
+          } else if (!e.shiftKey) {
+            saveBtn.focus();
+          }
         });
       });
     }
@@ -1058,6 +1144,51 @@
       return parseNotes(row?.notes).visible;
     }
 
+    function isClosedComplaint(row) {
+      const meta = getMeta(row);
+      const status = normalize(meta.complaint_status);
+      return ["SOLVED", "CLOSED"].includes(status);
+    }
+
+    function daysBetween(fromDate, toDate = todayStr()) {
+      if (!fromDate) return null;
+      const start = new Date(String(fromDate) + "T00:00:00");
+      const end = new Date(String(toDate) + "T00:00:00");
+      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
+      return Math.max(0, Math.floor((end - start) / 86400000));
+    }
+
+    function ageBadge(row) {
+      const meta = getMeta(row);
+      const status = normalize(meta.complaint_status);
+      const openDays = daysBetween(meta.complaint_open_date || row.created_at?.slice?.(0,10));
+      if (openDays === null) return "";
+      if (status === "CLOSED") return `<span class="age-pill age-ok">CLOSED OLD RECORD</span>`;
+      if (status === "SOLVED") return `<span class="age-pill age-ok">SOLVED IN ${openDays} DAY(S)</span>`;
+      if (openDays >= 7) return `<span class="age-pill age-danger">OLD: ${openDays} DAY(S)</span>`;
+      if (openDays >= 3) return `<span class="age-pill age-warning">PENDING: ${openDays} DAY(S)</span>`;
+      return `<span class="age-pill age-ok">NEW: ${openDays} DAY(S)</span>`;
+    }
+
+    function toggleClosedComplaints() {
+      showClosedComplaints = !showClosedComplaints;
+      quickFilter = "ALL";
+      statusFilter.value = "";
+      document.querySelectorAll(".chip").forEach(c => c.classList.toggle("active", c.dataset.quick === quickFilter));
+      updateClosedButtons();
+      renderCustomers();
+      syncBottomTableScroll();
+      if (followupList) renderFollowups();
+    }
+
+    function updateClosedButtons() {
+      const text = showClosedComplaints ? "🙈 Hide Solved / Closed" : "👁 View Solved / Closed";
+      closedToggleBtn.textContent = text;
+      closedToggleBtn2.textContent = text;
+      if (closedModeTitle) closedModeTitle.textContent = showClosedComplaints ? "Solved / Closed View" : "Active CRM View";
+      if (closedModeSub) closedModeSub.textContent = showClosedComplaints ? "Showing solved and closed complaint history only. Click hide to return to active CRM work." : "Solved and closed complaints are hidden. Use the button to check old completed complaint details whenever needed.";
+    }
+
     function statusClass(status) {
       const s = normalize(status);
       if (s === "OPEN") return "status-open";
@@ -1099,7 +1230,7 @@
     function setMode(mode) {
       const isEdit = mode === "edit";
       formTitle.textContent = isEdit ? "Edit CRM Customer" : "Create CRM Customer";
-      formSubtitle.textContent = isEdit ? "Update customer, interests and follow-up" : "Add customer, interests and follow-up";
+      formSubtitle.textContent = isEdit ? "Update customer and follow-up details" : "Add customer, complaint and follow-up details";
       saveBtn.textContent = isEdit ? "Update CRM Customer" : "Save CRM Customer";
       modeBadge.textContent = isEdit ? "EDIT MODE" : "CREATE MODE";
       modeBadge.style.background = isEdit ? "#fef3c7" : "#dbeafe";
@@ -1109,22 +1240,18 @@
     function resetForm() {
       editingId = null;
       form.reset();
-      setSelectedInterests([]);
       crmType.value = "LEAD";
-      complaintStatus.value = "OPEN";
       complaintOpenDate.value = todayStr();
-      complaintSolvedDate.value = "";
-      lastContactDate.value = todayStr();
-      solutionNotes.value = "";
       complaintTitle.value = "";
       assignedTo.value = "";
       setMode("create");
       hideStatus();
+      updateClosedButtons();
       customerName.focus();
     }
 
     async function loadCustomers() {
-      customerTableBody.innerHTML = `<tr><td colspan="12" class="empty">Loading CRM customers...</td></tr>`;
+      customerTableBody.innerHTML = `<tr><td colspan="11" class="empty">Loading CRM customers...</td></tr>`;
 
       const { data, error } = await sb
         .from(TABLE_NAME)
@@ -1134,18 +1261,19 @@
       if (error) {
         showStatus(
           "CRM TABLE NOT FOUND OR ERROR.\n\nCREATE THIS TABLE IN SUPABASE:\n" +
-          "crm_customers (id, name, mobile, salesman, address, gst_number, state_code, priority, next_followup_date, interests, notes, created_at)",
+          "crm_customers (id, name, mobile, salesman, address, priority, next_followup_date, notes, created_at)",
           "error"
         );
-        customerTableBody.innerHTML = `<tr><td colspan="12" class="empty">Error loading CRM customers</td></tr>`;
-        followupList.innerHTML = `<div class="empty">Error loading follow-ups</div>`;
+        customerTableBody.innerHTML = `<tr><td colspan="11" class="empty">Error loading CRM customers</td></tr>`;
+        if (followupList) followupList.innerHTML = `<div class="empty">Error loading follow-ups</div>`;
         return;
       }
 
       customers = data || [];
       updateStats();
       renderCustomers();
-      renderFollowups();
+      syncBottomTableScroll();
+      if (followupList) renderFollowups();
 
       if (selectedCustomerId) {
         const row = customers.find(x => Number(x.id) === Number(selectedCustomerId));
@@ -1163,8 +1291,8 @@
         const meta = getMeta(c);
         return normalize(meta.entry_type) === "COMPLAINT" && ["OPEN", "IN PROGRESS"].includes(normalize(meta.complaint_status));
       }).length;
-      solvedComplaintsCount.textContent = customers.filter(c => normalize(getMeta(c).complaint_status) === "SOLVED").length;
-      filteredCustomers.textContent = customers.length;
+      solvedComplaintsCount.textContent = customers.filter(c => isClosedComplaint(c)).length;
+      filteredCustomers.textContent = customers.filter(c => showClosedComplaints ? isClosedComplaint(c) : !isClosedComplaint(c)).length;
     }
 
     function applyQuickFilter(list) {
@@ -1172,6 +1300,9 @@
 
       if (quickFilter === "TODAY") {
         return list.filter(c => String(c.next_followup_date || "") === today);
+      }
+      if (quickFilter === "PENDING") {
+        return list.filter(c => c.next_followup_date && !isClosedComplaint(c));
       }
       if (quickFilter === "OVERDUE") {
         return list.filter(c => c.next_followup_date && String(c.next_followup_date) < today);
@@ -1185,6 +1316,9 @@
       if (quickFilter === "SOLVED") {
         return list.filter(c => normalize(getMeta(c).complaint_status) === "SOLVED");
       }
+      if (quickFilter === "CLOSED") {
+        return list.filter(c => normalize(getMeta(c).complaint_status) === "CLOSED");
+      }
       return list;
     }
 
@@ -1192,19 +1326,19 @@
       const term = normalize(searchInput.value);
       const sm = normalize(salesmanFilter.value);
       const pr = normalize(priorityFilter.value);
-      const interest = normalize(interestFilter.value);
       const st = normalize(statusFilter.value);
       const addr = normalize(addressFilter.value);
 
       let filtered = customers.filter(c => {
+        const viewingCompleted = showClosedComplaints || ["SOLVED", "CLOSED"].includes(quickFilter) || ["SOLVED", "CLOSED"].includes(normalize(statusFilter.value));
+        if (!viewingCompleted && isClosedComplaint(c)) return false;
+        if (showClosedComplaints && quickFilter === "ALL" && !isClosedComplaint(c)) return false;
         const meta = getMeta(c);
-        const interests = Array.isArray(c.interests) ? c.interests.join(" ") : String(c.interests || "");
         const visibleNotes = getVisibleNotes(c);
         return (
           (!term || normalize(c.name).includes(term) || normalize(c.mobile).includes(term) || normalize(meta.complaint_title).includes(term) || normalize(visibleNotes).includes(term)) &&
           (!sm || normalize(c.salesman).includes(sm) || normalize(meta.assigned_to).includes(sm)) &&
           (!pr || normalize(c.priority) === pr) &&
-          (!interest || normalize(interests).includes(interest)) &&
           (!st || normalize(meta.complaint_status) === st) &&
           (!addr || normalize(c.address).includes(addr))
         );
@@ -1215,12 +1349,12 @@
       filteredCustomers.textContent = filtered.length;
 
       if (!filtered.length) {
-        customerTableBody.innerHTML = `<tr><td colspan="12" class="empty">No CRM customers found</td></tr>`;
+        customerTableBody.innerHTML = `<tr><td colspan="11" class="empty">No CRM customers found</td></tr>`;
+        setTimeout(syncBottomTableScroll, 50);
         return;
       }
 
       customerTableBody.innerHTML = filtered.map(c => {
-        const interests = Array.isArray(c.interests) ? c.interests : [];
         const meta = getMeta(c);
         const visibleNotes = getVisibleNotes(c);
         const pClass = normalize(c.priority) === "HIGH"
@@ -1230,9 +1364,11 @@
           : "priority-low";
 
         const selectedClass = Number(selectedCustomerId) === Number(c.id) ? "selected" : "";
+        const rowClass = `${selectedClass} ${isClosedComplaint(c) ? "closed-row" : ""}`.trim();
+        const oldInfo = ageBadge(c);
 
         return `
-          <tr class="${selectedClass}">
+          <tr class="${rowClass}">
             <td>${c.id ?? ""}</td>
             <td>${escapeHtml(normalize(c.name))}</td>
             <td>${escapeHtml(normalize(c.mobile))}</td>
@@ -1242,10 +1378,18 @@
             <td><span class="badge ${statusClass(meta.complaint_status)}">${escapeHtml(normalize(meta.complaint_status || "OPEN"))}</span></td>
             <td><span class="badge ${pClass}">${escapeHtml(normalize(c.priority || "LOW"))}</span></td>
             <td>${escapeHtml(String(c.next_followup_date || ""))}</td>
-            <td>${interests.length ? interests.map(i => `<span class="badge">${escapeHtml(normalize(i))}</span>`).join("") : ""}</td>
             <td>
-              <div style="font-weight:800;">${escapeHtml(normalize(meta.complaint_title || "-"))}</div>
-              <div style="margin-top:4px;color:#64748b;font-size:12px;line-height:1.45;">${escapeHtml(normalize(visibleNotes)).slice(0, 110)}</div>
+              <div class="detail-card">
+                <div class="detail-title">${escapeHtml(normalize(meta.complaint_title || "NO TITLE"))}</div>
+                <div class="detail-mini-grid">
+                  ${oldInfo}
+                  ${meta.last_contact_date ? `<span class="age-pill">LAST: ${escapeHtml(meta.last_contact_date)}</span>` : ""}
+                  ${meta.complaint_open_date ? `<span class="age-pill">OPEN: ${escapeHtml(meta.complaint_open_date)}</span>` : ""}
+                  ${meta.complaint_solved_date ? `<span class="age-pill age-ok">DONE: ${escapeHtml(meta.complaint_solved_date)}</span>` : ""}
+                </div>
+                <div class="detail-text"><b>NOTE:</b> ${escapeHtml(normalize(visibleNotes || "NO NOTE" )).slice(0, 140)}</div>
+                <div class="detail-text"><b>SOLUTION:</b> ${escapeHtml(normalize(meta.solution_notes || "NOT ADDED" )).slice(0, 120)}</div>
+              </div>
             </td>
             <td>
               <div class="table-actions">
@@ -1254,18 +1398,22 @@
                 ${["SOLVED","CLOSED"].includes(normalize(meta.complaint_status))
                   ? `<button class="mini-btn mini-progress" onclick="reopenComplaint(${c.id})">Reopen</button>`
                   : `<button class="mini-btn mini-solve" onclick="solveComplaint(${c.id})">Solve</button>`}
+                ${normalize(meta.complaint_status) !== "CLOSED" ? `<button class="mini-btn mini-view" onclick="closeComplaint(${c.id})">Close</button>` : ""}
                 <button class="mini-btn mini-delete" onclick="deleteCustomer(${c.id}, '${escapeJs(normalize(c.name))}')">Delete</button>
               </div>
             </td>
           </tr>
         `;
       }).join("");
+      setTimeout(syncBottomTableScroll, 50);
     }
 
     function renderFollowups() {
+      if (!followupList) return;
       const today = todayStr();
 
       const list = customers
+        .filter(c => !isClosedComplaint(c))
         .filter(c => c.next_followup_date || ["OPEN", "IN PROGRESS"].includes(normalize(getMeta(c).complaint_status)))
         .sort((a, b) => String(a.next_followup_date || "9999-12-31").localeCompare(String(b.next_followup_date || "9999-12-31")));
 
@@ -1320,25 +1468,27 @@
       e.preventDefault();
       hideStatus();
 
+      const existingRow = editingId ? customers.find(x => Number(x.id) === Number(editingId)) : null;
+      const existingParsed = existingRow ? parseNotes(existingRow.notes) : { visible: "", meta: defaultMeta() };
+      const existingMeta = existingParsed.meta || defaultMeta();
+
       const payload = {
         name: normalize(customerName.value),
         mobile: normalize(customerMobile.value),
         salesman: normalize(salesman.value),
         address: normalize(customerAddress.value),
-        gst_number: normalize(gstNumber.value),
-        state_code: normalize(stateCode.value),
         priority: normalize(priority.value || "LOW"),
         next_followup_date: nextFollowupDate.value || null,
-        interests: getSelectedInterests(),
-        notes: buildNotes(normalize(customerNotes.value), {
+        notes: buildNotes(existingParsed.visible || normalize(complaintTitle.value), {
+          ...existingMeta,
           entry_type: normalize(crmType.value || "LEAD"),
-          complaint_status: normalize(complaintStatus.value || "OPEN"),
+          complaint_status: editingId ? normalize(existingMeta.complaint_status || "OPEN") : "OPEN",
           complaint_title: normalize(complaintTitle.value),
-          complaint_open_date: complaintOpenDate.value || "",
-          complaint_solved_date: complaintSolvedDate.value || "",
-          solution_notes: normalize(solutionNotes.value),
+          complaint_open_date: complaintOpenDate.value || existingMeta.complaint_open_date || todayStr(),
           assigned_to: normalize(assignedTo.value),
-          last_contact_date: lastContactDate.value || ""
+          last_contact_date: existingMeta.last_contact_date || "",
+          complaint_solved_date: existingMeta.complaint_solved_date || "",
+          solution_notes: existingMeta.solution_notes || ""
         })
       };
 
@@ -1390,22 +1540,14 @@
       customerMobile.value = normalize(row.mobile);
       salesman.value = normalize(row.salesman);
       customerAddress.value = normalize(row.address);
-      gstNumber.value = normalize(row.gst_number);
-      stateCode.value = normalize(row.state_code);
       priority.value = normalize(row.priority || "LOW");
       nextFollowupDate.value = row.next_followup_date || "";
       const parsed = parseNotes(row.notes);
       const meta = parsed.meta;
-      customerNotes.value = normalize(parsed.visible);
-      solutionNotes.value = normalize(meta.solution_notes);
       crmType.value = normalize(meta.entry_type || "LEAD");
-      complaintStatus.value = normalize(meta.complaint_status || "OPEN");
       complaintTitle.value = normalize(meta.complaint_title);
       complaintOpenDate.value = meta.complaint_open_date || "";
       assignedTo.value = normalize(meta.assigned_to);
-      lastContactDate.value = meta.last_contact_date || "";
-      complaintSolvedDate.value = meta.complaint_solved_date || "";
-      setSelectedInterests(Array.isArray(row.interests) ? row.interests.map(normalize) : []);
 
       setMode("edit");
       showStatus(`EDITING CRM CUSTOMER: ${normalize(row.name)}`, "info");
@@ -1448,7 +1590,6 @@
       const salesSummary = await loadSalesSummaryByMobile(row.mobile);
       const salesItems = await loadRecentSalesItemsByMobile(row.mobile);
 
-      const interests = Array.isArray(row.interests) ? row.interests : [];
       const meta = getMeta(row);
       const visibleNotes = getVisibleNotes(row);
       const pClass = normalize(row.priority) === "HIGH"
@@ -1466,14 +1607,26 @@
               <div><b>SALESMAN:</b> ${escapeHtml(normalize(row.salesman))}</div>
               <div><b>ASSIGNED TO:</b> ${escapeHtml(normalize(meta.assigned_to))}</div>
               <div><b>ADDRESS:</b> ${escapeHtml(normalize(row.address))}</div>
-              <div><b>GST:</b> ${escapeHtml(normalize(row.gst_number))}</div>
-              <div><b>STATE:</b> ${escapeHtml(normalize(row.state_code))}</div>
             </div>
             <div style="margin-top:10px;">
               <span class="badge badge-purple">${escapeHtml(normalize(meta.entry_type || "LEAD"))}</span>
               <span class="badge ${statusClass(meta.complaint_status)}">${escapeHtml(normalize(meta.complaint_status || "OPEN"))}</span>
               <span class="badge ${pClass}">${escapeHtml(normalize(row.priority || "LOW"))}</span>
               ${row.next_followup_date ? `<span class="badge badge-soft">FOLLOW-UP: ${escapeHtml(String(row.next_followup_date))}</span>` : ""}
+            </div>
+          </div>
+
+          <div class="sub-panel">
+            <div class="sub-head">OLD DETAILS - EASY VIEW</div>
+            <div class="sub-body">
+              <div class="old-detail-grid">
+                <div class="old-detail-box"><div class="k">Complaint Age</div><div class="v">${daysBetween(meta.complaint_open_date || row.created_at?.slice?.(0,10)) ?? "-"} DAY(S)</div></div>
+                <div class="old-detail-box"><div class="k">Current Status</div><div class="v">${escapeHtml(normalize(meta.complaint_status || "OPEN"))}</div></div>
+                <div class="old-detail-box"><div class="k">Last Contact Date</div><div class="v">${escapeHtml(meta.last_contact_date || "-")}</div></div>
+                <div class="old-detail-box"><div class="k">Next Follow-up</div><div class="v">${escapeHtml(row.next_followup_date || "NO FOLLOW-UP")}</div></div>
+                <div class="old-detail-box"><div class="k">Assigned / Salesman</div><div class="v">${escapeHtml(normalize(meta.assigned_to || row.salesman || "-"))}</div></div>
+                <div class="old-detail-box"><div class="k">Open → Solved</div><div class="v">${escapeHtml((meta.complaint_open_date || "-") + " → " + (meta.complaint_solved_date || "-"))}</div></div>
+              </div>
             </div>
           </div>
 
@@ -1502,13 +1655,6 @@
           </div>
 
           <div class="sub-panel">
-            <div class="sub-head">INTEREST CATEGORIES</div>
-            <div class="sub-body">
-              ${interests.length ? interests.map(i => `<span class="badge badge-purple">${escapeHtml(normalize(i))}</span>`).join("") : `<div class="empty" style="padding:8px 0;">NO INTERESTS SAVED</div>`}
-            </div>
-          </div>
-
-          <div class="sub-panel">
             <div class="sub-head">CRM TIMELINE</div>
             <div class="sub-body">
               <div class="timeline">
@@ -1529,6 +1675,7 @@
                 ${["SOLVED","CLOSED"].includes(normalize(meta.complaint_status))
                   ? `<button class="mini-btn mini-progress" onclick="reopenComplaint(${row.id})">Reopen Complaint</button>`
                   : `<button class="mini-btn mini-solve" onclick="solveComplaint(${row.id})">Mark as Solved</button>`}
+                ${normalize(meta.complaint_status) !== "CLOSED" ? `<button class="mini-btn mini-view" onclick="closeComplaint(${row.id})">Close Complaint</button>` : ""}
                 <button class="mini-btn mini-edit" onclick="editCustomer(${row.id})">Edit Profile</button>
               </div>
             </div>
@@ -1671,6 +1818,24 @@
       await openProfile(id);
     }
 
+    async function closeComplaint(id) {
+      const row = customers.find(x => Number(x.id) === Number(id));
+      if (!row) return;
+      const ok = confirm("CLOSE THIS COMPLAINT? CLOSED COMPLAINTS WILL BE HIDDEN FROM ACTIVE VIEW.");
+      if (!ok) return;
+      const parsed = parseNotes(row.notes);
+      const meta = { ...parsed.meta, complaint_status: "CLOSED", complaint_solved_date: parsed.meta.complaint_solved_date || todayStr(), last_contact_date: todayStr() };
+      if (!meta.solution_notes) meta.solution_notes = "COMPLAINT CLOSED";
+      const { error } = await sb.from(TABLE_NAME).update({ notes: buildNotes(parsed.visible, meta), next_followup_date: null }).eq("id", id);
+      if (error) { showStatus(error.message || "FAILED TO CLOSE COMPLAINT.", "error"); return; }
+      showStatus("COMPLAINT CLOSED AND HIDDEN FROM ACTIVE VIEW.", "success");
+      showClosedComplaints = false; quickFilter = "ALL"; statusFilter.value = "";
+      document.querySelectorAll(".chip").forEach(c => c.classList.toggle("active", c.dataset.quick === quickFilter));
+      updateClosedButtons();
+      await loadCustomers();
+      profilePanel.innerHTML = `<div class="profile-empty">Complaint closed. Use “View Closed Complaints” to see closed old details.</div>`;
+    }
+
     async function reopenComplaint(id) {
       const row = customers.find(x => Number(x.id) === Number(id));
       if (!row) return;
@@ -1693,6 +1858,43 @@
       await openProfile(id);
     }
 
+    function bindBottomTableScroll() {
+      const tableWrap = document.getElementById("crmTableWrap");
+      const bottomScroll = document.getElementById("bottomXScroll");
+      if (!tableWrap || !bottomScroll) return;
+
+      let syncing = false;
+
+      tableWrap.addEventListener("scroll", () => {
+        if (syncing) return;
+        syncing = true;
+        bottomScroll.scrollLeft = tableWrap.scrollLeft;
+        syncing = false;
+      });
+
+      bottomScroll.addEventListener("scroll", () => {
+        if (syncing) return;
+        syncing = true;
+        tableWrap.scrollLeft = bottomScroll.scrollLeft;
+        syncing = false;
+      });
+
+      window.addEventListener("resize", syncBottomTableScroll);
+      setTimeout(syncBottomTableScroll, 300);
+    }
+
+    function syncBottomTableScroll() {
+      const tableWrap = document.getElementById("crmTableWrap");
+      const bottomScroll = document.getElementById("bottomXScroll");
+      const bottomInner = document.getElementById("bottomXScrollInner");
+      if (!tableWrap || !bottomScroll || !bottomInner) return;
+
+      const tableWidth = Math.max(tableWrap.scrollWidth, tableWrap.clientWidth);
+      bottomInner.style.width = tableWidth + "px";
+      bottomScroll.scrollLeft = tableWrap.scrollLeft;
+      bottomScroll.style.display = tableWrap.scrollWidth > tableWrap.clientWidth + 10 ? "block" : "none";
+    }
+
     function escapeHtml(value) {
       return String(value)
         .replace(/&/g, "&amp;")
@@ -1711,6 +1913,7 @@
     window.openProfile = openProfile;
     window.solveComplaint = solveComplaint;
     window.reopenComplaint = reopenComplaint;
+    window.closeComplaint = closeComplaint;
   </script>
 </body>
 </html>

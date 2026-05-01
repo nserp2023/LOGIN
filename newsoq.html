@@ -3226,11 +3226,23 @@ function calcTotal() {
                 window.loadedQuotationId = null;
             }
 
-            if (docType === "sales" && window.loadedSalesOrderId) {
-                await sb
+            // ✅ SALES ORDER CONVERSION FIX
+            // If a Sales Order is converted to normal SALES or SALES PACK / BILL,
+            // mark the original Sales Order as converted. Otherwise Advance Dashboard
+            // will still show it as FULLY PAID / NOT BILLED.
+            if (["sales", "sales_pack"].includes(docType) && window.loadedSalesOrderId) {
+                const { error: soUpdateError } = await sb
                     .from("sales_order_details")
-                    .update({ converted: true })
+                    .update({
+                        converted: true,
+                        status: "converted"
+                    })
                     .eq("id", window.loadedSalesOrderId);
+
+                if (soUpdateError) {
+                    console.error("Sales order converted flag update failed:", soUpdateError);
+                    throw soUpdateError;
+                }
 
                 window.loadedSalesOrderId = null;
             }

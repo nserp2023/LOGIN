@@ -502,7 +502,7 @@ async function loadReport(){
         order_date:o.order_date || o.purchase_order_date || o.bill_date || o.created_at,
         supplier_name:o.supplier_name || "",
         supplier_mobile:o.supplier_mobile || o.mobile || "",
-        gst_number:o.gst_number || "",
+        gst_number:o.supplier_gst || o.gst_number || "",
         item_code:it.item_code || "",
         item_name:it.item_name || "",
         department:it.department || "",
@@ -747,11 +747,7 @@ function printPO(orderId){
     return;
   }
 
-  const row = allRows.find(r => Number(r.order_id) === Number(orderId));
-  const po = row ? row.po_no : "";
-
-  // Opens purchase order page in print mode. The purchase_order.html page should load this id/po and print.
-  const url = `purchase_order.html?print_id=${encodeURIComponent(orderId)}&print_po=${encodeURIComponent(po)}`;
+  const url = `purchase_order.html?print=${encodeURIComponent(orderId)}`;
   window.open(url, "_blank");
 }
 

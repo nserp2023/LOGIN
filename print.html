@@ -595,7 +595,7 @@ let packingHTML = originalHTML
 .replace(/GST INVOICE/g,"PACKING SLIP")
 .replace(/Bill No\s*:.*?<br>/g,"");   // remove bill number
 
-container.innerHTML = originalHTML + packingHTML;
+container.innerHTML = packingHTML + originalHTML;
 
 }
 

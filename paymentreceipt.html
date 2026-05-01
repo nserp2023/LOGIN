@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <link rel="manifest" href="site.webmanifest">
 <title>Payment / Receipt - VAJRA LIGHTS</title>
-<!-- FIX VERSION: cash_rpc_atomic_voucher_2026_05_01 -->
+<!-- FIX VERSION: cash_rpc_counter_atomic_voucher_2026_05_01 -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabaseClient.js"></script>
 <script src="page_permissions.js"></script>
@@ -714,11 +714,12 @@
 
             if(error) throw error;
 
-            if(data && data.voucher_no){
-                voucherNo.value = data.voucher_no;
+            const savedRow = Array.isArray(data) ? data[0] : data;
+            if(savedRow && savedRow.voucher_no){
+                voucherNo.value = savedRow.voucher_no;
             }
 
-            showMessage(`Transaction saved successfully (${data?.voucher_no || "saved"})`, true);
+            showMessage(`Transaction saved successfully (${savedRow?.voucher_no || "saved"})`, true);
             await loadTransactions(party);
             clearForm(false);
             await generateNextVoucherNo();
@@ -727,8 +728,11 @@
         }catch(err){
             console.error(err);
 
-            if(String(err.message || "").toLowerCase().includes("create_cash_transaction_safe")){
-                showMessage("Please run the Supabase SQL function first, then try again.", false);
+            const emsg = String(err.message || "").toLowerCase();
+            if(emsg.includes("create_cash_transaction_safe")){
+                showMessage("Please run the new Supabase SQL function first, then try again.", false);
+            }else if(emsg.includes("cash_transactions_voucher_no_key") || emsg.includes("duplicate key")){
+                showMessage("Duplicate voucher still coming: old SQL function/cache is being used. Run cash_voucher_counter_fix.sql fully, then hard refresh this page.", false);
             }else{
                 showMessage(err.message || "Failed to save transaction", false);
             }

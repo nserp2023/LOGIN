@@ -8,1120 +8,158 @@
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <link rel="manifest" href="site.webmanifest">
-<title>Payment / Receipt - VAJRA LIGHTS</title>
-<!-- FIX VERSION: cash_rpc_counter_atomic_voucher_2026_05_01 -->
+<title>Ultra Payment / Receipt - VAJRA LIGHTS</title>
+<!-- ULTRA VERSION: paymentreceipt_ultra_credit_approval_rpc_fallback_2026_05_01 -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabaseClient.js"></script>
 <script src="page_permissions.js"></script>
 <script src="common-ui.js"></script>
 <style>
-    :root{
-        --primary:#2563eb;
-        --success:#059669;
-        --danger:#dc2626;
-        --warning:#f59e0b;
-        --card:#ffffff;
-        --text:#1e293b;
-        --muted:#64748b;
-        --border:#cbd5e1;
-        --hover:#eff6ff;
-        --shadow:0 10px 25px rgba(0,0,0,0.08);
-        --radius:14px;
-    }
-
-    *{ box-sizing:border-box; }
-
-    body{
-        margin:0;
-        font-family:Segoe UI, Roboto, Arial, sans-serif;
-        background:burlywood;
-        color:var(--text);
-        padding:14px;
-    }
-
-    .container{
-        max-width:1100px;
-        margin:auto;
-    }
-
-    .card{
-        background:var(--card);
-        border:1px solid var(--border);
-        border-radius:var(--radius);
-        box-shadow:var(--shadow);
-        padding:16px;
-        margin-bottom:16px;
-    }
-
-    h1,h2{ margin:0 0 12px; }
-
-    .title-row{
-        display:flex;
-        justify-content:space-between;
-        align-items:center;
-        gap:10px;
-        flex-wrap:wrap;
-    }
-
-    .grid{
-        display:grid;
-        grid-template-columns:repeat(4, 1fr);
-        gap:12px;
-    }
-
-    .field{
-        display:flex;
-        flex-direction:column;
-        gap:6px;
-        position:relative;
-    }
-
-    .field.full{ grid-column:1 / -1; }
-
-    label{
-        font-size:13px;
-        font-weight:600;
-        color:var(--muted);
-    }
-
-    input, select, textarea, button{
-        width:100%;
-        min-height:44px;
-        border:1px solid var(--border);
-        border-radius:10px;
-        padding:10px 12px;
-        font-size:15px;
-        outline:none;
-        background:#fff;
-    }
-
-    input:focus, select:focus, textarea:focus{
-        border-color:var(--primary);
-        box-shadow:0 0 0 3px rgba(37,99,235,0.12);
-    }
-
-    textarea{
-        min-height:90px;
-        resize:vertical;
-    }
-
-    .btn-row{
-        display:flex;
-        gap:10px;
-        flex-wrap:wrap;
-        margin-top:12px;
-    }
-
-    button{
-        cursor:pointer;
-        border:none;
-        font-weight:700;
-    }
-
-    .btn-primary{
-        background:var(--primary);
-        color:#fff;
-    }
-
-    .btn-secondary{
-        background:#e2e8f0;
-        color:#0f172a;
-    }
-
-    .badge{
-        background:#dbeafe;
-        color:#1d4ed8;
-        padding:8px 12px;
-        border-radius:999px;
-        font-size:13px;
-        font-weight:700;
-    }
-
-    .autocomplete-list{
-        position:absolute;
-        top:100%;
-        left:0;
-        right:0;
-        background:#fff;
-        border:1px solid var(--border);
-        border-radius:10px;
-        margin-top:4px;
-        box-shadow:var(--shadow);
-        max-height:220px;
-        overflow:auto;
-        z-index:50;
-        display:none;
-    }
-
-    .autocomplete-item{
-        padding:10px 12px;
-        cursor:pointer;
-        border-bottom:1px solid #f1f5f9;
-    }
-
-    .autocomplete-item:last-child{ border-bottom:none; }
-    .autocomplete-item.active,
-    .autocomplete-item:hover{ background:var(--hover); }
-
-    .search-box{
-        display:grid;
-        grid-template-columns:2fr 1fr 1fr auto;
-        gap:10px;
-        align-items:end;
-    }
-
-    .table-wrap{
-        overflow:auto;
-        border:1px solid var(--border);
-        border-radius:12px;
-    }
-
-    table{
-        width:100%;
-        border-collapse:collapse;
-        min-width:900px;
-        background:#fff;
-    }
-
-    th, td{
-        padding:12px 10px;
-        border-bottom:1px solid #e2e8f0;
-        text-align:left;
-        font-size:14px;
-        vertical-align:middle;
-    }
-
-    th{
-        background:#f8fafc;
-        position:sticky;
-        top:0;
-        z-index:1;
-    }
-
-    .amount{
-        text-align:right;
-        font-weight:700;
-    }
-
-    .payment{
-        color:var(--danger);
-        font-weight:700;
-        text-transform:capitalize;
-    }
-
-    .receipt{
-        color:var(--success);
-        font-weight:700;
-        text-transform:capitalize;
-    }
-
-    .small{
-        font-size:12px;
-        color:var(--muted);
-    }
-
-    .message{
-        margin-top:10px;
-        font-weight:700;
-    }
-
-    .success-msg{ color:var(--success); }
-    .error-msg{ color:var(--danger); }
-
-    .accept-btn{
-        background:#16a34a;
-        color:#fff;
-        border:none;
-        padding:8px 12px;
-        border-radius:8px;
-        font-size:13px;
-        font-weight:700;
-        cursor:pointer;
-        min-height:36px;
-        width:auto;
-        white-space:nowrap;
-    }
-
-    .fix-btn{
-        background:#f59e0b;
-        color:#111827;
-        border:none;
-        padding:8px 12px;
-        border-radius:8px;
-        font-size:13px;
-        font-weight:800;
-        cursor:pointer;
-        min-height:36px;
-        width:auto;
-        white-space:nowrap;
-    }
-
-    .accept-btn:hover,.fix-btn:hover{ opacity:0.95; }
-    .accept-btn:disabled,.fix-btn:disabled{
-        background:#94a3b8;
-        cursor:not-allowed;
-    }
-
-    .status-badge{
-        display:inline-block;
-        padding:6px 10px;
-        border-radius:999px;
-        font-size:12px;
-        font-weight:700;
-        white-space:nowrap;
-    }
-
-    .status-pending{ background:#fef3c7; color:#92400e; }
-    .status-approved{ background:#dcfce7; color:#166534; }
-    .status-rejected{ background:#fee2e2; color:#991b1b; }
-    .status-info{ background:#dbeafe; color:#1d4ed8; }
-
-    .type-note{
-        display:block;
-        margin-top:4px;
-        font-size:11px;
-        color:#64748b;
-        font-weight:700;
-    }
-
-    .action-stack{
-        display:flex;
-        gap:8px;
-        flex-wrap:wrap;
-        align-items:center;
-    }
-
-    @media (max-width: 900px){
-        .grid{ grid-template-columns:repeat(2, 1fr); }
-        .search-box{ grid-template-columns:1fr 1fr; }
-    }
-
-    @media (max-width: 600px){
-        body{ padding:10px; }
-        .card{ padding:12px; }
-        .grid{ grid-template-columns:1fr; }
-        .search-box{ grid-template-columns:1fr; }
-        input, select, textarea, button{ font-size:16px; }
-    }
+:root{
+    --primary:#2563eb;--primary2:#1d4ed8;--success:#059669;--danger:#dc2626;--warning:#f59e0b;
+    --bg:#f8fafc;--card:#ffffff;--text:#0f172a;--muted:#64748b;--border:#cbd5e1;--soft:#eff6ff;
+    --shadow:0 16px 40px rgba(15,23,42,.12);--radius:18px;--dark:#111827;--violet:#7c3aed;
+}
+*{box-sizing:border-box}body{margin:0;font-family:Segoe UI,Roboto,Arial,sans-serif;background:linear-gradient(135deg,#d9b27a,#f8e4bd 45%,#f1f5f9);color:var(--text);padding:14px}.container{max-width:1220px;margin:auto}.topbar{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.78);backdrop-filter:blur(14px);border:1px solid rgba(203,213,225,.7);box-shadow:var(--shadow);border-radius:var(--radius);padding:12px 14px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.brand h1{margin:0;font-size:24px}.brand .sub{font-size:12px;color:var(--muted);font-weight:700;margin-top:3px}.top-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.pill{padding:8px 11px;border-radius:999px;font-size:12px;font-weight:800;border:1px solid var(--border);background:#fff;color:#334155}.pill-blue{background:#dbeafe;color:#1d4ed8;border-color:#93c5fd}.pill-green{background:#dcfce7;color:#166534;border-color:#86efac}.pill-orange{background:#ffedd5;color:#9a3412;border-color:#fdba74}.card{background:rgba(255,255,255,.96);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;margin-bottom:16px}.card-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}.card h2{margin:0;font-size:19px}.grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px}.field{display:flex;flex-direction:column;gap:6px;position:relative}.field.full{grid-column:1/-1}.field.two{grid-column:span 2}label{font-size:13px;font-weight:800;color:#475569}input,select,textarea,button{width:100%;min-height:44px;border:1px solid var(--border);border-radius:12px;padding:10px 12px;font-size:15px;outline:none;background:#fff}textarea{min-height:82px;resize:vertical}input:focus,select:focus,textarea:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(37,99,235,.14)}button{cursor:pointer;border:none;font-weight:900;letter-spacing:.01em}.btn-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}.btn{width:auto;min-width:125px}.btn-primary{background:linear-gradient(135deg,var(--primary),var(--primary2));color:#fff}.btn-success{background:linear-gradient(135deg,#059669,#047857);color:#fff}.btn-danger{background:linear-gradient(135deg,#dc2626,#b91c1c);color:#fff}.btn-secondary{background:#e2e8f0;color:#0f172a}.btn-warning{background:#f59e0b;color:#111827}.btn-small{min-height:34px;padding:7px 10px;border-radius:9px;font-size:12px;width:auto;min-width:auto}.mode-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}.stat{background:#fff;border:1px solid var(--border);border-radius:14px;padding:12px}.stat .k{font-size:12px;color:var(--muted);font-weight:800}.stat .v{font-size:20px;font-weight:900;margin-top:4px}.autocomplete-list{position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--border);border-radius:14px;margin-top:5px;box-shadow:0 18px 35px rgba(15,23,42,.18);max-height:310px;overflow:auto;z-index:60;display:none}.autocomplete-item{padding:11px 12px;cursor:pointer;border-bottom:1px solid #f1f5f9}.autocomplete-item:last-child{border-bottom:none}.autocomplete-item.active,.autocomplete-item:hover{background:var(--soft)}.autocomplete-title{font-weight:900}.autocomplete-sub{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.35}.autocomplete-money{font-size:13px;color:#92400e;font-weight:900;margin-top:4px}.small{font-size:12px;color:var(--muted)}.message{margin-top:10px;font-weight:900}.success-msg{color:var(--success)}.error-msg{color:var(--danger)}.info-box{display:none;background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a;padding:12px;border-radius:14px;font-size:14px;line-height:1.5}.search-box{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr auto;gap:10px;align-items:end}.table-wrap{overflow:auto;border:1px solid var(--border);border-radius:14px;max-height:58vh;background:#fff}table{width:100%;border-collapse:collapse;min-width:1080px;background:#fff}th,td{padding:11px 10px;border-bottom:1px solid #e2e8f0;text-align:left;font-size:14px;vertical-align:top}th{background:#f8fafc;position:sticky;top:0;z-index:2}.amount{text-align:right;font-weight:900}.payment{color:var(--danger);font-weight:900;text-transform:capitalize}.receipt{color:var(--success);font-weight:900;text-transform:capitalize}.status-badge{display:inline-block;padding:6px 10px;border-radius:999px;font-size:12px;font-weight:900;white-space:nowrap}.status-pending{background:#fef3c7;color:#92400e}.status-approved{background:#dcfce7;color:#166534}.status-rejected{background:#fee2e2;color:#991b1b}.status-info{background:#dbeafe;color:#1d4ed8}.status-not-needed{background:#e2e8f0;color:#334155}.linked-bill{display:inline-block;padding:5px 8px;border-radius:999px;background:#fff7ed;color:#9a3412;font-size:12px;font-weight:900}.pending-row{background:#fff7ed}.approved-row{background:#f0fdf4}.rejected-row{background:#fef2f2}.action-wrap{display:flex;gap:6px;flex-wrap:wrap}.approval-meta{font-size:11px;color:#64748b;margin-top:5px;line-height:1.35}.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}.hide{display:none!important}.type-note{display:block;margin-top:4px;font-size:11px;color:#64748b;font-weight:900}.danger-line{color:#b91c1c;font-weight:900}.ok-line{color:#047857;font-weight:900}@media(max-width:1000px){.grid{grid-template-columns:1fr 1fr}.mode-strip{grid-template-columns:1fr 1fr}.search-box{grid-template-columns:1fr 1fr}}@media(max-width:640px){body{padding:9px}.topbar,.card{border-radius:14px;padding:12px}.brand h1{font-size:20px}.grid,.mode-strip,.search-box{grid-template-columns:1fr}.btn{width:100%}input,select,textarea,button{font-size:16px}.table-wrap{max-height:62vh}th,td{font-size:13px;padding:9px 8px}}
+@media print{body{background:#fff;padding:0}.topbar,.entry-card,.search-box,.toolbar,.btn-row{display:none!important}.card{box-shadow:none;border:none}.table-wrap{max-height:none;overflow:visible}table{min-width:0}th{position:static}}
 </style>
 </head>
 <body>
 <div class="container">
-
-    <div class="card">
-        <div class="title-row">
-            <h1>Payment / Receipt Entry</h1>
-            <div class="badge" id="modeBadge">Payment Mode</div>
+    <div class="topbar">
+        <div class="brand">
+            <h1>Payment / Receipt Ultra</h1>
+            <div class="sub">VAJRA LIGHTS • Approval + Credit Allocation + Sales Order Advance Fix</div>
         </div>
+        <div class="top-actions">
+            <span class="pill pill-blue" id="modeBadge">Payment Mode</span>
+            <span class="pill pill-orange hide" id="creditChip">Credit Collection</span>
+            <span class="pill" id="roleBadge">Role: checking...</span>
+        </div>
+    </div>
 
+    <div class="mode-strip">
+        <div class="stat"><div class="k">Today Receipts</div><div class="v" id="todayReceiptTotal">0.00</div></div>
+        <div class="stat"><div class="k">Today Payments</div><div class="v" id="todayPaymentTotal">0.00</div></div>
+        <div class="stat"><div class="k">Pending Approvals</div><div class="v" id="pendingCount">0</div></div>
+        <div class="stat"><div class="k">Search Result Total</div><div class="v" id="resultTotal">0.00</div></div>
+    </div>
+
+    <div class="card entry-card">
+        <div class="card-head"><h2>Entry</h2><span class="small">Manual receipt is approved by default. Payment and credit collections need approval.</span></div>
         <div class="grid">
-            <div class="field">
-                <label for="txnType">Type</label>
-                <select id="txnType" name="txnType">
-                    <option value="payment">Payment</option>
-                    <option value="receipt">Receipt</option>
-                </select>
-            </div>
-
-            <div class="field">
-                <label for="txnDate">Date</label>
-                <input type="date" id="txnDate" name="txnDate" />
-            </div>
-
-            <div class="field">
-                <label for="voucherNo">Voucher Number</label>
-                <input type="text" id="voucherNo" name="voucherNo" readonly />
-            </div>
-
-            <div class="field">
-                <label for="amount">Amount</label>
-                <input type="number" id="amount" name="amount" step="0.01" min="0" placeholder="Enter amount" />
-            </div>
-
-            <div class="field full" id="partyFieldWrap">
-                <label for="partyName" id="partyLabel">Paid To</label>
-                <input type="text" id="partyName" name="partyName" autocomplete="off" placeholder="Type name..." />
-                <div id="partySuggestions" class="autocomplete-list"></div>
-                <div class="small">Saved names will appear automatically. Use Arrow keys + Enter.</div>
-            </div>
-
-            <div class="field full">
-                <label for="remarks">Remarks</label>
-                <textarea id="remarks" name="remarks" placeholder="Optional remarks"></textarea>
-            </div>
+            <div class="field"><label for="txnType">Type</label><select id="txnType"><option value="payment">Payment</option><option value="receipt">Receipt</option></select></div>
+            <div class="field"><label for="txnDate">Date</label><input type="date" id="txnDate" /></div>
+            <div class="field"><label for="voucherNo">Voucher Number</label><input type="text" id="voucherNo" readonly /></div>
+            <div class="field"><label for="amount">Amount</label><input type="number" id="amount" step="0.01" min="0" placeholder="Enter amount" /></div>
+            <div class="field full"><label for="partyName" id="partyLabel">Paid To</label><input type="text" id="partyName" autocomplete="off" placeholder="Type name / mobile / voucher..." /><div id="partySuggestions" class="autocomplete-list"></div><div class="small">Receipt mode shows customer, party, pending credit bills and auto-allocation option.</div></div>
+            <div class="field full"><label for="remarks">Remarks</label><textarea id="remarks" placeholder="Optional remarks"></textarea></div>
+            <div class="field full"><div id="allocationPreview" class="info-box"></div></div>
         </div>
-
-        <div class="btn-row">
-            <button class="btn-primary" id="saveBtn">Save Entry</button>
-            <button class="btn-secondary" id="clearBtn" type="button">Clear</button>
-        </div>
-
+        <div class="btn-row"><button class="btn btn-primary" id="saveBtn">Save Entry</button><button class="btn btn-secondary" id="clearBtn" type="button">Clear</button><button class="btn btn-warning" id="reloadBtn" type="button">Reload</button></div>
         <div id="formMessage" class="message"></div>
     </div>
 
     <div class="card">
-        <h2>Search Transaction Details</h2>
-
-        <div class="search-box">
-            <div class="field">
-                <label for="searchParty">Name Search</label>
-                <input type="text" id="searchParty" name="searchParty" placeholder="Search by party name / voucher / remarks..." />
-            </div>
-
-            <div class="field">
-                <label for="searchType">Type</label>
-                <select id="searchType" name="searchType">
-                    <option value="">All</option>
-                    <option value="payment">Payment</option>
-                    <option value="receipt">Receipt</option>
-                </select>
-            </div>
-
-            <div class="field">
-                <label for="searchDate">Date</label>
-                <input type="date" id="searchDate" name="searchDate" />
-            </div>
-
-            <div class="field">
-                <button class="btn-primary" id="searchBtn" type="button">Search</button>
-            </div>
+        <div class="card-head"><h2>Transaction Details</h2><span class="small">Default view: today. Clear date to see older transactions.</span></div>
+        <div class="toolbar">
+            <button class="btn-small btn-primary" id="todayBtn">Today</button>
+            <button class="btn-small btn-secondary" id="allDateBtn">All Dates</button>
+            <button class="btn-small btn-warning" id="pendingBtn">Pending Only</button>
+            <button class="btn-small btn-secondary" id="printBtn">Print</button>
         </div>
-
-        <div style="margin-top:14px;" class="table-wrap">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Date</th>
-                        <th>Voucher No</th>
-                        <th>Type</th>
-                        <th>Party</th>
-                        <th class="amount">Amount</th>
-                        <th>Remarks</th>
-                        <th>Approve</th>
-                    </tr>
-                </thead>
-                <tbody id="resultsBody">
-                    <tr>
-                        <td colspan="7" style="text-align:center; color:#64748b;">No transactions found</td>
-                    </tr>
-                </tbody>
-            </table>
+        <div class="search-box">
+            <div class="field"><label for="searchParty">Search</label><input type="text" id="searchParty" placeholder="Party / voucher / remarks..." /></div>
+            <div class="field"><label for="searchType">Type</label><select id="searchType"><option value="">All</option><option value="payment">Payment</option><option value="receipt">Receipt</option></select></div>
+            <div class="field"><label for="searchDate">Date</label><input type="date" id="searchDate" /></div>
+            <div class="field"><label for="searchStatus">Status</label><select id="searchStatus"><option value="">All</option><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select></div>
+            <div class="field"><label for="searchLimit">Limit</label><select id="searchLimit"><option value="100">100</option><option value="300" selected>300</option><option value="700">700</option></select></div>
+            <div class="field"><button class="btn-primary" id="searchBtn" type="button">Search</button></div>
+        </div>
+        <div style="margin-top:14px" class="table-wrap">
+            <table><thead><tr><th>Date</th><th>Voucher No</th><th>Type</th><th>Party</th><th>Linked Bill</th><th class="amount">Amount</th><th>Remarks</th><th>Approval</th></tr></thead><tbody id="resultsBody"><tr><td colspan="8" style="text-align:center;color:#64748b">Loading...</td></tr></tbody></table>
         </div>
     </div>
-
 </div>
 
 <script>
-    // =========================
-    // 1. SUPABASE CONNECTION
-    // =========================
-    const sb = window.sbcc;
-
-    document.addEventListener("DOMContentLoaded", async () => {
-        const ok = await requirePageAccess("paymentreceipt");
-        if (!ok) return;
-    });
-
-    // =========================
-    // 2. ELEMENTS
-    // =========================
-    const txnType = document.getElementById("txnType");
-    const txnDate = document.getElementById("txnDate");
-    const voucherNo = document.getElementById("voucherNo");
-    const amount = document.getElementById("amount");
-    const partyName = document.getElementById("partyName");
-    const remarks = document.getElementById("remarks");
-    const saveBtn = document.getElementById("saveBtn");
-    const clearBtn = document.getElementById("clearBtn");
-    const partyLabel = document.getElementById("partyLabel");
-    const modeBadge = document.getElementById("modeBadge");
-    const formMessage = document.getElementById("formMessage");
-    const partySuggestions = document.getElementById("partySuggestions");
-
-    const searchParty = document.getElementById("searchParty");
-    const searchType = document.getElementById("searchType");
-    const searchDate = document.getElementById("searchDate");
-    const searchBtn = document.getElementById("searchBtn");
-    const resultsBody = document.getElementById("resultsBody");
-
-    let suggestionItems = [];
-    let activeSuggestionIndex = -1;
-    let isSaving = false;
-    let isApproving = false;
-    let currentUserRole = "";
-
-    // =========================
-    // 3. INITIAL LOAD
-    // =========================
-    window.onload = async function(){
-        txnDate.value = new Date().toISOString().split("T")[0];
-        updateTypeUI();
-        await generateNextVoucherNo();
-        await loadTransactions();
-        setupEnterNavigation();
-    };
-
-    // =========================
-    // 4. TYPE UI
-    // =========================
-    txnType.addEventListener("change", async () => {
-        updateTypeUI();
-        await generateNextVoucherNo();
-    });
-
-    function updateTypeUI(){
-        if(txnType.value === "payment"){
-            partyLabel.textContent = "Paid To";
-            modeBadge.textContent = "Payment Mode";
-        }else{
-            partyLabel.textContent = "Received From";
-            modeBadge.textContent = "Receipt Mode";
-        }
-    }
-
-    // =========================
-    // 5. NEXT VOUCHER NUMBER
-    // =========================
-    async function generateNextVoucherNo(){
-        const prefix = txnType.value === "payment" ? "PAY" : "REC";
-
-        const { data, error } = await sb
-            .from("cash_transactions")
-            .select("voucher_no")
-            .eq("txn_type", txnType.value)
-            .order("id", { ascending: false })
-            .limit(1);
-
-        if(error){
-            console.error(error);
-            voucherNo.value = `${prefix}-0001`;
-            return;
-        }
-
-        let nextNumber = 1;
-
-        if(data && data.length){
-            const lastVoucher = data[0].voucher_no || "";
-            const match = lastVoucher.match(/(\d+)$/);
-            if(match){
-                nextNumber = parseInt(match[1], 10) + 1;
-            }
-        }
-
-        voucherNo.value = `${prefix}-${String(nextNumber).padStart(4, "0")}`;
-    }
-
-    // =========================
-    // 6. PARTY AUTOCOMPLETE
-    // =========================
-    partyName.addEventListener("input", async function(){
-        activeSuggestionIndex = -1;
-        const q = partyName.value.trim();
-
-        if(!q){
-            hideSuggestions();
-            await loadTransactions();
-            return;
-        }
-
-        await showPartySuggestions(q);
-        await loadTransactions(q);
-    });
-
-    partyName.addEventListener("keydown", function(e){
-        const items = partySuggestions.querySelectorAll(".autocomplete-item");
-
-        if(partySuggestions.style.display === "block" && items.length){
-            if(e.key === "ArrowDown"){
-                e.preventDefault();
-                activeSuggestionIndex = Math.min(activeSuggestionIndex + 1, items.length - 1);
-                highlightSuggestion(items);
-                return;
-            }
-
-            if(e.key === "ArrowUp"){
-                e.preventDefault();
-                activeSuggestionIndex = Math.max(activeSuggestionIndex - 1, 0);
-                highlightSuggestion(items);
-                return;
-            }
-
-            if(e.key === "Enter" && activeSuggestionIndex >= 0){
-                e.preventDefault();
-                items[activeSuggestionIndex].click();
-                return;
-            }
-
-            if(e.key === "Escape"){
-                hideSuggestions();
-            }
-        }
-    });
-
-    document.addEventListener("click", function(e){
-        if(!partySuggestions.contains(e.target) && e.target !== partyName){
-            hideSuggestions();
-        }
-    });
-
-    async function showPartySuggestions(query){
-        const { data, error } = await sb
-            .from("parties")
-            .select("id, party_name")
-            .ilike("party_name", `%${query}%`)
-            .order("party_name", { ascending: true })
-            .limit(8);
-
-        if(error){
-            console.error(error);
-            hideSuggestions();
-            return;
-        }
-
-        suggestionItems = data || [];
-        renderSuggestions(suggestionItems, query);
-    }
-
-    function renderSuggestions(items, query){
-        partySuggestions.innerHTML = "";
-
-        if(!items.length){
-            hideSuggestions();
-            return;
-        }
-
-        items.forEach((item, index) => {
-            const div = document.createElement("div");
-            div.className = "autocomplete-item";
-            div.dataset.index = index;
-
-            const safeName = escapeHtml(item.party_name || "");
-            const regex = new RegExp(`(${escapeRegExp(query)})`, "ig");
-            div.innerHTML = safeName.replace(regex, "<strong>$1</strong>");
-
-            div.addEventListener("click", async () => {
-                partyName.value = item.party_name;
-                hideSuggestions();
-                amount.focus();
-                await loadTransactions(item.party_name);
-            });
-
-            partySuggestions.appendChild(div);
-        });
-
-        partySuggestions.style.display = "block";
-    }
-
-    function highlightSuggestion(items){
-        items.forEach(item => item.classList.remove("active"));
-        if(items[activeSuggestionIndex]){
-            items[activeSuggestionIndex].classList.add("active");
-            items[activeSuggestionIndex].scrollIntoView({ block: "nearest" });
-        }
-    }
-
-    function hideSuggestions(){
-        partySuggestions.style.display = "none";
-        partySuggestions.innerHTML = "";
-        activeSuggestionIndex = -1;
-    }
-
-    function escapeRegExp(string){
-        return String(string || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    }
-
-    // =========================
-    // 7. SAVE PARTY IF NEW
-    // =========================
-    async function ensurePartyExists(name){
-        const cleanName = name.trim();
-        if(!cleanName) return null;
-
-        const { data: existing } = await sb
-            .from("parties")
-            .select("id, party_name")
-            .eq("party_name", cleanName)
-            .maybeSingle();
-
-        if(existing) return existing.id;
-
-        const { data, error } = await sb
-            .from("parties")
-            .insert([{ party_name: cleanName }])
-            .select("id")
-            .single();
-
-        if(error){
-            console.error("Party save error:", error);
-            return null;
-        }
-
-        return data.id;
-    }
-
-    // =========================
-    // 8. SAVE MANUAL TRANSACTION
-    // =========================
-    saveBtn.addEventListener("click", saveTransaction);
-
-    async function saveTransaction(){
-        if(isSaving) return;
-
-        const type = txnType.value;
-        const date = txnDate.value;
-        const party = partyName.value.trim();
-        const amt = parseFloat(amount.value || 0);
-        const note = remarks.value.trim();
-
-        if(!date){
-            showMessage("Please select date", false);
-            txnDate.focus();
-            return;
-        }
-
-        if(!party){
-            showMessage(`Please enter ${type === "payment" ? "Paid To" : "Received From"} name`, false);
-            partyName.focus();
-            return;
-        }
-
-        if(!amt || amt <= 0){
-            showMessage("Please enter valid amount", false);
-            amount.focus();
-            return;
-        }
-
-        isSaving = true;
-        saveBtn.disabled = true;
-        saveBtn.textContent = "Saving...";
-
-        try{
-            const partyId = await ensurePartyExists(party);
-
-            // IMPORTANT FIX:
-            // Voucher number is generated inside Supabase by create_cash_transaction_safe().
-            // This prevents duplicate voucher_no even when two users save at the same time.
-            const { data, error } = await sb.rpc("create_cash_transaction_safe", {
-                p_txn_type: type,
-                p_txn_date: date,
-                p_party_id: partyId,
-                p_party_name: party,
-                p_amount: amt,
-                p_remarks: note || null,
-                p_approval_status: type === "receipt" ? "approved" : "pending",
-                p_reference_type: type === "receipt" ? "manual_receipt" : "manual_payment"
-            });
-
-            if(error) throw error;
-
-            const savedRow = Array.isArray(data) ? data[0] : data;
-            if(savedRow && savedRow.voucher_no){
-                voucherNo.value = savedRow.voucher_no;
-            }
-
-            showMessage(`Transaction saved successfully (${savedRow?.voucher_no || "saved"})`, true);
-            await loadTransactions(party);
-            clearForm(false);
-            await generateNextVoucherNo();
-            partyName.focus();
-
-        }catch(err){
-            console.error(err);
-
-            const emsg = String(err.message || "").toLowerCase();
-            if(emsg.includes("create_cash_transaction_safe")){
-                showMessage("Please run the new Supabase SQL function first, then try again.", false);
-            }else if(emsg.includes("cash_transactions_voucher_no_key") || emsg.includes("duplicate key")){
-                showMessage("Duplicate voucher still coming: old SQL function/cache is being used. Run cash_voucher_counter_fix.sql fully, then hard refresh this page.", false);
-            }else{
-                showMessage(err.message || "Failed to save transaction", false);
-            }
-        }finally{
-            isSaving = false;
-            saveBtn.disabled = false;
-            saveBtn.textContent = "Save Entry";
-        }
-    }
-
-    // =========================
-    // 9. CLEAR FORM
-    // =========================
-    clearBtn.addEventListener("click", () => clearForm(true));
-
-    function clearForm(withVoucherRefresh = true){
-        txnDate.value = new Date().toISOString().split("T")[0];
-        partyName.value = "";
-        amount.value = "";
-        remarks.value = "";
-        hideSuggestions();
-        formMessage.textContent = "";
-
-        if(withVoucherRefresh){
-            generateNextVoucherNo();
-        }
-    }
-
-    function showMessage(msg, ok){
-        formMessage.textContent = msg;
-        formMessage.className = "message " + (ok ? "success-msg" : "error-msg");
-    }
-
-    // =========================
-    // 10. LOAD TRANSACTIONS
-    // =========================
-    searchBtn.addEventListener("click", () => {
-        loadTransactions(searchParty.value.trim());
-    });
-
-    searchParty.addEventListener("input", () => {
-        loadTransactions(searchParty.value.trim());
-    });
-
-    searchType.addEventListener("change", () => {
-        loadTransactions(searchParty.value.trim());
-    });
-
-    searchDate.addEventListener("change", () => {
-        loadTransactions(searchParty.value.trim());
-    });
-
-    async function loadTransactions(nameFilter = ""){
-        let today = new Date().toISOString().split("T")[0];
-
-        let query = sb
-    .from("cash_transactions")
-    .select("id, txn_date, voucher_no, txn_type, party_name, amount, remarks, approval_status, approved_by, approved_at, reference_type, reference_id")
-    .eq("txn_date", today)   // 🔥 ONLY TODAY
-    .order("txn_date", { ascending: false })
-    .order("id", { ascending: false })
-    .limit(300);
-
-        const searchValue = (nameFilter || searchParty.value || "").trim();
-        const typeValue = searchType.value;
-        const dateValue = searchDate.value;
-
-        // Search by party, voucher number, or remarks. This helps to find AUTO-sales_order_advance rows directly.
-        if(searchValue){
-            const safe = searchValue.replace(/[%_,]/g, "");
-            query = query.or(`party_name.ilike.%${safe}%,voucher_no.ilike.%${safe}%,remarks.ilike.%${safe}%`);
-        }
-
-        if(typeValue){
-            query = query.eq("txn_type", typeValue);
-        }
-
-        if(dateValue){
-            query = query.eq("txn_date", dateValue);
-        }
-
-        const { data, error } = await query;
-
-        if(error){
-            console.error(error);
-            resultsBody.innerHTML = `
-                <tr>
-                    <td colspan="7" style="text-align:center; color:red;">Failed to load transactions</td>
-                </tr>
-            `;
-            return;
-        }
-
-        renderTransactions(data || []);
-    }
-
-    // Strong detector for old and new sales order advance rows.
-    // Detects even if reference_type is missing/wrong and voucher/remarks only contain the clue.
-    function normalizeText(value){
-        return String(value ?? "").trim().toLowerCase();
-    }
-
-    function normalizeLoose(value){
-        return normalizeText(value).replace(/[^a-z0-9]/g, "");
-    }
-
-    function rowPackedText(row){
-        return normalizeLoose(`${row?.voucher_no || ""} ${row?.reference_type || ""} ${row?.remarks || ""}`);
-    }
-
-    function looksLikePossibleAdvance(row){
-        const packed = rowPackedText(row);
-        return packed.includes("salesorderadvance") ||
-               packed.includes("advanceforsalesorder") ||
-               packed.includes("autosalesorderadvance") ||
-               packed.includes("advanceforsales");
-    }
-
-    function isSalesOrderAdvance(row){
-        const txn = normalizeText(row?.txn_type);
-        if(txn && txn !== "receipt") return false;
-        return looksLikePossibleAdvance(row);
-    }
-
-    function isProperSalesOrderAdvance(row){
-        return normalizeLoose(row?.reference_type).includes("salesorderadvance");
-    }
-
-    function transactionNeedsApproval(row){
-        const txn = normalizeText(row?.txn_type);
-        const status = normalizeText(row?.approval_status);
-
-        // Sales Order Advance is a special receipt. It must always be approval-controlled.
-        if(isSalesOrderAdvance(row)) return true;
-
-        // Payments are approval-controlled.
-        if(txn === "payment") return true;
-
-        // Any old row that is already pending/rejected should continue to show approval action.
-        if(status === "pending" || status === "rejected") return true;
-
-        return false;
-    }
-
-    function getTransactionApprovalName(row){
-        if(isSalesOrderAdvance(row)) return "sales order advance";
-        if(normalizeText(row?.txn_type) === "payment") return "payment";
-        return "transaction";
-    }
-
-    async function loadCurrentUserRole(){
-        currentUserRole = "";
-        try{
-            for(const key of ["role", "user_role", "profile_role"]){
-                const val = localStorage.getItem(key);
-                if(val){ currentUserRole = normalizeText(val); break; }
-            }
-
-            const { data: authData } = await sb.auth.getUser();
-            const uid = authData?.user?.id;
-            if(uid){
-                const { data: profile } = await sb
-                    .from("user_profiles")
-                    .select("role")
-                    .eq("id", uid)
-                    .maybeSingle();
-                if(profile?.role){
-                    currentUserRole = normalizeText(profile.role);
-                    localStorage.setItem("role", profile.role);
-                }
-            }
-        }catch(err){
-            console.warn("Role load failed", err);
-        }
-    }
-
-    function getCurrentRole(){
-        return currentUserRole || normalizeText(localStorage.getItem("role") || localStorage.getItem("user_role") || localStorage.getItem("profile_role") || "");
-    }
-
-    function canCurrentUserApprove(){
-        const role = getCurrentRole();
-        return ["manager", "admin", "owner"].includes(role);
-    }
-
-    function renderTransactions(rows){
-        if(!rows.length){
-            resultsBody.innerHTML = `
-                <tr>
-                    <td colspan="7" style="text-align:center; color:#64748b;">No transactions found</td>
-                </tr>
-            `;
-            return;
-        }
-
-        resultsBody.innerHTML = rows.map(row => {
-            const needsApproval = transactionNeedsApproval(row);
-            const salesOrderAdvance = isSalesOrderAdvance(row);
-            const properAdvance = isProperSalesOrderAdvance(row);
-            const approvalStatus = normalizeText(row.approval_status || "approved");
-            let approveCell = "-";
-
-            if(salesOrderAdvance){
-                if(approvalStatus === "approved" && properAdvance){
-                    approveCell = `<span class="status-badge status-approved">Approved</span>`;
-                } else if(approvalStatus === "approved" && !properAdvance){
-                    approveCell = `<div class="action-stack"><button class="fix-btn" onclick="fixAndApproveSalesOrderAdvance(${row.id})">Fix Advance</button></div>`;
-                } else if(approvalStatus === "rejected"){
-                    approveCell = `<button class="accept-btn" onclick="approveTransaction(${row.id})">Approve Again</button>`;
-                } else {
-                    approveCell = `<button class="accept-btn" onclick="approveTransaction(${row.id})">Approve</button>`;
-                }
-            } else if(needsApproval){
-                if(approvalStatus === "approved"){
-                    approveCell = `<span class="status-badge status-approved">Approved</span>`;
-                } else if(approvalStatus === "rejected"){
-                    approveCell = `<button class="accept-btn" onclick="approveTransaction(${row.id})">Approve Again</button>`;
-                } else {
-                    approveCell = `<button class="accept-btn" onclick="approveTransaction(${row.id})">Approve</button>`;
-                }
-            } else {
-                approveCell = `<span class="status-badge status-info">Not Needed</span>`;
-            }
-
-            const typeNote = salesOrderAdvance
-                ? `<span class="type-note">Sales Order Advance</span>`
-                : (looksLikePossibleAdvance(row) ? `<span class="type-note">Possible Sales Order Advance</span>` : "");
-
-            return `
-                <tr>
-                    <td>${formatDate(row.txn_date)}</td>
-                    <td>${escapeHtml(row.voucher_no || "")}</td>
-                    <td><span class="${escapeHtml(normalizeText(row.txn_type || ""))}">${escapeHtml(row.txn_type || "")}</span>${typeNote}</td>
-                    <td>${escapeHtml(row.party_name || "")}</td>
-                    <td class="amount">${Number(row.amount || 0).toFixed(2)}</td>
-                    <td>${escapeHtml(row.remarks || "")}</td>
-                    <td>${approveCell}</td>
-                </tr>
-            `;
-        }).join("");
-    }
-
-    function looksLikePossibleAdvance(row){
-        const text = `${row?.voucher_no || ""} ${row?.reference_type || ""} ${row?.remarks || ""}`.toLowerCase();
-        return text.includes("sales_order") || text.includes("sales order") || text.includes("advance for sales");
-    }
-
-    function normalizeText(value){
-        return String(value || "").trim().toLowerCase();
-    }
-
-    function formatDate(dateStr){
-        if(!dateStr) return "";
-        const d = new Date(dateStr);
-        if(isNaN(d)) return dateStr;
-        return d.toLocaleDateString("en-GB");
-    }
-
-    function escapeHtml(text){
-        return String(text)
-            .replaceAll("&", "&amp;")
-            .replaceAll("<", "&lt;")
-            .replaceAll(">", "&gt;")
-            .replaceAll('"', "&quot;")
-            .replaceAll("'", "&#039;");
-    }
-
-    async function approveTransaction(id) {
-        if(isApproving) return;
-
-        await loadCurrentUserRole();
-        if (!canCurrentUserApprove()) {
-            alert("Only admin, manager, or owner can approve this transaction. Current role: " + (getCurrentRole() || "not found"));
-            return;
-        }
-
-        const username = localStorage.getItem("username") || localStorage.getItem("user_name") || getCurrentRole().toUpperCase() || "Unknown";
-
-        const { data: txn, error: readError } = await sb
-            .from("cash_transactions")
-            .select("id, txn_type, approval_status, reference_type, voucher_no, remarks")
-            .eq("id", id)
-            .maybeSingle();
-
-        if(readError || !txn){
-            alert("Could not read transaction for approval.");
-            return;
-        }
-
-        if(!transactionNeedsApproval(txn) && !looksLikePossibleAdvance(txn)){
-            alert("This transaction does not need approval.");
-            await loadTransactions(searchParty.value.trim());
-            return;
-        }
-
-        const approvalName = getTransactionApprovalName(txn);
-        const ok = confirm(`Do you want to approve this ${approvalName}?`);
-        if (!ok) return;
-
-        await updateApproval(id, username, isSalesOrderAdvance(txn) || looksLikePossibleAdvance(txn));
-    }
-
-    async function fixAndApproveSalesOrderAdvance(id){
-        if(isApproving) return;
-
-        await loadCurrentUserRole();
-        if (!canCurrentUserApprove()) {
-            alert("Only admin, manager, or owner can approve this transaction. Current role: " + (getCurrentRole() || "not found"));
-            return;
-        }
-
-        const ok = confirm("This row looks like a Sales Order Advance. Mark it as Sales Order Advance and approve it?");
-        if(!ok) return;
-
-        const username = localStorage.getItem("username") || localStorage.getItem("user_name") || getCurrentRole().toUpperCase() || "Unknown";
-        await updateApproval(id, username, true);
-    }
-
-    async function updateApproval(id, username, markAsSalesOrderAdvance){
-        isApproving = true;
-
-        const updatePayload = {
-            approval_status: "approved",
-            approved_by: username,
-            approved_at: new Date().toISOString()
-        };
-
-        if(markAsSalesOrderAdvance){
-            updatePayload.reference_type = "sales_order_advance";
-        }
-
-        const { error } = await sb
-            .from("cash_transactions")
-            .update(updatePayload)
-            .eq("id", id);
-
-        isApproving = false;
-
-        if (error) {
-            alert("Approval failed: " + error.message);
-            return;
-        }
-
-        alert(markAsSalesOrderAdvance ? "Sales Order Advance approved successfully" : "Transaction approved successfully");
-        await loadTransactions(searchParty.value.trim());
-    }
-
-    async function approvePayment(id){
-        await approveTransaction(id);
-    }
-
-    // 11. ENTER KEY NAVIGATION
-    // =========================
-    function setupEnterNavigation(){
-        const orderedFields = [
-            txnType,
-            txnDate,
-            partyName,
-            amount,
-            remarks,
-            saveBtn
-        ];
-
-        orderedFields.forEach((field, index) => {
-            field.addEventListener("keydown", function(e){
-                if(e.key !== "Enter") return;
-
-                if(field === partyName && partySuggestions.style.display === "block"){
-                    const items = partySuggestions.querySelectorAll(".autocomplete-item");
-                    if(items.length && activeSuggestionIndex >= 0){
-                        e.preventDefault();
-                        items[activeSuggestionIndex].click();
-                        return;
-                    }
-                }
-
-                if(field === remarks || field.tagName === "INPUT" || field.tagName === "SELECT" || field.tagName === "BUTTON"){
-                    e.preventDefault();
-                    const next = orderedFields[index + 1];
-                    if(next){
-                        next.focus();
-                        if(next.select) next.select();
-                    }else{
-                        saveTransaction();
-                    }
-                }
-            });
-        });
-    }
+const sb = window.sbcc;
+const $ = id => document.getElementById(id);
+const txnType=$('txnType'), txnDate=$('txnDate'), voucherNo=$('voucherNo'), amount=$('amount'), partyName=$('partyName'), remarks=$('remarks');
+const saveBtn=$('saveBtn'), clearBtn=$('clearBtn'), reloadBtn=$('reloadBtn'), partyLabel=$('partyLabel'), modeBadge=$('modeBadge'), creditChip=$('creditChip'), roleBadge=$('roleBadge'), formMessage=$('formMessage'), partySuggestions=$('partySuggestions'), allocationPreview=$('allocationPreview');
+const searchParty=$('searchParty'), searchType=$('searchType'), searchDate=$('searchDate'), searchStatus=$('searchStatus'), searchLimit=$('searchLimit'), searchBtn=$('searchBtn'), resultsBody=$('resultsBody');
+let suggestionItems=[], activeSuggestionIndex=-1, isSaving=false, isApproving=false, selectedCreditBill=null, selectedCustomerAutoAllocation=null, currentUserRole='';
+
+document.addEventListener('DOMContentLoaded', async()=>{ try{ const ok=await requirePageAccess('paymentreceipt'); if(!ok) return; }catch(e){ console.warn(e); } await initPage(); });
+async function initPage(){ const today=todayISO(); txnDate.value=today; searchDate.value=today; await loadCurrentUserRole(); updateTypeUI(); bindEvents(); await generateNextVoucherNo(); await loadTransactions(); setupEnterNavigation(); }
+function bindEvents(){
+    txnType.addEventListener('change', async()=>{ updateTypeUI(); resetCreditSelection(false); await generateNextVoucherNo(); });
+    saveBtn.addEventListener('click', saveTransaction); clearBtn.addEventListener('click',()=>clearForm(true)); reloadBtn.addEventListener('click',async()=>{await generateNextVoucherNo(); await loadTransactions();});
+    searchBtn.addEventListener('click',()=>loadTransactions(searchParty.value.trim())); searchParty.addEventListener('input',debounce(()=>loadTransactions(searchParty.value.trim()),220));
+    [searchType,searchDate,searchStatus,searchLimit].forEach(el=>el.addEventListener('change',()=>loadTransactions(searchParty.value.trim())));
+    $('todayBtn').addEventListener('click',()=>{ searchDate.value=todayISO(); searchStatus.value=''; loadTransactions(); });
+    $('allDateBtn').addEventListener('click',()=>{ searchDate.value=''; loadTransactions(); });
+    $('pendingBtn').addEventListener('click',()=>{ searchStatus.value='pending'; searchDate.value=''; loadTransactions(); });
+    $('printBtn').addEventListener('click',()=>window.print());
+    partyName.addEventListener('input',debounce(onPartyInput,180)); partyName.addEventListener('keydown',partyKeydown); amount.addEventListener('input',updateAutoAllocationPreview);
+    document.addEventListener('click',e=>{ if(!partySuggestions.contains(e.target)&&e.target!==partyName) hideSuggestions(); });
+}
+async function onPartyInput(){ activeSuggestionIndex=-1; const q=partyName.value.trim(); resetCreditSelection(true); if(!q){ hideSuggestions(); await loadTransactions(); return; } await showPartySuggestions(q); await loadTransactions(q); }
+function updateTypeUI(){ if(txnType.value==='payment'){ partyLabel.textContent='Paid To'; modeBadge.textContent='Payment Mode'; modeBadge.className='pill pill-blue'; } else { partyLabel.textContent='Received From'; modeBadge.textContent='Receipt Mode'; modeBadge.className='pill pill-green'; } creditChip.classList.toggle('hide',!(selectedCreditBill||selectedCustomerAutoAllocation)); creditChip.textContent=selectedCustomerAutoAllocation?'Auto Credit Collection':'Credit Collection'; }
+function resetCreditSelection(clearAmount=false){ selectedCreditBill=null; selectedCustomerAutoAllocation=null; creditChip.classList.add('hide'); hideAllocationPreview(); if(clearAmount) amount.value=''; }
+function hideAllocationPreview(){ allocationPreview.style.display='none'; allocationPreview.innerHTML=''; }
+function showAllocationPreview(html){ allocationPreview.innerHTML=html||''; allocationPreview.style.display=html?'block':'none'; }
+async function generateNextVoucherNo(){ const prefix=txnType.value==='payment'?'PAY':'REC'; const {data,error}=await sb.from('cash_transactions').select('voucher_no').eq('txn_type',txnType.value).order('id',{ascending:false}).limit(1); if(error){ console.error(error); voucherNo.value=`${prefix}-0001`; return; } let n=1; if(data&&data.length){ const m=String(data[0].voucher_no||'').match(/(\d+)$/); if(m) n=parseInt(m[1],10)+1; } voucherNo.value=`${prefix}-${String(n).padStart(4,'0')}`; }
+async function showPartySuggestions(query){ const items=[]; const clean=query.trim();
+    const tasks=[ sb.from('parties').select('id, party_name').ilike('party_name',`%${clean}%`).order('party_name',{ascending:true}).limit(8), sb.from('customers').select('customer_id, name, mobile, address').or(`name.ilike.%${escapeOrValue(clean)}%,mobile.ilike.%${escapeOrValue(clean)}%`).order('name',{ascending:true}).limit(8) ];
+    const [partyRes,customerRes]=await Promise.allSettled(tasks);
+    if(partyRes.status==='fulfilled'&&!partyRes.value.error){ (partyRes.value.data||[]).forEach(r=>{ if(r.party_name) items.push({kind:'party',party_name:r.party_name,label:r.party_name}); }); }
+    if(customerRes.status==='fulfilled'&&!customerRes.value.error){ (customerRes.value.data||[]).forEach(r=>{ const label=`${r.name||''} ${r.mobile||''}`.trim(); if(label) items.push({kind:'customer',party_name:r.name||r.mobile||'',customer_name:r.name||'',customer_mobile:r.mobile||'',customer_address:r.address||'',label}); }); }
+    if(txnType.value==='receipt'){ (await fetchCustomerAutoAllocationOptions(clean)).forEach(x=>items.push(x)); (await fetchCustomerCreditBills(clean)).forEach(x=>items.push(x)); }
+    suggestionItems=dedupeSuggestionItems(items); renderSuggestions(suggestionItems,clean);
+}
+function dedupeSuggestionItems(items){ const seen=new Set(); return items.filter(item=>{ const key=[item.kind,item.sales_id||'',String(item.customer_mobile||'').toLowerCase(),String(item.customer_name||item.party_name||'').toLowerCase()].join('|'); if(seen.has(key)) return false; seen.add(key); return true; }); }
+async function fetchCustomerCreditBills(query){ const rows=await fetchOpenCreditBillsForSearch(query,14,false); return rows.map(r=>({kind:'credit_bill',sales_id:r.id,series_code:r.series_code||'',sales_number:r.sales_number||'',bill_date:r.bill_date||'',customer_mobile:r.customer_mobile||'',customer_name:r.customer_name||'',balance_amount:num(r.balance_amount),paid_amount:num(r.paid_amount),label:`${r.customer_name||''} ${r.customer_mobile||''}`.trim()})); }
+async function fetchCustomerAutoAllocationOptions(query){ const rows=await fetchOpenCreditBillsForSearch(query,60,true); const grouped=new Map(); for(const r of rows){ const key=normaliseCustomerKey(r.customer_name,r.customer_mobile); if(!key||key==='|') continue; if(!grouped.has(key)) grouped.set(key,{kind:'customer_credit_auto',customer_name:r.customer_name||'',customer_mobile:r.customer_mobile||'',total_balance:0,bills:[]}); const b=grouped.get(key); const bal=num(r.balance_amount); b.total_balance+=bal; b.bills.push({sales_id:r.id,series_code:r.series_code||'',sales_number:r.sales_number||'',bill_date:r.bill_date||'',balance_amount:bal,paid_amount:num(r.paid_amount)}); } return Array.from(grouped.values()).filter(x=>x.bills.length).sort((a,b)=>String(a.customer_name).localeCompare(String(b.customer_name))); }
+async function fetchOpenCreditBillsForSearch(query,limit=20,asc=false){ const search=(query||'').trim(); if(!search) return []; let q=sb.from('sales_details').select('id, series_code, sales_number, bill_date, customer_mobile, customer_name, payment_type, paid_amount, balance_amount').eq('payment_type','CREDIT').gt('balance_amount',0).order('bill_date',{ascending:asc}).order('sales_number',{ascending:asc}).limit(limit); const mobile=search.replace(/\D/g,''); if(mobile.length>=3) q=q.ilike('customer_mobile',`%${mobile}%`); else q=q.or(`customer_name.ilike.%${escapeOrValue(search)}%,customer_mobile.ilike.%${escapeOrValue(search)}%`); const {data,error}=await q; if(error){ console.error('Credit bill load error:',error); return []; } return data||[]; }
+function renderSuggestions(items,query){ partySuggestions.innerHTML=''; if(!items.length){ hideSuggestions(); return; } items.forEach((item,index)=>{ const div=document.createElement('div'); div.className='autocomplete-item'; div.dataset.index=index; if(item.kind==='customer_credit_auto'){ div.innerHTML=`<div class="autocomplete-title">${escapeHtml(item.customer_name||item.customer_mobile||'Customer')} ${item.customer_mobile?' - '+escapeHtml(item.customer_mobile):''}</div><div class="autocomplete-sub">Auto adjust oldest pending bills first • ${item.bills.length} bill(s)</div><div class="autocomplete-money">Total Pending Credit ₹${money(item.total_balance)}</div>`; } else if(item.kind==='credit_bill'){ div.innerHTML=`<div class="autocomplete-title">${escapeHtml(item.customer_name||'')} ${item.customer_mobile?' - '+escapeHtml(item.customer_mobile):''}</div><div class="autocomplete-sub">Bill ${escapeHtml(formatBillNo(item.series_code,item.sales_number))} • ${escapeHtml(item.bill_date||'')}</div><div class="autocomplete-money">Pending Credit ₹${money(item.balance_amount)}</div>`; } else if(item.kind==='customer'){ div.innerHTML=`<div class="autocomplete-title">${escapeHtml(item.customer_name||item.party_name||'')}</div><div class="autocomplete-sub">${escapeHtml(item.customer_mobile||'')}${item.customer_address?' • '+escapeHtml(item.customer_address):''}</div>`; } else { const safeName=escapeHtml(item.party_name||''); const regex=new RegExp(`(${escapeRegExp(query)})`,'ig'); div.innerHTML=`<div class="autocomplete-title">${safeName.replace(regex,'<strong>$1</strong>')}</div>`; } div.addEventListener('click',async()=>{ await selectSuggestion(item); }); partySuggestions.appendChild(div); }); partySuggestions.style.display='block'; }
+async function selectSuggestion(item){ if(item.kind==='customer_credit_auto'){ selectedCustomerAutoAllocation=JSON.parse(JSON.stringify(item)); selectedCreditBill=null; partyName.value=item.customer_mobile||item.customer_name||''; amount.value=money(item.total_balance); remarks.value='Auto credit collection from customer'; creditChip.classList.remove('hide'); creditChip.textContent='Auto Credit Collection'; updateAutoAllocationPreview(); } else if(item.kind==='credit_bill'){ selectedCreditBill=item; selectedCustomerAutoAllocation=null; partyName.value=item.customer_mobile||item.customer_name||''; amount.value=money(item.balance_amount); remarks.value=`Credit collection for bill ${formatBillNo(item.series_code,item.sales_number)}`; creditChip.classList.remove('hide'); creditChip.textContent='Credit Collection'; showAllocationPreview(`<strong>Selected single bill:</strong> ${escapeHtml(formatBillNo(item.series_code,item.sales_number))} • Pending ₹${money(item.balance_amount)}`); } else { partyName.value=item.customer_mobile||item.party_name||item.customer_name||''; resetCreditSelection(true); } hideSuggestions(); amount.focus(); await loadTransactions(partyName.value.trim()); }
+function updateAutoAllocationPreview(){ if(!selectedCustomerAutoAllocation){ return; } const entered=num(amount.value); const plan=buildAutoAllocationPlan(selectedCustomerAutoAllocation.bills||[],entered); const lines=plan.allocations.slice(0,8).map((r,i)=>`${i+1}. ${escapeHtml(formatBillNo(r.series_code,r.sales_number))} • ${escapeHtml(r.bill_date||'')} • ₹${money(r.applied_amount)}`).join('<br>'); const more=plan.allocations.length>8?`<br>+ ${plan.allocations.length-8} more bill(s)`:''; const adv=plan.advance_amount>0?`<br><strong>Advance kept:</strong> ₹${money(plan.advance_amount)}`:''; showAllocationPreview(`<strong>Automatic allocation preview</strong><br>Received Amount: ₹${money(entered)}<br>${lines||'No bill allocation yet'}${more}${adv}`); }
+function buildAutoAllocationPlan(bills,receiptAmount){ let remaining=Math.max(0,num(receiptAmount)); const allocations=[]; for(const bill of (bills||[])){ if(remaining<=0) break; const bal=num(bill.balance_amount); if(bal<=0) continue; const applied=Math.min(bal,remaining); allocations.push({...bill,applied_amount:applied}); remaining-=applied; } return {allocations,advance_amount:Math.max(0,remaining)}; }
+async function ensurePartyExists(name){ const clean=String(name||'').trim(); if(!clean) return null; const {data:existing}=await sb.from('parties').select('id, party_name').eq('party_name',clean).maybeSingle(); if(existing) return existing.id; const {data,error}=await sb.from('parties').insert([{party_name:clean}]).select('id').single(); if(error){ console.error('Party save error:',error); return null; } return data.id; }
+async function saveTransaction(){ if(isSaving) return; const type=txnType.value,date=txnDate.value,party=partyName.value.trim(),amt=num(amount.value),note=remarks.value.trim(); if(!date) return fail('Please select date',txnDate); if(!party) return fail(`Please enter ${type==='payment'?'Paid To':'Received From'} name`,partyName); if(!amt||amt<=0) return fail('Please enter valid amount',amount); if(selectedCreditBill&&amt>num(selectedCreditBill.balance_amount)) return fail('Receipt amount cannot be more than pending credit balance for selected bill',amount);
+    isSaving=true; saveBtn.disabled=true; saveBtn.textContent='Saving...'; try{ let savedPartyName=party, referenceId=null, referenceType=null, approvalStatus=(type==='payment'?'pending':'approved'), finalRemarks=note||null; if(selectedCreditBill||selectedCustomerAutoAllocation) approvalStatus='pending'; if(selectedCustomerAutoAllocation){ savedPartyName=selectedCustomerAutoAllocation.customer_name||party; const plan=buildAutoAllocationPlan(selectedCustomerAutoAllocation.bills||[],amt); referenceType='customer_credit_auto'; finalRemarks=buildAutoAllocationRemark(note,plan); } else if(selectedCreditBill){ savedPartyName=selectedCreditBill.customer_name||party; referenceId=selectedCreditBill.sales_id; referenceType='sales_credit'; finalRemarks=note||`Credit collection for bill ${formatBillNo(selectedCreditBill.series_code,selectedCreditBill.sales_number)}`; } const partyId=await ensurePartyExists(savedPartyName); const rpcPayload={p_txn_type:type,p_txn_date:date,p_party_id:partyId,p_party_name:savedPartyName,p_amount:amt,p_remarks:finalRemarks,p_approval_status:approvalStatus,p_reference_type:referenceType||(type==='receipt'?'manual_receipt':'manual_payment')}; let savedRow=null; const rpc=await sb.rpc('create_cash_transaction_safe',rpcPayload); if(!rpc.error){ savedRow=Array.isArray(rpc.data)?rpc.data[0]:rpc.data; if(referenceId&&savedRow?.id){ await sb.from('cash_transactions').update({reference_id:referenceId,reference_type:referenceType}).eq('id',savedRow.id); } } else { console.warn('RPC fallback insert used:',rpc.error.message); const insertRow={voucher_no:voucherNo.value.trim(),txn_date:date,txn_type:type,party_id:partyId,party_name:savedPartyName,amount:amt,remarks:finalRemarks,reference_id:referenceId,reference_type:referenceType,approval_status:approvalStatus}; const {data,error}=await sb.from('cash_transactions').insert([insertRow]).select('*').single(); if(error) throw error; savedRow=data; }
+        if(savedRow?.voucher_no) voucherNo.value=savedRow.voucher_no; showMessage((selectedCustomerAutoAllocation?'Receipt saved in auto allocation mode':selectedCreditBill?'Credit receipt saved for approval':'Transaction saved successfully')+` (${savedRow?.voucher_no||'saved'})`,true); await loadTransactions(searchParty.value.trim()); clearForm(false); await generateNextVoucherNo(); partyName.focus(); }catch(err){ console.error(err); showMessage(err.message||'Failed to save transaction',false); }finally{ isSaving=false; saveBtn.disabled=false; saveBtn.textContent='Save Entry'; } }
+function fail(msg,el){ showMessage(msg,false); if(el) el.focus(); }
+function buildAutoAllocationRemark(userRemark,plan){ const allocations=(plan.allocations||[]).map(x=>`${formatBillNo(x.series_code,x.sales_number)}:${money(x.applied_amount)}`).join('|'); const meta=`AUTO_ALLOC[[${allocations}]][ADV:${money(plan.advance_amount)}]`; return [userRemark||'',meta].filter(Boolean).join(' '); }
+function parseAutoAllocationRemark(text){ const raw=String(text||''); const match=raw.match(/AUTO_ALLOC\[\[(.*?)\]\]\[ADV:(.*?)\]/); if(!match) return {cleanRemarks:raw,allocations:[],advance_amount:0}; const allocations=(match[1]||'').split('|').map(x=>x.trim()).filter(Boolean).map(x=>{ const [billNo,amt]=x.split(':'); return {bill_no:billNo||'',amount:num(amt)}; }); return {cleanRemarks:raw.replace(match[0],'').trim(),allocations,advance_amount:num(match[2])}; }
+function clearForm(withVoucherRefresh=true){ txnDate.value=todayISO(); partyName.value=''; amount.value=''; remarks.value=''; formMessage.textContent=''; hideSuggestions(); resetCreditSelection(true); if(withVoucherRefresh) generateNextVoucherNo(); }
+function showMessage(msg,ok){ formMessage.textContent=msg; formMessage.className='message '+(ok?'success-msg':'error-msg'); }
+async function loadTransactions(nameFilter=''){ let q=sb.from('cash_transactions').select('id, txn_date, voucher_no, txn_type, party_name, amount, remarks, approval_status, approved_by, approved_at, reference_id, reference_type').order('txn_date',{ascending:false}).order('id',{ascending:false}).limit(parseInt(searchLimit.value||300,10)); const sv=(nameFilter||searchParty.value||'').trim(), type=searchType.value, dt=searchDate.value, status=searchStatus.value; if(sv){ const safe=escapeOrValue(sv); q=q.or(`party_name.ilike.%${safe}%,voucher_no.ilike.%${safe}%,remarks.ilike.%${safe}%,reference_type.ilike.%${safe}%`); } if(type) q=q.eq('txn_type',type); if(dt) q=q.eq('txn_date',dt); if(status) q=q.eq('approval_status',status); const {data,error}=await q; if(error){ console.error(error); resultsBody.innerHTML='<tr><td colspan="8" style="text-align:center;color:red">Failed to load transactions</td></tr>'; return; } const rows=(data||[]).filter(r=>r.reference_type!=='customer_advance'); const linkedIds=rows.filter(r=>r.reference_type==='sales_credit'&&r.reference_id).map(r=>r.reference_id); const salesMap={}; if(linkedIds.length){ const {data:salesRows}=await sb.from('sales_details').select('id, series_code, sales_number').in('id',[...new Set(linkedIds)]); (salesRows||[]).forEach(r=>salesMap[r.id]=r); } renderTransactions(rows,salesMap); await loadMiniStats(); }
+function renderTransactions(rows,salesMap={}){ if(!rows.length){ resultsBody.innerHTML='<tr><td colspan="8" style="text-align:center;color:#64748b">No transactions found</td></tr>'; $('resultTotal').textContent='0.00'; return; } const canApprove=canCurrentUserApprove(); let total=0; resultsBody.innerHTML=rows.map(row=>{ total+=num(row.amount); const parsed=parseAutoAllocationRemark(row.remarks||''); const status=normalize(row.approval_status||'approved'); const needs=transactionNeedsApproval(row); let rowClass=status==='pending'?'pending-row':status==='approved'?'approved-row':status==='rejected'?'rejected-row':''; const meta=row.approved_by||row.approved_at?`<div class="approval-meta">${row.approved_by?`By: ${escapeHtml(row.approved_by)}`:''}${row.approved_at?`<br>At: ${escapeHtml(formatDateTime(row.approved_at))}`:''}</div>`:''; let approveCell=''; if(needs){ if(status==='approved') approveCell=`<span class="status-badge status-approved">Approved</span>${meta}`; else if(status==='rejected') approveCell=`<span class="status-badge status-rejected">Rejected</span>${meta}`; else if(canApprove) approveCell=`<div class="action-wrap"><button class="btn-small btn-success" onclick="approveTransaction(${row.id})">Approve</button><button class="btn-small btn-danger" onclick="rejectTransaction(${row.id})">Reject</button>${isPossibleButNotProperAdvance(row)?`<button class="btn-small btn-warning" onclick="fixAdvance(${row.id})">Fix Advance</button>`:''}</div>${meta}`; else approveCell=`<span class="status-badge status-pending">Pending</span>${meta}`; } else approveCell='<span class="status-badge status-not-needed">Not Needed</span>';
+        let linked='-'; if(row.reference_type==='sales_credit'&&row.reference_id&&salesMap[row.reference_id]) linked=`<span class="linked-bill">${escapeHtml(formatBillNo(salesMap[row.reference_id].series_code,salesMap[row.reference_id].sales_number))}</span>`; else if(row.reference_type==='customer_credit_auto') linked=`<span class="linked-bill">AUTO${parsed.allocations.length?' • '+parsed.allocations.length+' bill(s)':''}</span>`; else if(isSalesOrderAdvance(row)) linked='<span class="linked-bill">Sales Order Advance</span>';
+        const typeNote=isSalesOrderAdvance(row)?'<span class="type-note">Sales Order Advance</span>':''; const adv=parsed.advance_amount>0?`<div class="small">Advance kept: ₹${money(parsed.advance_amount)}</div>`:''; return `<tr class="${rowClass}"><td>${formatDate(row.txn_date)}</td><td>${escapeHtml(row.voucher_no||'')}</td><td><span class="${escapeHtml(normalize(row.txn_type||''))}">${escapeHtml(row.txn_type||'')}</span>${typeNote}</td><td>${escapeHtml(row.party_name||'')}</td><td>${linked}</td><td class="amount">${money(row.amount)}</td><td>${escapeHtml(parsed.cleanRemarks||'')}${adv}</td><td>${approveCell}</td></tr>`; }).join(''); $('resultTotal').textContent=money(total); }
+async function loadMiniStats(){ const today=todayISO(); const {data}=await sb.from('cash_transactions').select('txn_type, amount, approval_status').eq('txn_date',today).limit(1000); let rec=0,pay=0,pend=0; (data||[]).forEach(r=>{ if(normalize(r.approval_status)==='pending') pend++; if(normalize(r.approval_status)==='approved'){ if(r.txn_type==='receipt') rec+=num(r.amount); if(r.txn_type==='payment') pay+=num(r.amount); } }); $('todayReceiptTotal').textContent=money(rec); $('todayPaymentTotal').textContent=money(pay); $('pendingCount').textContent=pend; }
+function transactionNeedsApproval(row){ const txn=normalize(row.txn_type), st=normalize(row.approval_status); if(isSalesOrderAdvance(row)) return true; if(txn==='payment') return true; if(['sales_credit','customer_credit_auto'].includes(row.reference_type)) return true; if(st==='pending'||st==='rejected') return true; return false; }
+function isSalesOrderAdvance(row){ const txn=normalize(row.txn_type); if(txn&&txn!=='receipt') return false; const text=loose(`${row.voucher_no||''} ${row.reference_type||''} ${row.remarks||''}`); return text.includes('salesorderadvance')||text.includes('advanceforsalesorder')||text.includes('autosalesorderadvance')||text.includes('advanceforsales'); }
+function isProperSalesOrderAdvance(row){ return loose(row.reference_type).includes('salesorderadvance'); }
+function isPossibleButNotProperAdvance(row){ return isSalesOrderAdvance(row)&&!isProperSalesOrderAdvance(row); }
+async function loadCurrentUserRole(){ currentUserRole=''; try{ for(const k of ['role','user_role','profile_role']){ const v=localStorage.getItem(k); if(v){ currentUserRole=normalize(v); break; } } const {data:auth}=await sb.auth.getUser(); const uid=auth?.user?.id; if(uid){ const {data:profile}=await sb.from('user_profiles').select('role').eq('id',uid).maybeSingle(); if(profile?.role){ currentUserRole=normalize(profile.role); localStorage.setItem('role',profile.role); } } }catch(e){ console.warn('Role load failed',e); } roleBadge.textContent='Role: '+(currentUserRole||'staff'); }
+function canCurrentUserApprove(){ return ['manager','admin','owner'].includes(currentUserRole||normalize(localStorage.getItem('role')||'')); }
+async function approveTransaction(id){ if(isApproving) return; await loadCurrentUserRole(); if(!canCurrentUserApprove()) return alert('Only admin, manager, or owner can approve transactions.'); if(!confirm('Do you want to approve this transaction?')) return; isApproving=true; try{ const {data:txRow,error:txErr}=await sb.from('cash_transactions').select('*').eq('id',id).maybeSingle(); if(txErr||!txRow) return alert('Unable to load transaction record.'); if(normalize(txRow.approval_status)==='approved') return alert('This transaction is already approved.'); if(normalize(txRow.approval_status)==='rejected') return alert('Rejected transaction cannot be approved directly.'); const username=getUsername(); if(txRow.txn_type==='payment'){ await simpleApprove(txRow.id,username,'Payment approved successfully'); return; } if(txRow.reference_type==='sales_credit'){ await approveSingleBillReceipt(txRow,username); return; } if(txRow.reference_type==='customer_credit_auto'){ await approveAutoAllocatedReceipt(txRow,username); return; } if(isSalesOrderAdvance(txRow)){ await simpleApprove(txRow.id,username,'Sales Order Advance approved successfully',true); return; } await simpleApprove(txRow.id,username,'Transaction approved successfully'); } finally { isApproving=false; await loadTransactions(searchParty.value.trim()); } }
+async function simpleApprove(id,username,msg,markAdvance=false){ const payload={approval_status:'approved',approved_by:username,approved_at:new Date().toISOString()}; if(markAdvance) payload.reference_type='sales_order_advance'; const {error}=await sb.from('cash_transactions').update(payload).eq('id',id); if(error) alert('Approval failed: '+error.message); else alert(msg); }
+async function approveSingleBillReceipt(txRow,username){ const {data:saleRow,error:saleErr}=await sb.from('sales_details').select('id, paid_amount, balance_amount').eq('id',txRow.reference_id).maybeSingle(); if(saleErr||!saleRow) return alert('Unable to load linked sales bill.'); const currentPaid=num(saleRow.paid_amount), currentBalance=num(saleRow.balance_amount), receiptAmount=num(txRow.amount); if(receiptAmount<=0) return alert('Invalid receipt amount.'); if(receiptAmount>currentBalance) return alert('Receipt amount is greater than current pending balance.'); const {error:salesUpdErr}=await sb.from('sales_details').update({paid_amount:currentPaid+receiptAmount,balance_amount:Math.max(0,currentBalance-receiptAmount)}).eq('id',txRow.reference_id); if(salesUpdErr) return alert('Failed to update credit balance: '+salesUpdErr.message); await simpleApprove(txRow.id,username,'Credit receipt approved successfully'); }
+async function approveAutoAllocatedReceipt(txRow,username){ const receiptAmount=num(txRow.amount); if(receiptAmount<=0) return alert('Invalid receipt amount.'); const party=txRow.party_name||''; const mobile=party.replace(/\D/g,''); let q=sb.from('sales_details').select('id, series_code, sales_number, bill_date, customer_name, customer_mobile, paid_amount, balance_amount, payment_type').eq('payment_type','CREDIT').gt('balance_amount',0).order('bill_date',{ascending:true}).order('sales_number',{ascending:true}); if(mobile.length>=3) q=q.ilike('customer_mobile',`%${mobile}%`); else q=q.ilike('customer_name',`%${escapeOrValue(party)}%`); const {data:openBills,error:billsErr}=await q; if(billsErr) return alert('Unable to load customer credit bills: '+billsErr.message); const bills=openBills||[]; if(!bills.length) return alert('No open credit bills found for this customer.'); let remaining=receiptAmount; for(const bill of bills){ if(remaining<=0) break; const bal=num(bill.balance_amount), paid=num(bill.paid_amount); if(bal<=0) continue; const applied=Math.min(bal,remaining); const {error}=await sb.from('sales_details').update({paid_amount:paid+applied,balance_amount:Math.max(0,bal-applied)}).eq('id',bill.id); if(error) return alert('Failed while applying to bill '+formatBillNo(bill.series_code,bill.sales_number)+': '+error.message); remaining-=applied; }
+    const plan=buildAutoAllocationPlan(bills,receiptAmount); const {error:txErr}=await sb.from('cash_transactions').update({approval_status:'approved',approved_by:username,approved_at:new Date().toISOString(),remarks:buildAutoAllocationRemark(parseAutoAllocationRemark(txRow.remarks||'').cleanRemarks,plan)}).eq('id',txRow.id); if(txErr) return alert('Approval failed: '+txErr.message); if(remaining>0){ const adv={voucher_no:txRow.voucher_no,txn_date:txRow.txn_date,txn_type:'receipt',party_id:txRow.party_id||null,party_name:txRow.party_name,amount:remaining,remarks:`Advance amount from voucher ${txRow.voucher_no}`,reference_id:txRow.id,reference_type:'customer_advance',approval_status:'approved',approved_by:username,approved_at:new Date().toISOString()}; const {error:advErr}=await sb.from('cash_transactions').insert([adv]); if(advErr) alert('Receipt approved, but advance row was not saved separately: '+advErr.message); } alert('Auto credit receipt approved successfully'); }
+async function rejectTransaction(id){ await loadCurrentUserRole(); if(!canCurrentUserApprove()) return alert('Only admin, manager, or owner can reject transactions.'); const reason=prompt('Enter reject reason:'); if(reason===null) return; const clean=reason.trim(); if(!clean) return alert('Reject reason is required.'); const username=getUsername(); const {data:txRow,error:txErr}=await sb.from('cash_transactions').select('id, approval_status, remarks').eq('id',id).maybeSingle(); if(txErr||!txRow) return alert('Unable to load transaction.'); if(normalize(txRow.approval_status)==='approved') return alert('Already approved transaction cannot be rejected.'); if(normalize(txRow.approval_status)==='rejected') return alert('This transaction is already rejected.'); const updated=[txRow.remarks||'',`REJECT_REASON: ${clean}`].filter(Boolean).join(' | '); const {error}=await sb.from('cash_transactions').update({approval_status:'rejected',approved_by:username,approved_at:new Date().toISOString(),remarks:updated}).eq('id',id); if(error) alert('Reject failed: '+error.message); else alert('Transaction rejected successfully'); await loadTransactions(searchParty.value.trim()); }
+async function fixAdvance(id){ await loadCurrentUserRole(); if(!canCurrentUserApprove()) return alert('Only admin, manager, or owner can fix advance rows.'); if(!confirm('Mark this row as Sales Order Advance and approve it?')) return; await simpleApprove(id,getUsername(),'Sales Order Advance fixed and approved successfully',true); await loadTransactions(searchParty.value.trim()); }
+function partyKeydown(e){ const items=partySuggestions.querySelectorAll('.autocomplete-item'); if(partySuggestions.style.display==='block'&&items.length){ if(e.key==='ArrowDown'){e.preventDefault();activeSuggestionIndex=Math.min(activeSuggestionIndex+1,items.length-1);highlightSuggestion(items);return;} if(e.key==='ArrowUp'){e.preventDefault();activeSuggestionIndex=Math.max(activeSuggestionIndex-1,0);highlightSuggestion(items);return;} if(e.key==='Enter'&&activeSuggestionIndex>=0){e.preventDefault();items[activeSuggestionIndex].click();return;} if(e.key==='Escape') hideSuggestions(); } }
+function highlightSuggestion(items){ items.forEach(i=>i.classList.remove('active')); if(items[activeSuggestionIndex]){ items[activeSuggestionIndex].classList.add('active'); items[activeSuggestionIndex].scrollIntoView({block:'nearest'}); } }
+function hideSuggestions(){ partySuggestions.style.display='none'; partySuggestions.innerHTML=''; activeSuggestionIndex=-1; }
+function setupEnterNavigation(){ [txnType,txnDate,partyName,amount,remarks,saveBtn].forEach((field,index,arr)=>{ field.addEventListener('keydown',e=>{ if(e.key!=='Enter') return; if(field===partyName&&partySuggestions.style.display==='block'){ const items=partySuggestions.querySelectorAll('.autocomplete-item'); if(items.length&&activeSuggestionIndex>=0){ e.preventDefault(); items[activeSuggestionIndex].click(); return; } } e.preventDefault(); const next=arr[index+1]; if(next){ next.focus(); if(next.select) next.select(); } else saveTransaction(); }); }); }
+function debounce(fn,ms){ let t; return (...args)=>{ clearTimeout(t); t=setTimeout(()=>fn(...args),ms); }; }
+function todayISO(){ return new Date().toISOString().split('T')[0]; } function num(v){ return parseFloat(v||0)||0; } function money(v){ return num(v).toFixed(2); } function normalize(v){ return String(v||'').trim().toLowerCase(); } function loose(v){ return normalize(v).replace(/[^a-z0-9]/g,''); } function escapeRegExp(s){ return String(s||'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); } function escapeOrValue(text){ return String(text||'').replaceAll(',',' ').replaceAll('%','').replaceAll('_',''); } function normaliseCustomerKey(name,mobile){ return `${String(name||'').trim().toLowerCase()}|${String(mobile||'').replace(/\D/g,'')}`; } function formatDate(s){ if(!s) return ''; const d=new Date(s); return isNaN(d)?s:d.toLocaleDateString('en-GB'); } function formatDateTime(s){ if(!s) return ''; const d=new Date(s); return isNaN(d)?s:d.toLocaleString('en-GB'); } function formatBillNo(series,number){ const s=series||'', n=number||''; return s&&n?`${s}-${n}`:(n||s||''); } function escapeHtml(text){ return String(text??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;'); } function getUsername(){ return localStorage.getItem('username')||localStorage.getItem('staff_name')||localStorage.getItem('user_name')||(currentUserRole||'UNKNOWN').toUpperCase(); }
+window.approveTransaction=approveTransaction; window.rejectTransaction=rejectTransaction; window.fixAdvance=fixAdvance;
 </script>
 </body>
 </html>

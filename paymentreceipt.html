@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <link rel="manifest" href="site.webmanifest">
 <title>Payment / Receipt - VAJRA LIGHTS</title>
-<!-- FIX VERSION: cash_small_voucher_duplicate_safe_2026_05_01 -->
+<!-- FIX VERSION: cash_rpc_atomic_voucher_2026_05_01 -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabaseClient.js"></script>
 <script src="page_permissions.js"></script>
@@ -489,9 +489,8 @@
             .from("cash_transactions")
             .select("voucher_no")
             .eq("txn_type", txnType.value)
-            .like("voucher_no", `${prefix}-%`)
             .order("id", { ascending: false })
-            .limit(50);
+            .limit(1);
 
         if(error){
             console.error(error);
@@ -499,79 +498,17 @@
             return;
         }
 
-        let maxNumber = 0;
+        let nextNumber = 1;
 
-        (data || []).forEach(row => {
-            const lastVoucher = String(row.voucher_no || "");
-            const match = lastVoucher.match(new RegExp(`^${prefix}-(\\d+)$`, "i"));
+        if(data && data.length){
+            const lastVoucher = data[0].voucher_no || "";
+            const match = lastVoucher.match(/(\d+)$/);
             if(match){
-                const n = parseInt(match[1], 10);
-                if(!isNaN(n) && n > maxNumber) maxNumber = n;
-            }
-        });
-
-        const nextNumber = maxNumber + 1;
-        voucherNo.value = `${prefix}-${String(nextNumber).padStart(4, "0")}`;
-    }
-
-
-    // =========================
-    // 5B. SAFE SMALL VOUCHER NUMBER FOR SAVE
-    // =========================
-    async function getSafeVoucher(type){
-        const prefix = type === "payment" ? "PAY" : "REC";
-
-        // Important: do not trust the already displayed voucher number while saving.
-        // This reads the latest voucher from Supabase at the final save moment.
-        for(let attempt = 0; attempt < 15; attempt++){
-            const { data, error } = await sb
-                .from("cash_transactions")
-                .select("voucher_no")
-                .eq("txn_type", type)
-                .like("voucher_no", `${prefix}-%`)
-                .order("id", { ascending: false })
-                .limit(50);
-
-            if(error){
-                console.error("Voucher read error:", error);
-            }
-
-            let maxNumber = 0;
-            (data || []).forEach(row => {
-                const v = String(row.voucher_no || "");
-                const match = v.match(new RegExp(`^${prefix}-(\\d+)$`, "i"));
-                if(match){
-                    const n = parseInt(match[1], 10);
-                    if(!isNaN(n) && n > maxNumber) maxNumber = n;
-                }
-            });
-
-            // attempt offset helps when two users save at the exact same second.
-            const nextNumber = maxNumber + 1 + attempt;
-            const candidate = `${prefix}-${String(nextNumber).padStart(4, "0")}`;
-
-            const { data: exists, error: existsError } = await sb
-                .from("cash_transactions")
-                .select("id")
-                .eq("voucher_no", candidate)
-                .maybeSingle();
-
-            if(existsError){
-                console.error("Voucher check error:", existsError);
-            }
-
-            if(!exists){
-                return candidate;
+                nextNumber = parseInt(match[1], 10) + 1;
             }
         }
 
-        throw new Error("Unable to generate unique voucher number. Please try again.");
-    }
-
-    function isDuplicateVoucherError(error){
-        const msg = String(error?.message || error?.details || error?.hint || "").toLowerCase();
-        const code = String(error?.code || "");
-        return code === "23505" || msg.includes("cash_transactions_voucher_no_key") || msg.includes("duplicate key");
+        voucherNo.value = `${prefix}-${String(nextNumber).padStart(4, "0")}`;
     }
 
     // =========================
@@ -761,47 +698,27 @@
         try{
             const partyId = await ensurePartyExists(party);
 
-            let saved = false;
-            let lastError = null;
+            // IMPORTANT FIX:
+            // Voucher number is generated inside Supabase by create_cash_transaction_safe().
+            // This prevents duplicate voucher_no even when two users save at the same time.
+            const { data, error } = await sb.rpc("create_cash_transaction_safe", {
+                p_txn_type: type,
+                p_txn_date: date,
+                p_party_id: partyId,
+                p_party_name: party,
+                p_amount: amt,
+                p_remarks: note || null,
+                p_approval_status: type === "receipt" ? "approved" : "pending",
+                p_reference_type: type === "receipt" ? "manual_receipt" : "manual_payment"
+            });
 
-            // Retry protects against two users saving at the same time.
-            for(let attempt = 0; attempt < 15; attempt++){
-                const voucher = await getSafeVoucher(type);
-                voucherNo.value = voucher;
+            if(error) throw error;
 
-                const { error } = await sb
-                    .from("cash_transactions")
-                    .insert([{
-                        voucher_no: voucher,
-                        txn_date: date,
-                        txn_type: type,
-                        party_id: partyId,
-                        party_name: party,
-                        amount: amt,
-                        remarks: note || null,
-                        approval_status: type === "receipt" ? "approved" : "pending",
-                        reference_type: type === "receipt" ? "manual_receipt" : "manual_payment"
-                    }]);
-
-                if(!error){
-                    saved = true;
-                    break;
-                }
-
-                lastError = error;
-
-                if(!isDuplicateVoucherError(error)){
-                    throw error;
-                }
-
-                console.warn("Duplicate voucher found. Retrying with next voucher...", error);
+            if(data && data.voucher_no){
+                voucherNo.value = data.voucher_no;
             }
 
-            if(!saved){
-                throw lastError || new Error("Failed to save transaction");
-            }
-
-            showMessage("Transaction saved successfully", true);
+            showMessage(`Transaction saved successfully (${data?.voucher_no || "saved"})`, true);
             await loadTransactions(party);
             clearForm(false);
             await generateNextVoucherNo();
@@ -809,7 +726,12 @@
 
         }catch(err){
             console.error(err);
-            showMessage(err.message || "Failed to save transaction", false);
+
+            if(String(err.message || "").toLowerCase().includes("create_cash_transaction_safe")){
+                showMessage("Please run the Supabase SQL function first, then try again.", false);
+            }else{
+                showMessage(err.message || "Failed to save transaction", false);
+            }
         }finally{
             isSaving = false;
             saveBtn.disabled = false;

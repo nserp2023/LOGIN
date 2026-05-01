@@ -786,12 +786,15 @@
     });
 
     async function loadTransactions(nameFilter = ""){
-        let query = sb
-            .from("cash_transactions")
-            .select("id, txn_date, voucher_no, txn_type, party_name, amount, remarks, approval_status, approved_by, approved_at, reference_type, reference_id")
-            .order("txn_date", { ascending: false })
-            .order("id", { ascending: false })
-            .limit(300);
+        let today = new Date().toISOString().split("T")[0];
+
+let query = sb
+    .from("cash_transactions")
+    .select("id, txn_date, voucher_no, txn_type, party_name, amount, remarks, approval_status, approved_by, approved_at, reference_type, reference_id")
+    .eq("txn_date", today)   // 🔥 ONLY TODAY
+    .order("txn_date", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(300);
 
         const searchValue = (nameFilter || searchParty.value || "").trim();
         const typeValue = searchType.value;

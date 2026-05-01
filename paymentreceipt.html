@@ -788,7 +788,7 @@
     async function loadTransactions(nameFilter = ""){
         let today = new Date().toISOString().split("T")[0];
 
-let query = sb
+        let query = sb
     .from("cash_transactions")
     .select("id, txn_date, voucher_no, txn_type, party_name, amount, remarks, approval_status, approved_by, approved_at, reference_type, reference_id")
     .eq("txn_date", today)   // 🔥 ONLY TODAY

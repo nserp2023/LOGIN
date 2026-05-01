@@ -563,6 +563,42 @@
         }
     }
 
+
+    async function generateSimpleQuotationImageBlob(id){
+        const iframe = document.createElement('iframe');
+        iframe.style.position = 'fixed';
+        iframe.style.left = '-99999px';
+        iframe.style.top = '0';
+        iframe.style.width = '900px';
+        iframe.style.height = '1200px';
+        iframe.style.border = '0';
+        iframe.src = `quotation_print.html?id=${id}&type=quotation&mode=image`;
+        document.body.appendChild(iframe);
+
+        try {
+            await new Promise((resolve, reject) => {
+                iframe.onload = () => setTimeout(resolve, 1400);
+                setTimeout(() => reject(new Error('Simple quotation page load timeout')), 12000);
+            });
+
+            const doc = iframe.contentDocument || iframe.contentWindow.document;
+            const target = doc.body;
+
+            const canvas = await html2canvas(target, {
+                scale: 2,
+                backgroundColor: '#ffffff',
+                useCORS: true
+            });
+
+            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png', 1));
+            if(!blob) throw new Error('Could not create simple quotation image blob');
+
+            return blob;
+        } finally {
+            iframe.remove();
+        }
+    }
+
     function getCleanIndianMobile(mobile){
         let m = String(mobile || '').replace(/\D/g, '');
         if(m.length > 10 && m.startsWith('91')) m = m.slice(-10);
@@ -657,9 +693,13 @@
         }
 
         try {
-            const blob = await generateBillImageBlob(id);
-            const { numberField } = getCurrentTypeConfig();
-            const fileName = `bill_${row.series_code || ''}_${row[numberField] || id}.png`.replace(/\s+/g, '_');
+            const cfg = getCurrentTypeConfig();
+            const blob = cfg.type === "quotation"
+                ? await generateSimpleQuotationImageBlob(id)
+                : await generateBillImageBlob(id);
+            const { numberField } = cfg;
+            const filePrefix = cfg.type === "quotation" ? "simple_quote" : "bill";
+            const fileName = `${filePrefix}_${row.series_code || ''}_${row[numberField] || id}.png`.replace(/\s+/g, '_');
             const file = new File([blob], fileName, { type: 'image/png' });
             const text = buildWhatsAppMessage(row);
             const encodedText = encodeURIComponent(text);

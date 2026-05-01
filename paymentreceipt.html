@@ -91,7 +91,88 @@ const searchParty=$('searchParty'), searchType=$('searchType'), searchDate=$('se
 let suggestionItems=[], activeSuggestionIndex=-1, isSaving=false, isApproving=false, selectedCreditBill=null, selectedCustomerAutoAllocation=null, currentUserRole='';
 
 document.addEventListener('DOMContentLoaded', async()=>{ try{ const ok=await requirePageAccess('paymentreceipt'); if(!ok) return; }catch(e){ console.warn(e); } await initPage(); });
-async function initPage(){ const today=todayISO(); txnDate.value=today; searchDate.value=today; await loadCurrentUserRole(); updateTypeUI(); bindEvents(); await generateNextVoucherNo(); await loadTransactions(); setupEnterNavigation(); }
+async function initPage(){ const today=todayISO(); txnDate.value=today; searchDate.value=today; await loadCurrentUserRole(); updateTypeUI(); bindEvents(); await loadFromURLParams(); await generateNextVoucherNo(); await loadTransactions(searchParty.value.trim()); setupEnterNavigation(); }
+
+async function loadFromURLParams(){
+    const params = new URLSearchParams(window.location.search);
+    if (![...params.keys()].length) return;
+
+    const typeRaw = normalize(params.get('type') || params.get('mode') || params.get('txn_type') || params.get('transaction_type'));
+    const source = normalize(params.get('source') || '');
+    const amountRaw = params.get('amount') || params.get('balance') || params.get('pending') || params.get('paid_amount') || '';
+    const dateRaw = params.get('date') || params.get('txn_date') || '';
+    const nameRaw = params.get('name') || params.get('party_name') || params.get('customer_name') || '';
+    const mobileRaw = params.get('mobile') || params.get('party_mobile') || params.get('customer_mobile') || '';
+    const remarkRaw = params.get('remarks') || params.get('remark') || '';
+
+    if (typeRaw === 'receipt' || typeRaw === 'payment'){
+        txnType.value = typeRaw;
+        updateTypeUI();
+    }
+
+    if (dateRaw) txnDate.value = dateRaw;
+
+    const cleanMobile = String(mobileRaw || '').trim();
+    const cleanName = String(nameRaw || '').trim();
+    const partyValue = cleanMobile || cleanName;
+    if (partyValue){
+        partyName.value = partyValue;
+        searchParty.value = partyValue;
+    }
+
+    const parsedAmount = num(String(amountRaw || '').replace(/[^0-9.\-]/g,''));
+    if (parsedAmount > 0) amount.value = money(parsedAmount);
+
+    if (remarkRaw){
+        remarks.value = remarkRaw;
+    } else if (typeRaw === 'receipt' && (source === 'credit_dashboard' || partyValue)){
+        remarks.value = 'Auto credit collection from customer';
+    }
+
+    if (typeRaw === 'receipt' && partyValue){
+        try{
+            const options = await fetchCustomerAutoAllocationOptions(partyValue);
+            let selected = null;
+            const mobileDigits = cleanMobile.replace(/\D/g,'');
+
+            if (mobileDigits){
+                selected = options.find(x => String(x.customer_mobile || '').replace(/\D/g,'') === mobileDigits)
+                    || options.find(x => String(x.customer_mobile || '').replace(/\D/g,'').includes(mobileDigits));
+            }
+
+            if (!selected && cleanName){
+                const nameKey = normalize(cleanName);
+                selected = options.find(x => normalize(x.customer_name) === nameKey)
+                    || options.find(x => normalize(x.customer_name).includes(nameKey));
+            }
+
+            selected = selected || options[0] || null;
+
+            if (selected){
+                selectedCustomerAutoAllocation = JSON.parse(JSON.stringify(selected));
+                selectedCreditBill = null;
+                partyName.value = selected.customer_mobile || selected.customer_name || partyValue;
+                searchParty.value = partyName.value;
+
+                if (!parsedAmount || parsedAmount <= 0){
+                    amount.value = money(selected.total_balance);
+                }
+
+                if (!remarks.value){
+                    remarks.value = 'Auto credit collection from customer';
+                }
+
+                creditChip.classList.remove('hide');
+                creditChip.textContent = 'Auto Credit Collection';
+                updateTypeUI();
+                updateAutoAllocationPreview();
+            }
+        }catch(err){
+            console.warn('URL credit auto allocation load failed:', err);
+        }
+    }
+}
+
 function bindEvents(){
     txnType.addEventListener('change', async()=>{ updateTypeUI(); resetCreditSelection(false); await generateNextVoucherNo(); });
     saveBtn.addEventListener('click', saveTransaction); clearBtn.addEventListener('click',()=>clearForm(true)); reloadBtn.addEventListener('click',async()=>{await generateNextVoucherNo(); await loadTransactions();});

@@ -482,33 +482,50 @@
     // =========================
     // 5. NEXT VOUCHER NUMBER
     // =========================
-    async function generateNextVoucherNo(){
-        const prefix = txnType.value === "payment" ? "PAY" : "REC";
+    async function generateNextVoucherNo(typeOverride = null){
+        const type = typeOverride || txnType.value;
+        const prefix = type === "payment" ? "PAY" : "REC";
 
+        // IMPORTANT FIX:
+        // Do not use the latest id blindly. AUTO-sales_order_advance vouchers and old
+        // imported rows may end with other numbers, which can create duplicate PAY/REC vouchers.
+        // We fetch the latest voucher only from the same PAY-/REC- series and calculate next.
         const { data, error } = await sb
             .from("cash_transactions")
             .select("voucher_no")
-            .eq("txn_type", txnType.value)
+            .eq("txn_type", type)
+            .ilike("voucher_no", `${prefix}-%`)
             .order("id", { ascending: false })
-            .limit(1);
+            .limit(50);
 
         if(error){
             console.error(error);
-            voucherNo.value = `${prefix}-0001`;
-            return;
+            const fallback = `${prefix}-${String(Date.now()).slice(-6)}`;
+            voucherNo.value = fallback;
+            return fallback;
         }
 
-        let nextNumber = 1;
+        let maxNumber = 0;
 
-        if(data && data.length){
-            const lastVoucher = data[0].voucher_no || "";
-            const match = lastVoucher.match(/(\d+)$/);
+        (data || []).forEach(row => {
+            const lastVoucher = row.voucher_no || "";
+            const match = lastVoucher.match(new RegExp(`^${prefix}-(\\d+)$`, "i"));
             if(match){
-                nextNumber = parseInt(match[1], 10) + 1;
+                maxNumber = Math.max(maxNumber, parseInt(match[1], 10) || 0);
             }
-        }
+        });
 
-        voucherNo.value = `${prefix}-${String(nextNumber).padStart(4, "0")}`;
+        const nextVoucher = `${prefix}-${String(maxNumber + 1).padStart(4, "0")}`;
+        voucherNo.value = nextVoucher;
+        return nextVoucher;
+    }
+
+    function isDuplicateVoucherError(error){
+        const msg = String(error?.message || error?.details || error?.hint || "").toLowerCase();
+        return error?.code === "23505" ||
+               error?.status === 409 ||
+               msg.includes("cash_transactions_voucher_no_key") ||
+               msg.includes("duplicate key value");
     }
 
     // =========================
@@ -704,23 +721,49 @@
         try{
             const partyId = await ensurePartyExists(party);
 
-            const { error } = await sb
-                .from("cash_transactions")
-                .insert([{
-                    voucher_no: voucher,
-                    txn_date: date,
-                    txn_type: type,
-                    party_id: partyId,
-                    party_name: party,
-                    amount: amt,
-                    remarks: note || null,
-                    approval_status: type === "receipt" ? "approved" : "pending",
-                    reference_type: type === "receipt" ? "manual_receipt" : "manual_payment"
-                }]);
+            let insertError = null;
+            let savedVoucher = voucher;
 
-            if(error) throw error;
+            // Refresh voucher at the actual save time and retry if another entry already used it.
+            // This removes the 409 duplicate voucher error without the user manually clearing/refreshing.
+            for(let attempt = 1; attempt <= 6; attempt++){
+                savedVoucher = await generateNextVoucherNo(type);
 
-            showMessage("Transaction saved successfully", true);
+                const { error } = await sb
+                    .from("cash_transactions")
+                    .insert([{
+                        voucher_no: savedVoucher,
+                        txn_date: date,
+                        txn_type: type,
+                        party_id: partyId,
+                        party_name: party,
+                        amount: amt,
+                        remarks: note || null,
+                        approval_status: type === "receipt" ? "approved" : "pending",
+                        reference_type: type === "receipt" ? "manual_receipt" : "manual_payment"
+                    }]);
+
+                if(!error){
+                    insertError = null;
+                    break;
+                }
+
+                insertError = error;
+
+                if(!isDuplicateVoucherError(error)){
+                    throw error;
+                }
+
+                console.warn(`Voucher ${savedVoucher} already exists. Retrying...`, error);
+            }
+
+            if(insertError){
+                throw new Error("Voucher number is still duplicate. Please refresh the page and try again.");
+            }
+
+            voucherNo.value = savedVoucher;
+
+            showMessage(`Transaction saved successfully (${savedVoucher})`, true);
             await loadTransactions(party);
             clearForm(false);
             await generateNextVoucherNo();

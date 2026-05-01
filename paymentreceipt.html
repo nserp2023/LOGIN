@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <link rel="manifest" href="site.webmanifest">
 <title>Payment / Receipt - VAJRA LIGHTS</title>
-<!-- FIX VERSION: cash_voucher_duplicate_retry_2026_05_01 -->
+<!-- FIX VERSION: cash_small_voucher_duplicate_safe_2026_05_01 -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabaseClient.js"></script>
 <script src="page_permissions.js"></script>
@@ -39,7 +39,10 @@
         padding:14px;
     }
 
-    .container{ max-width:1100px; margin:auto; }
+    .container{
+        max-width:1100px;
+        margin:auto;
+    }
 
     .card{
         background:var(--card);
@@ -97,7 +100,10 @@
         box-shadow:0 0 0 3px rgba(37,99,235,0.12);
     }
 
-    textarea{ min-height:90px; resize:vertical; }
+    textarea{
+        min-height:90px;
+        resize:vertical;
+    }
 
     .btn-row{
         display:flex;
@@ -112,8 +118,15 @@
         font-weight:700;
     }
 
-    .btn-primary{ background:var(--primary); color:#fff; }
-    .btn-secondary{ background:#e2e8f0; color:#0f172a; }
+    .btn-primary{
+        background:var(--primary);
+        color:#fff;
+    }
+
+    .btn-secondary{
+        background:#e2e8f0;
+        color:#0f172a;
+    }
 
     .badge{
         background:#dbeafe;
@@ -185,11 +198,33 @@
         z-index:1;
     }
 
-    .amount{ text-align:right; font-weight:700; }
-    .payment{ color:var(--danger); font-weight:700; text-transform:capitalize; }
-    .receipt{ color:var(--success); font-weight:700; text-transform:capitalize; }
-    .small{ font-size:12px; color:var(--muted); }
-    .message{ margin-top:10px; font-weight:700; }
+    .amount{
+        text-align:right;
+        font-weight:700;
+    }
+
+    .payment{
+        color:var(--danger);
+        font-weight:700;
+        text-transform:capitalize;
+    }
+
+    .receipt{
+        color:var(--success);
+        font-weight:700;
+        text-transform:capitalize;
+    }
+
+    .small{
+        font-size:12px;
+        color:var(--muted);
+    }
+
+    .message{
+        margin-top:10px;
+        font-weight:700;
+    }
+
     .success-msg{ color:var(--success); }
     .error-msg{ color:var(--danger); }
 
@@ -222,7 +257,10 @@
     }
 
     .accept-btn:hover,.fix-btn:hover{ opacity:0.95; }
-    .accept-btn:disabled,.fix-btn:disabled{ background:#94a3b8; cursor:not-allowed; }
+    .accept-btn:disabled,.fix-btn:disabled{
+        background:#94a3b8;
+        cursor:not-allowed;
+    }
 
     .status-badge{
         display:inline-block;
@@ -442,80 +480,98 @@
     }
 
     // =========================
-    // 5. SAFE VOUCHER NUMBER SYSTEM
+    // 5. NEXT VOUCHER NUMBER
     // =========================
-    function getVoucherPrefix(type){
-        return type === "payment" ? "PAY" : "REC";
-    }
-
-    function extractVoucherNumber(voucher){
-        const match = String(voucher || "").match(/(\d+)$/);
-        return match ? parseInt(match[1], 10) || 0 : 0;
-    }
-
-    function makeVoucher(prefix, number){
-        return `${prefix}-${String(number).padStart(4, "0")}`;
-    }
-
-    function isDuplicateVoucherError(error){
-        const msg = String(error?.message || error?.details || "").toLowerCase();
-        return error?.code === "23505" || msg.includes("cash_transactions_voucher_no_key") || msg.includes("duplicate key");
-    }
-
-    async function voucherExists(voucher){
-        const { data, error } = await sb
-            .from("cash_transactions")
-            .select("id")
-            .eq("voucher_no", voucher)
-            .limit(1);
-
-        if(error){
-            console.warn("Voucher check failed:", error);
-            return false;
-        }
-
-        return Array.isArray(data) && data.length > 0;
-    }
-
-    async function getNextFreeVoucherNo(type){
-        const prefix = getVoucherPrefix(type);
+    async function generateNextVoucherNo(){
+        const prefix = txnType.value === "payment" ? "PAY" : "REC";
 
         const { data, error } = await sb
             .from("cash_transactions")
             .select("voucher_no")
-            .ilike("voucher_no", `${prefix}-%`)
-            .order("id", { ascending:false })
-            .limit(100);
+            .eq("txn_type", txnType.value)
+            .like("voucher_no", `${prefix}-%`)
+            .order("id", { ascending: false })
+            .limit(50);
 
         if(error){
             console.error(error);
+            voucherNo.value = `${prefix}-0001`;
+            return;
         }
 
         let maxNumber = 0;
+
         (data || []).forEach(row => {
-            const value = String(row.voucher_no || "").trim();
-            if(value.toUpperCase().startsWith(prefix + "-")){
-                maxNumber = Math.max(maxNumber, extractVoucherNumber(value));
+            const lastVoucher = String(row.voucher_no || "");
+            const match = lastVoucher.match(new RegExp(`^${prefix}-(\\d+)$`, "i"));
+            if(match){
+                const n = parseInt(match[1], 10);
+                if(!isNaN(n) && n > maxNumber) maxNumber = n;
             }
         });
 
-        let nextNumber = maxNumber + 1;
-        let candidate = makeVoucher(prefix, nextNumber);
-
-        // Extra safety: even if latest id is not true maximum, find next unused voucher.
-        for(let i = 0; i < 50; i++){
-            const exists = await voucherExists(candidate);
-            if(!exists) return candidate;
-            nextNumber++;
-            candidate = makeVoucher(prefix, nextNumber);
-        }
-
-        // Emergency fallback with time suffix, still readable and unique.
-        return `${prefix}-${Date.now()}`;
+        const nextNumber = maxNumber + 1;
+        voucherNo.value = `${prefix}-${String(nextNumber).padStart(4, "0")}`;
     }
 
-    async function generateNextVoucherNo(){
-        voucherNo.value = await getNextFreeVoucherNo(txnType.value);
+
+    // =========================
+    // 5B. SAFE SMALL VOUCHER NUMBER FOR SAVE
+    // =========================
+    async function getSafeVoucher(type){
+        const prefix = type === "payment" ? "PAY" : "REC";
+
+        // Important: do not trust the already displayed voucher number while saving.
+        // This reads the latest voucher from Supabase at the final save moment.
+        for(let attempt = 0; attempt < 15; attempt++){
+            const { data, error } = await sb
+                .from("cash_transactions")
+                .select("voucher_no")
+                .eq("txn_type", type)
+                .like("voucher_no", `${prefix}-%`)
+                .order("id", { ascending: false })
+                .limit(50);
+
+            if(error){
+                console.error("Voucher read error:", error);
+            }
+
+            let maxNumber = 0;
+            (data || []).forEach(row => {
+                const v = String(row.voucher_no || "");
+                const match = v.match(new RegExp(`^${prefix}-(\\d+)$`, "i"));
+                if(match){
+                    const n = parseInt(match[1], 10);
+                    if(!isNaN(n) && n > maxNumber) maxNumber = n;
+                }
+            });
+
+            // attempt offset helps when two users save at the exact same second.
+            const nextNumber = maxNumber + 1 + attempt;
+            const candidate = `${prefix}-${String(nextNumber).padStart(4, "0")}`;
+
+            const { data: exists, error: existsError } = await sb
+                .from("cash_transactions")
+                .select("id")
+                .eq("voucher_no", candidate)
+                .maybeSingle();
+
+            if(existsError){
+                console.error("Voucher check error:", existsError);
+            }
+
+            if(!exists){
+                return candidate;
+            }
+        }
+
+        throw new Error("Unable to generate unique voucher number. Please try again.");
+    }
+
+    function isDuplicateVoucherError(error){
+        const msg = String(error?.message || error?.details || error?.hint || "").toLowerCase();
+        const code = String(error?.code || "");
+        return code === "23505" || msg.includes("cash_transactions_voucher_no_key") || msg.includes("duplicate key");
     }
 
     // =========================
@@ -559,7 +615,9 @@
                 return;
             }
 
-            if(e.key === "Escape") hideSuggestions();
+            if(e.key === "Escape"){
+                hideSuggestions();
+            }
         }
     });
 
@@ -642,13 +700,12 @@
         const cleanName = name.trim();
         if(!cleanName) return null;
 
-        const { data: existing, error: selectError } = await sb
+        const { data: existing } = await sb
             .from("parties")
             .select("id, party_name")
             .eq("party_name", cleanName)
             .maybeSingle();
 
-        if(selectError) console.warn("Party check error:", selectError);
         if(existing) return existing.id;
 
         const { data, error } = await sb
@@ -666,7 +723,7 @@
     }
 
     // =========================
-    // 8. SAVE MANUAL TRANSACTION WITH DUPLICATE RETRY
+    // 8. SAVE MANUAL TRANSACTION
     // =========================
     saveBtn.addEventListener("click", saveTransaction);
 
@@ -703,51 +760,48 @@
 
         try{
             const partyId = await ensurePartyExists(party);
+
             let saved = false;
             let lastError = null;
-            let savedVoucher = "";
 
-            for(let attempt = 1; attempt <= 8; attempt++){
-                const freshVoucher = await getNextFreeVoucherNo(type);
-                voucherNo.value = freshVoucher;
-
-                const payload = {
-                    voucher_no: freshVoucher,
-                    txn_date: date,
-                    txn_type: type,
-                    party_id: partyId,
-                    party_name: party,
-                    amount: amt,
-                    remarks: note || null,
-                    approval_status: type === "receipt" ? "approved" : "pending",
-                    reference_type: type === "receipt" ? "manual_receipt" : "manual_payment"
-                };
+            // Retry protects against two users saving at the same time.
+            for(let attempt = 0; attempt < 15; attempt++){
+                const voucher = await getSafeVoucher(type);
+                voucherNo.value = voucher;
 
                 const { error } = await sb
                     .from("cash_transactions")
-                    .insert([payload]);
+                    .insert([{
+                        voucher_no: voucher,
+                        txn_date: date,
+                        txn_type: type,
+                        party_id: partyId,
+                        party_name: party,
+                        amount: amt,
+                        remarks: note || null,
+                        approval_status: type === "receipt" ? "approved" : "pending",
+                        reference_type: type === "receipt" ? "manual_receipt" : "manual_payment"
+                    }]);
 
                 if(!error){
                     saved = true;
-                    savedVoucher = freshVoucher;
                     break;
                 }
 
                 lastError = error;
 
-                if(isDuplicateVoucherError(error)){
-                    console.warn(`Duplicate voucher ${freshVoucher}. Retrying with next voucher...`);
-                    continue;
+                if(!isDuplicateVoucherError(error)){
+                    throw error;
                 }
 
-                throw error;
+                console.warn("Duplicate voucher found. Retrying with next voucher...", error);
             }
 
             if(!saved){
-                throw lastError || new Error("Could not save transaction. Voucher number conflict repeated.");
+                throw lastError || new Error("Failed to save transaction");
             }
 
-            showMessage(`Transaction saved successfully. Voucher: ${savedVoucher}`, true);
+            showMessage("Transaction saved successfully", true);
             await loadTransactions(party);
             clearForm(false);
             await generateNextVoucherNo();
@@ -756,7 +810,6 @@
         }catch(err){
             console.error(err);
             showMessage(err.message || "Failed to save transaction", false);
-            await generateNextVoucherNo();
         }finally{
             isSaving = false;
             saveBtn.disabled = false;
@@ -777,7 +830,9 @@
         hideSuggestions();
         formMessage.textContent = "";
 
-        if(withVoucherRefresh) generateNextVoucherNo();
+        if(withVoucherRefresh){
+            generateNextVoucherNo();
+        }
     }
 
     function showMessage(msg, ok){
@@ -788,10 +843,21 @@
     // =========================
     // 10. LOAD TRANSACTIONS
     // =========================
-    searchBtn.addEventListener("click", () => loadTransactions(searchParty.value.trim()));
-    searchParty.addEventListener("input", () => loadTransactions(searchParty.value.trim()));
-    searchType.addEventListener("change", () => loadTransactions(searchParty.value.trim()));
-    searchDate.addEventListener("change", () => loadTransactions(searchParty.value.trim()));
+    searchBtn.addEventListener("click", () => {
+        loadTransactions(searchParty.value.trim());
+    });
+
+    searchParty.addEventListener("input", () => {
+        loadTransactions(searchParty.value.trim());
+    });
+
+    searchType.addEventListener("change", () => {
+        loadTransactions(searchParty.value.trim());
+    });
+
+    searchDate.addEventListener("change", () => {
+        loadTransactions(searchParty.value.trim());
+    });
 
     async function loadTransactions(nameFilter = ""){
         let query = sb
@@ -805,28 +871,37 @@
         const typeValue = searchType.value;
         const dateValue = searchDate.value;
 
+        // Search by party, voucher number, or remarks. This helps to find AUTO-sales_order_advance rows directly.
         if(searchValue){
             const safe = searchValue.replace(/[%_,]/g, "");
             query = query.or(`party_name.ilike.%${safe}%,voucher_no.ilike.%${safe}%,remarks.ilike.%${safe}%`);
         }
 
-        if(typeValue) query = query.eq("txn_type", typeValue);
-        if(dateValue) query = query.eq("txn_date", dateValue);
+        if(typeValue){
+            query = query.eq("txn_type", typeValue);
+        }
+
+        if(dateValue){
+            query = query.eq("txn_date", dateValue);
+        }
 
         const { data, error } = await query;
 
         if(error){
             console.error(error);
-            resultsBody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:red;">Failed to load transactions</td></tr>`;
+            resultsBody.innerHTML = `
+                <tr>
+                    <td colspan="7" style="text-align:center; color:red;">Failed to load transactions</td>
+                </tr>
+            `;
             return;
         }
 
         renderTransactions(data || []);
     }
 
-    // =========================
-    // 11. APPROVAL HELPERS
-    // =========================
+    // Strong detector for old and new sales order advance rows.
+    // Detects even if reference_type is missing/wrong and voucher/remarks only contain the clue.
     function normalizeText(value){
         return String(value ?? "").trim().toLowerCase();
     }
@@ -861,8 +936,13 @@
         const txn = normalizeText(row?.txn_type);
         const status = normalizeText(row?.approval_status);
 
+        // Sales Order Advance is a special receipt. It must always be approval-controlled.
         if(isSalesOrderAdvance(row)) return true;
+
+        // Payments are approval-controlled.
         if(txn === "payment") return true;
+
+        // Any old row that is already pending/rejected should continue to show approval action.
         if(status === "pending" || status === "rejected") return true;
 
         return false;
@@ -911,7 +991,11 @@
 
     function renderTransactions(rows){
         if(!rows.length){
-            resultsBody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#64748b;">No transactions found</td></tr>`;
+            resultsBody.innerHTML = `
+                <tr>
+                    <td colspan="7" style="text-align:center; color:#64748b;">No transactions found</td>
+                </tr>
+            `;
             return;
         }
 
@@ -960,6 +1044,15 @@
                 </tr>
             `;
         }).join("");
+    }
+
+    function looksLikePossibleAdvance(row){
+        const text = `${row?.voucher_no || ""} ${row?.reference_type || ""} ${row?.remarks || ""}`.toLowerCase();
+        return text.includes("sales_order") || text.includes("sales order") || text.includes("advance for sales");
+    }
+
+    function normalizeText(value){
+        return String(value || "").trim().toLowerCase();
     }
 
     function formatDate(dateStr){
@@ -1062,11 +1155,17 @@
         await approveTransaction(id);
     }
 
-    // =========================
-    // 12. ENTER KEY NAVIGATION
+    // 11. ENTER KEY NAVIGATION
     // =========================
     function setupEnterNavigation(){
-        const orderedFields = [txnType, txnDate, partyName, amount, remarks, saveBtn];
+        const orderedFields = [
+            txnType,
+            txnDate,
+            partyName,
+            amount,
+            remarks,
+            saveBtn
+        ];
 
         orderedFields.forEach((field, index) => {
             field.addEventListener("keydown", function(e){

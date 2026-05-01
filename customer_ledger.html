@@ -422,8 +422,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (!ok) return;
 
   const today = new Date();
-  const start = new Date(today.getFullYear(), today.getMonth(), 1);
-  fromDate.value = start.toISOString().split("T")[0];
+
+  // Always load full history by default
+  fromDate.value = "2000-01-01";
   toDate.value = today.toISOString().split("T")[0];
 
   bindEvents();
@@ -451,6 +452,9 @@ function applyUrlPrefill(){
   const name = (url.searchParams.get("name") || "").trim();
 
   if(search || name){
+    // Always show full history when opened from dashboard/report links
+    fromDate.value = "2000-01-01";
+
     ledgerSearch.value = search || name;
     selectedCustomer = {
       label: name || search,

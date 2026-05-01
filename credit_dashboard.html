@@ -151,6 +151,11 @@
         border:1px solid var(--line);
     }
 
+    .btn-whatsapp{
+        background:#25d366;
+        color:#052e16;
+    }
+
     .summary{
         display:grid;
         grid-template-columns:repeat(5, 1fr);
@@ -205,7 +210,7 @@
     table{
         width:100%;
         border-collapse:collapse;
-        min-width:1280px;
+        min-width:1380px;
         background:rgba(8,19,33,.9);
     }
 
@@ -367,7 +372,6 @@
                 <option value="HIGH">HIGH</option>
                 <option value="MEDIUM">MEDIUM</option>
                 <option value="LOW">LOW</option>
-                <option value="ZERO">ZERO</option>
             </select>
         </div>
 
@@ -418,10 +422,11 @@
                     <th>Level</th>
                     <th>Ledger</th>
                     <th>Collect</th>
+                    <th>WhatsApp</th>
                 </tr>
             </thead>
             <tbody id="dashboardBody">
-                <tr><td colspan="9" class="empty">Loading...</td></tr>
+                <tr><td colspan="10" class="empty">Loading...</td></tr>
             </tbody>
         </table>
     </div>
@@ -445,9 +450,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!ok) return;
 
     const today = new Date();
-    const start = new Date(today.getFullYear(), today.getMonth(), 1);
 
-    fromDate.value = start.toISOString().split("T")[0];
+    fromDate.value = "2000-01-01";
     toDate.value = today.toISOString().split("T")[0];
 
     bindEvents();
@@ -473,11 +477,12 @@ function debounce(fn, delay=300){
 
 function resetDashboard(){
     const today = new Date();
-    const start = new Date(today.getFullYear(), today.getMonth(), 1);
+
     searchInput.value = "";
     riskFilter.value = "ALL";
-    fromDate.value = start.toISOString().split("T")[0];
+    fromDate.value = "2000-01-01";
     toDate.value = today.toISOString().split("T")[0];
+
     loadDashboard();
 }
 
@@ -522,21 +527,46 @@ function openLedgerPage(){
 
 function openCustomerLedger(customer){
     const params = new URLSearchParams();
-    if (customer.mobile) params.set("search", customer.mobile);
-    if (customer.name) params.set("name", customer.name);
+    if (customer.mobile && customer.mobile !== "-") params.set("search", customer.mobile);
+    if (customer.name && customer.name !== "-") params.set("name", customer.name);
     window.open(`customer_ledger.html?${params.toString()}`, "_blank");
 }
 
 function openCollect(customer){
     const params = new URLSearchParams();
     params.set("type", "receipt");
-    if (customer.mobile) params.set("mobile", customer.mobile);
-    if (customer.name) params.set("name", customer.name);
-    window.open(`payment_receipt_credit_corrected.html?${params.toString()}`, "_blank");
+    if (customer.mobile && customer.mobile !== "-") params.set("mobile", customer.mobile);
+    if (customer.name && customer.name !== "-") params.set("name", customer.name);
+    window.open(`paymentreceipt.html?${params.toString()}`, "_blank");
+}
+
+function openWhatsAppReminder(customer){
+    let mobile = String(customer.mobile || "").replace(/\D/g, "");
+
+    if (!mobile){
+        alert("Mobile number not found for this customer.");
+        return;
+    }
+
+    if (mobile.length === 10){
+        mobile = "91" + mobile;
+    }
+
+    const msg =
+`Dear ${customer.name || "Customer"},
+
+Your pending balance at VAJRA LIGHTS is ${money(customer.total_balance)}.
+
+Kindly make the payment at your earliest convenience.
+
+Thank you.`;
+
+    const url = "https://wa.me/" + mobile + "?text=" + encodeURIComponent(msg);
+    window.open(url, "_blank");
 }
 
 async function loadDashboard(){
-    dashboardBody.innerHTML = `<tr><td colspan="9" class="empty">Loading...</td></tr>`;
+    dashboardBody.innerHTML = `<tr><td colspan="10" class="empty">Loading...</td></tr>`;
     statusBox.textContent = "Loading credit dashboard...";
 
     try{
@@ -595,25 +625,27 @@ async function loadDashboard(){
             customers = customers.filter(c => getRisk(c.total_balance) === risk);
         }
 
+        customers = customers.filter(c => Number(c.total_balance) > 0);
+
         customers.sort((a,b) => b.total_balance - a.total_balance);
 
         renderDashboard(customers, rows);
     }catch(err){
         console.error(err);
-        dashboardBody.innerHTML = `<tr><td colspan="9" class="empty">Error loading dashboard</td></tr>`;
+        dashboardBody.innerHTML = `<tr><td colspan="10" class="empty">Error loading dashboard</td></tr>`;
         statusBox.textContent = "Error: " + (err.message || "Unable to load dashboard");
     }
 }
 
 function renderDashboard(customers, billRows){
     if (!customers.length){
-        dashboardBody.innerHTML = `<tr><td colspan="9" class="empty">No credit customers found</td></tr>`;
+        dashboardBody.innerHTML = `<tr><td colspan="10" class="empty">No pending credit customers found</td></tr>`;
         document.getElementById("sumCustomers").textContent = "0";
         document.getElementById("sumBills").textContent = "0";
         document.getElementById("sumSales").textContent = money(0);
         document.getElementById("sumPaid").textContent = money(0);
         document.getElementById("sumBalance").textContent = money(0);
-        statusBox.textContent = "No records found.";
+        statusBox.textContent = "No pending records found.";
         return;
     }
 
@@ -628,6 +660,8 @@ function renderDashboard(customers, billRows){
         totalPaid += c.total_paid;
         totalBalance += c.total_balance;
 
+        const safeCustomer = JSON.stringify(c).replace(/'/g, "&apos;");
+
         return `
             <tr>
                 <td>${escapeHtml(c.name)}</td>
@@ -637,8 +671,9 @@ function renderDashboard(customers, billRows){
                 <td class="amount">${money(c.total_paid)}</td>
                 <td class="amount ${balanceClass(c.total_balance)}">${money(c.total_balance)}</td>
                 <td>${riskChip(c.total_balance)}</td>
-                <td><button class="btn btn-ghost btn-sm" onclick='openCustomerLedger(${JSON.stringify(c).replace(/'/g, "&apos;")})'>Ledger</button></td>
-                <td>${c.total_balance > 0 ? `<button class="btn btn-green btn-sm" onclick='openCollect(${JSON.stringify(c).replace(/'/g, "&apos;")})'>Collect</button>` : "-"}</td>
+                <td><button class="btn btn-ghost btn-sm" onclick='openCustomerLedger(${safeCustomer})'>Ledger</button></td>
+                <td><button class="btn btn-green btn-sm" onclick='openCollect(${safeCustomer})'>Collect</button></td>
+                <td><button class="btn btn-whatsapp btn-sm" onclick='openWhatsAppReminder(${safeCustomer})'>WhatsApp</button></td>
             </tr>
         `;
     }).join("");
@@ -651,7 +686,7 @@ function renderDashboard(customers, billRows){
     document.getElementById("sumPaid").textContent = money(totalPaid);
     document.getElementById("sumBalance").textContent = money(totalBalance);
 
-    statusBox.textContent = `${customers.length} customer(s) loaded.`;
+    statusBox.textContent = `${customers.length} pending customer(s) loaded.`;
 }
 
 function escapeHtml(text){

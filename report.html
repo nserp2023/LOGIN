@@ -191,7 +191,6 @@
             line-height:1.35;
         }
 
-
         .followup-report-cell {
             max-width:240px;
             white-space:normal;
@@ -230,6 +229,13 @@
             color:rgba(255,255,255,.45);
             font-size:11px;
             font-weight:700;
+        }
+
+        #report_title{
+            display:inline-block;
+            user-select:none;
+            -webkit-user-select:none;
+            touch-action:manipulation;
         }
     </style>
 </head>
@@ -295,6 +301,7 @@
     let canEditBills = false;
     let currentRows = [];
     let packingUnlocked = false;
+    let mobileUnlockTimer = null;
 
     function normalizeText(v){
         return String(v || "").trim().toLowerCase();
@@ -316,8 +323,6 @@
     function getCurrentTypeConfig() {
         let type = document.getElementById("report_type").value;
 
-        // Sales + Packing is hidden and locked by default.
-        // Only Shift + P unlocks this report type in the dropdown.
         if(type === "sales_pack" && !packingUnlocked){
             alert("Access Denied");
             type = "sales";
@@ -414,7 +419,7 @@
 
         const foundBillIds = new Set();
 
-        allItems.forEach((item, index) => {
+        allItems.forEach((item) => {
             const parentId = Number(item[idField]);
             foundBillIds.add(parentId);
 
@@ -661,7 +666,6 @@
             const mobile = getCleanIndianMobile(row.customer_mobile);
             const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-            // MOBILE: Direct system share with image + text
             if (isMobile && navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
                 await navigator.share({
                     title: 'VAJRA Bill',
@@ -671,7 +675,6 @@
                 return;
             }
 
-            // DESKTOP: Best allowed method — copy image, open exact WhatsApp chat
             let copied = false;
             let downloaded = false;
 
@@ -697,12 +700,7 @@
 
             window.open(waUrl, '_blank');
 
-            showWhatsAppGodModeHelper({
-                copied,
-                downloaded,
-                mobile,
-                text
-            });
+            showWhatsAppGodModeHelper({ copied, downloaded, mobile, text });
 
         } catch (err) {
             console.error(err);
@@ -1066,11 +1064,8 @@
             return;
         }
 
-        // Open directly in a new tab/window. This is more reliable than hidden iframe
-        // because quotation_print.html must load its own Supabase data by id.
         window.open(`quotation_print.html?id=${id}&type=quotation`, '_blank');
     }
-
 
     function printPacking(id){
         const row = findReportRow(id);
@@ -1158,8 +1153,6 @@
     }
 
     async function hasPaymentForBill(id, cfg){
-        // This check is intentionally soft because some databases use different reference columns.
-        // If the columns do not exist, it will not block cancellation.
         const possibleQueries = [
             { reference_id: id },
             { sales_id: id },
@@ -1418,7 +1411,6 @@
         }
     }
 
-
     function unlockSalesPackingReport(){
         if(packingUnlocked) return;
 
@@ -1445,17 +1437,47 @@
         alert("🔓 Sales + Packing Report Unlocked");
     }
 
-    document.addEventListener("keydown", (e) => {
-        // Secret shortcut: Shift + P
-        if(e.shiftKey && e.key.toLowerCase() === "p"){
-            e.preventDefault();
-            unlockSalesPackingReport();
-        }
-    });
+    function setupSecretUnlocks(){
+        // Desktop secret shortcut: Shift + P
+        document.addEventListener("keydown", (e) => {
+            if(e.shiftKey && e.key.toLowerCase() === "p"){
+                e.preventDefault();
+                unlockSalesPackingReport();
+            }
+        });
+
+        // Mobile secret unlock: long press report title for 1.5 seconds
+        const unlockArea = document.getElementById("report_title");
+        if(!unlockArea) return;
+
+        unlockArea.addEventListener("touchstart", () => {
+            mobileUnlockTimer = setTimeout(() => {
+                unlockSalesPackingReport();
+
+                if(navigator.vibrate){
+                    navigator.vibrate(120);
+                }
+            }, 1500);
+        }, { passive:true });
+
+        unlockArea.addEventListener("touchend", () => {
+            clearTimeout(mobileUnlockTimer);
+        }, { passive:true });
+
+        unlockArea.addEventListener("touchmove", () => {
+            clearTimeout(mobileUnlockTimer);
+        }, { passive:true });
+
+        unlockArea.addEventListener("touchcancel", () => {
+            clearTimeout(mobileUnlockTimer);
+        }, { passive:true });
+    }
 
     document.addEventListener("DOMContentLoaded", async () => {
         const ok = await requirePageAccess("sales");
         if (!ok) return;
+
+        setupSecretUnlocks();
 
         const today = new Date().toISOString().split("T")[0];
         document.getElementById("from_date").value = today;

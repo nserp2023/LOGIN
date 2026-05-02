@@ -177,6 +177,20 @@ td input:focus{
 .col-new{ width:110px; }
 .col-price{ width:110px; }
 .col-amt{ width:120px; }
+.col-mode{ width:150px; }
+.mode-badge{
+    display:inline-block;
+    padding:5px 10px;
+    border-radius:999px;
+    background:#fef3c7;
+    color:#92400e;
+    font-size:11px;
+    font-weight:800;
+}
+.price-input{
+    font-weight:700;
+    color:#fff;
+}
 </style>
 </head>
 <body>
@@ -188,7 +202,7 @@ td input:focus{
             <input id="return_id" class="form-control w-sm" readonly>
         </div>
         <div class="form-group">
-            <label>Original Sale ID</label>
+            <label>Original Sale ID / Mode</label>
             <input id="sale_ref" class="form-control w-md" readonly>
         </div>
         <div class="form-group">
@@ -217,7 +231,7 @@ td input:focus{
                     <th class="col-idx">#</th>
                     <th class="col-code">Item Code</th>
                     <th class="col-name">Item Name</th>
-                    <th class="col-sold">Sold Qty</th>
+                    <th class="col-sold" id="qty_head_label">Sold Qty</th>
                     <th class="col-old">Old Return</th>
                     <th class="col-new">New Return</th>
                     <th class="col-price">Price+GST</th>
@@ -244,6 +258,7 @@ td input:focus{
 let currentReturnId = null;
 let currentSaleId = null;
 let oldReturnItems = [];
+let isWithoutBillReturn = false;
 
 window.onload = async () => {
     const params = new URLSearchParams(window.location.search);
@@ -271,16 +286,40 @@ async function loadSavedReturn(returnId){
         return;
     }
 
-    currentSaleId = returnHead.original_sales_id;
+    if(returnHead.is_accepted){
+        alert("This return is already accepted and cannot be modified.");
+        window.location.href = "sales_return_report.html";
+        return;
+    }
+
+    currentSaleId = returnHead.original_sales_id || null;
+    isWithoutBillReturn = !currentSaleId;
 
     document.getElementById("return_id").value = returnHead.id || "";
-    document.getElementById("sale_ref").value = returnHead.original_sales_id || "";
-    
-    if(returnHead.is_accepted){
-    alert("This return is already accepted and cannot be modified.");
-    window.location.href = "sales_return_report.html";
-    return;
-}
+    document.getElementById("sale_ref").value = isWithoutBillReturn ? "WITHOUT BILL" : currentSaleId;
+    document.getElementById("qty_head_label").innerText = isWithoutBillReturn ? "Ref Qty" : "Sold Qty";
+
+    const { data: returnItems, error: retItemsErr } = await sb
+        .from("sales_return_item_details")
+        .select("*")
+        .eq("return_id", returnId)
+        .order("id", { ascending:true });
+
+    if(retItemsErr){
+        console.error(retItemsErr);
+        alert("Error loading saved return items");
+        return;
+    }
+
+    oldReturnItems = returnItems || [];
+
+    if(isWithoutBillReturn){
+        document.getElementById("cust_name").value = returnHead.customer_name || "";
+        document.getElementById("cust_mobile").value = returnHead.customer_mobile || "";
+        document.getElementById("bill_no").value = "WITHOUT BILL";
+        renderWithoutBillReturnItems(oldReturnItems);
+        return;
+    }
 
     const { data: sale, error: saleErr } = await sb
         .from("sales_details")
@@ -307,19 +346,6 @@ async function loadSavedReturn(returnId){
         alert("Error loading sales items");
         return;
     }
-
-    const { data: returnItems, error: retItemsErr } = await sb
-        .from("sales_return_item_details")
-        .select("*")
-        .eq("return_id", returnId);
-
-    if(retItemsErr){
-        console.error(retItemsErr);
-        alert("Error loading saved return items");
-        return;
-    }
-
-    oldReturnItems = returnItems || [];
 
     const oldMap = {};
     oldReturnItems.forEach(item => {
@@ -366,12 +392,64 @@ async function loadSavedReturn(returnId){
     calcTotal();
 }
 
+function renderWithoutBillReturnItems(returnItems){
+    const tbody = document.getElementById("items_body");
+    tbody.innerHTML = "";
+
+    (returnItems || []).forEach((item, idx) => {
+        const returnQty = parseFloat(item.return_qty || item.quantity || 0) || 0;
+        const oldRet = returnQty;
+        const soldQty = parseFloat(item.sold_qty || returnQty || 0) || 0;
+        const priceGst = parseFloat(item.price_gst || item.sales_price_gst || 0) || 0;
+        const gstPercent = parseFloat(item.gst_percent || 0) || 0;
+        let price = parseFloat(item.price || 0) || 0;
+        if(!price && priceGst && gstPercent){
+            price = priceGst / (1 + (gstPercent / 100));
+        }
+        const amount = returnQty * priceGst;
+
+        const tr = document.createElement("tr");
+        tr.setAttribute("data-item-code", item.item_code || "");
+        tr.innerHTML = `
+            <td><div class="readonly-cell">${idx + 1}</div></td>
+            <td><div class="readonly-cell">${item.item_code || ""}</div></td>
+            <td><div class="readonly-cell readonly-strong">${item.item_name || ""}</div></td>
+            <td><div class="readonly-cell sold-qty">${soldQty.toFixed(2)}</div></td>
+            <td><div class="readonly-cell old-ret">${oldRet.toFixed(2)}</div></td>
+            <td>
+                <input type="number"
+                       class="new-ret-qty"
+                       min="0"
+                       step="0.01"
+                       value="${returnQty.toFixed(2)}">
+            </td>
+            <td><input type="number" class="price-gst price-input" min="0" step="0.01" value="${priceGst.toFixed(2)}"></td>
+            <td><input type="text" class="ret-amount" readonly value="${amount.toFixed(2)}"></td>
+            <td style="display:none"><div class="price">${price.toFixed(2)}</div></td>
+            <td style="display:none"><div class="gst-percent">${gstPercent.toFixed(2)}</div></td>
+            <td style="display:none"><div class="hsn-code">${item.hsn_code || ""}</div></td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    bindEvents();
+    calcTotal();
+}
+
 function bindEvents(){
     document.querySelectorAll(".new-ret-qty").forEach(inp => {
         inp.addEventListener("input", () => calcRow(inp));
         inp.addEventListener("keydown", (e) => {
             if(["e","+","-"].includes(e.key)) e.preventDefault();
             moveFocus(e);
+        });
+        inp.addEventListener("focus", () => inp.select());
+    });
+
+    document.querySelectorAll(".price-gst.price-input").forEach(inp => {
+        inp.addEventListener("input", () => calcRow(inp));
+        inp.addEventListener("keydown", (e) => {
+            if(["e","+","-"].includes(e.key)) e.preventDefault();
         });
         inp.addEventListener("focus", () => inp.select());
     });
@@ -397,22 +475,29 @@ function moveFocus(e){
     }
 }
 
+function getElementNumber(el){
+    if(!el) return 0;
+    const raw = ("value" in el) ? el.value : el.innerText;
+    return parseFloat(raw) || 0;
+}
+
 function calcRow(input){
     const tr = input.closest("tr");
-    const soldQty = parseFloat(tr.querySelector(".sold-qty").innerText) || 0;
-    const priceGst = parseFloat(tr.querySelector(".price-gst").innerText) || 0;
+    const soldQty = getElementNumber(tr.querySelector(".sold-qty"));
+    const priceGst = getElementNumber(tr.querySelector(".price-gst"));
+    const qtyInput = tr.querySelector(".new-ret-qty");
 
-    let qty = parseFloat(input.value) || 0;
+    let qty = parseFloat(qtyInput.value) || 0;
 
     if(qty < 0){
         qty = 0;
-        input.value = 0;
+        qtyInput.value = 0;
     }
 
-    if(qty > soldQty){
+    if(!isWithoutBillReturn && qty > soldQty){
         alert("Return qty cannot exceed sold qty");
         qty = soldQty;
-        input.value = soldQty;
+        qtyInput.value = soldQty;
     }
 
     tr.querySelector(".ret-amount").value = (qty * priceGst).toFixed(2);
@@ -476,6 +561,8 @@ async function updateReturn(){
             .from("sales_return_details")
             .update({
                 total_return_amount: totalReturn,
+                customer_name: document.getElementById("cust_name").value || null,
+                customer_mobile: document.getElementById("cust_mobile").value || null,
                 return_date: new Date().toISOString()
             })
             .eq("id", currentReturnId);
@@ -488,9 +575,14 @@ async function updateReturn(){
             const itemName = row.children[2].innerText.trim();
             const soldQty = parseFloat(row.querySelector(".sold-qty").innerText) || 0;
             const returnQty = parseFloat(row.querySelector(".new-ret-qty").value) || 0;
-            const price = parseFloat(row.querySelector(".price")?.innerText) || 0;
-            const priceGst = parseFloat(row.querySelector(".price-gst").innerText) || 0;
+            let price = parseFloat(row.querySelector(".price")?.innerText) || 0;
+            const priceGst = getElementNumber(row.querySelector(".price-gst"));
             const gstPercent = parseFloat(row.querySelector(".gst-percent")?.innerText) || 0;
+            if(isWithoutBillReturn && priceGst && gstPercent){
+                price = priceGst / (1 + (gstPercent / 100));
+            } else if(isWithoutBillReturn && priceGst && !price){
+                price = priceGst;
+            }
             const hsnCode = row.querySelector(".hsn-code")?.innerText || "";
 
             if(returnQty > 0){

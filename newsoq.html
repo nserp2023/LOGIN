@@ -659,13 +659,14 @@
         
         <div class="form-group" style="position: relative;">
             <label>Mobile</label>
-            <input type="text" id="cust_mobile" class="form-control w-md nav-input" placeholder="Search..." tabindex="3" autocomplete="off">
+            <input type="text" id="cust_mobile" class="form-control w-md nav-input" placeholder="Mobile / Name" tabindex="3" autocomplete="off">
             <div id="mobile_suggestions" class="autocomplete-list"></div>
         </div>
 
-        <div class="form-group">
+        <div class="form-group" style="position: relative;">
             <label>Customer Name</label>
-            <input type="text" id="cust_name" class="form-control w-lg nav-input" tabindex="4">
+            <input type="text" id="cust_name" class="form-control w-lg nav-input" placeholder="Search Name / Mobile" tabindex="4" autocomplete="off">
+            <div id="name_suggestions" class="autocomplete-list"></div>
         </div>
 
         <div class="form-group">
@@ -1632,20 +1633,33 @@ const stockSelect = canSeeLandingColumn
 
     const mobileInput = document.getElementById('cust_mobile');
     const mobileList = document.getElementById('mobile_suggestions');
+    const customerNameInput = document.getElementById('cust_name');
+    const nameList = document.getElementById('name_suggestions');
     let custTimer;
 
-    mobileInput.addEventListener('input', (e) => {
-        clearTimeout(custTimer);
-        const val = e.target.value;
-        if(val.length < 3) { mobileList.style.display = 'none'; mobileList.removeAttribute("data-open"); return; }
+    function cleanCustomerSearch(value){
+        return String(value || "")
+            .trim()
+            .replace(/[%,()]/g, " ")
+            .replace(/\s+/g, " ");
+    }
 
-        custTimer = setTimeout(async () => {
-            const { data } = await sb.from('customers').select('*').ilike('mobile', '%' + val + '%').limit(5);
-            
-            mobileList.innerHTML = '';
-            if(data && data.length > 0) {
-                mobileList.style.display = 'block';
-                mobileList.innerHTML = `
+    function hideCustomerSuggestions(){
+        [mobileList, nameList].forEach(list => {
+            if(!list) return;
+            list.style.display = 'none';
+            list.removeAttribute("data-open");
+            list.innerHTML = "";
+        });
+    }
+
+    function renderCustomerSuggestions(input, list, data){
+        if(!list) return;
+
+        list.innerHTML = '';
+
+        if(data && data.length > 0) {
+            list.innerHTML = `
 <table class="autocomplete-table">
 <tr>
 <th>Mobile</th>
@@ -1655,8 +1669,8 @@ const stockSelect = canSeeLandingColumn
 </tr>
 ${data.map((c, idx) => `
 <tr class="autocomplete-row" data-idx="${idx}">
-<td>${c.mobile}</td>
-<td>${c.name}</td>
+<td>${c.mobile || ''}</td>
+<td>${c.name || ''}</td>
 <td>${c.address || ''}</td>
 <td>${c.gst_number || ''}</td>
 </tr>
@@ -1664,50 +1678,80 @@ ${data.map((c, idx) => `
 </table>
 `;
 
-                mobileList.style.display = 'block';
-                mobileList.setAttribute("data-open","true");
-                adjustDropdownPosition(mobileInput, mobileList);
+            list.style.display = 'block';
+            list.setAttribute("data-open","true");
+            adjustDropdownPosition(input, list);
 
-                mobileList.querySelectorAll(".autocomplete-row").forEach((tr, i) => {
-                    tr.onclick = () => selectCustomer(data[i]);
-                });
+            list.querySelectorAll(".autocomplete-row").forEach((tr, i) => {
+                tr.onclick = () => selectCustomer(data[i]);
+            });
 
-                const first = mobileList.querySelector(".autocomplete-row");
-                if (first) first.classList.add("selected");
-            } else {
-                mobileList.style.display = 'none';
-                mobileList.removeAttribute("data-open");
-            }
-        }, 300);
-    });
-
-    document.getElementById("cust_mobile").addEventListener("input", () => {
-        if(!(document.getElementById("cust_mobile").value || "").trim()){
-            hidePurchaseHistory();
+            const first = list.querySelector(".autocomplete-row");
+            if (first) first.classList.add("selected");
         } else {
+            list.style.display = 'none';
+            list.removeAttribute("data-open");
+        }
+    }
+
+    function bindCustomerSearch(input, list){
+        if(!input || !list) return;
+
+        input.addEventListener('input', (e) => {
+            clearTimeout(custTimer);
+            const val = cleanCustomerSearch(e.target.value);
+
+            if(val.length < 2) {
+                list.style.display = 'none';
+                list.removeAttribute("data-open");
+                list.innerHTML = "";
+                if(!val) hidePurchaseHistory();
+                return;
+            }
+
             lastHistoryKey = "";
-        }
-    });
 
-    mobileInput.addEventListener('keydown', (e) => {
-        const used = handleListNav(e, mobileList, (row)=>row.click());
+            custTimer = setTimeout(async () => {
+                const { data, error } = await sb
+                    .from('customers')
+                    .select('*')
+                    .or(`mobile.ilike.%${val}%,name.ilike.%${val}%`)
+                    .order('name', { ascending: true })
+                    .limit(10);
 
-        if(used){
-            e.preventDefault();
-            e.stopPropagation();
-            return;
-        }
-    });
+                if(error){
+                    console.error("Customer search error:", error);
+                    list.style.display = 'none';
+                    list.removeAttribute("data-open");
+                    return;
+                }
+
+                renderCustomerSuggestions(input, list, data || []);
+            }, 250);
+        });
+
+        input.addEventListener('keydown', (e) => {
+            const used = handleListNav(e, list, (row)=>row.click());
+
+            if(used){
+                e.preventDefault();
+                e.stopPropagation();
+                return;
+            }
+        });
+    }
+
+    bindCustomerSearch(mobileInput, mobileList);
+    bindCustomerSearch(customerNameInput, nameList);
 
     function selectCustomer(c) {
-        document.getElementById('cust_mobile').value = c.mobile;
-        document.getElementById('cust_name').value = c.name;
+        document.getElementById('cust_mobile').value = c.mobile || '';
+        document.getElementById('cust_name').value = c.name || '';
         document.getElementById('cust_address').value = c.address || '';
         document.getElementById('cust_gst').value = c.gst_number || '';
-        mobileList.style.display = 'none';
-        mobileList.removeAttribute("data-open");
+        hideCustomerSuggestions();
         lastHistoryKey = "";
-        document.getElementById('cust_name').focus();
+        document.getElementById('cust_address').focus();
     }
 
     function addNewRow(autoFocus = true) {
@@ -2131,6 +2175,8 @@ ${data.map((c, idx) => `
 
             if(list.id === 'mobile_suggestions'){
                 input = mobileInput;
+            } else if(list.id === 'name_suggestions'){
+                input = customerNameInput;
             } else if(list.id && list.id.startsWith('list_code_')){
                 const rid = list.id.replace('list_code_', '');
                 input = document.querySelector(`.code-inp[data-rid="${rid}"]`);

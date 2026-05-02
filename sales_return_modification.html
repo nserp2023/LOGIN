@@ -260,6 +260,15 @@ let currentSaleId = null;
 let oldReturnItems = [];
 let isWithoutBillReturn = false;
 
+function hasValidOriginalSaleId(value){
+    const v = String(value ?? "").trim();
+    if(!v) return false;
+    if(v === "0") return false;
+    if(v.toUpperCase() === "NULL") return false;
+    if(v.toUpperCase().includes("WITHOUT")) return false;
+    return true;
+}
+
 window.onload = async () => {
     const params = new URLSearchParams(window.location.search);
     const returnId = params.get("id");
@@ -292,8 +301,8 @@ async function loadSavedReturn(returnId){
         return;
     }
 
-    currentSaleId = returnHead.original_sales_id || null;
-    isWithoutBillReturn = !currentSaleId;
+    currentSaleId = hasValidOriginalSaleId(returnHead.original_sales_id) ? returnHead.original_sales_id : null;
+    isWithoutBillReturn = !hasValidOriginalSaleId(returnHead.original_sales_id);
 
     document.getElementById("return_id").value = returnHead.id || "";
     document.getElementById("sale_ref").value = isWithoutBillReturn ? "WITHOUT BILL" : currentSaleId;
@@ -328,7 +337,15 @@ async function loadSavedReturn(returnId){
         .maybeSingle();
 
     if(saleErr || !sale){
-        alert("Original sales bill not found");
+        console.warn("Original sales bill not found. Loading this return as WITHOUT BILL / missing bill return.", saleErr);
+        isWithoutBillReturn = true;
+        currentSaleId = null;
+        document.getElementById("sale_ref").value = "WITHOUT BILL";
+        document.getElementById("qty_head_label").innerText = "Ref Qty";
+        document.getElementById("cust_name").value = returnHead.customer_name || "";
+        document.getElementById("cust_mobile").value = returnHead.customer_mobile || "";
+        document.getElementById("bill_no").value = "WITHOUT BILL";
+        renderWithoutBillReturnItems(oldReturnItems);
         return;
     }
 
@@ -560,6 +577,7 @@ async function updateReturn(){
         const { error: headUpdateErr } = await sb
             .from("sales_return_details")
             .update({
+                original_sales_id: isWithoutBillReturn ? null : currentSaleId,
                 total_return_amount: totalReturn,
                 customer_name: document.getElementById("cust_name").value || null,
                 customer_mobile: document.getElementById("cust_mobile").value || null,

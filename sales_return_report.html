@@ -360,6 +360,8 @@ async function loadReport(){
             original_sales_id,
             return_date,
             total_return_amount,
+            customer_name,
+            customer_mobile,
             is_accepted,
             accepted_at,
             accepted_by
@@ -395,13 +397,16 @@ async function loadReport(){
     let filtered = returns.filter(r => {
         const sale = salesMap[r.original_sales_id] || {};
         const returnDate = r.return_date ? r.return_date.split("T")[0] : "";
+        const customerName = String(sale.customer_name || r.customer_name || "").toLowerCase();
+        const customerMobile = String(sale.customer_mobile || r.customer_mobile || "").toLowerCase();
+        const billText = r.original_sales_id
+            ? `${sale.series_code || ""}-${sale.sales_number || ""}`.toLowerCase()
+            : "without bill";
 
         if(fromDate && returnDate < fromDate) return false;
         if(toDate && returnDate > toDate) return false;
-        if(mobile && !(String(sale.customer_mobile || "").toLowerCase().includes(mobile))) return false;
-        if(name && !(String(sale.customer_name || "").toLowerCase().includes(name))) return false;
-
-        const billText = `${sale.series_code || ""}-${sale.sales_number || ""}`.toLowerCase();
+        if(mobile && !customerMobile.includes(mobile)) return false;
+        if(name && !customerName.includes(name)) return false;
         if(billNo && !billText.includes(billNo)) return false;
 
         return true;
@@ -421,6 +426,11 @@ async function loadReport(){
         totalAmount += amt;
 
         const accepted = !!r.is_accepted;
+        const customerName = sale.customer_name || r.customer_name || "";
+        const customerMobile = sale.customer_mobile || r.customer_mobile || "";
+        const billText = r.original_sales_id
+            ? `${sale.series_code || ""}-${sale.sales_number || ""}`
+            : "WITHOUT BILL";
 
         const tr = document.createElement("tr");
         tr.className = "return-row";
@@ -432,9 +442,9 @@ async function loadReport(){
                 <div class="expand-hint">Click to view items</div>
             </td>
             <td onclick="toggleReturnDetails(${r.id})">${r.return_date ? r.return_date.split("T")[0] : ""}</td>
-            <td onclick="toggleReturnDetails(${r.id})">${sale.customer_name || ""}</td>
-            <td onclick="toggleReturnDetails(${r.id})">${sale.customer_mobile || ""}</td>
-            <td onclick="toggleReturnDetails(${r.id})">${sale.series_code || ""}-${sale.sales_number || ""}</td>
+            <td onclick="toggleReturnDetails(${r.id})">${customerName}</td>
+            <td onclick="toggleReturnDetails(${r.id})">${customerMobile}</td>
+            <td onclick="toggleReturnDetails(${r.id})">${billText}</td>
             <td onclick="toggleReturnDetails(${r.id})">₹${amt.toFixed(2)}</td>
             <td onclick="toggleReturnDetails(${r.id})">
                 ${accepted

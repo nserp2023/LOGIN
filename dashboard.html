@@ -1688,6 +1688,12 @@
       return text.includes("salesorderadvance") || text.includes("advanceforsalesorder");
     }
 
+    function isCancelledRow(row){
+      const cancelFlag = String(row?.is_cancelled ?? row?.cancelled ?? row?.is_canceled ?? "").trim().toLowerCase();
+      const statusText = String(row?.status ?? row?.bill_status ?? row?.packing_status ?? "").trim().toLowerCase();
+      return cancelFlag === "true" || cancelFlag === "1" || cancelFlag === "yes" || statusText === "cancelled" || statusText === "canceled";
+    }
+
     async function safeSelectToday(table, dateColumn, columns = "*"){
       try{
         const { data, error } = await sb.from(table).select(columns).eq(dateColumn, todayLocalISODate());
@@ -1707,7 +1713,10 @@
 
       let today_cash_sales = 0;
       let today_credit_sales = 0;
+
       salesRows.forEach(row => {
+        if(isCancelledRow(row)) return;
+
         const paymentType = String(row.payment_type || "CASH").trim().toUpperCase();
         const amount = moneyFromRow(row, ["payable", "invoice_amount", "total_amount"]);
         if(paymentType === "CREDIT") today_credit_sales += amount;
@@ -1716,6 +1725,8 @@
 
       const salesIds = new Set(salesRows.map(r => String(r.id || "")));
       packRows.forEach(row => {
+        if(isCancelledRow(row)) return;
+
         const linkedSalesId = String(row.sales_id || "");
         if(linkedSalesId && salesIds.has(linkedSalesId)) return;
         today_cash_sales += moneyFromRow(row, ["packing_amount", "payable", "invoice_amount", "total_amount"]);
@@ -1736,6 +1747,8 @@
       let today_sales_return = 0;
       let pending_returns = 0;
       returnRows.forEach(row => {
+        if(isCancelledRow(row)) return;
+
         const status = String(row.approval_status || "").trim().toLowerCase();
         const accepted = row.is_accepted === true || status === "approved";
         if(accepted) today_sales_return += moneyFromRow(row, ["total_return_amount", "payable", "total_amount"]);

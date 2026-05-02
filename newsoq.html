@@ -780,7 +780,9 @@
             SALES REPORT
         </button>
 
-        <button class="btn" style="color: #64748b; background:transparent;" onclick="location.reload()">Reset / New Bill</button>
+        <div id="draft_status_text" style="align-self:center;color:#22c55e;font-weight:800;font-size:12px;padding:8px 10px;border:1px solid rgba(34,197,94,.45);border-radius:6px;background:rgba(20,83,45,.35);">Auto Backup ON</div>
+
+        <button class="btn" style="color: #64748b; background:transparent;" onclick="clearBillDraft(); location.reload();">Reset / New Bill</button>
         <button id="btn_save" class="btn btn-save" onclick="saveAndPrint()" tabindex="100">PRINT & SAVE</button>
     </div>
 </div>
@@ -868,6 +870,279 @@
     let currentUserRole = "";
     let canSeeLandingColumn = false;
 
+
+    // --- AUTO BACKUP / RECOVERY DRAFT MODE ---
+    const BILL_DRAFT_KEY = "vajra_billing_unsaved_draft_v2";
+    const BILL_DRAFT_MAX_AGE_MS = 24 * 60 * 60 * 1000; // keep draft for 24 hours
+    let autoBackupReady = false;
+    let autoBackupTimer = null;
+    let restoringDraft = false;
+
+    function getInputValue(id){
+        return document.getElementById(id)?.value || "";
+    }
+
+    function setInputValue(id, value){
+        const el = document.getElementById(id);
+        if(el) el.value = value ?? "";
+    }
+
+    function collectBillDraft(){
+        const rows = [];
+
+        document.querySelectorAll('#bill_body tr').forEach(row => {
+            const item = {
+                code: row.querySelector('.code-inp')?.value || "",
+                name: row.querySelector('.name-inp')?.value || "",
+                qty: row.querySelector('.qty-inp')?.value || "",
+                type: row.querySelector('.type-inp')?.value || "1",
+                price: row.querySelector('.price-inp')?.value || "",
+                price_gst: row.querySelector('.price-gst-inp')?.value || "",
+                discount: row.querySelector('.disc-inp')?.value || "0",
+                landing: row.querySelector('.landing-inp')?.value || "",
+                gst: row.querySelector('.gst-inp')?.value || "",
+                total: row.querySelector('.total-inp')?.value || "",
+                hsn: row.querySelector('.hsn-store')?.value || "",
+                raw: row.querySelector('.raw-data')?.value || ""
+            };
+
+            if(
+                item.code.trim() ||
+                item.name.trim() ||
+                parseFloat(item.qty || 0) > 0 ||
+                parseFloat(item.price || 0) > 0 ||
+                parseFloat(item.price_gst || 0) > 0
+            ){
+                rows.push(item);
+            }
+        });
+
+        return {
+            version: 2,
+            saved_at: new Date().toISOString(),
+            editing_id: editingId || null,
+            editing_type: editingType || null,
+            loaded_quotation_id: window.loadedQuotationId || null,
+            loaded_sales_order_id: window.loadedSalesOrderId || null,
+            header: {
+                doc_type: getInputValue('doc_type'),
+                series: getInputValue('bill_series'),
+                bill_number: getInputValue('bill_number'),
+                bill_date: getInputValue('bill_date'),
+                payment_type: getInputValue('payment_type'),
+                paid_amount: getInputValue('paid_amount'),
+                customer_mobile: getInputValue('cust_mobile'),
+                customer_name: getInputValue('cust_name'),
+                customer_address: getInputValue('cust_address'),
+                customer_gst: getInputValue('cust_gst'),
+                salesman: getInputValue('salesman'),
+                department_filter: getInputValue('department_filter'),
+                quotation_remark: getInputValue('quotation_remark')
+            },
+            rows,
+            totals: {
+                total_qty: document.getElementById('display_total_qty')?.innerText || "0",
+                total_before_gst: document.getElementById('display_total_before_gst')?.innerText || "₹0.00",
+                grand_total: document.getElementById('display_grand_total')?.innerText || "₹0.00",
+                balance: document.getElementById('display_balance_amount')?.innerText || "₹0.00"
+            }
+        };
+    }
+
+    function billDraftHasData(draft){
+        if(!draft) return false;
+        const h = draft.header || {};
+        const hasHeader = !!(
+            String(h.customer_mobile || "").trim() ||
+            String(h.customer_name || "").trim() ||
+            String(h.customer_address || "").trim() ||
+            String(h.customer_gst || "").trim() ||
+            String(h.quotation_remark || "").trim()
+        );
+        const hasRows = Array.isArray(draft.rows) && draft.rows.some(item =>
+            String(item.code || "").trim() ||
+            String(item.name || "").trim()
+        );
+        return hasHeader || hasRows;
+    }
+
+    function saveBillDraftNow(force = false){
+        if(!autoBackupReady || restoringDraft) return;
+
+        try{
+            const draft = collectBillDraft();
+            if(!billDraftHasData(draft)){
+                if(force) clearBillDraft();
+                return;
+            }
+            localStorage.setItem(BILL_DRAFT_KEY, JSON.stringify(draft));
+            updateDraftStatus("Backup saved");
+        }catch(err){
+            console.warn("Auto backup draft save failed:", err);
+        }
+    }
+
+    function clearBillDraft(){
+        try{
+            localStorage.removeItem(BILL_DRAFT_KEY);
+            updateDraftStatus("No draft");
+        }catch(err){
+            console.warn("Auto backup draft clear failed:", err);
+        }
+    }
+
+    function readSavedBillDraft(){
+        try{
+            const raw = localStorage.getItem(BILL_DRAFT_KEY);
+            if(!raw) return null;
+            const draft = JSON.parse(raw);
+            if(!draft?.saved_at) return null;
+
+            const age = Date.now() - new Date(draft.saved_at).getTime();
+            if(!Number.isFinite(age) || age > BILL_DRAFT_MAX_AGE_MS){
+                clearBillDraft();
+                return null;
+            }
+            return draft;
+        }catch(err){
+            console.warn("Auto backup draft read failed:", err);
+            return null;
+        }
+    }
+
+    function formatDraftSavedTime(iso){
+        try{
+            return new Date(iso).toLocaleString('en-IN', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }catch(_err){
+            return iso || "";
+        }
+    }
+
+    function restoreBillDraft(draft){
+        if(!draft || !billDraftHasData(draft)) return;
+        restoringDraft = true;
+
+        try{
+            const h = draft.header || {};
+
+            setInputValue('doc_type', h.doc_type || 'sales');
+            setInputValue('bill_series', h.series || getInputValue('bill_series'));
+            setInputValue('bill_number', h.bill_number || getInputValue('bill_number'));
+            setInputValue('bill_date', h.bill_date || getInputValue('bill_date'));
+            setInputValue('payment_type', h.payment_type || 'CASH');
+            setInputValue('paid_amount', h.paid_amount || '0');
+            setInputValue('cust_mobile', h.customer_mobile || '');
+            setInputValue('cust_name', h.customer_name || '');
+            setInputValue('cust_address', h.customer_address || '');
+            setInputValue('cust_gst', h.customer_gst || '');
+            setInputValue('salesman', h.salesman || '');
+            setInputValue('department_filter', h.department_filter || '');
+            setInputValue('quotation_remark', h.quotation_remark || '');
+
+            window.loadedQuotationId = draft.loaded_quotation_id || null;
+            window.loadedSalesOrderId = draft.loaded_sales_order_id || null;
+
+            toggleRemarkField();
+            syncPaymentUI(true);
+
+            const tbody = document.getElementById('bill_body');
+            if(tbody) tbody.innerHTML = '';
+            currentRowId = 0;
+
+            const rows = Array.isArray(draft.rows) ? draft.rows : [];
+            if(rows.length){
+                rows.forEach(item => {
+                    addNewRow(false);
+                    const row = document.querySelector('#bill_body tr:last-child');
+                    if(!row) return;
+                    row.querySelector('.code-inp').value = item.code || '';
+                    row.querySelector('.name-inp').value = item.name || '';
+                    row.querySelector('.qty-inp').value = item.qty || '1';
+                    row.querySelector('.type-inp').value = item.type || '1';
+                    row.querySelector('.price-inp').value = item.price || '';
+                    row.querySelector('.price-gst-inp').value = item.price_gst || '';
+                    row.querySelector('.disc-inp').value = item.discount || '0';
+                    row.querySelector('.landing-inp').value = item.landing || '';
+                    row.querySelector('.gst-inp').value = item.gst || '';
+                    row.querySelector('.total-inp').value = item.total || '';
+                    row.querySelector('.hsn-store').value = item.hsn || '';
+                    row.querySelector('.raw-data').value = item.raw || '';
+                    row.dataset.originalQty = "0";
+                    applyItemRestriction(row);
+                });
+            }else{
+                addNewRow(false);
+            }
+
+            calcTotal();
+            syncPaymentUI(true);
+            applyLandingColumnVisibility();
+            updateDraftStatus("Draft restored");
+        }finally{
+            restoringDraft = false;
+        }
+    }
+
+    function showRestoreDraftPromptIfNeeded(){
+        const draft = readSavedBillDraft();
+        if(!draft || !billDraftHasData(draft)) return false;
+
+        const savedTime = formatDraftSavedTime(draft.saved_at);
+        const rowCount = Array.isArray(draft.rows) ? draft.rows.length : 0;
+        const customer = draft.header?.customer_name || draft.header?.customer_mobile || "customer not entered";
+        const total = draft.totals?.grand_total || "₹0.00";
+
+        const restore = confirm(
+            `Recovered unsaved bill found.\n\nCustomer: ${customer}\nItems: ${rowCount}\nTotal: ${total}\nSaved: ${savedTime}\n\nDo you want to restore it?`
+        );
+
+        if(restore){
+            restoreBillDraft(draft);
+            return true;
+        }
+
+        const remove = confirm("Do you want to delete this old unsaved draft?");
+        if(remove) clearBillDraft();
+        return false;
+    }
+
+    function updateDraftStatus(text){
+        const el = document.getElementById('draft_status_text');
+        if(el){
+            el.textContent = text || "Auto Backup ON";
+        }
+    }
+
+    function initAutoBackupDraftMode(){
+        autoBackupReady = true;
+        updateDraftStatus("Auto Backup ON");
+
+        document.addEventListener('input', (e) => {
+            if(e.target.closest('.container')){
+                clearTimeout(autoBackupTimer);
+                autoBackupTimer = setTimeout(() => saveBillDraftNow(false), 800);
+            }
+        }, true);
+
+        document.addEventListener('change', (e) => {
+            if(e.target.closest('.container')){
+                saveBillDraftNow(false);
+            }
+        }, true);
+
+        setInterval(() => saveBillDraftNow(false), 5000);
+
+        window.addEventListener('beforeunload', () => {
+            saveBillDraftNow(false);
+        });
+    }
+
     // --- 3. INITIALIZATION ---
 
     async function loadCurrentUserRole() {
@@ -952,6 +1227,11 @@
         }
         else{
             addNewRow();
+        }
+
+        initAutoBackupDraftMode();
+        if(!editId && !convertId && !convertSO){
+            showRestoreDraftPromptIfNeeded();
         }
 
         document.getElementById('cust_mobile').focus();    
@@ -2892,6 +3172,8 @@ function calcTotal() {
         const btn = document.getElementById('btn_save');
         if (btn.disabled) return;
 
+        saveBillDraftNow(true);
+
         btn.disabled = true;
         btn.innerText = "SAVING...";
 
@@ -3253,6 +3535,8 @@ function calcTotal() {
             if (!editingId) {
                 document.getElementById('bill_number').value = nextBillNo;
             }
+
+            clearBillDraft();
 
             alert(`Bill #${nextBillNo} Saved Successfully!`);
 

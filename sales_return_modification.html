@@ -191,6 +191,32 @@ td input:focus{
     font-weight:700;
     color:#fff;
 }
+
+.col-act{ width:80px; }
+.manual-add-only{ display:none; }
+body.without-bill-mode .manual-add-only{ display:inline-block; }
+.autocomplete-wrapper{ position:relative; width:100%; height:100%; }
+.autocomplete-list{
+    position:absolute;
+    top:100%;
+    left:0;
+    width:min(900px, calc(100vw - 60px));
+    max-height:260px;
+    overflow:auto;
+    background:#fff;
+    border:1px solid #94a3b8;
+    box-shadow:0 8px 25px rgba(0,0,0,.35);
+    z-index:9999;
+    display:none;
+}
+.autocomplete-table{ width:100%; border-collapse:collapse; min-width:720px; table-layout:auto; }
+.autocomplete-table th,.autocomplete-table td{ color:#111827; background:#fff; border:1px solid #cbd5e1; padding:6px; font-size:12px; white-space:nowrap; }
+.autocomplete-table th{ background:#e2e8f0; }
+.autocomplete-row:hover,.autocomplete-row.selected{ background:#dbeafe !important; cursor:pointer; }
+.btn-add{ background:#7c3aed; color:#fff; }
+.btn-remove{ background:#dc2626; color:#fff; padding:7px 10px; border:none; border-radius:5px; cursor:pointer; font-weight:800; }
+body:not(.without-bill-mode) .col-act, body:not(.without-bill-mode) .manual-add-only{ display:none; }
+
 </style>
 </head>
 <body>
@@ -236,6 +262,7 @@ td input:focus{
                     <th class="col-new">New Return</th>
                     <th class="col-price">Price+GST</th>
                     <th class="col-amt">Amount</th>
+                    <th class="col-act manual-add-only">Remove</th>
                 </tr>
             </thead>
             <tbody id="items_body"></tbody>
@@ -243,6 +270,7 @@ td input:focus{
     </div>
 
     <div class="footer-section">
+        <button class="btn btn-add manual-add-only" onclick="addManualModifyRow()">+ Add Item</button>
         <button class="btn btn-back" onclick="window.location.href='sales_return_report.html'">Back</button>
         <button class="btn btn-update" id="btn_update_return" onclick="updateReturn()">Update Return</button>
     </div>
@@ -259,6 +287,8 @@ let currentReturnId = null;
 let currentSaleId = null;
 let oldReturnItems = [];
 let isWithoutBillReturn = false;
+let stockMaster = [];
+let stockLoaded = false;
 
 function hasValidOriginalSaleId(value){
     const v = String(value ?? "").trim();
@@ -280,6 +310,7 @@ window.onload = async () => {
     }
 
     currentReturnId = returnId;
+    await loadStockMaster();
     await loadSavedReturn(returnId);
 };
 
@@ -303,6 +334,7 @@ async function loadSavedReturn(returnId){
 
     currentSaleId = hasValidOriginalSaleId(returnHead.original_sales_id) ? returnHead.original_sales_id : null;
     isWithoutBillReturn = !hasValidOriginalSaleId(returnHead.original_sales_id);
+    document.body.classList.toggle("without-bill-mode", isWithoutBillReturn);
 
     document.getElementById("return_id").value = returnHead.id || "";
     document.getElementById("sale_ref").value = isWithoutBillReturn ? "WITHOUT BILL" : currentSaleId;
@@ -339,6 +371,7 @@ async function loadSavedReturn(returnId){
     if(saleErr || !sale){
         console.warn("Original sales bill not found. Loading this return as WITHOUT BILL / missing bill return.", saleErr);
         isWithoutBillReturn = true;
+        document.body.classList.add("without-bill-mode");
         currentSaleId = null;
         document.getElementById("sale_ref").value = "WITHOUT BILL";
         document.getElementById("qty_head_label").innerText = "Ref Qty";
@@ -401,6 +434,7 @@ async function loadSavedReturn(returnId){
             <td style="display:none"><div class="price">${price.toFixed(2)}</div></td>
             <td style="display:none"><div class="gst-percent">${gstPercent.toFixed(2)}</div></td>
             <td style="display:none"><div class="hsn-code">${hsnCode}</div></td>
+            <td class="col-act manual-add-only"></td>
         `;
         tbody.appendChild(tr);
     });
@@ -445,6 +479,7 @@ function renderWithoutBillReturnItems(returnItems){
             <td style="display:none"><div class="price">${price.toFixed(2)}</div></td>
             <td style="display:none"><div class="gst-percent">${gstPercent.toFixed(2)}</div></td>
             <td style="display:none"><div class="hsn-code">${item.hsn_code || ""}</div></td>
+            <td class="col-act manual-add-only"></td>
         `;
         tbody.appendChild(tr);
     });
@@ -453,8 +488,282 @@ function renderWithoutBillReturnItems(returnItems){
     calcTotal();
 }
 
+
+async function loadStockMaster(){
+    stockLoaded = false;
+    stockMaster = [];
+    let allItems = [];
+    let from = 0;
+    const pageSize = 1000;
+
+    while(true){
+        const { data, error } = await sb
+            .from("stock_balance_view")
+            .select("item_code,item_name,barcode,price1,price2,price3,price3_gst,landing,balance,gst_percent,hsn_code,department")
+            .order("item_code", { ascending:true })
+            .range(from, from + pageSize - 1);
+
+        if(error){
+            console.error(error);
+            alert("Error loading stock items for adding new return item");
+            return;
+        }
+
+        if(!data || !data.length) break;
+        allItems = allItems.concat(data);
+        if(data.length < pageSize) break;
+        from += pageSize;
+    }
+
+    const unique = new Map();
+    allItems.forEach(item => {
+        const code = String(item.item_code || "").trim().toUpperCase();
+        if(code) unique.set(code, item);
+    });
+    stockMaster = Array.from(unique.values());
+    stockLoaded = true;
+}
+
+function normalizeSearchText(value){
+    return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g," ").replace(/\s+/g," ").trim();
+}
+
+function searchReturnStock(query, field){
+    const normalizedQuery = normalizeSearchText(query);
+    if(!normalizedQuery) return [];
+    const terms = normalizedQuery.split(" ").filter(Boolean);
+
+    const scored = stockMaster.map(item => {
+        const codeRaw = String(item.item_code || "");
+        const nameRaw = String(item.item_name || "");
+        const barcodeRaw = String(item.barcode || "");
+        const code = normalizeSearchText(codeRaw);
+        const name = normalizeSearchText(nameRaw);
+        const barcode = normalizeSearchText(barcodeRaw);
+        const primary = field === "item_code" ? code : name;
+        const secondary = field === "item_code" ? name : code;
+        const all = `${code} ${name} ${barcode}`;
+
+        const matched = terms.every(t => primary.includes(t)) || terms.every(t => secondary.includes(t)) || terms.every(t => all.includes(t));
+        if(!matched) return null;
+
+        let score = 0;
+        if(primary === normalizedQuery) score += 1000;
+        if(secondary === normalizedQuery) score += 900;
+        if(barcode === normalizedQuery) score += 850;
+        if(primary.startsWith(normalizedQuery)) score += 700;
+        if(secondary.startsWith(normalizedQuery)) score += 650;
+        if(barcode.startsWith(normalizedQuery)) score += 600;
+        for(const t of terms){
+            if(code.includes(t)) score += 40;
+            if(name.includes(t)) score += 40;
+            if(barcode.includes(t)) score += 35;
+        }
+        return { item, score };
+    }).filter(Boolean);
+
+    scored.sort((a,b) => b.score - a.score || String(a.item.item_name || "").localeCompare(String(b.item.item_name || "")));
+    return scored.slice(0, 40).map(x => x.item);
+}
+
+function closeAllDropdowns(){
+    document.querySelectorAll(".autocomplete-list").forEach(list => {
+        list.style.display = "none";
+        list.innerHTML = "";
+    });
+}
+
+document.addEventListener("click", (e) => {
+    if(!e.target.closest(".autocomplete-wrapper")) closeAllDropdowns();
+});
+
+function addManualModifyRow(itemData = {}){
+    if(!isWithoutBillReturn){
+        alert("Add item is available only for WITHOUT BILL returns.");
+        return;
+    }
+
+    const tbody = document.getElementById("items_body");
+    const idx = tbody.querySelectorAll("tr").length + 1;
+    const gstPercent = parseFloat(itemData.gst_percent || 0) || 0;
+    const basePrice = parseFloat(itemData.price3 || itemData.price || 0) || 0;
+    let priceGst = parseFloat(itemData.price3_gst || itemData.price_gst || 0) || 0;
+    if(!priceGst && basePrice){
+        priceGst = basePrice * (1 + gstPercent / 100);
+    }
+
+    const tr = document.createElement("tr");
+    tr.setAttribute("data-item-code", itemData.item_code || "");
+    tr.setAttribute("data-new-manual-row", "1");
+    tr.innerHTML = `
+        <td><div class="readonly-cell">${idx}</div></td>
+        <td>
+            <div class="autocomplete-wrapper">
+                <input type="text" class="manual-code" value="${itemData.item_code || ""}" placeholder="Item code" autocomplete="off">
+                <div class="autocomplete-list code-list"></div>
+            </div>
+        </td>
+        <td>
+            <div class="autocomplete-wrapper">
+                <input type="text" class="manual-name" value="${itemData.item_name || ""}" placeholder="Item name" autocomplete="off">
+                <div class="autocomplete-list name-list"></div>
+            </div>
+        </td>
+        <td><input type="number" class="sold-qty" value="0" step="0.01" min="0" placeholder="0.00"></td>
+        <td><div class="readonly-cell old-ret">0.00</div></td>
+        <td><input type="number" class="new-ret-qty" min="0" step="0.01" value="0"></td>
+        <td><input type="number" class="price-gst price-input" min="0" step="0.01" value="${priceGst.toFixed(2)}"></td>
+        <td><input type="text" class="ret-amount" readonly value="0.00"></td>
+        <td style="display:none"><div class="price">${basePrice.toFixed(2)}</div></td>
+        <td style="display:none"><div class="gst-percent">${gstPercent.toFixed(2)}</div></td>
+        <td style="display:none"><div class="hsn-code">${itemData.hsn_code || ""}</div></td>
+        <td class="col-act manual-add-only"><button type="button" class="btn-remove" onclick="removeManualModifyRow(this)">X</button></td>
+    `;
+    tbody.appendChild(tr);
+    bindManualModifyRowEvents(tr);
+    bindEvents();
+    renumberRows();
+
+    const code = tr.querySelector(".manual-code");
+    if(code){ code.focus(); code.select(); }
+}
+
+function removeManualModifyRow(btn){
+    const tr = btn.closest("tr");
+    if(tr) tr.remove();
+    renumberRows();
+    calcTotal();
+}
+
+function renumberRows(){
+    document.querySelectorAll("#items_body tr").forEach((tr, idx) => {
+        const first = tr.querySelector("td:first-child .readonly-cell");
+        if(first) first.innerText = idx + 1;
+    });
+}
+
+function bindManualModifyRowEvents(tr){
+    const codeInput = tr.querySelector(".manual-code");
+    const nameInput = tr.querySelector(".manual-name");
+    const codeList = tr.querySelector(".code-list");
+    const nameList = tr.querySelector(".name-list");
+    const refQtyInput = tr.querySelector(".sold-qty");
+    const priceInput = tr.querySelector(".price-gst");
+    const qtyInput = tr.querySelector(".new-ret-qty");
+
+    const applyItem = (item) => {
+        if(!item) return;
+        const gstPercent = parseFloat(item.gst_percent || 0) || 0;
+        const basePrice = parseFloat(item.price3 || 0) || 0;
+        let priceGst = parseFloat(item.price3_gst || 0) || 0;
+        if(!priceGst && basePrice){
+            priceGst = basePrice * (1 + gstPercent / 100);
+        }
+
+        tr.setAttribute("data-item-code", item.item_code || "");
+        codeInput.value = item.item_code || "";
+        nameInput.value = item.item_name || "";
+        priceInput.value = (priceGst || 0).toFixed(2);
+        tr.querySelector(".price").innerText = basePrice.toFixed(2);
+        tr.querySelector(".gst-percent").innerText = gstPercent.toFixed(2);
+        tr.querySelector(".hsn-code").innerText = item.hsn_code || "";
+        closeAllDropdowns();
+        calcRow(qtyInput);
+        qtyInput.focus();
+        qtyInput.select();
+    };
+
+    const renderMatches = (input, list, field) => {
+        if(!stockLoaded){
+            list.innerHTML = `<div style="padding:8px;color:#111827;background:#fff;">Loading stock...</div>`;
+            list.style.display = "block";
+            return;
+        }
+        const val = input.value || "";
+        if(val.trim().length < 1){
+            list.style.display = "none";
+            list.innerHTML = "";
+            return;
+        }
+        const matches = searchReturnStock(val, field);
+        if(!matches.length){
+            list.style.display = "none";
+            list.innerHTML = "";
+            return;
+        }
+
+        let html = `<table class="autocomplete-table"><tr><th>Item</th><th>Code</th><th>Stock</th><th>P3</th><th>Landing</th></tr>`;
+        matches.forEach((item, idx) => {
+            html += `<tr class="autocomplete-row" data-idx="${idx}"><td>${item.item_name || ""}</td><td>${item.item_code || ""}</td><td>${item.balance || 0}</td><td>₹${item.price3 || item.price3_gst || 0}</td><td>₹${item.landing || 0}</td></tr>`;
+        });
+        html += `</table>`;
+        list.innerHTML = html;
+        list.style.display = "block";
+        list.querySelectorAll(".autocomplete-row").forEach((row, idx) => row.addEventListener("click", () => applyItem(matches[idx])));
+        const first = list.querySelector(".autocomplete-row");
+        if(first) first.classList.add("selected");
+    };
+
+    const listNav = (e, list) => {
+        if(getComputedStyle(list).display === "none") return false;
+        const rows = Array.from(list.querySelectorAll(".autocomplete-row"));
+        if(!rows.length) return false;
+        let idx = rows.findIndex(r => r.classList.contains("selected"));
+        if(e.key === "ArrowDown"){
+            e.preventDefault(); idx = Math.min(idx + 1, rows.length - 1);
+        } else if(e.key === "ArrowUp"){
+            e.preventDefault(); idx = Math.max(idx - 1, 0);
+        } else if(e.key === "Enter"){
+            e.preventDefault(); (rows[idx] || rows[0]).click(); return true;
+        } else if(e.key === "Escape"){
+            list.style.display = "none"; return true;
+        } else return false;
+        rows.forEach(r => r.classList.remove("selected"));
+        if(rows[idx]){ rows[idx].classList.add("selected"); rows[idx].scrollIntoView({ block:"nearest" }); }
+        return true;
+    };
+
+    [codeInput, nameInput].forEach(inp => inp.addEventListener("input", () => inp.value = inp.value.toUpperCase()));
+    codeInput.addEventListener("input", () => renderMatches(codeInput, codeList, "item_code"));
+    nameInput.addEventListener("input", () => renderMatches(nameInput, nameList, "item_name"));
+    codeInput.addEventListener("keydown", (e) => {
+        if(listNav(e, codeList)) return;
+        if(e.key === "Enter"){
+            e.preventDefault();
+            const code = String(codeInput.value || "").trim().toUpperCase();
+            const exact = stockMaster.find(i => String(i.item_code || "").trim().toUpperCase() === code);
+            if(exact) applyItem(exact); else nameInput.focus();
+        }
+    });
+    nameInput.addEventListener("keydown", (e) => {
+        if(listNav(e, nameList)) return;
+        if(e.key === "Enter"){
+            e.preventDefault();
+            refQtyInput.focus(); refQtyInput.select();
+        }
+    });
+    refQtyInput.addEventListener("input", () => calcRow(refQtyInput));
+    refQtyInput.addEventListener("keydown", (e) => { if(e.key === "Enter"){ e.preventDefault(); priceInput.focus(); priceInput.select(); } });
+    priceInput.addEventListener("keydown", (e) => { if(e.key === "Enter"){ e.preventDefault(); qtyInput.focus(); qtyInput.select(); } });
+}
+
+function getRowItemName(row){
+    const manualName = row.querySelector(".manual-name");
+    if(manualName) return manualName.value.trim();
+    return row.children[2]?.innerText.trim() || "";
+}
+
+function getRowItemCode(row){
+    const manualCode = row.querySelector(".manual-code");
+    if(manualCode) return manualCode.value.trim();
+    return row.getAttribute("data-item-code") || row.children[1]?.innerText.trim() || "";
+}
+
+
 function bindEvents(){
     document.querySelectorAll(".new-ret-qty").forEach(inp => {
+        if(inp.dataset.boundModify === "1") return;
+        inp.dataset.boundModify = "1";
         inp.addEventListener("input", () => calcRow(inp));
         inp.addEventListener("keydown", (e) => {
             if(["e","+","-"].includes(e.key)) e.preventDefault();
@@ -464,6 +773,8 @@ function bindEvents(){
     });
 
     document.querySelectorAll(".price-gst.price-input").forEach(inp => {
+        if(inp.dataset.boundPriceModify === "1") return;
+        inp.dataset.boundPriceModify = "1";
         inp.addEventListener("input", () => calcRow(inp));
         inp.addEventListener("keydown", (e) => {
             if(["e","+","-"].includes(e.key)) e.preventDefault();
@@ -589,9 +900,9 @@ async function updateReturn(){
 
         // 4. insert new rows and add stock again
         for(const row of rows){
-            const itemCode = row.getAttribute("data-item-code") || "";
-            const itemName = row.children[2].innerText.trim();
-            const soldQty = parseFloat(row.querySelector(".sold-qty").innerText) || 0;
+            const itemCode = getRowItemCode(row);
+            const itemName = getRowItemName(row);
+            const soldQty = getElementNumber(row.querySelector(".sold-qty"));
             const returnQty = parseFloat(row.querySelector(".new-ret-qty").value) || 0;
             let price = parseFloat(row.querySelector(".price")?.innerText) || 0;
             const priceGst = getElementNumber(row.querySelector(".price-gst"));
@@ -604,6 +915,9 @@ async function updateReturn(){
             const hsnCode = row.querySelector(".hsn-code")?.innerText || "";
 
             if(returnQty > 0){
+                if(!itemCode || !itemName){
+                    throw new Error("Please select item code and item name for every added return item.");
+                }
                 const { error: insertErr } = await sb
                     .from("sales_return_item_details")
                     .insert([{

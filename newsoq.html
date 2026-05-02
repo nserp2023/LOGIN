@@ -346,6 +346,34 @@
 .autocomplete-item strong { display: block; color: var(--text); }
         .autocomplete-item small { color: #64748b; }
 
+        .autocomplete-item.selected,
+        .autocomplete-item:hover {
+            background: #2563eb !important;
+            color: #ffffff !important;
+            font-weight: 800;
+        }
+
+        .address-autocomplete-list {
+            min-width: 360px;
+            max-width: min(620px, calc(100vw - 20px));
+            z-index: 9999;
+        }
+
+        .address-autocomplete-list .address-main {
+            display: block;
+            font-weight: 900;
+            color: inherit;
+            line-height: 1.25;
+        }
+
+        .address-autocomplete-list .address-sub {
+            display: block;
+            margin-top: 3px;
+            font-size: 11px;
+            color: inherit;
+            opacity: 0.78;
+        }
+
         .autocomplete-table th:first-child,
         .autocomplete-table td:first-child{
             width: 350px;
@@ -712,9 +740,10 @@
             <div id="name_suggestions" class="autocomplete-list"></div>
         </div>
 
-        <div class="form-group">
+        <div class="form-group" style="position: relative;">
             <label>Address</label>
-            <input type="text" id="cust_address" class="form-control w-lg nav-input" tabindex="5">
+            <input type="text" id="cust_address" class="form-control w-lg nav-input" tabindex="5" autocomplete="off" placeholder="Type place / address">
+            <div id="address_suggestions" class="autocomplete-list address-autocomplete-list"></div>
         </div>
         
         <div class="form-group">
@@ -912,6 +941,10 @@
     let stockLoaded = false;
     let currentUserRole = "";
     let canSeeLandingColumn = false;
+
+    // --- GEOAPIFY ADDRESS AUTOCOMPLETE ---
+    const GEOAPIFY_API_KEY = "990205e0a84c4f7ea549a0485e60ceab";
+    let geoapifyAddressTimer = null;
 
 
     // --- AUTO BACKUP / RECOVERY DRAFT MODE ---
@@ -1251,6 +1284,7 @@
         syncPaymentUI();
 
         bindPaymentEvents();
+        initAddressGeoapify();
 
         const params = new URLSearchParams(window.location.search);
         const convertId = params.get("convert");
@@ -1952,6 +1986,158 @@ const stockSelect = canSeeLandingColumn
         });
 
         return scored.slice(0, 40).map(x => x.item);
+    }
+
+
+    function escapeHtml(value){
+        return String(value ?? "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+    function initAddressGeoapify(){
+        const input = document.getElementById("cust_address");
+        const list = document.getElementById("address_suggestions");
+        if(!input || !list) return;
+
+        let selectedIndex = -1;
+        let places = [];
+
+        function closeList(){
+            list.style.display = "none";
+            list.removeAttribute("data-open");
+            list.innerHTML = "";
+            selectedIndex = -1;
+            places = [];
+        }
+
+        function highlightSelected(){
+            const items = list.querySelectorAll(".autocomplete-item");
+            items.forEach((item, index) => {
+                item.classList.toggle("selected", index === selectedIndex);
+                if(index === selectedIndex){
+                    item.scrollIntoView({ block: "nearest" });
+                }
+            });
+        }
+
+        function selectPlace(index){
+            const place = places[index];
+            if(!place) return;
+            const props = place.properties || {};
+            const address = props.formatted || props.address_line2 || props.address_line1 || input.value;
+            input.value = String(address || "").toUpperCase();
+            closeList();
+            input.focus();
+        }
+
+        async function searchAddress(value){
+            if(!GEOAPIFY_API_KEY || GEOAPIFY_API_KEY === "YOUR_API_KEY") return;
+
+            const url = `https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(value)}&filter=countrycode:in&limit=5&format=geojson&apiKey=${encodeURIComponent(GEOAPIFY_API_KEY)}`;
+
+            try{
+                list.innerHTML = `<div class="autocomplete-item">Searching address...</div>`;
+                list.style.display = "block";
+                list.setAttribute("data-open", "true");
+                adjustDropdownPosition(input, list);
+
+                const response = await fetch(url);
+                if(!response.ok) throw new Error(`Geoapify HTTP ${response.status}`);
+
+                const data = await response.json();
+                places = Array.isArray(data.features) ? data.features : [];
+                selectedIndex = places.length ? 0 : -1;
+
+                if(!places.length){
+                    closeList();
+                    return;
+                }
+
+                list.innerHTML = places.map((feature, index) => {
+                    const p = feature.properties || {};
+                    const main = p.name || p.address_line1 || p.formatted || "Address";
+                    const sub = p.formatted || p.address_line2 || "";
+                    return `
+                        <div class="autocomplete-item ${index === 0 ? 'selected' : ''}" data-index="${index}">
+                            <span class="address-main">${escapeHtml(main)}</span>
+                            <span class="address-sub">${escapeHtml(sub)}</span>
+                        </div>
+                    `;
+                }).join("");
+
+                list.style.display = "block";
+                list.setAttribute("data-open", "true");
+                adjustDropdownPosition(input, list);
+
+                list.querySelectorAll(".autocomplete-item").forEach(item => {
+                    item.addEventListener("mousedown", (e) => {
+                        e.preventDefault();
+                        const index = parseInt(item.dataset.index, 10);
+                        selectPlace(index);
+                    });
+                });
+            }catch(err){
+                console.error("Geoapify address autocomplete error:", err);
+                closeList();
+            }
+        }
+
+        input.addEventListener("input", () => {
+            clearTimeout(geoapifyAddressTimer);
+            const value = cleanCustomerSearch(input.value);
+
+            if(value.length < 3){
+                closeList();
+                return;
+            }
+
+            geoapifyAddressTimer = setTimeout(() => {
+                searchAddress(value);
+            }, 450);
+        });
+
+        input.addEventListener("keydown", (e) => {
+            if(list.style.display !== "block" || !places.length) return;
+
+            if(e.key === "ArrowDown"){
+                selectedIndex = (selectedIndex + 1) % places.length;
+                highlightSelected();
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            else if(e.key === "ArrowUp"){
+                selectedIndex = (selectedIndex - 1 + places.length) % places.length;
+                highlightSelected();
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            else if(e.key === "Enter"){
+                if(selectedIndex >= 0){
+                    selectPlace(selectedIndex);
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+            }
+            else if(e.key === "Escape"){
+                closeList();
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        });
+
+        input.addEventListener("blur", () => {
+            setTimeout(() => {
+                if(!document.activeElement || !list.contains(document.activeElement)) closeList();
+            }, 180);
+        });
+
+        document.addEventListener("click", (e) => {
+            if(e.target !== input && !list.contains(e.target)) closeList();
+        });
     }
 
     const mobileInput = document.getElementById('cust_mobile');

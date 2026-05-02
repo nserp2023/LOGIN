@@ -195,6 +195,35 @@
             outline: none;
         }
 
+
+        /* ===== ACTIVE ITEM ROW HIGHLIGHT ===== */
+        #bill_body tr.item-row{
+            transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+        }
+
+        #bill_body tr.item-row.active-bill-row{
+            background: rgba(37, 99, 235, 0.24) !important;
+            box-shadow: inset 4px 0 0 #facc15, inset 0 0 0 9999px rgba(250, 204, 21, 0.08);
+        }
+
+        #bill_body tr.item-row.active-bill-row > td{
+            background: rgba(30, 64, 175, 0.32) !important;
+            border-top: 2px solid rgba(250, 204, 21, 0.75);
+            border-bottom: 2px solid rgba(250, 204, 21, 0.75);
+        }
+
+        #bill_body tr.item-row.active-bill-row .col-idx{
+            color: #facc15 !important;
+            font-weight: 900;
+            font-size: 15px;
+        }
+
+        #bill_body tr.item-row.active-bill-row input,
+        #bill_body tr.item-row.active-bill-row select{
+            color: #ffffff !important;
+            font-weight: 800;
+        }
+
         .col-idx { width: 30px; text-align: center; }
         .col-code { width: 100px; }
         .col-name { width: auto; }
@@ -283,24 +312,38 @@
             border:1px solid black;
         }
 
-        .autocomplete-row:hover{
-            background:#dbeafe;
-            cursor:pointer;
+        /* ===== ULTRA CLEAN ITEM DROPDOWN ===== */
+        .autocomplete-row {
+            background: #ffffff !important;
+            color: #000000 !important;
+            cursor: pointer;
         }
 
-        .autocomplete-item {
+        .autocomplete-row td {
+            background: #ffffff !important;
+            color: #000000 !important;
+        }
+
+        .autocomplete-row:hover,
+        .autocomplete-row:hover td {
+            background: #ffffff !important;
+            color: #000000 !important;
+        }
+
+        .autocomplete-row.selected,
+        .autocomplete-row.selected td {
+            background: #2563eb !important;
+            color: #ffffff !important;
+            font-weight: bold;
+        }
+
+.autocomplete-item {
             padding: 8px 10px;
             cursor: pointer;
             border-bottom: 1px solid #f1f5f9;
             font-size: 13px;
         }
-
-        .autocomplete-row:hover,
-        .autocomplete-row.selected {
-            background-color: #dbeafe;
-        }
-
-        .autocomplete-item strong { display: block; color: var(--text); }
+.autocomplete-item strong { display: block; color: var(--text); }
         .autocomplete-item small { color: #64748b; }
 
         .autocomplete-table th:first-child,
@@ -2113,6 +2156,23 @@ ${data.map((c, idx) => `
         }
     }
 
+
+    function setActiveBillRow(row){
+        document.querySelectorAll('#bill_body tr.item-row.active-bill-row').forEach(r => {
+            if(r !== row) r.classList.remove('active-bill-row');
+        });
+
+        if(row){
+            row.classList.add('active-bill-row');
+            row.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        }
+    }
+
+    document.addEventListener('focusin', function(e){
+        const row = e.target.closest && e.target.closest('#bill_body tr.item-row');
+        if(row) setActiveBillRow(row);
+    });
+
     function deleteRow(id) {
         const row = document.getElementById(`row_${id}`);
         if(row) row.remove();
@@ -2138,6 +2198,7 @@ ${data.map((c, idx) => `
         });
 
         row.addEventListener('click', (e) => {
+            setActiveBillRow(row);
             const input = e.target.closest('input, select');
             if(input){
                 input.focus();
@@ -2145,6 +2206,10 @@ ${data.map((c, idx) => `
                     input.select();
                 }
             }
+        });
+
+        row.addEventListener('focusin', () => {
+            setActiveBillRow(row);
         });
         
         const attachSearch = (inp, listId, field) => {

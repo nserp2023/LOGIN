@@ -97,6 +97,37 @@
             box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
         }
 
+        /* ===== GST CUSTOMER HIGHLIGHT ===== */
+        .form-control.gst-customer-field {
+            background: #fff7ed !important;
+            border: 2px solid #f97316 !important;
+            color: #7c2d12 !important;
+            font-weight: 900 !important;
+            box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.22) !important;
+        }
+
+        .form-control.gst-customer-field:focus {
+            border-color: #ea580c !important;
+            box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.32) !important;
+        }
+
+        .gst-customer-label {
+            color: #fed7aa !important;
+            text-shadow: 0 0 10px rgba(249, 115, 22, 0.65);
+        }
+
+        .autocomplete-row.customer-has-gst td {
+            background: #fff7ed !important;
+            color: #7c2d12 !important;
+            font-weight: 900 !important;
+        }
+
+        .autocomplete-row.customer-has-gst.selected td,
+        .autocomplete-row.customer-has-gst:hover td {
+            background: #f97316 !important;
+            color: #ffffff !important;
+        }
+
         #payment_type:disabled {
             background: #fef3c7;
             color: #92400e;
@@ -1117,6 +1148,7 @@
             setInputValue('cust_name', h.customer_name || '');
             setInputValue('cust_address', h.customer_address || '');
             setInputValue('cust_gst', h.customer_gst || '');
+            updateGstCustomerHighlight();
             setInputValue('salesman', h.salesman || '');
             setInputValue('department_filter', h.department_filter || '');
             setInputValue('quotation_remark', h.quotation_remark || '');
@@ -2145,6 +2177,7 @@ const stockSelect = canSeeLandingColumn
     const customerNameInput = document.getElementById('cust_name');
     const nameList = document.getElementById('name_suggestions');
     let custTimer;
+    let selectedCustomerFromDropdown = false;
 
     function cleanCustomerSearch(value){
         return String(value || "")
@@ -2176,14 +2209,17 @@ const stockSelect = canSeeLandingColumn
 <th>Address</th>
 <th>GST</th>
 </tr>
-${data.map((c, idx) => `
-<tr class="autocomplete-row" data-idx="${idx}">
-<td>${c.mobile || ''}</td>
-<td>${c.name || ''}</td>
-<td>${c.address || ''}</td>
-<td>${c.gst_number || ''}</td>
+${data.map((c, idx) => {
+    const hasGst = hasCustomerGst(c.gst_number);
+    return `
+<tr class="autocomplete-row ${hasGst ? 'customer-has-gst' : ''}" data-idx="${idx}" title="${hasGst ? 'GST CUSTOMER' : ''}">
+<td>${escapeHtml(c.mobile || '')}</td>
+<td>${escapeHtml(c.name || '')}</td>
+<td>${escapeHtml(c.address || '')}</td>
+<td>${escapeHtml(c.gst_number || '')}</td>
 </tr>
-`).join("")}
+`;
+}).join("")}
 </table>
 `;
 
@@ -2203,6 +2239,72 @@ ${data.map((c, idx) => `
         }
     }
 
+    function hasCustomerGst(value){
+        return String(value || "").trim().length >= 4;
+    }
+
+    function updateGstCustomerHighlight(){
+        const hasGst = hasCustomerGst(document.getElementById('cust_gst')?.value);
+        const ids = ['cust_mobile', 'cust_name', 'cust_gst'];
+
+        ids.forEach(id => {
+            const input = document.getElementById(id);
+            if(!input) return;
+
+            input.classList.toggle('gst-customer-field', hasGst);
+            input.title = hasGst ? 'GST CUSTOMER - GST number available' : '';
+
+            const label = input.closest('.form-group')?.querySelector('label');
+            if(label){
+                label.classList.toggle('gst-customer-label', hasGst);
+            }
+        });
+    }
+
+    function clearSelectedCustomerFlag(){
+        selectedCustomerFromDropdown = false;
+    }
+
+    function getCustomerSearchMode(input){
+        return input?.id === 'cust_mobile' ? 'mobile' : 'name';
+    }
+
+    function shouldShowNameCustomerSuggestions(input){
+        if(input?.id !== 'cust_name') return true;
+
+        const mobileValue = cleanCustomerSearch(document.getElementById('cust_mobile')?.value || '');
+
+        // If a mobile number is already typed and customer was not selected from dropdown,
+        // the name field is treated as a NEW CUSTOMER name entry. So no unrelated dropdown.
+        if(mobileValue && !selectedCustomerFromDropdown) return false;
+
+        return true;
+    }
+
+    function buildCustomerSearchQuery(value, mode){
+        const safeVal = cleanCustomerSearch(value);
+        const likeVal = `%${safeVal}%`;
+
+        if(mode === 'mobile'){
+            // Mobile box should search mobile only. This prevents name matches from appearing
+            // while entering a new customer's number.
+            return sb
+                .from('customers')
+                .select('*')
+                .ilike('mobile', likeVal)
+                .order('name', { ascending: true })
+                .limit(10);
+        }
+
+        // Name box should search name only. Mobile search is already handled by mobile box.
+        return sb
+            .from('customers')
+            .select('*')
+            .ilike('name', likeVal)
+            .order('name', { ascending: true })
+            .limit(10);
+    }
+
     function bindCustomerSearch(input, list){
         if(!input || !list) return;
 
@@ -2210,7 +2312,18 @@ ${data.map((c, idx) => `
             clearTimeout(custTimer);
             const val = cleanCustomerSearch(e.target.value);
 
-            if(val.length < 2) {
+            if(e.target.id === 'cust_mobile'){
+                clearSelectedCustomerFlag();
+                // Mobile changed means old selected customer's GST/status should not stay marked.
+                document.getElementById('cust_gst').value = '';
+                updateGstCustomerHighlight();
+            }
+
+            if(e.target.id === 'cust_name' && !selectedCustomerFromDropdown){
+                updateGstCustomerHighlight();
+            }
+
+            if(val.length < 2 || !shouldShowNameCustomerSuggestions(e.target)) {
                 list.style.display = 'none';
                 list.removeAttribute("data-open");
                 list.innerHTML = "";
@@ -2221,12 +2334,8 @@ ${data.map((c, idx) => `
             lastHistoryKey = "";
 
             custTimer = setTimeout(async () => {
-                const { data, error } = await sb
-                    .from('customers')
-                    .select('*')
-                    .or(`mobile.ilike.%${val}%,name.ilike.%${val}%`)
-                    .order('name', { ascending: true })
-                    .limit(10);
+                const mode = getCustomerSearchMode(e.target);
+                const { data, error } = await buildCustomerSearchQuery(val, mode);
 
                 if(error){
                     console.error("Customer search error:", error);
@@ -2253,11 +2362,18 @@ ${data.map((c, idx) => `
     bindCustomerSearch(mobileInput, mobileList);
     bindCustomerSearch(customerNameInput, nameList);
 
+    document.getElementById('cust_gst')?.addEventListener('input', updateGstCustomerHighlight);
+    ['cust_mobile', 'cust_name'].forEach(id => {
+        document.getElementById(id)?.addEventListener('change', updateGstCustomerHighlight);
+    });
+
     function selectCustomer(c) {
+        selectedCustomerFromDropdown = true;
         document.getElementById('cust_mobile').value = c.mobile || '';
         document.getElementById('cust_name').value = c.name || '';
         document.getElementById('cust_address').value = c.address || '';
         document.getElementById('cust_gst').value = c.gst_number || '';
+        updateGstCustomerHighlight();
         hideCustomerSuggestions();
         lastHistoryKey = "";
         document.getElementById('cust_address').focus();

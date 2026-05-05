@@ -234,6 +234,75 @@ const params=new URLSearchParams(window.location.search);
 const id=params.get("id");
 const type=params.get("type") || "sales";
 
+
+function escapeHtml(value){
+    return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+function firstNonEmpty(...values){
+    for(const value of values){
+        if(value === null || value === undefined) continue;
+        const text = String(value).trim();
+        if(text) return text;
+    }
+    return "";
+}
+
+function formatAddress(value){
+    return escapeHtml(value).replace(/\n/g, "<br>");
+}
+
+function getDocAddress(head){
+    return firstNonEmpty(
+        head.address,
+        head.customer_address,
+        head.consignee_address,
+        head.billing_address,
+        head.delivery_address,
+        head.supplier_address
+    );
+}
+
+function getCustomerName(head){
+    return firstNonEmpty(
+        head.customer_name,
+        head.name,
+        head.party_name,
+        head.consignee_name,
+        head.supplier_name
+    );
+}
+
+function getCustomerMobile(head){
+    return firstNonEmpty(
+        head.customer_mobile,
+        head.mobile,
+        head.phone,
+        head.customer_phone,
+        head.party_mobile,
+        head.supplier_mobile
+    );
+}
+
+function getGstNumber(head){
+    return firstNonEmpty(
+        head.gst_number,
+        head.customer_gst,
+        head.gst_no,
+        head.gstin,
+        head.supplier_gst
+    );
+}
+
+function getSalesman(head){
+    return firstNonEmpty(head.salesman, head.sales_man, head.created_by);
+}
+
 async function loadData(){
 
 /* HEADER */
@@ -353,10 +422,10 @@ GSTIN: 32APBPN5593H1ZT
 
 <div class="consignee">
 <b>Consignee</b><br>
-<span class="consignee-name">${head.customer_name}</span><br>
-<span class="consignee-details">${head.address || ""}</span><br>
-<span class="consignee-details">GSTIN: ${head.gst_number || "NA"}</span><br>
-<span class="consignee-details">Mobile: ${head.customer_mobile || "NA"}</span>
+<span class="consignee-name">${escapeHtml(getCustomerName(head))}</span><br>
+<span class="consignee-details">${formatAddress(getDocAddress(head))}</span><br>
+<span class="consignee-details">GSTIN: ${escapeHtml(getGstNumber(head) || "NA")}</span><br>
+<span class="consignee-details">Mobile: ${escapeHtml(getCustomerMobile(head) || "NA")}</span>
 </div>
 
 <div class="right">
@@ -373,7 +442,7 @@ Date : ${(
     head.packing_date ||
     head.created_at || ""
 ).split("T")[0]}<br>
-S.Man : ${head.salesman}<br>
+S.Man : ${escapeHtml(getSalesman(head))}<br>
 Page : ${p+1} / ${pages}
 
 </div>

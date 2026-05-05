@@ -265,7 +265,7 @@ tr:hover td{background:rgba(56,189,248,.045)}
       <div class="logo">PO</div>
       <div>
         <h1>Ultra Item Wise Purchase Order Report</h1>
-        <div class="sub">Supplier + mobile on every item line, pending control, cancel and full PO print system</div>
+        <div class="sub">Supplier + mobile on every item line, pending-only default, cancel and full PO print system</div>
       </div>
     </div>
     <div class="actions">
@@ -302,7 +302,8 @@ tr:hover td{background:rgba(56,189,248,.045)}
     <div>
       <label>Pending</label>
       <select id="pendingFilter" onchange="loadReport()">
-        <option value="">All Items</option>
+        <option value="">Pending Items (Default)</option>
+        <option value="all">All Items</option>
         <option value="pending">Pending Only</option>
         <option value="received">Fully Received</option>
       </select>
@@ -324,7 +325,7 @@ tr:hover td{background:rgba(56,189,248,.045)}
     <div class="tablehead">
       <div>
         <div class="tabletitle">Item Details Report</div>
-        <div class="hint">Print button opens full purchase order printout from purchase_order.html</div>
+        <div class="hint">Default view hides fully received items. Use filter to view all or fully received items.</div>
       </div>
       <div class="hint" id="resultInfo">Ready</div>
     </div>
@@ -542,12 +543,15 @@ async function loadReport(){
       rows = rows.filter(r=>r.status===statusFilter);
     }
 
-    if(pendingFilter==="pending"){
-      rows = rows.filter(r=>r.pending_qty>0 && r.status!=="CANCELLED");
-    }
-
-    if(pendingFilter==="received"){
+    // Default report view: hide fully received items.
+    // Pending is calculated from quantity - received_qty, so no pending_qty column is needed in Supabase.
+    if(pendingFilter === "all"){
+      // Show all item lines, including fully received items.
+    }else if(pendingFilter === "received"){
       rows = rows.filter(r=>r.pending_qty<=0 && r.status!=="CANCELLED");
+    }else{
+      // Default + Pending Only: show only items still pending.
+      rows = rows.filter(r=>r.pending_qty>0 && r.status!=="CANCELLED");
     }
 
     allRows = rows;

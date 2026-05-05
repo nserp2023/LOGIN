@@ -257,7 +257,7 @@ function formatAddress(value){
     return escapeHtml(value).replace(/\n/g, "<br>");
 }
 
-function getDocAddress(head, linkedHead = null){
+function getDocAddress(head, linkedHead = null, customerHead = null){
     return firstNonEmpty(
         head?.address,
         head?.customer_address,
@@ -269,11 +269,13 @@ function getDocAddress(head, linkedHead = null){
         linkedHead?.customer_address,
         linkedHead?.consignee_address,
         linkedHead?.billing_address,
-        linkedHead?.delivery_address
+        linkedHead?.delivery_address,
+        customerHead?.address,
+        customerHead?.customer_address
     );
 }
 
-function getCustomerName(head, linkedHead = null){
+function getCustomerName(head, linkedHead = null, customerHead = null){
     return firstNonEmpty(
         head?.customer_name,
         head?.name,
@@ -283,11 +285,13 @@ function getCustomerName(head, linkedHead = null){
         linkedHead?.customer_name,
         linkedHead?.name,
         linkedHead?.party_name,
-        linkedHead?.consignee_name
+        linkedHead?.consignee_name,
+        customerHead?.name,
+        customerHead?.customer_name
     );
 }
 
-function getCustomerMobile(head, linkedHead = null){
+function getCustomerMobile(head, linkedHead = null, customerHead = null){
     return firstNonEmpty(
         head?.customer_mobile,
         head?.mobile,
@@ -298,11 +302,13 @@ function getCustomerMobile(head, linkedHead = null){
         linkedHead?.customer_mobile,
         linkedHead?.mobile,
         linkedHead?.phone,
-        linkedHead?.customer_phone
+        linkedHead?.customer_phone,
+        customerHead?.mobile,
+        customerHead?.customer_mobile
     );
 }
 
-function getGstNumber(head, linkedHead = null){
+function getGstNumber(head, linkedHead = null, customerHead = null){
     return firstNonEmpty(
         head?.gst_number,
         head?.customer_gst,
@@ -312,7 +318,11 @@ function getGstNumber(head, linkedHead = null){
         linkedHead?.gst_number,
         linkedHead?.customer_gst,
         linkedHead?.gst_no,
-        linkedHead?.gstin
+        linkedHead?.gstin,
+        customerHead?.gst_number,
+        customerHead?.customer_gst,
+        customerHead?.gst_no,
+        customerHead?.gstin
     );
 }
 
@@ -355,11 +365,14 @@ if (headError || !head) {
 // SALES PACK TABLE HAS NO ADDRESS COLUMN.
 // So for sales_pack, take address/mobile/GST fallback from linked sales_details using sales_packing_details.sales_id.
 let linkedSalesHead = null;
+let customerHead = null;
 
 if(type === "sales_pack" && head.sales_id){
+    // IMPORTANT: use select("*") because some sales_details tables have only address,
+    // not customer_address. Selecting a missing column makes Supabase return 400.
     const { data: linkedData, error: linkedError } = await sb
         .from("sales_details")
-        .select("id, address, customer_address, customer_name, customer_mobile, gst_number, salesman")
+        .select("*")
         .eq("id", head.sales_id)
         .maybeSingle();
 
@@ -368,6 +381,30 @@ if(type === "sales_pack" && head.sales_id){
     }
 
     linkedSalesHead = linkedData || null;
+}
+
+// Final fallback: if sales_pack was created without sales_id or old linked bill has no address,
+// read address from customers table using mobile number. This keeps old Sales + Packing bills printable.
+const fallbackMobile = getCustomerMobile(head, linkedSalesHead);
+if(fallbackMobile){
+    const cleanMobile = String(fallbackMobile).replace(/\D/g, "");
+    let customerQuery = sb.from("customers").select("*");
+
+    if(cleanMobile){
+        customerQuery = customerQuery.or(`mobile.eq.${cleanMobile},mobile.ilike.%${cleanMobile}%`);
+    }else{
+        customerQuery = customerQuery.eq("mobile", fallbackMobile);
+    }
+
+    const { data: customerRows, error: customerError } = await customerQuery
+        .order("customer_id", { ascending:false })
+        .limit(1);
+
+    if(customerError){
+        console.warn("Customer address fallback fetch failed:", customerError);
+    }
+
+    customerHead = (customerRows && customerRows[0]) ? customerRows[0] : null;
 }
 
 
@@ -457,10 +494,10 @@ GSTIN: 32APBPN5593H1ZT
 
 <div class="consignee">
 <b>Consignee</b><br>
-<span class="consignee-name">${escapeHtml(getCustomerName(head, linkedSalesHead))}</span><br>
-<span class="consignee-details">${formatAddress(getDocAddress(head, linkedSalesHead))}</span><br>
-<span class="consignee-details">GSTIN: ${escapeHtml(getGstNumber(head, linkedSalesHead) || "NA")}</span><br>
-<span class="consignee-details">Mobile: ${escapeHtml(getCustomerMobile(head, linkedSalesHead) || "NA")}</span>
+<span class="consignee-name">${escapeHtml(getCustomerName(head, linkedSalesHead, customerHead))}</span><br>
+<span class="consignee-details">${formatAddress(getDocAddress(head, linkedSalesHead, customerHead))}</span><br>
+<span class="consignee-details">GSTIN: ${escapeHtml(getGstNumber(head, linkedSalesHead, customerHead) || "NA")}</span><br>
+<span class="consignee-details">Mobile: ${escapeHtml(getCustomerMobile(head, linkedSalesHead, customerHead) || "NA")}</span>
 </div>
 
 <div class="right">

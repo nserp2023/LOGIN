@@ -705,6 +705,45 @@
                 max-height: 300px;
             }
         }
+
+
+        /* ===== FINAL OVERRIDE: GST CUSTOMER COLOUR (must stay after normal autocomplete colours) ===== */
+        .header-section .form-control.gst-customer-field,
+        input#cust_mobile.gst-customer-field,
+        input#cust_name.gst-customer-field,
+        input#cust_gst.gst-customer-field {
+            background: #ffedd5 !important;
+            border: 2px solid #f97316 !important;
+            color: #7c2d12 !important;
+            font-weight: 900 !important;
+            box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.28) !important;
+        }
+
+        .autocomplete-table tr.autocomplete-row.customer-has-gst > td {
+            background: #ffedd5 !important;
+            color: #7c2d12 !important;
+            font-weight: 900 !important;
+            border-color: #f97316 !important;
+        }
+
+        .autocomplete-table tr.autocomplete-row.customer-has-gst.selected > td,
+        .autocomplete-table tr.autocomplete-row.customer-has-gst:hover > td {
+            background: #f97316 !important;
+            color: #ffffff !important;
+            font-weight: 900 !important;
+        }
+
+        .gst-badge {
+            display: inline-block;
+            padding: 2px 7px;
+            margin-left: 6px;
+            border-radius: 999px;
+            background: #f97316;
+            color: #ffffff;
+            font-size: 10px;
+            font-weight: 900;
+            letter-spacing: .4px;
+        }
     </style>
 </head>
 <body>
@@ -885,7 +924,7 @@
 
         <div id="draft_status_text" style="align-self:center;color:#22c55e;font-weight:800;font-size:12px;padding:8px 10px;border:1px solid rgba(34,197,94,.45);border-radius:6px;background:rgba(20,83,45,.35);">Auto Backup ON</div>
 
-        <button class="btn" style="color: #64748b; background:transparent;" onclick="clearBillDraft(); location.reload();">Reset / New Bill</button>
+        <button class="btn" style="color: #64748b; background:transparent;" onclick="disableAutoBackupAndClearDraft('New bill - draft cleared'); location.reload();">Reset / New Bill</button>
         <button id="btn_save" class="btn btn-save" onclick="saveAndPrint()" tabindex="100">PRINT & SAVE</button>
     </div>
 </div>
@@ -984,6 +1023,7 @@
     let autoBackupReady = false;
     let autoBackupTimer = null;
     let restoringDraft = false;
+    let autoBackupPaused = false;
 
     function getInputValue(id){
         return document.getElementById(id)?.value || "";
@@ -1074,7 +1114,7 @@
     }
 
     function saveBillDraftNow(force = false){
-        if(!autoBackupReady || restoringDraft) return;
+        if(!autoBackupReady || restoringDraft || autoBackupPaused) return;
 
         try{
             const draft = collectBillDraft();
@@ -1095,6 +1135,23 @@
             updateDraftStatus("No draft");
         }catch(err){
             console.warn("Auto backup draft clear failed:", err);
+        }
+    }
+
+    function disableAutoBackupAndClearDraft(statusText = "Saved - draft cleared"){
+        autoBackupPaused = true;
+        autoBackupReady = false;
+
+        if(autoBackupTimer){
+            clearTimeout(autoBackupTimer);
+            autoBackupTimer = null;
+        }
+
+        try{
+            localStorage.removeItem(BILL_DRAFT_KEY);
+            updateDraftStatus(statusText);
+        }catch(err){
+            console.warn("Auto backup final clear failed:", err);
         }
     }
 
@@ -1232,6 +1289,7 @@
         updateDraftStatus("Auto Backup ON");
 
         document.addEventListener('input', (e) => {
+            if(autoBackupPaused) return;
             if(e.target.closest('.container')){
                 clearTimeout(autoBackupTimer);
                 autoBackupTimer = setTimeout(() => saveBillDraftNow(false), 800);
@@ -1239,15 +1297,18 @@
         }, true);
 
         document.addEventListener('change', (e) => {
+            if(autoBackupPaused) return;
             if(e.target.closest('.container')){
                 saveBillDraftNow(false);
             }
         }, true);
 
-        setInterval(() => saveBillDraftNow(false), 5000);
+        setInterval(() => {
+            if(!autoBackupPaused) saveBillDraftNow(false);
+        }, 5000);
 
         window.addEventListener('beforeunload', () => {
-            saveBillDraftNow(false);
+            if(!autoBackupPaused) saveBillDraftNow(false);
         });
     }
 
@@ -2216,7 +2277,7 @@ ${data.map((c, idx) => {
 <td>${escapeHtml(c.mobile || '')}</td>
 <td>${escapeHtml(c.name || '')}</td>
 <td>${escapeHtml(c.address || '')}</td>
-<td>${escapeHtml(c.gst_number || '')}</td>
+<td>${escapeHtml(c.gst_number || '')}${hasGst ? '<span class="gst-badge">GST</span>' : ''}</td>
 </tr>
 `;
 }).join("")}
@@ -2254,6 +2315,19 @@ ${data.map((c, idx) => {
             input.classList.toggle('gst-customer-field', hasGst);
             input.title = hasGst ? 'GST CUSTOMER - GST number available' : '';
 
+            // Inline style is added also, so the colour works even if any old CSS order overrides the class.
+            if(hasGst){
+                input.style.setProperty('background', '#ffedd5', 'important');
+                input.style.setProperty('border', '2px solid #f97316', 'important');
+                input.style.setProperty('color', '#7c2d12', 'important');
+                input.style.setProperty('font-weight', '900', 'important');
+            }else{
+                input.style.removeProperty('background');
+                input.style.removeProperty('border');
+                input.style.removeProperty('color');
+                input.style.removeProperty('font-weight');
+            }
+
             const label = input.closest('.form-group')?.querySelector('label');
             if(label){
                 label.classList.toggle('gst-customer-label', hasGst);
@@ -2274,9 +2348,10 @@ ${data.map((c, idx) => {
 
         const mobileValue = cleanCustomerSearch(document.getElementById('cust_mobile')?.value || '');
 
-        // If a mobile number is already typed and customer was not selected from dropdown,
-        // the name field is treated as a NEW CUSTOMER name entry. So no unrelated dropdown.
-        if(mobileValue && !selectedCustomerFromDropdown) return false;
+        // Important: after a mobile number is entered, the Customer Name box becomes
+        // a plain NEW CUSTOMER name field. Do not show old customer suggestions there.
+        // This prevents unrelated customers from appearing while typing a new name.
+        if(mobileValue) return false;
 
         return true;
     }
@@ -2319,8 +2394,12 @@ ${data.map((c, idx) => {
                 updateGstCustomerHighlight();
             }
 
-            if(e.target.id === 'cust_name' && !selectedCustomerFromDropdown){
+            if(e.target.id === 'cust_name'){
                 updateGstCustomerHighlight();
+                if(!shouldShowNameCustomerSuggestions(e.target)){
+                    hideCustomerSuggestions();
+                    return;
+                }
             }
 
             if(val.length < 2 || !shouldShowNameCustomerSuggestions(e.target)) {
@@ -2361,6 +2440,12 @@ ${data.map((c, idx) => {
 
     bindCustomerSearch(mobileInput, mobileList);
     bindCustomerSearch(customerNameInput, nameList);
+
+    document.getElementById('cust_name')?.addEventListener('focus', () => {
+        if(cleanCustomerSearch(document.getElementById('cust_mobile')?.value || '')){
+            hideCustomerSuggestions();
+        }
+    });
 
     document.getElementById('cust_gst')?.addEventListener('input', updateGstCustomerHighlight);
     ['cust_mobile', 'cust_name'].forEach(id => {
@@ -3903,7 +3988,7 @@ function calcTotal() {
                 document.getElementById('bill_number').value = nextBillNo;
             }
 
-            clearBillDraft();
+            disableAutoBackupAndClearDraft("Saved - draft cleared");
 
             alert(`Bill #${nextBillNo} Saved Successfully!`);
 

@@ -713,7 +713,7 @@ async function savePO(){
       if(headErr) throw headErr;
     }
 
-    const payload = items.map(x => ({purchase_order_id: header.id, item_code:x.item_code, item_name:x.item_name, is_new_item:x.is_new_item, quantity:x.quantity, received_qty:0, pending_qty:x.quantity, price:x.price, remark:x.remark, status:"PENDING"}));
+    const payload = items.map(x => ({purchase_order_id: header.id, item_code:x.item_code, item_name:x.item_name, is_new_item:x.is_new_item, quantity:x.quantity, received_qty:0, price:x.price, remark:x.remark, status:"PENDING"}));
     const {error:itemErr} = await sb.from("purchase_order_item_details").insert(payload);
     if(itemErr) throw itemErr;
     setStatus(currentMode === "edit" ? "Purchase order updated successfully." : "Purchase order saved successfully.");

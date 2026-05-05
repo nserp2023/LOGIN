@@ -257,45 +257,62 @@ function formatAddress(value){
     return escapeHtml(value).replace(/\n/g, "<br>");
 }
 
-function getDocAddress(head){
+function getDocAddress(head, linkedHead = null){
     return firstNonEmpty(
-        head.address,
-        head.customer_address,
-        head.consignee_address,
-        head.billing_address,
-        head.delivery_address,
-        head.supplier_address
+        head?.address,
+        head?.customer_address,
+        head?.consignee_address,
+        head?.billing_address,
+        head?.delivery_address,
+        head?.supplier_address,
+        linkedHead?.address,
+        linkedHead?.customer_address,
+        linkedHead?.consignee_address,
+        linkedHead?.billing_address,
+        linkedHead?.delivery_address
     );
 }
 
-function getCustomerName(head){
+function getCustomerName(head, linkedHead = null){
     return firstNonEmpty(
-        head.customer_name,
-        head.name,
-        head.party_name,
-        head.consignee_name,
-        head.supplier_name
+        head?.customer_name,
+        head?.name,
+        head?.party_name,
+        head?.consignee_name,
+        head?.supplier_name,
+        linkedHead?.customer_name,
+        linkedHead?.name,
+        linkedHead?.party_name,
+        linkedHead?.consignee_name
     );
 }
 
-function getCustomerMobile(head){
+function getCustomerMobile(head, linkedHead = null){
     return firstNonEmpty(
-        head.customer_mobile,
-        head.mobile,
-        head.phone,
-        head.customer_phone,
-        head.party_mobile,
-        head.supplier_mobile
+        head?.customer_mobile,
+        head?.mobile,
+        head?.phone,
+        head?.customer_phone,
+        head?.party_mobile,
+        head?.supplier_mobile,
+        linkedHead?.customer_mobile,
+        linkedHead?.mobile,
+        linkedHead?.phone,
+        linkedHead?.customer_phone
     );
 }
 
-function getGstNumber(head){
+function getGstNumber(head, linkedHead = null){
     return firstNonEmpty(
-        head.gst_number,
-        head.customer_gst,
-        head.gst_no,
-        head.gstin,
-        head.supplier_gst
+        head?.gst_number,
+        head?.customer_gst,
+        head?.gst_no,
+        head?.gstin,
+        head?.supplier_gst,
+        linkedHead?.gst_number,
+        linkedHead?.customer_gst,
+        linkedHead?.gst_no,
+        linkedHead?.gstin
     );
 }
 
@@ -333,6 +350,24 @@ const { data: head, error: headError } = await sb
 if (headError || !head) {
     document.body.innerHTML = "<h2>❌ Document not found</h2>";
     return;
+}
+
+// SALES PACK TABLE HAS NO ADDRESS COLUMN.
+// So for sales_pack, take address/mobile/GST fallback from linked sales_details using sales_packing_details.sales_id.
+let linkedSalesHead = null;
+
+if(type === "sales_pack" && head.sales_id){
+    const { data: linkedData, error: linkedError } = await sb
+        .from("sales_details")
+        .select("id, address, customer_address, customer_name, customer_mobile, gst_number, salesman")
+        .eq("id", head.sales_id)
+        .maybeSingle();
+
+    if(linkedError){
+        console.warn("Sales pack linked sales address fetch failed:", linkedError);
+    }
+
+    linkedSalesHead = linkedData || null;
 }
 
 
@@ -422,10 +457,10 @@ GSTIN: 32APBPN5593H1ZT
 
 <div class="consignee">
 <b>Consignee</b><br>
-<span class="consignee-name">${escapeHtml(getCustomerName(head))}</span><br>
-<span class="consignee-details">${formatAddress(getDocAddress(head))}</span><br>
-<span class="consignee-details">GSTIN: ${escapeHtml(getGstNumber(head) || "NA")}</span><br>
-<span class="consignee-details">Mobile: ${escapeHtml(getCustomerMobile(head) || "NA")}</span>
+<span class="consignee-name">${escapeHtml(getCustomerName(head, linkedSalesHead))}</span><br>
+<span class="consignee-details">${formatAddress(getDocAddress(head, linkedSalesHead))}</span><br>
+<span class="consignee-details">GSTIN: ${escapeHtml(getGstNumber(head, linkedSalesHead) || "NA")}</span><br>
+<span class="consignee-details">Mobile: ${escapeHtml(getCustomerMobile(head, linkedSalesHead) || "NA")}</span>
 </div>
 
 <div class="right">
@@ -677,13 +712,34 @@ let qr = `upi://pay?pa=q137103198@ybl&pn=Vajra Lights&am=${grand}&cu=INR`;
 let qrImgs = document.querySelectorAll(".qrimg");
 
 let loaded = 0;
+let printCalled = false;
+
+function printOnce(){
+    if(printCalled) return;
+    printCalled = true;
+    window.print();
+}
+
+if(qrImgs.length === 0){
+    printOnce();
+}
+
+// Even if QR internet image fails, print must still open.
+setTimeout(printOnce, 2500);
 
 qrImgs.forEach(img => {
 
     img.onload = () => {
         loaded++;
         if(loaded === qrImgs.length){
-            window.print();
+            printOnce();
+        }
+    };
+
+    img.onerror = () => {
+        loaded++;
+        if(loaded === qrImgs.length){
+            printOnce();
         }
     };
 

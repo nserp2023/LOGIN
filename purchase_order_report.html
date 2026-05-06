@@ -428,6 +428,12 @@ function monthStartISO(){
   const d = new Date();
   return new Date(d.getFullYear(),d.getMonth(),1).toISOString().slice(0,10);
 }
+
+function getMobileFromRemark(remark){
+  const m = String(remark || "").match(/MOBILE\s*:\s*([^|\n\r]+)/i);
+  return m ? m[1].trim() : "";
+}
+
 function poNo(o){
   return o.po_number || o.purchase_order_number || o.order_number || o.id || "-";
 }
@@ -509,7 +515,7 @@ async function loadReport(){
         po_no:poNo(o),
         order_date:o.order_date || o.purchase_order_date || o.bill_date || o.created_at,
         supplier_name:o.supplier_name || "",
-        supplier_mobile:o.supplier_mobile || o.mobile || "",
+        supplier_mobile:o.supplier_mobile || o.mobile || getMobileFromRemark(o.remark || o.remarks || ""),
         gst_number:o.supplier_gst || o.gst_number || "",
         supplier_address:o.supplier_address || o.address || "",
         item_code:it.item_code || "",
@@ -772,14 +778,7 @@ async function cancelPO(orderId){
 }
 
 function printPO(orderId){
-  if(!orderId){
-    alert("Purchase order not found");
-    return;
-  }
-
-  // purchase_order.html already supports ?print= and will load full PO + auto print.
-  const url = `purchase_order.html?print=${encodeURIComponent(orderId)}`;
-  window.open(url, "_blank");
+  window.open(`purchase_order.html?print=${encodeURIComponent(orderId)}`, "_blank");
 }
 
 function exportCSV(){

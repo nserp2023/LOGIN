@@ -729,7 +729,7 @@ async function afterSaveReset(){
 }
 
 function printPO(){
-  byId("printHeader").innerHTML = `<strong>PO No:</strong> ${esc(byId("poNumber").value)} &nbsp; <strong>Date:</strong> ${esc(byId("orderDate").value)} &nbsp; <strong>Supplier:</strong> ${esc(byId("supplierName").value)} &nbsp; <strong>Mobile:</strong> ${esc(byId("supplierMobile").value)} &nbsp; <strong>GST:</strong> ${esc(byId("supplierGst").value)}`;
+  byId("printHeader").innerHTML = `<strong>PO No:</strong> ${esc(byId("poNumber").value)} &nbsp; <strong>Date:</strong> ${esc(byId("orderDate").value)} &nbsp; <strong>Supplier:</strong> ${esc(byId("supplierName").value)}`;
   window.print();
 }
 function setStatus(msg, isErr=false){ const el=byId("saveStatus"); el.textContent=msg; el.style.color=isErr?"#b91c1c":"#35507a"; el.style.background=isErr?"#fff1f2":"#f8fbff"; el.style.borderColor=isErr?"#f2b8c0":"#d9e2ef"; }

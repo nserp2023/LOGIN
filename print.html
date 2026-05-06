@@ -330,48 +330,6 @@ function getSalesman(head){
     return firstNonEmpty(head.salesman, head.sales_man, head.created_by);
 }
 
-function normalizeText(value){
-    return String(value ?? "").trim().toUpperCase();
-}
-
-function getCompanyProfile(department){
-    const dept = normalizeText(department);
-
-    if(dept === "INTERLOCK"){
-        return {
-            name: "SN INDUSTRIES",
-            ho: "(H.O: SN.TRADERS, KATTAKADA, TRIVANDRUM-72)",
-            email: "vajralightsandelectricals.sha@gmail.com",
-            address: "KAITHAKONAM, KATTAKADA, TRIVANDRUM-72",
-            phone: "8606808063,9495160771",
-            state: "KERALA[32]",
-            gstin: "32APBPN5593H1ZT",
-            upiName: "SN Industries"
-        };
-    }
-
-    return {
-        name: "VAJRA LIGHTS & ELECTRICALS",
-        ho: "(H.O: SN.TRADERS, KATTAKADA, TRIVANDRUM-72)",
-        email: "vajralightsandelectricals.sha@gmail.com",
-        address: "KAITHAKONAM, KATTAKADA, TRIVANDRUM-72",
-        phone: "8606808063,9495160771",
-        state: "KERALA[32]",
-        gstin: "32APBPN5593H1ZT",
-        upiName: "Vajra Lights"
-    };
-}
-
-function getDocumentDepartment(head, linkedHead = null){
-    return firstNonEmpty(
-        head?.department,
-        linkedHead?.department,
-        head?.department_filter,
-        linkedHead?.department_filter,
-        "ALL"
-    );
-}
-
 async function loadData(){
 
 /* HEADER */
@@ -487,9 +445,6 @@ if (itemError || !items) {
     return;
 }
 
-const documentDepartment = getDocumentDepartment(head, linkedSalesHead);
-const company = getCompanyProfile(documentDepartment);
-
 let rowsPerPage = items.length<=10 ? 10 : 40;
 let pageClass = items.length<=10 ? "page-half":"page-full";
 
@@ -519,16 +474,16 @@ let html=`<div class="page ${pageClass}">
 <div class="header">
 
 <div class="header-left">
-<h1>${escapeHtml(company.name)}</h1>
-${escapeHtml(company.ho)}<br>
-Email: ${escapeHtml(company.email)}<br>
-${escapeHtml(company.address)}<br>
-PH: ${escapeHtml(company.phone)}
+<h1>VAJRA LIGHTS & ELECTRICALS</h1>
+(H.O: SN.TRADERS, KATTAKADA, TRIVANDRUM-72)<br>
+Email: vajralightsandelectricals.sha@gmail.com<br>
+KAITHAKONAM, KATTAKADA, TRIVANDRUM-72<br>
+PH: 8606808063,9495160771
 </div>
 
 <div class="header-right">
-STATE: ${escapeHtml(company.state)}<br>
-GSTIN: ${escapeHtml(company.gstin)}
+STATE: KERALA[32]<br>
+GSTIN: 32APBPN5593H1ZT
 </div>
 
 </div>
@@ -789,7 +744,7 @@ container.innerHTML = packingHTML + originalHTML;
 
 let grand = Math.round(totalTaxable + totalGst);
 
-let qr = `upi://pay?pa=q137103198@ybl&pn=${encodeURIComponent(company.upiName)}&am=${grand}&cu=INR`;
+let qr = `upi://pay?pa=q137103198@ybl&pn=Vajra Lights&am=${grand}&cu=INR`;
 
 let qrImgs = document.querySelectorAll(".qrimg");
 

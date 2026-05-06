@@ -361,6 +361,14 @@ function getCompanyProfile(isInterlockBill){
 }
 
 async function detectInterlockBill(head, linkedHead, items){
+    // ✅ DIRECT FORCE FROM BILLING PAGE URL.
+    // This fixes cases where stock_items.department is blocked by RLS or not readable in print page.
+    const forcedDepartment = normalizeText(params.get("department") || params.get("dept") || "");
+    const forcedCompany = normalizeText(params.get("company") || "");
+    if(forcedDepartment === "INTERLOCK" || forcedCompany === "SN" || forcedCompany === "SN INDUSTRIES"){
+        return true;
+    }
+
     const headerDepartment = firstNonEmpty(
         head?.department,
         head?.department_filter,

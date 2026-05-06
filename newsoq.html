@@ -3615,25 +3615,6 @@ function calcTotal() {
         };
     }
 
-
-    function getSelectedBillingDepartmentForPrint(){
-        const dept = String(document.getElementById("department_filter")?.value || "").trim().toUpperCase();
-        if(dept === "INTERLOCK") return "INTERLOCK";
-
-        const hasInterlockItem = Array.from(document.querySelectorAll('#bill_body tr')).some(row => {
-            const raw = row.querySelector('.raw-data')?.value || "";
-            if(!raw) return false;
-            try{
-                const item = JSON.parse(raw);
-                return String(item?.department || "").trim().toUpperCase() === "INTERLOCK";
-            }catch(_err){
-                return false;
-            }
-        });
-
-        return hasInterlockItem ? "INTERLOCK" : "";
-    }
-
     async function saveAndPrint() {
         const totalAmount = parseFloat(
             (document.getElementById('display_grand_total').innerText || '₹0').replace('₹', '')
@@ -3812,6 +3793,7 @@ function calcTotal() {
                     payment_type: paymentType,
                     paid_amount: paidAmount,
                     balance_amount: balanceAmount,
+                    department: document.getElementById("department_filter")?.value || "ALL",
                     salesman: document.getElementById("salesman").value,
                     created_by: createdBy,
                     round_off: roundOff
@@ -4012,10 +3994,10 @@ function calcTotal() {
             alert(`Bill #${nextBillNo} Saved Successfully!`);
 
             if (docType === "sales_pack") {
-                window.open(`print.html?type=sales_pack&id=${packingId}&department=${encodeURIComponent(getSelectedBillingDepartmentForPrint())}`, "_blank");
+                window.open(`print.html?type=sales_pack&id=${packingId}`, "_blank");
             }
             else {
-                window.open(`print.html?type=${docType}&id=${saleId}&department=${encodeURIComponent(getSelectedBillingDepartmentForPrint())}`, "_blank");
+                window.open(`print.html?type=${docType}&id=${saleId}`, "_blank");
             }
 
             if (docType === "sales" && window.loadedQuotationId) {
@@ -4473,6 +4455,13 @@ barcodeInput.addEventListener("keydown", async function (e) {
         document.getElementById("cust_mobile").value = head.customer_mobile || "";
         document.getElementById("cust_address").value = head.address || "";
         document.getElementById("cust_gst").value = head.gst_number || "";
+
+        // Restore saved department for old/edit bills.
+        // This is important for INTERLOCK bills because print.html reads sales_details.department.
+        const departmentEl = document.getElementById("department_filter");
+        if (departmentEl && head.department) {
+            departmentEl.value = String(head.department || "").toUpperCase();
+        }
 
         if (document.getElementById("quotation_remark")) {
             document.getElementById("quotation_remark").value = type === "quotation" ? (head.remark || "") : "";

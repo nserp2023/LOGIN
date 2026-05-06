@@ -36,8 +36,10 @@ body{
     linear-gradient(180deg,#050b14,#091426 55%,#06101d);
   color:var(--text);
   min-height:100vh;
+  overflow:hidden;
 }
-.app{padding:14px;max-width:1700px;margin:auto}
+html{height:100%}
+.app{padding:10px;max-width:1700px;margin:auto;height:100vh;display:flex;flex-direction:column;gap:10px}
 .topbar{
   display:flex;
   justify-content:space-between;
@@ -48,8 +50,7 @@ body{
   border:1px solid var(--line);
   border-radius:var(--radius);
   box-shadow:var(--shadow);
-  position:sticky;
-  top:8px;
+  position:relative;
   z-index:50;
   backdrop-filter:blur(16px);
 }
@@ -246,6 +247,73 @@ tr:hover td{background:rgba(56,189,248,.045)}
   font-weight:800;
   margin-bottom:12px;
 }
+
+
+.mobileToggleBar{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:8px;
+  padding:8px 10px;
+  background:rgba(56,189,248,.10);
+  border:1px solid rgba(56,189,248,.28);
+  border-radius:14px;
+}
+.mobileToggleBar b{font-size:13px}
+.mobileToggleBar .hint{font-size:11px}
+.toggleTopBtn{
+  min-width:118px;
+  padding:8px 10px;
+  background:linear-gradient(135deg,#0ea5e9,#2563eb);
+}
+.topSections{
+  display:none;
+  flex-shrink:0;
+  animation:dropIn .16s ease-out;
+}
+.topSections.show{display:block}
+@keyframes dropIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+.tablewrap{
+  flex:1;
+  min-height:0;
+  margin-top:0;
+  display:flex;
+  flex-direction:column;
+}
+.tablebox{
+  flex:1;
+  max-height:none;
+  overflow:auto;
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+}
+tbody tr:nth-child(even) td{background:rgba(255,255,255,.018)}
+td:first-child, th:first-child{
+  position:sticky;
+  left:0;
+  z-index:12;
+  background:#0d1c31;
+  box-shadow:1px 0 0 rgba(148,163,184,.18);
+}
+th:first-child{z-index:30;background:#102039}
+.excelCell{white-space:nowrap}
+.mobileOnly{display:none}
+.compactStats{
+  display:none;
+  gap:8px;
+  overflow:auto;
+  padding-bottom:2px;
+}
+.miniStat{
+  min-width:112px;
+  padding:8px 10px;
+  border-radius:12px;
+  background:rgba(16,31,53,.84);
+  border:1px solid var(--line);
+}
+.miniStat span{display:block;font-size:10px;color:var(--muted);font-weight:900;text-transform:uppercase}
+.miniStat b{display:block;margin-top:2px;font-size:15px}
+
 @media(max-width:900px){
   .topbar{position:relative;top:0;flex-direction:column;align-items:flex-start}
   .filters{grid-template-columns:1fr}
@@ -254,6 +322,45 @@ tr:hover td{background:rgba(56,189,248,.045)}
 @media(max-width:600px){
   .stats{grid-template-columns:1fr}
 }
+
+@media(max-width:900px){
+  body{overflow:hidden}
+  .app{padding:6px;height:100dvh;gap:6px}
+  .topbar{padding:8px 10px;border-radius:14px;flex-direction:row;align-items:center;gap:8px}
+  .logo{width:34px;height:34px;border-radius:11px;font-size:13px}
+  h1{font-size:14px;line-height:1.1}
+  .sub{display:none}
+  .actions{display:none}
+  .mobileOnly{display:flex}
+  .filters{grid-template-columns:1fr;margin-top:8px;padding:10px;gap:8px;border-radius:14px}
+  input,select{min-height:39px;padding:8px 10px;border-radius:10px;font-size:14px}
+  button{padding:8px 10px;border-radius:10px;font-size:13px}
+  .stats{grid-template-columns:1fr 1fr;margin-top:8px;gap:8px}
+  .stat{padding:9px;border-radius:13px}
+  .stat .name{font-size:10px}
+  .stat .val{font-size:17px;margin-top:2px}
+  .compactStats{display:flex}
+  .tablewrap{border-radius:14px}
+  .tablehead{padding:8px 10px;align-items:flex-start}
+  .tabletitle{font-size:14px}
+  .hint{font-size:10px}
+  table{min-width:1080px}
+  th,td{padding:7px 8px;font-size:12px;white-space:nowrap}
+  th{font-size:10px}
+  td:nth-child(6){white-space:normal;min-width:230px}
+  .row-actions{justify-content:flex-start;flex-wrap:nowrap}
+  .smallbtn{padding:6px 7px;font-size:11px;white-space:nowrap}
+  .modal{align-items:flex-end;padding:0}
+  .modalbox{width:100%;border-radius:20px 20px 0 0}
+  .receiveGrid{grid-template-columns:1fr 1fr}
+}
+@media(max-width:600px){
+  .stats{grid-template-columns:1fr 1fr}
+  table{min-width:1020px}
+  th,td{padding:7px 7px;font-size:11.5px}
+  .badge{padding:4px 7px;font-size:10px}
+}
+
 </style>
 </head>
 
@@ -276,6 +383,15 @@ tr:hover td{background:rgba(56,189,248,.045)}
     </div>
   </div>
 
+  <div class="mobileToggleBar">
+    <div>
+      <b>📊 Item Details Report</b>
+      <div class="hint">Excel view: scroll sideways and vertically</div>
+    </div>
+    <button id="toggleTopBtn" class="toggleTopBtn" onclick="toggleTopSections()">⬇️ Show Top</button>
+  </div>
+
+  <div id="topSections" class="topSections">
   <div class="filters">
     <div>
       <label>Search</label>
@@ -321,11 +437,21 @@ tr:hover td{background:rgba(56,189,248,.045)}
     <div class="stat"><div class="name">Order Value</div><div class="val" id="stValue">₹0</div></div>
   </div>
 
+  </div>
+
+  <div class="compactStats" id="compactStats">
+    <div class="miniStat"><span>Lines</span><b id="miniLines">0</b></div>
+    <div class="miniStat"><span>Order</span><b id="miniQty">0</b></div>
+    <div class="miniStat"><span>Received</span><b id="miniReceived">0</b></div>
+    <div class="miniStat"><span>Pending</span><b id="miniPending">0</b></div>
+    <div class="miniStat"><span>Value</span><b id="miniValue">₹0</b></div>
+  </div>
+
   <div class="tablewrap">
     <div class="tablehead">
       <div>
         <div class="tabletitle">Item Details Report</div>
-        <div class="hint">Default view hides fully received items. Use filter to view all or fully received items.</div>
+        <div class="hint">Excel-like full screen report. First PO column is fixed; scroll right for all details.</div>
       </div>
       <div class="hint" id="resultInfo">Ready</div>
     </div>
@@ -391,7 +517,6 @@ tr:hover td{background:rgba(56,189,248,.045)}
 
       <div class="actions" style="margin-top:14px;justify-content:flex-end">
         <button class="green" onclick="saveReceive()">📦 Save Received</button>
-        <button class="orange" onclick="receiveFullPending()">Receive Full Pending</button>
       </div>
     </div>
   </div>
@@ -403,6 +528,19 @@ const sb = window.sbcc;
 let allRows = [];
 let receiveRow = null;
 let timer = null;
+let topSectionsOpen = false;
+
+function toggleTopSections(force){
+  if(typeof force === "boolean") topSectionsOpen = force;
+  else topSectionsOpen = !topSectionsOpen;
+
+  const top = document.getElementById("topSections");
+  const btn = document.getElementById("toggleTopBtn");
+  if(!top || !btn) return;
+
+  top.classList.toggle("show", topSectionsOpen);
+  btn.textContent = topSectionsOpen ? "⬆️ Hide Top" : "⬇️ Show Top";
+}
 
 function safe(v){
   return String(v ?? "").replace(/[&<>"']/g,s=>({
@@ -601,7 +739,6 @@ function renderRows(rows){
           <div class="row-actions">
             <button class="smallbtn ghost" onclick="printPO(${r.order_id})">🖨 Print</button>
             <button class="smallbtn green" onclick="openReceiveModal(${r.item_id})" ${cancelled || r.pending_qty<=0 ? "disabled" : ""}>📦 Material Received</button>
-            <button class="smallbtn orange" onclick="receiveAllByPO(${r.order_id})" ${cancelled ? "disabled" : ""}>Receive All</button>
             <button class="smallbtn red" onclick="cancelPO(${r.order_id})" ${cancelled ? "disabled" : ""}>Cancel</button>
           </div>
         </td>
@@ -611,11 +748,29 @@ function renderRows(rows){
 }
 
 function renderStats(rows){
-  document.getElementById("stLines").textContent = rows.length;
-  document.getElementById("stQty").textContent = num(rows.reduce((a,r)=>a+r.order_qty,0));
-  document.getElementById("stReceived").textContent = num(rows.reduce((a,r)=>a+r.received_qty,0));
-  document.getElementById("stPending").textContent = num(rows.reduce((a,r)=>a+r.pending_qty,0));
-  document.getElementById("stValue").textContent = money(rows.reduce((a,r)=>a+r.amount,0));
+  const lines = rows.length;
+  const qty = rows.reduce((a,r)=>a+r.order_qty,0);
+  const received = rows.reduce((a,r)=>a+r.received_qty,0);
+  const pending = rows.reduce((a,r)=>a+r.pending_qty,0);
+  const value = rows.reduce((a,r)=>a+r.amount,0);
+
+  document.getElementById("stLines").textContent = lines;
+  document.getElementById("stQty").textContent = num(qty);
+  document.getElementById("stReceived").textContent = num(received);
+  document.getElementById("stPending").textContent = num(pending);
+  document.getElementById("stValue").textContent = money(value);
+
+  const mini = {
+    miniLines:lines,
+    miniQty:num(qty),
+    miniReceived:num(received),
+    miniPending:num(pending),
+    miniValue:money(value)
+  };
+  Object.entries(mini).forEach(([id,val])=>{
+    const el = document.getElementById(id);
+    if(el) el.textContent = val;
+  });
 }
 
 function openReceiveModal(itemId){
@@ -670,33 +825,6 @@ async function saveReceive(){
 
   }catch(err){
     alert("Material received failed: " + (err.message || err));
-  }
-}
-
-function receiveFullPending(){
-  if(!receiveRow) return;
-  document.getElementById("mReceiveNow").value = receiveRow.pending_qty;
-  saveReceive();
-}
-
-async function receiveAllByPO(orderId){
-  if(!confirm("Receive all pending items for this PO? This will not affect stock. It only updates PO received quantity.")) return;
-
-  try{
-    const rows = allRows.filter(r=>Number(r.order_id)===Number(orderId) && r.pending_qty>0);
-    for(const r of rows){
-      await sb.from("purchase_order_item_details")
-        .update({
-          received_qty:r.order_qty
-        })
-        .eq("id",r.item_id);
-    }
-
-    await updatePOStatus(orderId);
-    await loadReport();
-
-  }catch(err){
-    alert("Receive all failed: " + (err.message || err));
   }
 }
 

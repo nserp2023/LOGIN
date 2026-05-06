@@ -3615,6 +3615,25 @@ function calcTotal() {
         };
     }
 
+
+    function getSelectedBillingDepartmentForPrint(){
+        const dept = String(document.getElementById("department_filter")?.value || "").trim().toUpperCase();
+        if(dept === "INTERLOCK") return "INTERLOCK";
+
+        const hasInterlockItem = Array.from(document.querySelectorAll('#bill_body tr')).some(row => {
+            const raw = row.querySelector('.raw-data')?.value || "";
+            if(!raw) return false;
+            try{
+                const item = JSON.parse(raw);
+                return String(item?.department || "").trim().toUpperCase() === "INTERLOCK";
+            }catch(_err){
+                return false;
+            }
+        });
+
+        return hasInterlockItem ? "INTERLOCK" : "";
+    }
+
     async function saveAndPrint() {
         const totalAmount = parseFloat(
             (document.getElementById('display_grand_total').innerText || '₹0').replace('₹', '')
@@ -3993,10 +4012,10 @@ function calcTotal() {
             alert(`Bill #${nextBillNo} Saved Successfully!`);
 
             if (docType === "sales_pack") {
-                window.open(`print.html?type=sales_pack&id=${packingId}`, "_blank");
+                window.open(`print.html?type=sales_pack&id=${packingId}&department=${encodeURIComponent(getSelectedBillingDepartmentForPrint())}`, "_blank");
             }
             else {
-                window.open(`print.html?type=${docType}&id=${saleId}`, "_blank");
+                window.open(`print.html?type=${docType}&id=${saleId}&department=${encodeURIComponent(getSelectedBillingDepartmentForPrint())}`, "_blank");
             }
 
             if (docType === "sales" && window.loadedQuotationId) {

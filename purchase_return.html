@@ -23,6 +23,7 @@
       --ok:#22c55e;
       --warn:#f59e0b;
       --err:#f43f5e;
+      --blue:#3b82f6;
       --shadow:0 12px 30px rgba(0,0,0,.28);
       --focus:0 0 0 3px rgba(96,165,250,.18);
       --row-h:42px;
@@ -95,6 +96,9 @@
       font-size:12px;
       box-shadow:var(--shadow);
     }
+
+    .badge.good{border-color:rgba(34,197,94,.45); color:#bdf7cd;}
+    .badge.warn{border-color:rgba(245,158,11,.45); color:#ffdda6;}
 
     .panel{
       background:linear-gradient(180deg, rgba(19,28,49,.98), rgba(14,22,39,.98));
@@ -176,7 +180,8 @@
 
     .field input,
     .field select,
-    .grid input{
+    .grid input,
+    .grid select{
       height:var(--row-h);
       padding:0 12px;
       border-radius:var(--radius-sm);
@@ -194,7 +199,8 @@
 
     .field input:focus,
     .field select:focus,
-    .grid input:focus{
+    .grid input:focus,
+    .grid select:focus{
       border-color:#5ea0ff;
       box-shadow:var(--focus);
       background:#101a2d;
@@ -203,6 +209,11 @@
     .readonly{
       background:linear-gradient(180deg, #0c1320, #0a101b) !important;
       color:#d8e3f8 !important;
+    }
+
+    .manual-field{
+      border-color:#3b5f99 !important;
+      background:linear-gradient(180deg, #10223e, #0e1c33) !important;
     }
 
     .table-container{
@@ -217,24 +228,25 @@
     .grid{
       display:grid;
       grid-template-columns:
-        90px
+        70px
+        95px
         120px
-        160px
-        220px
+        150px
+        240px
         140px
         90px
         110px
         90px
         120px
-        100px
+        90px
         120px
         120px
         130px
         130px
-        120px;
+        90px;
       gap:10px;
       align-items:center;
-      min-width:1840px;
+      min-width:2050px;
       margin-bottom:10px;
     }
 
@@ -328,6 +340,12 @@
       color:#fff;
     }
 
+    .btn.green{
+      background:linear-gradient(180deg, #22c55e, #16a34a);
+      border-color:#16a34a;
+      color:#fff;
+    }
+
     .btn:disabled{
       opacity:.45;
       cursor:not-allowed;
@@ -355,13 +373,13 @@
 
     .dropdown{
       position:absolute;
-      z-index:50;
+      z-index:5000;
       background:linear-gradient(180deg, #111a2e, #0c1423);
       border:1px solid #33486f;
       border-radius:12px;
       box-shadow:0 18px 30px rgba(0,0,0,.38);
       min-width:320px;
-      max-height:260px;
+      max-height:270px;
       overflow:auto;
       backdrop-filter:blur(10px);
     }
@@ -382,6 +400,13 @@
       display:grid;
       grid-template-columns:160px 160px 1fr 140px;
       gap:10px;
+    }
+
+    .dropdown .opt.item-opt{
+      display:grid;
+      grid-template-columns:130px 1fr 110px 100px 100px;
+      gap:10px;
+      align-items:center;
     }
 
     .dropdown .muted{
@@ -436,6 +461,8 @@
       min-height:42px;
     }
 
+    .hide{display:none !important;}
+
     @media (max-width: 900px){
       .wrap{padding:0 10px 18px}
       .panel{padding:12px}
@@ -450,7 +477,7 @@
       .sticky-actions .btn{
         flex:1 1 100%;
       }
-      body{ padding-bottom:140px; }
+      body{ padding-bottom:180px; }
     }
   </style>
 </head>
@@ -459,12 +486,42 @@
     <div class="page-top">
       <div class="title">
         <h1 id="pageTitle">Purchase Return</h1>
-        <span id="pageSubTitle">Load original purchase, enter return quantity, and save. Stock effect must be handled by your SQL trigger.</span>
+        <span id="pageSubTitle">Return against an original purchase bill or create a manual supplier return without bill.</span>
       </div>
       <div class="page-badges">
         <div class="badge" id="modeBadge">Purchase Return Entry</div>
-        <div class="badge">Invoice Search</div>
-        <div class="badge">Trigger Based</div>
+        <div class="badge good" id="modeInfoBadge">WITH PURCHASE BILL</div>
+        <div class="badge">Trigger Based Stock</div>
+      </div>
+    </div>
+
+    <div class="panel" id="modePanel">
+      <div class="panel-head">
+        <div class="panel-title">
+          <h2>Return Mode</h2>
+          <small>Use without bill mode for old/manual purchases, damaged stock, or supplier return without software purchase bill.</small>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Purchase return type</label>
+          <select id="returnMode">
+            <option value="with_bill">WITH PURCHASE BILL</option>
+            <option value="without_bill">WITHOUT PURCHASE BILL</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>PR number</label>
+          <input id="purchaseReturnNumber" class="readonly" readonly />
+        </div>
+        <div class="field">
+          <label>Return date</label>
+          <input id="returnDate" type="date" />
+        </div>
+        <div class="field">
+          <label>Status</label>
+          <div class="chip" id="modeChip">With purchase bill mode</div>
+        </div>
       </div>
     </div>
 
@@ -506,14 +563,12 @@
     <div class="panel" id="returnPanel">
       <div class="panel-head">
         <div class="panel-title">
-          <h2>Return Details</h2>
-          <small>Original purchase details are auto-filled after loading. Only entered return quantities will be saved.</small>
+          <h2>Supplier / Return Details</h2>
+          <small id="returnHelpText">Original purchase details are auto-filled after loading. Only entered return quantities will be saved.</small>
         </div>
       </div>
 
       <div class="row" id="returnRow">
-        <div class="field"><label>PR number</label><input id="purchaseReturnNumber" class="readonly" readonly /></div>
-        <div class="field"><label>Return date</label><input id="returnDate" type="date" /></div>
         <div class="field"><label>Original purchase no</label><input id="purchaseNumber" class="readonly" readonly /></div>
         <div class="field"><label>GST number</label><input id="gstNumber" class="readonly" readonly /></div>
         <div class="field"><label>Supplier name</label><input id="supplierName" class="readonly" readonly /></div>
@@ -531,12 +586,16 @@
       <div class="panel-head">
         <div class="panel-title">
           <h2>Purchase Return Items</h2>
-          <small>Return qty cannot be more than original purchase qty</small>
+          <small id="itemsHelpText">Return qty cannot be more than original purchase qty.</small>
+        </div>
+        <div class="actions" style="margin-top:0">
+          <button class="btn green" id="addManualRowBtn">+ Add Item</button>
         </div>
       </div>
 
       <div class="table-container">
         <div class="grid hdr">
+          <div>Sl</div>
           <div>HSN</div>
           <div>Item code</div>
           <div>Barcode</div>
@@ -544,19 +603,20 @@
           <div>Department</div>
           <div>Pur Qty</div>
           <div>Ret Qty</div>
-          <div>Balance Qty</div>
+          <div>Balance</div>
           <div>Price</div>
           <div>Disc%</div>
           <div>Total</div>
           <div>GST%</div>
           <div>Total+GST</div>
-          <div>Purchase</div>
           <div>Purchase+GST</div>
+          <div>Action</div>
         </div>
         <div id="items"></div>
       </div>
 
       <div class="actions">
+        <button class="btn green" id="addManualRowBtnBottom">+ Add Item</button>
         <button class="btn" id="fullReturnBtn">Fill Full Return</button>
         <button class="btn" id="reloadBtn">Reload Original Items</button>
         <button class="btn danger" id="saveBtn" disabled>Save Purchase Return</button>
@@ -568,10 +628,11 @@
 
   <div class="sticky-bar">
     <div class="sticky-inner">
-      <div class="sticky-note">
-        Search original purchase → load items → type return quantity → save. No direct stock update in this page.
+      <div class="sticky-note" id="stickyNote">
+        With bill: search purchase → load items → return qty → save. Without bill: add items manually → save.
       </div>
       <div class="sticky-actions">
+        <button class="btn green" id="addManualRowBtnSticky">+ Add Item</button>
         <button class="btn" id="fullReturnBtnSticky">Fill Full Return</button>
         <button class="btn" id="reloadBtnSticky">Reload Original Items</button>
         <button class="btn danger" id="saveBtnSticky" disabled>Save Purchase Return</button>
@@ -587,15 +648,19 @@
 
     const byId = id => document.getElementById(id);
     const fmt2 = v => (isFinite(v) ? Number(v).toFixed(2) : "0.00");
-    const num = v => (v === "" || v == null ? 0 : Number(v));
+    const num = v => (v === "" || v == null || isNaN(Number(v)) ? 0 : Number(v));
     const todayISO = () => new Date().toISOString().slice(0,10);
 
     let dropdown = null;
     let activeIndex = -1;
+    let dropdownAnchor = null;
     let loadedPurchase = null;
     let loadedItems = [];
+    let stockCache = [];
+    let stockLoaded = false;
     let isEditMode = false;
     let editingReturnId = null;
+    let currentMode = "with_bill";
 
     document.addEventListener("DOMContentLoaded", async () => {
       const ok = await requirePageAccess("purchase");
@@ -620,6 +685,10 @@
       }
     });
 
+    function getMode(){
+      return byId("returnMode").value || "with_bill";
+    }
+
     function syncStickySaveState(){
       byId("saveBtnSticky").disabled = byId("saveBtn").disabled;
     }
@@ -629,36 +698,86 @@
       if(enabled) panel.classList.remove("items-disabled");
       else panel.classList.add("items-disabled");
 
-      byId("reloadBtn").disabled = !enabled;
-      byId("reloadBtnSticky").disabled = !enabled;
-      byId("fullReturnBtn").disabled = !enabled;
-      byId("fullReturnBtnSticky").disabled = !enabled;
+      byId("reloadBtn").disabled = !enabled || getMode() === "without_bill";
+      byId("reloadBtnSticky").disabled = !enabled || getMode() === "without_bill";
+      byId("fullReturnBtn").disabled = !enabled || getMode() === "without_bill";
+      byId("fullReturnBtnSticky").disabled = !enabled || getMode() === "without_bill";
 
       if(!enabled) byId("saveBtn").disabled = true;
       syncStickySaveState();
     }
 
     function updateModeUi(){
+      currentMode = getMode();
+
       if(isEditMode){
         byId("pageTitle").textContent = "Edit Purchase Return";
-        byId("pageSubTitle").textContent = "Loaded existing purchase return. Updating will reverse old items and apply new values through your trigger.";
         byId("modeBadge").textContent = "Edit Mode";
         byId("saveBtn").textContent = "Update Purchase Return";
         byId("saveBtnSticky").textContent = "Update Purchase Return";
-        byId("loadStatus").innerHTML = `<span class="ok">Edit mode active. Existing purchase return loaded.</span>`;
       } else {
         byId("pageTitle").textContent = "Purchase Return";
-        byId("pageSubTitle").textContent = "Load original purchase, enter return quantity, and save. Stock effect must be handled by your SQL trigger.";
         byId("modeBadge").textContent = "Purchase Return Entry";
         byId("saveBtn").textContent = "Save Purchase Return";
         byId("saveBtnSticky").textContent = "Save Purchase Return";
       }
+
+      if(currentMode === "with_bill"){
+        byId("pageSubTitle").textContent = "Load original purchase, enter return quantity, and save. Stock effect must be handled by your SQL trigger.";
+        byId("modeInfoBadge").textContent = "WITH PURCHASE BILL";
+        byId("modeInfoBadge").className = "badge good";
+        byId("modeChip").textContent = "With purchase bill mode";
+        byId("loadPanel").classList.remove("hide");
+        byId("returnHelpText").textContent = "Original purchase details are auto-filled after loading. Only entered return quantities will be saved.";
+        byId("itemsHelpText").textContent = "Return qty cannot be more than original purchase qty.";
+        byId("addManualRowBtn").classList.add("hide");
+        byId("addManualRowBtnBottom").classList.add("hide");
+        byId("addManualRowBtnSticky").classList.add("hide");
+        byId("fullReturnBtn").classList.remove("hide");
+        byId("fullReturnBtnSticky").classList.remove("hide");
+        byId("reloadBtn").classList.remove("hide");
+        byId("reloadBtnSticky").classList.remove("hide");
+        byId("stickyNote").textContent = "With bill: search purchase → load items → return qty → save.";
+        makeSupplierFieldsReadonly(true);
+      } else {
+        byId("pageSubTitle").textContent = "Create purchase return without old purchase bill. Add items manually and save.";
+        byId("modeInfoBadge").textContent = "WITHOUT PURCHASE BILL";
+        byId("modeInfoBadge").className = "badge warn";
+        byId("modeChip").textContent = "Manual return without bill";
+        byId("loadPanel").classList.add("hide");
+        byId("returnHelpText").textContent = "Enter supplier details manually. Add items from stock search or type manually.";
+        byId("itemsHelpText").textContent = "Manual purchase return. Enter item, return qty, price, GST and save.";
+        byId("addManualRowBtn").classList.remove("hide");
+        byId("addManualRowBtnBottom").classList.remove("hide");
+        byId("addManualRowBtnSticky").classList.remove("hide");
+        byId("fullReturnBtn").classList.add("hide");
+        byId("fullReturnBtnSticky").classList.add("hide");
+        byId("reloadBtn").classList.add("hide");
+        byId("reloadBtnSticky").classList.add("hide");
+        byId("stickyNote").textContent = "Without bill: add items manually → enter return qty → save. Purchase ID will be blank.";
+        makeSupplierFieldsReadonly(false);
+      }
+
+      syncStickySaveState();
+    }
+
+    function makeSupplierFieldsReadonly(readonly){
+      const ids = ["gstNumber", "supplierName", "supplierAddress", "invoiceNumber", "invoiceDate"];
+      ids.forEach(id => {
+        const el = byId(id);
+        el.readOnly = readonly;
+        el.classList.toggle("readonly", readonly);
+        el.classList.toggle("manual-field", !readonly);
+      });
+      byId("purchaseNumber").readOnly = true;
+      byId("purchaseNumber").classList.add("readonly");
     }
 
     function hideDropdown(){
       if(dropdown){
         dropdown.remove();
         dropdown = null;
+        dropdownAnchor = null;
       }
     }
 
@@ -671,31 +790,10 @@
       });
     }
 
-    function showDropdown(anchorInput, items, onPick){
-      hideDropdown();
-
+    function placeDropdown(anchorInput, minWidth){
+      if(!dropdown || !anchorInput) return;
       const rect = anchorInput.getBoundingClientRect();
-      dropdown = document.createElement("div");
-      dropdown.className = "dropdown";
-      document.body.appendChild(dropdown);
-
-      items.forEach((it) => {
-        const opt = document.createElement("div");
-        opt.className = "opt purchase-opt";
-        opt.innerHTML = `
-          <div class="muted">${it.purchase_number || ""}</div>
-          <div class="muted">${it.invoice_number || ""}</div>
-          <div>${it.supplier_name || ""}</div>
-          <div class="muted">${it.gst_number || ""}</div>
-        `;
-        opt.onclick = () => {
-          onPick(it);
-          hideDropdown();
-        };
-        dropdown.appendChild(opt);
-      });
-
-      const dropdownHeight = Math.min(260, items.length * 44);
+      const dropdownHeight = Math.min(270, dropdown.scrollHeight || 270);
       const spaceBelow = window.innerHeight - rect.bottom;
       const spaceAbove = rect.top;
 
@@ -706,20 +804,59 @@
         top = window.scrollY + rect.bottom + 4;
       }
 
-      let minWidth = Math.max(rect.width, 760);
+      let width = Math.max(rect.width, minWidth || 360);
       let left = window.scrollX + rect.left;
-      if(left + minWidth > window.innerWidth - 10){
-        left = Math.max(10, window.innerWidth - minWidth - 10);
+      if(left + width > window.innerWidth - 10){
+        left = Math.max(10, window.innerWidth - width - 10);
       }
 
       dropdown.style.top = top + "px";
       dropdown.style.left = left + "px";
-      dropdown.style.minWidth = minWidth + "px";
+      dropdown.style.minWidth = width + "px";
+    }
 
+    function showDropdown(anchorInput, items, onPick, type = "purchase"){
+      hideDropdown();
+
+      dropdown = document.createElement("div");
+      dropdown.className = "dropdown";
+      document.body.appendChild(dropdown);
+      dropdownAnchor = anchorInput;
+
+      items.forEach((it) => {
+        const opt = document.createElement("div");
+        opt.className = type === "item" ? "opt item-opt" : "opt purchase-opt";
+
+        if(type === "item"){
+          opt.innerHTML = `
+            <div class="muted">${it.item_code || ""}</div>
+            <div>${it.item_name || ""}</div>
+            <div class="muted">${it.barcode || ""}</div>
+            <div class="muted">GST ${fmt2(it.gst_percent || 0)}%</div>
+            <div class="muted">₹${fmt2(it.purchase_price_gst || it.landing || it.purchase_price || 0)}</div>
+          `;
+        } else {
+          opt.innerHTML = `
+            <div class="muted">${it.purchase_number || ""}</div>
+            <div class="muted">${it.invoice_number || ""}</div>
+            <div>${it.supplier_name || ""}</div>
+            <div class="muted">${it.gst_number || ""}</div>
+          `;
+        }
+
+        opt.onclick = () => {
+          onPick(it);
+          hideDropdown();
+        };
+        dropdown.appendChild(opt);
+      });
+
+      placeDropdown(anchorInput, type === "item" ? 760 : 760);
       activeIndex = 0;
       highlightOption();
 
       anchorInput.onkeydown = (e) => {
+        if(!dropdown) return;
         const opts = dropdown.querySelectorAll(".opt");
         if(!opts.length) return;
 
@@ -741,7 +878,7 @@
     }
 
     document.addEventListener("click", e => {
-      if(dropdown && !dropdown.contains(e.target)) hideDropdown();
+      if(dropdown && !dropdown.contains(e.target) && e.target !== dropdownAnchor) hideDropdown();
     });
 
     window.addEventListener("resize", hideDropdown);
@@ -764,12 +901,14 @@
       byId("supplierAddress").value = "";
       byId("invoiceNumber").value = "";
       byId("invoiceDate").value = "";
-      byId("invoiceAmount").value = "";
-      byId("roundOff").value = "";
-      byId("payable").value = "";
+      byId("invoiceAmount").value = fmt2(0);
+      byId("roundOff").value = fmt2(0);
+      byId("payable").value = fmt2(0);
       byId("items").innerHTML = "";
-      byId("returnStatus").innerHTML = `<span class="warn">Load original purchase invoice first.</span>`;
-      setItemsEnabled(false);
+      if(getMode() === "with_bill"){
+        byId("returnStatus").innerHTML = `<span class="warn">Load original purchase invoice first.</span>`;
+        setItemsEnabled(false);
+      }
     }
 
     async function initPage(){
@@ -779,12 +918,42 @@
       byId("loadStatus").innerHTML = `<span class="warn">Search and select an original purchase invoice.</span>`;
       byId("saveStatus").textContent = "";
       updateModeUi();
+      applyModeChange(false);
+    }
+
+    async function applyModeChange(askClear = true){
+      currentMode = getMode();
+      hideDropdown();
+      updateModeUi();
+
+      if(currentMode === "with_bill"){
+        if(askClear) clearLoadedPurchase();
+        byId("purchaseNumber").value = loadedPurchase?.purchase_number || "";
+        byId("returnStatus").innerHTML = `<span class="warn">Load original purchase invoice first.</span>`;
+        setItemsEnabled(!!loadedPurchase);
+      } else {
+        loadedPurchase = null;
+        loadedItems = [];
+        byId("loadedChip").textContent = "Manual return";
+        byId("purchaseNumber").value = "WITHOUT BILL";
+        byId("invoiceAmount").value = fmt2(0);
+        byId("roundOff").value = fmt2(0);
+        byId("payable").value = fmt2(0);
+        byId("items").innerHTML = "";
+        byId("returnStatus").innerHTML = `<span class="ok">Manual mode active. Enter supplier details and add items.</span>`;
+        setItemsEnabled(true);
+        await ensureStockLoaded();
+        addManualRow();
+      }
+      maybeEnableSave();
     }
 
     async function searchPurchases(){
       const q = byId("purchaseSearch").value.trim();
       const mode = byId("searchMode").value;
       const status = byId("loadStatus");
+
+      if(getMode() !== "with_bill") return;
 
       if(q.length < 1){
         status.innerHTML = `<span class="warn">Type supplier name, GST, invoice number, or purchase number.</span>`;
@@ -822,7 +991,7 @@
       showDropdown(byId("purchaseSearch"), data, async pick => {
         byId("purchaseSearch").value = `${pick.purchase_number || ""} / ${pick.invoice_number || ""}`;
         await loadPurchase(pick.id, null);
-      });
+      }, "purchase");
     }
 
     async function loadPurchase(purchaseId, existingReturnItemsMap = null){
@@ -878,116 +1047,271 @@
       maybeEnableSave();
     }
 
+    function createInput(val = "", cls = "", readonly = false, type = "text"){
+      const el = document.createElement("input");
+      el.value = val ?? "";
+      el.type = type;
+      if(cls) el.classList.add(cls);
+      if(readonly){
+        el.readOnly = true;
+        el.classList.add("readonly");
+      }
+      return el;
+    }
+
     function renderLoadedItems(existingReturnItemsMap = null){
       const box = byId("items");
       box.innerHTML = "";
 
       loadedItems.forEach((it, idx) => {
-        const row = document.createElement("div");
-        row.className = "grid";
-        row.dataset.itemId = it.id || "";
-        row.dataset.itemCode = it.item_code || "";
-        row.dataset.originalQty = num(it.quantity);
-
         const prev = existingReturnItemsMap ? existingReturnItemsMap[it.item_code || ""] : null;
-
-        const mkInput = (val = "", cls = "", readonly = false, type = "text") => {
-          const el = document.createElement("input");
-          el.value = val ?? "";
-          el.type = type;
-          if(cls) el.classList.add(cls);
-          if(readonly){
-            el.readOnly = true;
-            el.classList.add("readonly");
-          }
-          return el;
-        };
-
-        const hsn = mkInput(it.hsn_code || "", "", true);
-        const code = mkInput(it.item_code || "", "", true);
-        const barcode = mkInput(it.barcode || "", "", true);
-        const name = mkInput(it.item_name || "", "", true);
-        const department = mkInput(it.department || "", "", true);
-        const purQty = mkInput(fmt2(it.quantity || 0), "", true);
-        const retQty = mkInput(prev ? String(num(prev.quantity)) : "", "", false, "number");
-        retQty.step = "0.01";
-        retQty.min = "0";
-        const balQty = mkInput("0.00", "", true);
-        const price = mkInput(fmt2(prev ? (prev.price ?? it.price) : it.price || 0), "", true);
-        const disc = mkInput(fmt2(prev ? (prev.discount_percent ?? it.discount_percent) : it.discount_percent || 0), "", true);
-        const total = mkInput("0.00", "", true);
-        const gst = mkInput(fmt2(prev ? (prev.gst_percent ?? it.gst_percent) : it.gst_percent || 0), "", true);
-        const totalG = mkInput("0.00", "", true);
-        const purchase = mkInput(fmt2(prev ? (prev.purchase_price ?? it.purchase_price) : it.purchase_price || 0), "", true);
-        const purchaseG = mkInput(fmt2(prev ? (prev.purchase_price_gst ?? it.purchase_price_gst) : it.purchase_price_gst || 0), "", true);
-
-        [
-          hsn, code, barcode, name, department, purQty, retQty, balQty, price, disc,
-          total, gst, totalG, purchase, purchaseG
-        ].forEach(el => row.appendChild(el));
-
-        box.appendChild(row);
-
-        retQty.addEventListener("input", () => calculateRow(row));
-        retQty.addEventListener("keydown", (e) => {
-          const inputs = Array.from(document.querySelectorAll('#items .grid input[type="number"]'));
-          const pos = inputs.indexOf(e.target);
-
-          if(e.key === "Enter"){
-            e.preventDefault();
-            const next = inputs[pos + 1];
-            if(next) next.focus();
-            else byId("saveBtn").focus();
-          }
+        const row = buildItemRow({
+          mode: "with_bill",
+          sl: idx + 1,
+          hsn_code: it.hsn_code || "",
+          item_code: it.item_code || "",
+          barcode: it.barcode || "",
+          item_name: it.item_name || "",
+          department: it.department || "",
+          original_quantity: num(it.quantity),
+          return_quantity: prev ? num(prev.quantity) : 0,
+          price: num(prev ? (prev.price ?? it.price) : it.price || 0),
+          discount_percent: num(prev ? (prev.discount_percent ?? it.discount_percent) : it.discount_percent || 0),
+          gst_percent: num(prev ? (prev.gst_percent ?? it.gst_percent) : it.gst_percent || 0),
+          purchase_price_gst: num(prev ? (prev.purchase_price_gst ?? it.purchase_price_gst) : (it.purchase_price_gst || it.landing || it.purchase_price || 0)),
+          purchase_price: num(prev ? (prev.purchase_price ?? it.purchase_price) : it.purchase_price || 0),
+          item_id: it.id || ""
         });
-
-        if(idx === loadedItems.length - 1){
-          retQty.addEventListener("keydown", (e) => {
-            if(e.key === "Enter"){
-              e.preventDefault();
-              byId("saveBtn").focus();
-            }
-          });
-        }
-
+        box.appendChild(row);
         calculateRow(row);
       });
 
       updateSummaryFromItems();
     }
 
+    function buildItemRow(data = {}){
+      const mode = data.mode || getMode();
+      const row = document.createElement("div");
+      row.className = "grid";
+      row.dataset.itemId = data.item_id || "";
+      row.dataset.itemCode = data.item_code || "";
+      row.dataset.mode = mode;
+      row.dataset.originalQty = mode === "with_bill" ? num(data.original_quantity) : 0;
+
+      const sl = createInput(data.sl || "", "", true);
+      const hsn = createInput(data.hsn_code || "", "", mode === "with_bill");
+      const code = createInput(data.item_code || "", "", mode === "with_bill");
+      const barcode = createInput(data.barcode || "", "", mode === "with_bill");
+      const name = createInput(data.item_name || "", "", mode === "with_bill");
+      const department = createInput(data.department || "", "", mode === "with_bill");
+      const purQty = createInput(mode === "with_bill" ? fmt2(data.original_quantity || 0) : "", "", mode === "with_bill", "number");
+      const retQty = createInput(data.return_quantity ? String(num(data.return_quantity)) : "", "", false, "number");
+      const balQty = createInput("0.00", "", true);
+      const price = createInput(fmt2(data.price || 0), "", mode === "with_bill", "number");
+      const disc = createInput(fmt2(data.discount_percent || 0), "", mode === "with_bill", "number");
+      const total = createInput("0.00", "", true);
+      const gst = createInput(fmt2(data.gst_percent || 0), "", mode === "with_bill", "number");
+      const totalG = createInput("0.00", "", true);
+      const purchaseG = createInput(fmt2(data.purchase_price_gst || data.landing || 0), "", mode === "with_bill", "number");
+      const removeBtn = document.createElement("button");
+      removeBtn.type = "button";
+      removeBtn.className = "btn danger";
+      removeBtn.textContent = "X";
+      removeBtn.style.height = "42px";
+      removeBtn.disabled = mode === "with_bill";
+
+      [hsn, code, barcode, name, department, purQty, price, disc, gst, purchaseG].forEach(el => {
+        if(mode === "without_bill") el.classList.add("manual-field");
+      });
+
+      purQty.step = "0.01";
+      purQty.min = "0";
+      retQty.step = "0.01";
+      retQty.min = "0";
+      price.step = "0.01";
+      disc.step = "0.01";
+      gst.step = "0.01";
+      purchaseG.step = "0.01";
+
+      [
+        sl, hsn, code, barcode, name, department, purQty, retQty, balQty, price, disc,
+        total, gst, totalG, purchaseG, removeBtn
+      ].forEach(el => row.appendChild(el));
+
+      if(mode === "without_bill"){
+        code.placeholder = "CODE / NAME";
+        name.placeholder = "ITEM NAME";
+        purQty.placeholder = "OPTIONAL";
+        retQty.placeholder = "QTY";
+        price.placeholder = "PRICE";
+        gst.placeholder = "GST";
+        purchaseG.placeholder = "PRICE+GST";
+
+        code.addEventListener("input", () => searchStockForRow(row, code.value, code));
+        name.addEventListener("input", () => searchStockForRow(row, name.value, name));
+        barcode.addEventListener("input", () => searchStockForRow(row, barcode.value, barcode));
+      }
+
+      [purQty, retQty, price, disc, gst, purchaseG].forEach(el => {
+        el.addEventListener("input", () => calculateRow(row));
+      });
+
+      retQty.addEventListener("keydown", (e) => {
+        const qtyInputs = Array.from(document.querySelectorAll('#items .grid input[type="number"]'));
+        const pos = qtyInputs.indexOf(e.target);
+
+        if(e.key === "Enter"){
+          e.preventDefault();
+          const next = qtyInputs[pos + 1];
+          if(next) next.focus();
+          else byId("saveBtn").focus();
+        }
+      });
+
+      removeBtn.addEventListener("click", () => {
+        row.remove();
+        renumberRows();
+        updateSummaryFromItems();
+        maybeEnableSave();
+      });
+
+      return row;
+    }
+
+    function renumberRows(){
+      const rows = Array.from(document.querySelectorAll("#items .grid"));
+      rows.forEach((row, idx) => {
+        const inputs = row.querySelectorAll("input");
+        inputs[0].value = idx + 1;
+      });
+    }
+
+    async function ensureStockLoaded(){
+      if(stockLoaded) return;
+      byId("saveStatus").textContent = "Loading stock items for manual return...";
+
+      let all = [];
+      const pageSize = 1000;
+      for(let from = 0; ; from += pageSize){
+        const to = from + pageSize - 1;
+        const { data, error } = await sb
+          .from("stock_items")
+          .select("id,item_code,item_name,barcode,hsn_code,department,gst_percent,purchase_price,purchase_price_gst,landing,price,price1,price1_gst")
+          .order("item_name", { ascending: true })
+          .range(from, to);
+
+        if(error){
+          console.error(error);
+          byId("saveStatus").innerHTML = `<span class="err">Stock load failed: ${error.message}</span>`;
+          return;
+        }
+
+        all = all.concat(data || []);
+        if(!data || data.length < pageSize) break;
+      }
+
+      stockCache = all;
+      stockLoaded = true;
+      byId("saveStatus").innerHTML = `<span class="ok">${stockCache.length} stock items loaded for manual return.</span>`;
+    }
+
+    function searchStockForRow(row, q, anchor){
+      q = String(q || "").trim().toUpperCase();
+      if(getMode() !== "without_bill" || q.length < 1){
+        hideDropdown();
+        return;
+      }
+
+      const parts = q.split(/\s+/).filter(Boolean);
+      const result = stockCache.filter(it => {
+        const hay = `${it.item_code || ""} ${it.item_name || ""} ${it.barcode || ""}`.toUpperCase();
+        return parts.every(p => hay.includes(p));
+      }).slice(0, 50);
+
+      if(!result.length){
+        hideDropdown();
+        return;
+      }
+
+      showDropdown(anchor, result, pick => fillStockIntoRow(row, pick), "item");
+    }
+
+    function fillStockIntoRow(row, it){
+      const inputs = row.querySelectorAll("input");
+      inputs[1].value = it.hsn_code || "";
+      inputs[2].value = it.item_code || "";
+      inputs[3].value = it.barcode || "";
+      inputs[4].value = it.item_name || "";
+      inputs[5].value = it.department || "";
+      inputs[9].value = fmt2(it.purchase_price || it.price || it.price1 || 0);
+      inputs[10].value = fmt2(0);
+      inputs[12].value = fmt2(it.gst_percent || 0);
+      inputs[14].value = fmt2(it.purchase_price_gst || it.landing || it.price1_gst || it.purchase_price || 0);
+      row.dataset.itemCode = it.item_code || "";
+      calculateRow(row);
+      setTimeout(() => inputs[7].focus(), 50);
+    }
+
+    function addManualRow(prefill = {}){
+      if(getMode() !== "without_bill") return;
+      const box = byId("items");
+      const row = buildItemRow({
+        mode: "without_bill",
+        sl: box.children.length + 1,
+        hsn_code: prefill.hsn_code || "",
+        item_code: prefill.item_code || "",
+        barcode: prefill.barcode || "",
+        item_name: prefill.item_name || "",
+        department: prefill.department || "",
+        original_quantity: prefill.original_quantity || 0,
+        return_quantity: prefill.quantity || prefill.return_quantity || 0,
+        price: prefill.price || 0,
+        discount_percent: prefill.discount_percent || 0,
+        gst_percent: prefill.gst_percent || 0,
+        purchase_price_gst: prefill.purchase_price_gst || prefill.landing || 0,
+        item_id: prefill.item_id || ""
+      });
+      box.appendChild(row);
+      calculateRow(row);
+      const inputs = row.querySelectorAll("input");
+      setTimeout(() => inputs[2].focus(), 30);
+    }
+
     function calculateRow(row){
       const inputs = row.querySelectorAll("input");
-      const purQty = num(inputs[5].value);
-      let retQty = num(inputs[6].value);
-      const price = num(inputs[8].value);
-      const disc = num(inputs[9].value);
-      const gst = num(inputs[11].value);
+      const rowMode = row.dataset.mode || getMode();
+      let purQty = num(inputs[6].value);
+      let retQty = num(inputs[7].value);
+      const price = num(inputs[9].value);
+      const disc = num(inputs[10].value);
+      const gst = num(inputs[12].value);
 
       if(retQty < 0) retQty = 0;
-      if(retQty > purQty) retQty = purQty;
+      if(rowMode === "with_bill" && retQty > purQty) retQty = purQty;
+      if(rowMode === "without_bill" && purQty <= 0) purQty = retQty;
 
-      inputs[6].value = retQty ? String(retQty) : "";
-      inputs[7].value = fmt2(purQty - retQty);
+      inputs[7].value = retQty ? String(retQty) : "";
+      inputs[8].value = rowMode === "with_bill" ? fmt2(purQty - retQty) : fmt2(0);
 
       const gross = retQty * price;
       const discAmt = gross * (disc / 100);
       const total = gross - discAmt;
       const totalG = total + (total * (gst / 100));
 
-      inputs[10].value = fmt2(total);
-      inputs[12].value = fmt2(totalG);
+      inputs[11].value = fmt2(total);
+      inputs[13].value = fmt2(totalG);
 
       maybeEnableSave();
       updateSummaryFromItems();
     }
 
     function fillFullReturn(){
+      if(getMode() !== "with_bill") return;
       const rows = Array.from(document.querySelectorAll("#items .grid"));
       rows.forEach(row => {
         const inputs = row.querySelectorAll("input");
-        const purQty = num(inputs[5].value);
-        inputs[6].value = purQty ? String(purQty) : "";
+        const purQty = num(inputs[6].value);
+        inputs[7].value = purQty ? String(purQty) : "";
         calculateRow(row);
       });
       byId("returnStatus").innerHTML = `<span class="ok">Full return quantity filled for all items.</span>`;
@@ -998,23 +1322,24 @@
       return rows.map(row => {
         const inputs = row.querySelectorAll("input");
         return {
-          hsn_code: inputs[0].value,
-          item_code: inputs[1].value,
-          barcode: inputs[2].value,
-          item_name: inputs[3].value,
-          department: inputs[4].value,
-          original_quantity: num(inputs[5].value),
-          return_quantity: num(inputs[6].value),
-          balance_quantity: num(inputs[7].value),
-          price: num(inputs[8].value),
-          discount_percent: num(inputs[9].value),
-          total: num(inputs[10].value),
-          gst_percent: num(inputs[11].value),
-          total_gst: num(inputs[12].value),
-          purchase_price: num(inputs[13].value),
-          purchase_price_gst: num(inputs[14].value)
+          hsn_code: inputs[1].value.trim(),
+          item_code: inputs[2].value.trim(),
+          barcode: inputs[3].value.trim(),
+          item_name: inputs[4].value.trim(),
+          department: inputs[5].value.trim(),
+          original_quantity: num(inputs[6].value),
+          return_quantity: num(inputs[7].value),
+          balance_quantity: num(inputs[8].value),
+          price: num(inputs[9].value),
+          discount_percent: num(inputs[10].value),
+          total: num(inputs[11].value),
+          gst_percent: num(inputs[12].value),
+          total_gst: num(inputs[13].value),
+          purchase_price_gst: num(inputs[14].value),
+          purchase_price: num(inputs[9].value),
+          row_mode: row.dataset.mode || getMode()
         };
-      }).filter(x => x.return_quantity > 0);
+      }).filter(x => x.return_quantity > 0 && (x.item_code || x.item_name));
     }
 
     function updateSummaryFromItems(){
@@ -1030,10 +1355,12 @@
     }
 
     function maybeEnableSave(){
+      const mode = getMode();
       const items = collectItems();
-      const hasHeader = !!loadedPurchase;
+      const hasHeader = mode === "with_bill" ? !!loadedPurchase : true;
       const hasDate = !!byId("returnDate").value;
-      byId("saveBtn").disabled = !(hasHeader && hasDate && items.length > 0);
+      const hasManualSupplier = mode === "without_bill" ? !!byId("supplierName").value.trim() : true;
+      byId("saveBtn").disabled = !(hasHeader && hasDate && hasManualSupplier && items.length > 0);
       syncStickySaveState();
     }
 
@@ -1065,8 +1392,13 @@
         return;
       }
 
+      const manualMode = !header.purchase_id || String(header.purchase_number || "").toUpperCase() === "WITHOUT BILL";
+      byId("returnMode").value = manualMode ? "without_bill" : "with_bill";
+      updateModeUi();
+
       byId("purchaseReturnNumber").value = header.purchase_return_number || "";
       byId("returnDate").value = header.return_date || todayISO();
+      byId("purchaseNumber").value = header.purchase_number || (manualMode ? "WITHOUT BILL" : "");
       byId("gstNumber").value = header.gst_number || "";
       byId("supplierName").value = header.supplier_name || "";
       byId("supplierAddress").value = header.address || "";
@@ -1076,38 +1408,57 @@
       byId("roundOff").value = fmt2(header.round_off || 0);
       byId("payable").value = fmt2(header.payable || 0);
 
-      let purchaseId = header.purchase_id || null;
-      if (!purchaseId && header.purchase_number) {
-        const { data: purchaseByNo } = await sb
-          .from("purchase_details")
-          .select("id")
-          .eq("purchase_number", header.purchase_number)
-          .limit(1)
-          .maybeSingle();
-        purchaseId = purchaseByNo?.id || null;
-      }
-
-      const existingReturnItemsMap = {};
-      (returnItems || []).forEach(it => {
-        existingReturnItemsMap[it.item_code || ""] = it;
-      });
-
-      if (purchaseId) {
-        await loadPurchase(purchaseId, existingReturnItemsMap);
+      if(manualMode){
+        loadedPurchase = null;
+        loadedItems = [];
+        byId("items").innerHTML = "";
+        setItemsEnabled(true);
+        await ensureStockLoaded();
+        (returnItems || []).forEach(it => addManualRow(it));
+        if(!(returnItems || []).length) addManualRow();
       } else {
-        byId("saveStatus").innerHTML = `<span class="err">Could not locate original purchase for this return.</span>`;
+        let purchaseId = header.purchase_id || null;
+        if (!purchaseId && header.purchase_number) {
+          const { data: purchaseByNo } = await sb
+            .from("purchase_details")
+            .select("id")
+            .eq("purchase_number", header.purchase_number)
+            .limit(1)
+            .maybeSingle();
+          purchaseId = purchaseByNo?.id || null;
+        }
+
+        const existingReturnItemsMap = {};
+        (returnItems || []).forEach(it => {
+          existingReturnItemsMap[it.item_code || ""] = it;
+        });
+
+        if (purchaseId) {
+          await loadPurchase(purchaseId, existingReturnItemsMap);
+        } else {
+          byId("saveStatus").innerHTML = `<span class="err">Could not locate original purchase for this return.</span>`;
+        }
+
+        byId("purchaseSearch").value = `${header.purchase_number || ""} / ${header.original_invoice_number || ""}`;
       }
 
-      byId("purchaseSearch").value = `${header.purchase_number || ""} / ${header.original_invoice_number || ""}`;
       byId("saveStatus").innerHTML = `<span class="ok">Existing purchase return loaded.</span>`;
       updateModeUi();
+      maybeEnableSave();
     }
 
     async function savePurchaseReturn(){
       const status = byId("saveStatus");
+      const mode = getMode();
 
-      if(!loadedPurchase){
+      if(mode === "with_bill" && !loadedPurchase){
         status.innerHTML = `<span class="err">Load original purchase first.</span>`;
+        return;
+      }
+
+      if(mode === "without_bill" && !byId("supplierName").value.trim()){
+        status.innerHTML = `<span class="err">Enter supplier name for without bill purchase return.</span>`;
+        byId("supplierName").focus();
         return;
       }
 
@@ -1119,8 +1470,12 @@
       }
 
       for(const it of returnItems){
-        if(it.return_quantity > it.original_quantity){
+        if(mode === "with_bill" && it.return_quantity > it.original_quantity){
           status.innerHTML = `<span class="err">Return qty cannot be more than purchase qty for ${it.item_code}</span>`;
+          return;
+        }
+        if(!it.item_code && !it.item_name){
+          status.innerHTML = `<span class="err">Item code or item name required.</span>`;
           return;
         }
       }
@@ -1132,13 +1487,13 @@
       const headerPayload = {
         purchase_return_number: byId("purchaseReturnNumber").value.trim(),
         return_date: byId("returnDate").value,
-        purchase_id: loadedPurchase.id,
-        purchase_number: loadedPurchase.purchase_number,
-        gst_number: loadedPurchase.gst_number,
-        supplier_name: loadedPurchase.supplier_name,
-        address: loadedPurchase.address,
-        original_invoice_number: loadedPurchase.invoice_number,
-        original_invoice_date: loadedPurchase.invoice_date,
+        purchase_id: mode === "with_bill" ? loadedPurchase.id : null,
+        purchase_number: mode === "with_bill" ? loadedPurchase.purchase_number : "WITHOUT BILL",
+        gst_number: mode === "with_bill" ? (loadedPurchase.gst_number || "") : byId("gstNumber").value.trim(),
+        supplier_name: mode === "with_bill" ? (loadedPurchase.supplier_name || "") : byId("supplierName").value.trim(),
+        address: mode === "with_bill" ? (loadedPurchase.address || "") : byId("supplierAddress").value.trim(),
+        original_invoice_number: mode === "with_bill" ? (loadedPurchase.invoice_number || "") : byId("invoiceNumber").value.trim(),
+        original_invoice_date: mode === "with_bill" ? (loadedPurchase.invoice_date || null) : (byId("invoiceDate").value || null),
         total_amount: num(byId("invoiceAmount").value),
         round_off: num(byId("roundOff").value),
         payable: num(byId("payable").value)
@@ -1189,21 +1544,21 @@
 
       const itemPayload = returnItems.map(it => ({
         purchase_return_id: purchaseReturnId,
-        purchase_id: loadedPurchase.id,
-        purchase_number: loadedPurchase.purchase_number,
+        purchase_id: mode === "with_bill" ? loadedPurchase.id : null,
+        purchase_number: mode === "with_bill" ? loadedPurchase.purchase_number : "WITHOUT BILL",
         hsn_code: it.hsn_code,
         item_code: it.item_code,
         barcode: it.barcode,
         item_name: it.item_name,
         department: it.department,
         quantity: it.return_quantity,
-        original_quantity: it.original_quantity,
-        balance_quantity: it.balance_quantity,
+        original_quantity: mode === "with_bill" ? it.original_quantity : it.return_quantity,
+        balance_quantity: mode === "with_bill" ? it.balance_quantity : 0,
         price: it.price,
         discount_percent: it.discount_percent,
         purchase_price: it.purchase_price,
-        purchase_price_gst: it.purchase_price_gst,
-        landing: it.purchase_price_gst,
+        purchase_price_gst: it.purchase_price_gst || it.total_gst,
+        landing: it.purchase_price_gst || it.price,
         gst_percent: it.gst_percent,
         total: it.total,
         total_gst: it.total_gst
@@ -1232,41 +1587,50 @@
     }
 
     function reloadOriginalItems(){
-      if(!loadedPurchase) return;
+      if(!loadedPurchase || getMode() !== "with_bill") return;
       renderLoadedItems();
       byId("returnStatus").innerHTML = `<span class="ok">Original items reloaded.</span>`;
       byId("saveStatus").textContent = "";
     }
 
     document.addEventListener("keydown", function(e){
-      const headerInputs = Array.from(document.querySelectorAll("#loadPanel input, #loadPanel select, #returnPanel input"));
+      const headerInputs = Array.from(document.querySelectorAll("#modePanel input, #modePanel select, #loadPanel input, #loadPanel select, #returnPanel input"));
       const itemInputs = Array.from(document.querySelectorAll("#items .grid input"));
-      const actionInputs = [byId("fullReturnBtn"), byId("reloadBtn"), byId("saveBtn")];
+      const actionInputs = [byId("addManualRowBtn"), byId("fullReturnBtn"), byId("reloadBtn"), byId("saveBtn")].filter(Boolean);
       const all = headerInputs.concat(itemInputs, actionInputs);
       const current = document.activeElement;
       const idx = all.indexOf(current);
 
       if(idx >= 0 && e.key === "Enter" && !dropdown){
-        if(current.id === "searchBtn" || current.id === "saveBtn" || current.id === "reloadBtn" || current.id === "fullReturnBtn") return;
+        if(current.tagName === "BUTTON") return;
         e.preventDefault();
         const next = e.shiftKey ? all[idx - 1] : all[idx + 1];
         if(next) next.focus();
       }
     });
 
+    byId("returnMode").addEventListener("change", () => applyModeChange(true));
+    ["gstNumber", "supplierName", "supplierAddress", "invoiceNumber", "invoiceDate", "returnDate"].forEach(id => {
+      byId(id).addEventListener("input", maybeEnableSave);
+      byId(id).addEventListener("change", maybeEnableSave);
+    });
+
     byId("searchBtn").addEventListener("click", searchPurchases);
     byId("purchaseSearch").addEventListener("input", () => {
       const q = byId("purchaseSearch").value.trim();
-      if(q.length >= 2 && !isEditMode) searchPurchases();
+      if(q.length >= 2 && !isEditMode && getMode() === "with_bill") searchPurchases();
       else if(!q.length) hideDropdown();
     });
     byId("purchaseSearch").addEventListener("keydown", (e) => {
-      if(e.key === "Enter" && !dropdown && !isEditMode){
+      if(e.key === "Enter" && !dropdown && !isEditMode && getMode() === "with_bill"){
         e.preventDefault();
         searchPurchases();
       }
     });
 
+    byId("addManualRowBtn").addEventListener("click", addManualRow);
+    byId("addManualRowBtnBottom").addEventListener("click", addManualRow);
+    byId("addManualRowBtnSticky").addEventListener("click", addManualRow);
     byId("fullReturnBtn").addEventListener("click", fillFullReturn);
     byId("fullReturnBtnSticky").addEventListener("click", fillFullReturn);
     byId("reloadBtn").addEventListener("click", reloadOriginalItems);
@@ -1275,7 +1639,6 @@
     byId("saveBtnSticky").addEventListener("click", () => {
       if(!byId("saveBtnSticky").disabled) savePurchaseReturn();
     });
-    byId("returnDate").addEventListener("change", maybeEnableSave);
   </script>
 </body>
 </html>

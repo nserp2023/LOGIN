@@ -330,6 +330,77 @@ function getSalesman(head){
     return firstNonEmpty(head.salesman, head.sales_man, head.created_by);
 }
 
+function normalizeText(value){
+    return String(value ?? "").trim().toUpperCase();
+}
+
+function getCompanyProfile(isInterlockBill){
+    if(isInterlockBill){
+        return {
+            name: "SN INDUSTRIES",
+            ho: "(H.O: SN.TRADERS, KATTAKADA, TRIVANDRUM-72)",
+            email: "vajralightsandelectricals.sha@gmail.com",
+            address: "KAITHAKONAM, KATTAKADA, TRIVANDRUM-72",
+            phone: "8606808063,9495160771",
+            state: "KERALA[32]",
+            gstin: "32APBPN5593H1ZT",
+            upiName: "SN Industries"
+        };
+    }
+
+    return {
+        name: "VAJRA LIGHTS & ELECTRICALS",
+        ho: "(H.O: SN.TRADERS, KATTAKADA, TRIVANDRUM-72)",
+        email: "vajralightsandelectricals.sha@gmail.com",
+        address: "KAITHAKONAM, KATTAKADA, TRIVANDRUM-72",
+        phone: "8606808063,9495160771",
+        state: "KERALA[32]",
+        gstin: "32APBPN5593H1ZT",
+        upiName: "Vajra Lights"
+    };
+}
+
+async function detectInterlockBill(head, linkedHead, items){
+    const headerDepartment = firstNonEmpty(
+        head?.department,
+        head?.department_filter,
+        head?.item_department,
+        linkedHead?.department,
+        linkedHead?.department_filter,
+        linkedHead?.item_department
+    );
+
+    if(normalizeText(headerDepartment) === "INTERLOCK") return true;
+
+    const itemHasInterlock = (items || []).some(item =>
+        normalizeText(firstNonEmpty(item?.department, item?.item_department, item?.department_filter)) === "INTERLOCK"
+    );
+    if(itemHasInterlock) return true;
+
+    const codes = [...new Set((items || [])
+        .map(item => String(item?.item_code || "").trim())
+        .filter(Boolean))];
+
+    if(!codes.length) return false;
+
+    try{
+        const { data, error } = await sb
+            .from("stock_items")
+            .select("item_code,department")
+            .in("item_code", codes);
+
+        if(error){
+            console.warn("Interlock department check failed:", error);
+            return false;
+        }
+
+        return (data || []).some(row => normalizeText(row.department) === "INTERLOCK");
+    }catch(err){
+        console.warn("Interlock department check failed:", err);
+        return false;
+    }
+}
+
 async function loadData(){
 
 /* HEADER */
@@ -445,6 +516,9 @@ if (itemError || !items) {
     return;
 }
 
+const isInterlockBill = await detectInterlockBill(head, linkedSalesHead, items);
+const company = getCompanyProfile(isInterlockBill);
+
 let rowsPerPage = items.length<=10 ? 10 : 40;
 let pageClass = items.length<=10 ? "page-half":"page-full";
 
@@ -474,16 +548,16 @@ let html=`<div class="page ${pageClass}">
 <div class="header">
 
 <div class="header-left">
-<h1>VAJRA LIGHTS & ELECTRICALS</h1>
-(H.O: SN.TRADERS, KATTAKADA, TRIVANDRUM-72)<br>
-Email: vajralightsandelectricals.sha@gmail.com<br>
-KAITHAKONAM, KATTAKADA, TRIVANDRUM-72<br>
-PH: 8606808063,9495160771
+<h1>${escapeHtml(company.name)}</h1>
+${escapeHtml(company.ho)}<br>
+Email: ${escapeHtml(company.email)}<br>
+${escapeHtml(company.address)}<br>
+PH: ${escapeHtml(company.phone)}
 </div>
 
 <div class="header-right">
-STATE: KERALA[32]<br>
-GSTIN: 32APBPN5593H1ZT
+STATE: ${escapeHtml(company.state)}<br>
+GSTIN: ${escapeHtml(company.gstin)}
 </div>
 
 </div>
@@ -744,7 +818,7 @@ container.innerHTML = packingHTML + originalHTML;
 
 let grand = Math.round(totalTaxable + totalGst);
 
-let qr = `upi://pay?pa=q137103198@ybl&pn=Vajra Lights&am=${grand}&cu=INR`;
+let qr = `upi://pay?pa=q137103198@ybl&pn=${encodeURIComponent(company.upiName)}&am=${grand}&cu=INR`;
 
 let qrImgs = document.querySelectorAll(".qrimg");
 

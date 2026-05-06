@@ -334,8 +334,10 @@ function normalizeText(value){
     return String(value ?? "").trim().toUpperCase();
 }
 
-function getCompanyProfile(isInterlockBill){
-    if(isInterlockBill){
+function getCompanyProfile(department){
+    const dept = normalizeText(department);
+
+    if(dept === "INTERLOCK"){
         return {
             name: "SN INDUSTRIES",
             ho: "(H.O: SN.TRADERS, KATTAKADA, TRIVANDRUM-72)",
@@ -360,53 +362,14 @@ function getCompanyProfile(isInterlockBill){
     };
 }
 
-async function detectInterlockBill(head, linkedHead, items){
-    // ✅ DIRECT FORCE FROM BILLING PAGE URL.
-    // This fixes cases where stock_items.department is blocked by RLS or not readable in print page.
-    const forcedDepartment = normalizeText(params.get("department") || params.get("dept") || "");
-    const forcedCompany = normalizeText(params.get("company") || "");
-    if(forcedDepartment === "INTERLOCK" || forcedCompany === "SN" || forcedCompany === "SN INDUSTRIES"){
-        return true;
-    }
-
-    const headerDepartment = firstNonEmpty(
+function getDocumentDepartment(head, linkedHead = null){
+    return firstNonEmpty(
         head?.department,
-        head?.department_filter,
-        head?.item_department,
         linkedHead?.department,
+        head?.department_filter,
         linkedHead?.department_filter,
-        linkedHead?.item_department
+        "ALL"
     );
-
-    if(normalizeText(headerDepartment) === "INTERLOCK") return true;
-
-    const itemHasInterlock = (items || []).some(item =>
-        normalizeText(firstNonEmpty(item?.department, item?.item_department, item?.department_filter)) === "INTERLOCK"
-    );
-    if(itemHasInterlock) return true;
-
-    const codes = [...new Set((items || [])
-        .map(item => String(item?.item_code || "").trim())
-        .filter(Boolean))];
-
-    if(!codes.length) return false;
-
-    try{
-        const { data, error } = await sb
-            .from("stock_items")
-            .select("item_code,department")
-            .in("item_code", codes);
-
-        if(error){
-            console.warn("Interlock department check failed:", error);
-            return false;
-        }
-
-        return (data || []).some(row => normalizeText(row.department) === "INTERLOCK");
-    }catch(err){
-        console.warn("Interlock department check failed:", err);
-        return false;
-    }
 }
 
 async function loadData(){
@@ -524,8 +487,8 @@ if (itemError || !items) {
     return;
 }
 
-const isInterlockBill = await detectInterlockBill(head, linkedSalesHead, items);
-const company = getCompanyProfile(isInterlockBill);
+const documentDepartment = getDocumentDepartment(head, linkedSalesHead);
+const company = getCompanyProfile(documentDepartment);
 
 let rowsPerPage = items.length<=10 ? 10 : 40;
 let pageClass = items.length<=10 ? "page-half":"page-full";

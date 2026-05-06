@@ -1192,26 +1192,30 @@
         return profile?.username || profile?.name || profile?.email || profile?.id || "UNKNOWN";
     }
 
-    async function hasPaymentForBill(id, cfg){
-        const possibleQueries = [
-            { reference_id: id },
-            { sales_id: id },
-            { bill_id: id }
-        ];
+    async function hasPaymentForBill(id, cfg, linkedSalesId){
+        const idsToCheck = [...new Set([id, linkedSalesId].map(v => Number(v)).filter(Boolean))];
 
-        for(const filter of possibleQueries){
-            try {
-                let q = sb.from("cash_transactions").select("id").limit(1);
-                Object.entries(filter).forEach(([key, value]) => {
-                    q = q.eq(key, value);
-                });
+        for(const checkId of idsToCheck){
+            const possibleQueries = [
+                { reference_id: checkId },
+                { sales_id: checkId },
+                { bill_id: checkId }
+            ];
 
-                const { data, error } = await q;
-                if(!error && data && data.length > 0){
-                    return true;
+            for(const filter of possibleQueries){
+                try {
+                    let q = sb.from("cash_transactions").select("id").limit(1);
+                    Object.entries(filter).forEach(([key, value]) => {
+                        q = q.eq(key, value);
+                    });
+
+                    const { data, error } = await q;
+                    if(!error && data && data.length > 0){
+                        return true;
+                    }
+                } catch(e){
+                    console.warn("Payment check skipped for filter", filter, e);
                 }
-            } catch(e){
-                console.warn("Payment check skipped for filter", filter, e);
             }
         }
 
@@ -1285,6 +1289,76 @@
         return { ok:true, message:"Stock reversed successfully." };
     }
 
+    async function cancelLinkedSalesFromPacking(packingRow, reason, profileName){
+        const linkedSalesId = Number(packingRow.sales_id || 0);
+
+        if(!linkedSalesId){
+            return {
+                ok: true,
+                message: "No linked Sales bill ID found in this packing bill. Only packing bill was cancelled."
+            };
+        }
+
+        const { data: salesRows, error: readSalesErr } = await sb
+            .from("sales_details")
+            .select("id, status")
+            .eq("id", linkedSalesId)
+            .limit(1);
+
+        if(readSalesErr){
+            console.error(readSalesErr);
+            return { ok:false, message:"Could not read linked Sales bill." };
+        }
+
+        if(!salesRows || salesRows.length === 0){
+            return { ok:false, message:"Linked Sales bill not found." };
+        }
+
+        const salesWasAlreadyCancelled = salesRows[0].status === "CANCELLED";
+
+        if(!salesWasAlreadyCancelled){
+            const { error: cancelSalesErr } = await sb
+                .from("sales_details")
+                .update({
+                    status: "CANCELLED",
+                    cancelled_at: new Date().toISOString(),
+                    cancelled_by: profileName,
+                    cancel_reason: `Cancelled from Sales + Packing: ${reason}`
+                })
+                .eq("id", linkedSalesId)
+                .neq("status", "CANCELLED");
+
+            if(cancelSalesErr){
+                console.error(cancelSalesErr);
+                return { ok:false, message:"Packing cancelled, but linked Sales bill cancel failed: " + cancelSalesErr.message };
+            }
+        }
+
+        const stockResult = await reverseStockForCancel(
+            linkedSalesId,
+            {
+                type: "sales",
+                table: "sales_details",
+                numberField: "sales_number",
+                dateField: "bill_date",
+                amountField: "invoice_amount",
+                label: "Linked Sales Bill"
+            },
+            reason
+        );
+
+        if(!stockResult.ok){
+            return { ok:false, message:"Linked Sales bill cancelled, but stock reverse failed: " + stockResult.message };
+        }
+
+        return {
+            ok: true,
+            message: salesWasAlreadyCancelled
+                ? "Linked Sales bill was already cancelled. " + stockResult.message
+                : "Linked Sales bill also cancelled. " + stockResult.message
+        };
+    }
+
     async function cancelDoc(id){
         const cfg = getCurrentTypeConfig();
         const row = findReportRow(id);
@@ -1305,9 +1379,10 @@
             return;
         }
 
-        const hasPayment = await hasPaymentForBill(id, cfg);
+        const linkedSalesIdForPaymentCheck = cfg.type === "sales_pack" ? Number(row.sales_id || 0) : 0;
+        const hasPayment = await hasPaymentForBill(id, cfg, linkedSalesIdForPaymentCheck);
         if(hasPayment){
-            alert("❌ Cannot cancel. Payment / cash transaction already exists for this bill.");
+            alert("❌ Cannot cancel. Payment / cash transaction already exists for this bill or its linked Sales bill.");
             return;
         }
 
@@ -1324,7 +1399,7 @@
             `Bill No: ${billNo}\n` +
             `Amount: ${formatMoney(row[cfg.amountField] || 0)}\n\n` +
             `• Bill will be marked as CANCELLED\n` +
-            `${(cfg.type === "sales" || cfg.type === "sales_pack") ? "• Stock will be returned automatically\n" : "• No stock reversal needed\n"}` +
+            `${cfg.type === "sales_pack" ? "• Linked Sales bill will also be cancelled\n• Stock will be returned from linked Sales bill automatically\n" : (cfg.type === "sales" ? "• Stock will be returned automatically\n" : "• No stock reversal needed\n")}` +
             `• Edit / Print / WhatsApp will be disabled\n` +
             `• Cancel reason, user and time will be saved\n\n` +
             `Continue?`;
@@ -1358,12 +1433,24 @@
                 return;
             }
 
-            const stockResult = await reverseStockForCancel(id, cfg, reason.trim());
+            let stockResult;
 
-            if(!stockResult.ok){
-                alert("Bill cancelled, but stock reverse failed.\n\n" + stockResult.message);
-                loadReport();
-                return;
+            if(cfg.type === "sales_pack"){
+                stockResult = await cancelLinkedSalesFromPacking(row, reason.trim(), profileName);
+
+                if(!stockResult.ok){
+                    alert("Packing bill cancelled, but linked Sales cancel / stock reverse failed.\n\n" + stockResult.message);
+                    loadReport();
+                    return;
+                }
+            } else {
+                stockResult = await reverseStockForCancel(id, cfg, reason.trim());
+
+                if(!stockResult.ok){
+                    alert("Bill cancelled, but stock reverse failed.\n\n" + stockResult.message);
+                    loadReport();
+                    return;
+                }
             }
 
             alert("✅ Cancelled successfully.\n" + stockResult.message);

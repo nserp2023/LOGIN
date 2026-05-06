@@ -112,7 +112,7 @@
     body:not(.compact-entry) .entry-toggle-pill{display:none}
     .pending-popup-overlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(15,23,42,.35);backdrop-filter:blur(5px);z-index:30000;padding:18px}.pending-popup-overlay.show{display:flex}.pending-popup{width:min(92vw,520px);background:#fff;color:#14213d;border:1px solid #fed7aa;border-radius:18px;box-shadow:0 24px 70px rgba(124,45,18,.28);padding:20px}.pending-popup h3{margin:0 0 10px;color:#c2410c;font-size:22px}.pending-popup p{margin:0 0 14px;color:#334155;line-height:1.55;white-space:pre-line}.pending-popup .popup-actions{display:flex;justify-content:flex-end;gap:10px}.pending-popup button{height:40px;padding:0 16px;border:none;border-radius:12px;font-weight:900;cursor:pointer}.pending-popup .ok-btn{background:#ea580c;color:white}.pending-popup .soft-btn{background:#ffedd5;color:#9a3412}
     @media(max-width:900px){body{padding-bottom:210px}.wrap{padding:10px 8px 24px}.header-grid{grid-template-columns:repeat(2,minmax(220px,1fr))}.summary-strip{grid-template-columns:repeat(2,minmax(150px,1fr))}.btn{width:100%}.btns{width:100%}.sticky-inner{flex-direction:column;align-items:stretch}.dropdown{min-width:calc(100vw - 20px);left:10px!important}.opt{grid-template-columns:110px 1fr}.opt .hide-mobile{display:none}}
-    @media print{body{background:#fff;padding:0}.wrap{padding:0}.topbar,.chips,.btns,.sticky,.statusline,.header-grid,.panel-head small,#poStatusBadge{display:none!important}.panel{box-shadow:none;border:none;padding:0}.summary-strip{display:none}.table-shell{border:none;padding:0;overflow:visible;max-height:none}.grid{min-width:0;grid-template-columns:42px 90px 1.8fr 58px 70px 1.1fr!important;gap:4px}.grid.hdr>div{font-size:10px}.grid.hdr>div:nth-child(4),.grid.hdr>div:nth-child(7),.grid.hdr>div:nth-child(9),.grid.hdr>div:nth-child(10),#items .grid>div:nth-child(4),#items .grid>div:nth-child(7),#items .grid>div:nth-child(9),#items .grid>div:nth-child(10){display:none!important}#items .grid{break-inside:avoid;border-bottom:1px solid #ccc;border-radius:0;margin:0;padding:4px}.grid input{border:none!important;padding:0;min-height:24px}.btn.danger,.delete-col{display:none!important}.cell-muted{min-height:24px;border:none;background:#fff}.brand-print{display:block!important;text-align:center;margin-bottom:12px}.print-header{display:block!important;margin-bottom:10px}}
+    @media print{body{background:#fff;padding:0}.wrap{padding:0}.topbar,.chips,.btns,.sticky,.statusline,.header-grid,.panel-head small,#poStatusBadge{display:none!important}.panel{box-shadow:none;border:none;padding:0}.summary-strip{display:none}.table-shell{border:none;padding:0;overflow:visible;max-height:none}.grid{min-width:0;grid-template-columns:42px 90px 1.8fr 58px 70px 1.1fr!important;gap:4px}.grid.hdr>div{font-size:10px}.grid.hdr>div:nth-child(4),.grid.hdr>div:nth-child(7),.grid.hdr>div:nth-child(9),.grid.hdr>div:nth-child(10),#items .grid>div:nth-child(4),#items .grid>div:nth-child(7),#items .grid>div:nth-child(9),#items .grid>div:nth-child(10){display:none!important}#items .grid{break-inside:avoid;border-bottom:1px solid #ccc;border-radius:0;margin:0;padding:4px}.grid input{border:none!important;padding:0;min-height:24px}.btn.danger,.delete-col{display:none!important}.cell-muted{min-height:24px;border:none;background:#fff}.brand-print{display:block!important;text-align:center;margin-bottom:12px}.print-header{display:block!important;margin-bottom:10px;font-size:14px;font-weight:700}}
     .brand-print,.print-header{display:none}
   </style>
 </head>
@@ -597,6 +597,12 @@ function getPOValue(o, keys, fallback=""){
   return fallback;
 }
 
+
+function getMobileFromRemark(remark){
+  const m = String(remark || "").match(/MOBILE\s*:\s*([^|\n\r]+)/i);
+  return m ? m[1].trim() : "";
+}
+
 async function fetchPOHeader(key){
   const raw = clean(key);
   if(!raw) throw new Error("PO reference missing");
@@ -634,7 +640,7 @@ async function loadPOForViewOrPrint(key, autoPrint=false){
     byId("orderDate").value = (getPOValue(po, ["order_date", "purchase_order_date", "bill_date", "created_at"], "") || "").slice(0,10);
     byId("supplierGst").value = getPOValue(po, ["supplier_gst", "gst_number"], "");
     byId("supplierName").value = getPOValue(po, ["supplier_name", "name"], "");
-    byId("supplierMobile").value = getPOValue(po, ["supplier_mobile", "mobile"], "");
+    byId("supplierMobile").value = getPOValue(po, ["supplier_mobile", "mobile"], "") || getMobileFromRemark(getPOValue(po, ["remark", "remarks", "notes"], ""));
     byId("supplierAddress").value = getPOValue(po, ["supplier_address", "address"], "");
     byId("headerRemark").value = getPOValue(po, ["remark", "remarks", "notes"], "");
     byId("poStatusBadge").textContent = String(getPOValue(po, ["status"], "PENDING") || "PENDING").toUpperCase();
@@ -693,11 +699,11 @@ async function savePO(){
     if(!items.length){ setStatus("At least one item is required.", true); return; }
     const {data: authData} = await sb.auth.getUser();
     const created_by = authData?.user?.email || "";
-    const headerBase = {po_number, order_date, supplier_name, supplier_gst, supplier_address, remark, status:"PENDING", created_by};
+    const headerBase = {po_number, order_date, supplier_name, supplier_gst, supplier_mobile, supplier_address, remark, status:"PENDING", created_by};
     let header, headErr;
 
     if(currentMode === "edit" && loadedPOId){
-      ({data: header, error: headErr} = await sb.from("purchase_order_details").update({...headerBase, supplier_mobile}).eq("id", loadedPOId).select().single());
+      ({data: header, error: headErr} = await sb.from("purchase_order_details").update(headerBase).eq("id", loadedPOId).select().single());
       if(headErr && String(headErr.message || "").includes("supplier_mobile")){
         const remark2 = supplier_mobile ? (remark ? remark + " | " : "") + "MOBILE: " + supplier_mobile : remark;
         ({data: header, error: headErr} = await sb.from("purchase_order_details").update({...headerBase, remark: remark2}).eq("id", loadedPOId).select().single());
@@ -706,7 +712,7 @@ async function savePO(){
       const del = await sb.from("purchase_order_item_details").delete().eq("purchase_order_id", loadedPOId);
       if(del.error) throw del.error;
     }else{
-      ({data: header, error: headErr} = await sb.from("purchase_order_details").insert([{...headerBase, supplier_mobile}]).select().single());
+      ({data: header, error: headErr} = await sb.from("purchase_order_details").insert([headerBase]).select().single());
       if(headErr && String(headErr.message || "").includes("supplier_mobile")){
         const remark2 = supplier_mobile ? (remark ? remark + " | " : "") + "MOBILE: " + supplier_mobile : remark;
         ({data: header, error: headErr} = await sb.from("purchase_order_details").insert([{...headerBase, remark: remark2}]).select().single());
@@ -730,7 +736,7 @@ async function afterSaveReset(){
 }
 
 function printPO(){
-  const mobile = clean(byId("supplierMobile").value);
+  const mobile = clean(byId("supplierMobile").value) || getMobileFromRemark(clean(byId("headerRemark").value));
   byId("printHeader").innerHTML = `
     <strong>PO No:</strong> ${esc(byId("poNumber").value)}
     &nbsp;

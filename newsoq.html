@@ -3793,7 +3793,6 @@ function calcTotal() {
                     payment_type: paymentType,
                     paid_amount: paidAmount,
                     balance_amount: balanceAmount,
-                    department: document.getElementById("department_filter")?.value || "ALL",
                     salesman: document.getElementById("salesman").value,
                     created_by: createdBy,
                     round_off: roundOff
@@ -4455,13 +4454,6 @@ barcodeInput.addEventListener("keydown", async function (e) {
         document.getElementById("cust_mobile").value = head.customer_mobile || "";
         document.getElementById("cust_address").value = head.address || "";
         document.getElementById("cust_gst").value = head.gst_number || "";
-
-        // Restore saved department for old/edit bills.
-        // This is important for INTERLOCK bills because print.html reads sales_details.department.
-        const departmentEl = document.getElementById("department_filter");
-        if (departmentEl && head.department) {
-            departmentEl.value = String(head.department || "").toUpperCase();
-        }
 
         if (document.getElementById("quotation_remark")) {
             document.getElementById("quotation_remark").value = type === "quotation" ? (head.remark || "") : "";

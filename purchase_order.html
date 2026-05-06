@@ -302,12 +302,13 @@ async function searchSupplier(input, field){
   const q = clean(input.value);
   if(q.length < 2){ hideDropdown(); return; }
   const col = field === "gst_number" ? "gst_number" : "name";
-  const {data, error} = await sb.from("suppliers").select("supplier_id,name,gst_number,address").ilike(col, `%${q}%`).limit(12);
+  const {data, error} = await sb.from("suppliers").select("supplier_id,name,gst_number,address,mobile,supplier_mobile").ilike(col, `%${q}%`).limit(12);
   if(error || !data || !data.length){ hideDropdown(); return; }
   showDropdown(input, data, pick => {
     byId("supplierName").value = pick.name || "";
     byId("supplierGst").value = pick.gst_number || "";
     byId("supplierAddress").value = pick.address || "";
+    byId("supplierMobile").value = pick.supplier_mobile || pick.mobile || byId("supplierMobile").value || "";
   }, "supplier");
 }
 
@@ -729,12 +730,14 @@ async function afterSaveReset(){
 }
 
 function printPO(){
+  const mobile = clean(byId("supplierMobile").value);
   byId("printHeader").innerHTML = `
     <strong>PO No:</strong> ${esc(byId("poNumber").value)}
     &nbsp;
     <strong>Date:</strong> ${esc(byId("orderDate").value)}
     &nbsp;
     <strong>Supplier:</strong> ${esc(byId("supplierName").value)}
+    ${mobile ? `&nbsp; <strong>Mobile:</strong> ${esc(mobile)}` : ""}
   `;
   window.print();
 }

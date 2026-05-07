@@ -509,7 +509,7 @@
     <div class="page-top">
       <div class="title">
         <h1>Purchase Entry</h1>
-        <span>Duplicate invoice is checked before item entry</span>
+        <span>Duplicate invoice is checked before item entry. Special discount is handled at invoice bottom.</span>
       </div>
       <div class="page-badges">
         <div class="badge">Purchase + Stock Update</div>
@@ -535,6 +535,7 @@
         <div class="field"><label>Invoice number</label><input id="invoiceNumber" autocomplete="off" /></div>
         <div class="field"><label>Invoice date</label><input id="invoiceDate" type="date" /></div>
         <div class="field"><label>Invoice amount</label><input id="invoiceAmount" type="number" step="0.01" /></div>
+        <div class="field"><label>Special discount</label><input id="specialDiscount" type="number" step="0.01" value="0" /></div>
         <div class="field"><label>Round off</label><input id="roundOff" type="number" step="0.01" /></div>
         <div class="field"><label>Payable</label><input id="payable" type="number" step="0.01" /></div>
       </div>
@@ -957,15 +958,7 @@
       duplicateInvoiceFound = false;
       setItemsEnabled(true);
 
-      const amt = num(byId("invoiceAmount").value);
-      const ro  = num(byId("roundOff").value);
-      const pay = num(byId("payable").value);
-
-      if(amt === ro + pay){
-        status.innerHTML = `<span class="ok">Invoice looks unique. You can add items.</span>`;
-      } else {
-        status.innerHTML = `<span class="ok">Invoice looks unique. You can add items.</span>`;
-      }
+      status.innerHTML = `<span class="ok">Invoice looks unique. You can add items.</span>`;
       maybeEnableSave();
       return false;
     }
@@ -1034,9 +1027,22 @@
       byId("invoiceNumber").addEventListener("blur", checkDuplicateInvoice);
       byId("invoiceDate").addEventListener("blur", checkDuplicateInvoice);
 
-      ["invoiceAmount","roundOff","payable"].forEach(id=>{
-        byId(id).addEventListener("input", validateInvoiceTotals);
+      byId("invoiceAmount").addEventListener("input", () => {
+        updateRoundOff();
+        validateInvoiceTotals();
       });
+
+      byId("specialDiscount").addEventListener("input", () => {
+        updateRoundOff();
+        validateInvoiceTotals();
+      });
+
+      byId("roundOff").addEventListener("input", () => {
+        updatePayableFromHeader();
+        validateInvoiceTotals();
+      });
+
+      byId("payable").addEventListener("input", validateInvoiceTotals);
     }
 
     function validateInvoiceTotals(){
@@ -1047,6 +1053,7 @@
       }
 
       const amt = num(byId("invoiceAmount").value);
+      const spd = num(byId("specialDiscount").value);
       const ro  = num(byId("roundOff").value);
       const pay = num(byId("payable").value);
       const hasHeaderReady = byId("gstNumber").value.trim() && byId("invoiceNumber").value.trim() && byId("invoiceDate").value;
@@ -1057,7 +1064,8 @@
         return;
       }
 
-      if(amt === ro + pay){
+      const expectedPayable = amt - spd + ro;
+      if(Math.abs(pay - expectedPayable) < 0.01){
         maybeEnableSave();
       }else{
         byId("saveBtn").disabled = true;
@@ -1333,6 +1341,7 @@ if (baseLanding > 0) {
         invoice_number: byId("invoiceNumber").value.trim(),
         invoice_date: byId("invoiceDate").value || todayISO(),
         invoice_amount: num(byId("invoiceAmount").value),
+        special_discount: num(byId("specialDiscount").value),
         round_off: num(byId("roundOff").value),
         payable: num(byId("payable").value),
       };
@@ -1377,7 +1386,7 @@ if (baseLanding > 0) {
 
     function maybeEnableSave(){
       const inv = collectInvoice();
-      const okTotals = inv.invoice_amount === inv.round_off + inv.payable;
+      const okTotals = Math.abs(inv.payable - (inv.invoice_amount - inv.special_discount + inv.round_off)) < 0.01;
       const hasItems = collectItems().length > 0;
       const headerReady = inv.gst_number && inv.invoice_number && inv.invoice_date;
 
@@ -1414,6 +1423,7 @@ if (baseLanding > 0) {
           invoice_number: inv.invoice_number,
           invoice_date: inv.invoice_date,
           invoice_amount: inv.invoice_amount,
+          special_discount: inv.special_discount,
           round_off: inv.round_off,
           payable: inv.payable
         }, { onConflict: "purchase_number" })
@@ -1507,6 +1517,7 @@ if (baseLanding > 0) {
       byId("purchaseNumber").value = await generatePurchaseNumber();
       byId("invoiceNumber").value = "";
       byId("invoiceAmount").value = "";
+      byId("specialDiscount").value = "0";
       byId("roundOff").value = "";
       byId("payable").value = "";
       byId("gstNumber").value = "";
@@ -1581,28 +1592,32 @@ if (baseLanding > 0) {
     function updatePayableFromItems() {
       const items = collectItems();
       const sum = items.reduce((acc, it) => acc + it.total_gst, 0);
-      byId("payable").value = fmt2(sum);
+      byId("invoiceAmount").value = fmt2(sum);
       updateRoundOff();
-      updateInvoiceAmount();
       validateInvoiceTotals();
     }
 
-    function updateInvoiceAmount() {
-      const payable = parseFloat(byId("payable").value) || 0;
+    function updatePayableFromHeader() {
+      const invoiceAmount = parseFloat(byId("invoiceAmount").value) || 0;
+      const specialDiscount = parseFloat(byId("specialDiscount").value) || 0;
       const roundOff = parseFloat(byId("roundOff").value) || 0;
-      const invoiceAmount = payable + roundOff;
-      byId("invoiceAmount").value = fmt2(invoiceAmount);
+      const payable = invoiceAmount - specialDiscount + roundOff;
+      byId("payable").value = fmt2(payable);
+    }
+
+    function updateInvoiceAmount() {
+      updatePayableFromHeader();
     }
 
     function updateRoundOff() {
-      const payable = parseFloat(byId("payable").value) || 0;
-      const rounded = Math.round(payable);
-      const roundOff = rounded - payable;
+      const invoiceAmount = parseFloat(byId("invoiceAmount").value) || 0;
+      const specialDiscount = parseFloat(byId("specialDiscount").value) || 0;
+      const basePayable = invoiceAmount - specialDiscount;
+      const rounded = Math.round(basePayable);
+      const roundOff = rounded - basePayable;
       byId("roundOff").value = fmt2(roundOff);
-      updateInvoiceAmount();
+      byId("payable").value = fmt2(rounded);
     }
-
-    byId("roundOff").addEventListener("input", updateInvoiceAmount);
 
     (async function(){
       await initInvoice();

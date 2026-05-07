@@ -45,7 +45,7 @@ body{
   gap:10px;
 }
 .header h2{margin:0;font-size:22px}
-.wrap{max-width:1500px;margin:auto;padding:16px}
+.wrap{max-width:1600px;margin:auto;padding:16px}
 .card{
   background:linear-gradient(180deg,rgba(13,27,47,.98),rgba(8,17,31,.98));
   border:1px solid var(--line);
@@ -56,7 +56,7 @@ body{
 }
 .grid{
   display:grid;
-  grid-template-columns:1fr 1.2fr;
+  grid-template-columns:1fr 1fr;
   gap:16px;
 }
 h3{margin:0 0 12px;font-size:18px}
@@ -69,7 +69,7 @@ label{
 }
 input,textarea,select{
   width:100%;
-  height:46px;
+  height:44px;
   border-radius:12px;
   border:1px solid var(--line);
   background:#071323;
@@ -79,7 +79,7 @@ input,textarea,select{
   outline:none;
 }
 textarea{height:70px;padding:10px 12px;resize:vertical}
-input:focus,textarea:focus,select:focus{border-color:var(--blue)}
+input:focus,textarea:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 2px rgba(56,189,248,.15)}
 .row{
   display:grid;
   grid-template-columns:1fr 1fr;
@@ -101,26 +101,6 @@ input:focus,textarea:focus,select:focus{border-color:var(--blue)}
 .btn-dark{background:#14243b;border:1px solid var(--line)}
 .btn-violet{background:linear-gradient(180deg,#a855f7,#7e22ce)}
 .actions{display:flex;gap:10px;flex-wrap:wrap}
-.suggest{position:relative}
-.list{
-  display:none;
-  position:absolute;
-  left:0;right:0;top:75px;
-  background:#08172a;
-  border:1px solid var(--line);
-  border-radius:14px;
-  max-height:320px;
-  overflow:auto;
-  z-index:100;
-}
-.item{
-  padding:10px 12px;
-  border-bottom:1px solid #16304f;
-  cursor:pointer;
-}
-.item:hover{background:#123456}
-.item b{display:block;color:white}
-.item small{color:var(--muted)}
 .summary{
   display:grid;
   grid-template-columns:repeat(4,1fr);
@@ -137,37 +117,46 @@ input:focus,textarea:focus,select:focus{border-color:var(--blue)}
 table{
   width:100%;
   border-collapse:collapse;
-  min-width:900px;
+  min-width:820px;
 }
 th,td{
   border-bottom:1px solid var(--line);
-  padding:10px;
+  padding:9px;
   text-align:left;
+  vertical-align:top;
 }
 th{
   background:#0b1f38;
   color:#b8d8ff;
   position:sticky;
   top:0;
+  z-index:3;
 }
 .table-wrap{
   overflow:auto;
   border:1px solid var(--line);
   border-radius:14px;
   max-height:430px;
+  position:relative;
 }
+.table-wrap input{height:40px;border-radius:10px}
 .small-btn{
   border:0;
   border-radius:10px;
   padding:8px 10px;
   cursor:pointer;
   font-weight:800;
+  color:white;
+  background:#213754;
 }
+.small-btn.del{background:#7f1d1d}
 .badge{
+  display:inline-block;
   padding:5px 9px;
   border-radius:999px;
   font-size:12px;
   font-weight:900;
+  margin:2px 0;
 }
 .in{background:#123f21;color:#baffcb}
 .out{background:#3f1212;color:#ffb4b4}
@@ -181,9 +170,39 @@ th{
 .ok{background:#0d3b22;color:#bdffd5}
 .err{background:#481515;color:#ffc5c5}
 .warn{background:#45340b;color:#ffe699}
+
+/* One global dropdown. It is attached to body, so it will never hide inside table overflow. */
+#globalSuggestList{
+  display:none;
+  position:fixed;
+  background:#071527;
+  border:1px solid #31527c;
+  border-radius:14px;
+  max-height:330px;
+  overflow:auto;
+  z-index:999999;
+  box-shadow:0 18px 45px rgba(0,0,0,.55);
+}
+.suggest-item{
+  padding:10px 12px;
+  border-bottom:1px solid #16304f;
+  cursor:pointer;
+  background:#071527;
+}
+.suggest-item:hover,
+.suggest-item.active{
+  background:#0e7490;
+  color:white;
+}
+.suggest-item b{display:block;color:white;font-size:14px}
+.suggest-item small{color:#c8def8;font-size:12px}
+.mini-note{color:var(--muted);font-size:12px;margin:0 0 10px;line-height:1.35}
 @media(max-width:900px){
   .grid,.row,.summary{grid-template-columns:1fr}
   .header h2{font-size:18px}
+  .wrap{padding:10px}
+  .card{padding:12px;border-radius:14px}
+  table{min-width:760px}
 }
 </style>
 </head>
@@ -198,49 +217,40 @@ th{
   </div>
 </div>
 
+<div id="globalSuggestList"></div>
+
 <div class="wrap">
 
   <div class="grid">
 
     <div class="card">
-      <h3>From Item - Stock Reduce</h3>
+      <h3>From Items - Stock Reduce</h3>
+      <p class="mini-note">You can now reduce stock from one item or many items in the same conversion.</p>
 
-      <div class="full suggest">
-        <label>Search Source Item</label>
-        <input id="fromSearch" autocomplete="off" placeholder="Type item code / name / barcode">
-        <div id="fromList" class="list"></div>
+      <div class="actions" style="margin-bottom:12px">
+        <button class="btn btn-blue" onclick="addFromRow()">+ Add Source Item</button>
       </div>
 
-      <div class="row">
-        <div>
-          <label>Item Code</label>
-          <input id="fromCode" readonly>
-        </div>
-        <div>
-          <label>Current Stock</label>
-          <input id="fromStock" readonly>
-        </div>
-      </div>
-
-      <div class="full">
-        <label>Item Name</label>
-        <input id="fromName" readonly>
-      </div>
-
-      <div class="row">
-        <div>
-          <label>Reduce Qty</label>
-          <input id="fromQty" type="number" min="0" step="0.01" placeholder="Example: 1">
-        </div>
-        <div>
-          <label>Balance After</label>
-          <input id="fromAfter" readonly>
-        </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:38%">Search Item</th>
+              <th>Code</th>
+              <th>Stock</th>
+              <th>Reduce Qty</th>
+              <th>After</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="fromBody"></tbody>
+        </table>
       </div>
     </div>
 
     <div class="card">
       <h3>To Items - Stock Increase</h3>
+      <p class="mini-note">Dropdown opens outside the table, so it will not get hidden while selecting target items.</p>
 
       <div class="actions" style="margin-bottom:12px">
         <button class="btn btn-blue" onclick="addToRow()">+ Add Target Item</button>
@@ -251,11 +261,11 @@ th{
         <table>
           <thead>
             <tr>
-              <th style="width:36%">Search Item</th>
+              <th style="width:38%">Search Item</th>
               <th>Code</th>
-              <th class="num">Stock</th>
-              <th class="num">Add Qty</th>
-              <th class="num">After</th>
+              <th>Stock</th>
+              <th>Add Qty</th>
+              <th>After</th>
               <th></th>
             </tr>
           </thead>
@@ -282,13 +292,13 @@ th{
 
     <div class="full">
       <label>Remarks</label>
-      <textarea id="remarks" placeholder="Example: 1 box converted to 10 pieces"></textarea>
+      <textarea id="remarks" placeholder="Example: 1 box converted to 10 pieces / multiple old items converted to new item"></textarea>
     </div>
 
     <div class="summary">
-      <div class="box"><span>Stock Out</span><b id="sumOut">0</b></div>
-      <div class="box"><span>Stock In Lines</span><b id="sumLines">0</b></div>
-      <div class="box"><span>Total In Qty</span><b id="sumIn">0</b></div>
+      <div class="box"><span>From Lines</span><b id="sumFromLines">0</b></div>
+      <div class="box"><span>Total Stock Out</span><b id="sumOut">0</b></div>
+      <div class="box"><span>To Lines / Total In</span><b id="sumIn">0</b></div>
       <div class="box"><span>Status</span><b id="sumStatus">Ready</b></div>
     </div>
 
@@ -309,8 +319,7 @@ th{
           <tr>
             <th>No</th>
             <th>Date</th>
-            <th>From Item</th>
-            <th>Out</th>
+            <th>From Items</th>
             <th>To Items</th>
             <th>Remarks</th>
           </tr>
@@ -326,8 +335,11 @@ th{
 const sb = window.sbcc;
 
 let stockItems = [];
-let selectedFrom = null;
+let fromRows = [];
 let toRows = [];
+let activeSuggest = null;
+
+const globalList = document.getElementById("globalSuggestList");
 
 document.addEventListener("DOMContentLoaded", async () => {
   if(typeof requirePageAccess === "function"){
@@ -339,11 +351,18 @@ document.addEventListener("DOMContentLoaded", async () => {
   makeConversionNo();
 
   await loadStock();
+  addFromRow();
   addToRow();
-  bindFromSearch();
-  loadHistory();
+  await loadHistory();
 
-  fromQty.addEventListener("input", updateSummary);
+  document.addEventListener("click", e => {
+    if(activeSuggest && !globalList.contains(e.target) && e.target !== activeSuggest.input){
+      hideSuggest();
+    }
+  });
+
+  window.addEventListener("resize", positionSuggest);
+  document.addEventListener("scroll", positionSuggest, true);
 });
 
 function makeConversionNo(){
@@ -379,113 +398,216 @@ async function loadStock(){
   }
 }
 
-function bindFromSearch(){
-  fromSearch.addEventListener("input", () => {
-    renderSuggestions(fromSearch.value, fromList, (it) => {
-      selectedFrom = it;
-      fromSearch.value = `${it.item_code} - ${it.item_name}`;
-      fromCode.value = it.item_code || "";
-      fromName.value = it.item_name || "";
-      fromStock.value = qty(it.balance);
-      fromList.style.display = "none";
-      updateSummary();
-    });
+function addFromRow(){
+  const id = makeRowId("f");
+  fromRows.push({id, item:null});
+
+  const tr = document.createElement("tr");
+  tr.id = id;
+  tr.innerHTML = `
+    <td><input class="fromSearch" autocomplete="off" placeholder="Type item code / name / barcode"></td>
+    <td><input class="fromCode" readonly></td>
+    <td><input class="fromStock" readonly></td>
+    <td><input class="fromQty" type="number" min="0" step="0.01"></td>
+    <td><input class="fromAfter" readonly></td>
+    <td><button class="small-btn del" onclick="removeFromRow('${id}')">❌</button></td>
+  `;
+  fromBody.appendChild(tr);
+
+  const search = tr.querySelector(".fromSearch");
+  const qtyInput = tr.querySelector(".fromQty");
+
+  bindItemSearch(search, (it) => {
+    const row = fromRows.find(r => r.id === id);
+    if(row) row.item = it;
+    search.value = displayItem(it);
+    tr.querySelector(".fromCode").value = it.item_code || "";
+    tr.querySelector(".fromStock").value = qty(it.balance);
+    updateSummary();
+    qtyInput.focus();
+    qtyInput.select();
   });
 
-  document.addEventListener("click", e => {
-    if(!fromSearch.parentElement.contains(e.target)) fromList.style.display = "none";
-  });
+  qtyInput.addEventListener("input", updateSummary);
 }
 
 function addToRow(){
-  const id = "r" + Date.now() + Math.floor(Math.random()*999);
+  const id = makeRowId("t");
   toRows.push({id, item:null});
 
   const tr = document.createElement("tr");
   tr.id = id;
   tr.innerHTML = `
-    <td class="suggest">
-      <input class="toSearch" autocomplete="off" placeholder="Type item">
-      <div class="list"></div>
-    </td>
+    <td><input class="toSearch" autocomplete="off" placeholder="Type item code / name / barcode"></td>
     <td><input class="toCode" readonly></td>
     <td><input class="toStock" readonly></td>
     <td><input class="toQty" type="number" min="0" step="0.01"></td>
     <td><input class="toAfter" readonly></td>
-    <td><button class="small-btn" onclick="removeToRow('${id}')">❌</button></td>
+    <td><button class="small-btn del" onclick="removeToRow('${id}')">❌</button></td>
   `;
   toBody.appendChild(tr);
 
   const search = tr.querySelector(".toSearch");
-  const list = tr.querySelector(".list");
   const qtyInput = tr.querySelector(".toQty");
 
-  search.addEventListener("input", () => {
-    renderSuggestions(search.value, list, (it) => {
-      const row = toRows.find(r => r.id === id);
-      row.item = it;
-
-      search.value = `${it.item_code} - ${it.item_name}`;
-      tr.querySelector(".toCode").value = it.item_code || "";
-      tr.querySelector(".toStock").value = qty(it.balance);
-      list.style.display = "none";
-      updateSummary();
-    });
+  bindItemSearch(search, (it) => {
+    const row = toRows.find(r => r.id === id);
+    if(row) row.item = it;
+    search.value = displayItem(it);
+    tr.querySelector(".toCode").value = it.item_code || "";
+    tr.querySelector(".toStock").value = qty(it.balance);
+    updateSummary();
+    qtyInput.focus();
+    qtyInput.select();
   });
 
   qtyInput.addEventListener("input", updateSummary);
+}
 
-  document.addEventListener("click", e => {
-    if(!search.parentElement.contains(e.target)) list.style.display = "none";
-  });
+function removeFromRow(id){
+  document.getElementById(id)?.remove();
+  fromRows = fromRows.filter(r => r.id !== id);
+  updateSummary();
+  if(fromRows.length === 0) addFromRow();
 }
 
 function removeToRow(id){
   document.getElementById(id)?.remove();
   toRows = toRows.filter(r => r.id !== id);
   updateSummary();
-
   if(toRows.length === 0) addToRow();
 }
 
-function renderSuggestions(value, list, onSelect){
-  const q = normalize(value);
-  list.innerHTML = "";
+function bindItemSearch(input, onSelect){
+  input.addEventListener("input", () => showSuggestions(input, onSelect));
+  input.addEventListener("focus", () => {
+    if(input.value.trim()) showSuggestions(input, onSelect);
+  });
+  input.addEventListener("keydown", e => handleSuggestKeys(e));
+}
 
-  if(!q){
-    list.style.display = "none";
-    return;
-  }
+function showSuggestions(input, onSelect){
+  const q = normalize(input.value);
+  globalList.innerHTML = "";
+
+  if(!q){ hideSuggest(); return; }
 
   const words = q.split(" ").filter(Boolean);
-
   const found = stockItems.filter(it => {
     const hay = normalize(`${it.item_code || ""} ${it.item_name || ""} ${it.barcode || ""}`);
     return words.every(w => hay.includes(w));
-  }).slice(0,80);
+  }).slice(0,100);
 
-  found.forEach(it => {
+  if(!found.length){ hideSuggest(); return; }
+
+  activeSuggest = {input, onSelect, items:found, index:0};
+
+  found.forEach((it, index) => {
     const div = document.createElement("div");
-    div.className = "item";
+    div.className = "suggest-item" + (index === 0 ? " active" : "");
     div.innerHTML = `
       <b>${esc(it.item_code)} - ${esc(it.item_name)}</b>
-      <small>Stock: ${qty(it.balance)} | GST: ${money(it.gst_percent)}%</small>
+      <small>Stock: ${qty(it.balance)} | GST: ${money(it.gst_percent)}% ${it.barcode ? " | Barcode: " + esc(it.barcode) : ""}</small>
     `;
-    div.onclick = () => onSelect(it);
-    list.appendChild(div);
+    div.addEventListener("mousedown", e => {
+      e.preventDefault();
+      chooseSuggest(index);
+    });
+    globalList.appendChild(div);
   });
 
-  list.style.display = found.length ? "block" : "none";
+  globalList.style.display = "block";
+  positionSuggest();
+}
+
+function positionSuggest(){
+  if(!activeSuggest || globalList.style.display !== "block") return;
+
+  const r = activeSuggest.input.getBoundingClientRect();
+  const width = Math.max(r.width, 390);
+  const spaceBelow = window.innerHeight - r.bottom - 8;
+  const listHeight = Math.min(330, globalList.scrollHeight || 330);
+
+  let top = r.bottom + 6;
+  if(spaceBelow < 180 && r.top > spaceBelow){
+    top = Math.max(8, r.top - listHeight - 6);
+  }
+
+  let left = r.left;
+  if(left + width > window.innerWidth - 8){
+    left = Math.max(8, window.innerWidth - width - 8);
+  }
+
+  globalList.style.left = left + "px";
+  globalList.style.top = top + "px";
+  globalList.style.width = width + "px";
+}
+
+function handleSuggestKeys(e){
+  if(!activeSuggest || globalList.style.display !== "block") return;
+
+  const max = activeSuggest.items.length - 1;
+
+  if(e.key === "ArrowDown"){
+    e.preventDefault();
+    activeSuggest.index = Math.min(max, activeSuggest.index + 1);
+    markActiveItem();
+  }else if(e.key === "ArrowUp"){
+    e.preventDefault();
+    activeSuggest.index = Math.max(0, activeSuggest.index - 1);
+    markActiveItem();
+  }else if(e.key === "Enter"){
+    e.preventDefault();
+    chooseSuggest(activeSuggest.index);
+  }else if(e.key === "Escape"){
+    e.preventDefault();
+    hideSuggest();
+  }
+}
+
+function markActiveItem(){
+  [...globalList.children].forEach((el,i) => {
+    el.classList.toggle("active", i === activeSuggest.index);
+    if(i === activeSuggest.index) el.scrollIntoView({block:"nearest"});
+  });
+}
+
+function chooseSuggest(index){
+  if(!activeSuggest) return;
+  const it = activeSuggest.items[index];
+  const onSelect = activeSuggest.onSelect;
+  hideSuggest();
+  onSelect(it);
+}
+
+function hideSuggest(){
+  globalList.style.display = "none";
+  globalList.innerHTML = "";
+  activeSuggest = null;
 }
 
 function updateSummary(){
-  const outQty = Number(fromQty.value || 0);
-  const fromBal = selectedFrom ? Number(selectedFrom.balance || 0) : 0;
-  fromAfter.value = qty(fromBal - outQty);
+  let totalOut = 0;
+  let fromLineCount = 0;
+  let lowStock = false;
+
+  fromRows.forEach(r => {
+    const tr = document.getElementById(r.id);
+    if(!tr) return;
+
+    const q = Number(tr.querySelector(".fromQty").value || 0);
+    const bal = r.item ? Number(r.item.balance || 0) : 0;
+    tr.querySelector(".fromAfter").value = qty(bal - q);
+
+    if(r.item && q > 0){
+      totalOut += q;
+      fromLineCount++;
+      if(q > bal) lowStock = true;
+    }
+  });
 
   let totalIn = 0;
-  let lineCount = 0;
-  let status = "Ready";
+  let toLineCount = 0;
 
   toRows.forEach(r => {
     const tr = document.getElementById(r.id);
@@ -493,42 +615,42 @@ function updateSummary(){
 
     const q = Number(tr.querySelector(".toQty").value || 0);
     const bal = r.item ? Number(r.item.balance || 0) : 0;
-
     tr.querySelector(".toAfter").value = qty(bal + q);
 
     if(r.item && q > 0){
       totalIn += q;
-      lineCount++;
+      toLineCount++;
     }
   });
 
-  if(!selectedFrom) status = "Select From";
-  else if(outQty <= 0) status = "Enter Out Qty";
-  else if(outQty > fromBal) status = "Low Stock";
-  else if(lineCount === 0) status = "Add To Item";
+  let status = "Ready";
+  if(fromLineCount === 0) status = "Add From Item";
+  else if(lowStock) status = "Low Stock";
+  else if(toLineCount === 0) status = "Add To Item";
 
-  sumOut.textContent = qty(outQty);
-  sumLines.textContent = lineCount;
-  sumIn.textContent = qty(totalIn);
+  sumFromLines.textContent = fromLineCount;
+  sumOut.textContent = qty(totalOut);
+  sumIn.textContent = `${toLineCount} / ${qty(totalIn)}`;
   sumStatus.textContent = status;
 }
 
 function autoRatio(){
-  const outQty = Number(fromQty.value || 0);
-  if(outQty <= 0){
+  const fromData = getValidFromRows(false);
+  const totalOut = fromData.reduce((s,r) => s + r.qty, 0);
+
+  if(totalOut <= 0){
     showMsg("First enter From Qty.", "warn");
     return;
   }
 
-  const ratio = prompt("Enter conversion ratio. Example: 1 BOX = 10 PCS, type 10");
+  const ratio = prompt("Enter conversion ratio. Example: total source qty × 10, type 10");
   const r = Number(ratio || 0);
-
   if(r <= 0) return;
 
   const first = toRows[0];
   if(first){
     const tr = document.getElementById(first.id);
-    if(tr) tr.querySelector(".toQty").value = qty(outQty * r);
+    if(tr) tr.querySelector(".toQty").value = qty(totalOut * r);
   }
 
   updateSummary();
@@ -540,30 +662,29 @@ async function saveConversion(){
 
     const conversion_no = conversionNo.value;
     const conversion_date = conversionDate.value;
-    const outQty = Number(fromQty.value || 0);
     const remarkText = remarks.value || "";
 
-    if(!selectedFrom) throw new Error("Select source item.");
-    if(outQty <= 0) throw new Error("Enter reduce qty.");
-    if(outQty > Number(selectedFrom.balance || 0)) throw new Error("Source item stock is not enough.");
+    const validFrom = getValidFromRows(true);
+    const validTo = getValidToRows(true);
 
-    const validTo = [];
+    if(validFrom.length === 0) throw new Error("Add at least one source item with reduce qty.");
+    if(validTo.length === 0) throw new Error("Add at least one target item with qty.");
 
-    for(const r of toRows){
-      const tr = document.getElementById(r.id);
-      if(!tr || !r.item) continue;
-
-      const q = Number(tr.querySelector(".toQty").value || 0);
-      if(q <= 0) continue;
-
-      if(r.item.item_code === selectedFrom.item_code){
-        throw new Error("From item and To item cannot be same.");
-      }
-
-      validTo.push({item:r.item, qty:q});
+    const fromCodes = new Set();
+    for(const r of validFrom){
+      if(fromCodes.has(r.item.item_code)) throw new Error("Same source item selected more than once. Please keep one line per item.");
+      fromCodes.add(r.item.item_code);
     }
 
-    if(validTo.length === 0) throw new Error("Add at least one target item with qty.");
+    const toCodes = new Set();
+    for(const r of validTo){
+      if(toCodes.has(r.item.item_code)) throw new Error("Same target item selected more than once. Please keep one line per item.");
+      toCodes.add(r.item.item_code);
+      if(fromCodes.has(r.item.item_code)) throw new Error("From item and To item cannot be same: " + r.item.item_code);
+    }
+
+    const totalOut = validFrom.reduce((s,r)=>s+r.qty,0);
+    const totalIn = validTo.reduce((s,r)=>s+r.qty,0);
 
     const user = JSON.parse(localStorage.getItem("userProfile") || "{}");
     const created_by =
@@ -576,12 +697,12 @@ async function saveConversion(){
     const header = {
       conversion_no,
       conversion_date,
-      from_item_code:selectedFrom.item_code,
-      from_item_name:selectedFrom.item_name,
-      from_qty:outQty,
+      from_item_code:validFrom.length === 1 ? validFrom[0].item.item_code : "MULTI",
+      from_item_name:validFrom.length === 1 ? validFrom[0].item.item_name : "MULTI ITEMS",
+      from_qty:totalOut,
       to_item_code:validTo.length === 1 ? validTo[0].item.item_code : "MULTI",
       to_item_name:validTo.length === 1 ? validTo[0].item.item_name : "MULTI ITEMS",
-      to_qty:validTo.reduce((s,r)=>s+r.qty,0),
+      to_qty:totalIn,
       remarks:remarkText,
       created_by
     };
@@ -594,19 +715,18 @@ async function saveConversion(){
 
     if(headErr) throw headErr;
 
-    // stock_ledger.reference_id is bigint in your database,
-    // so use the numeric stock_conversion_details.id instead of conversion_no like SC-260507-93758.
+    // stock_ledger.reference_id is bigint in your database, so use numeric conversion id.
     const ledgerReferenceId = savedHeader?.id;
     if(!ledgerReferenceId) throw new Error("Conversion saved but numeric ledger reference id was not returned.");
 
     const conversionItems = [
-      {
+      ...validFrom.map(r => ({
         conversion_no,
-        item_code:selectedFrom.item_code,
-        item_name:selectedFrom.item_name,
-        qty_out:outQty,
+        item_code:r.item.item_code,
+        item_name:r.item.item_name,
+        qty_out:r.qty,
         qty_in:0
-      },
+      })),
       ...validTo.map(r => ({
         conversion_no,
         item_code:r.item.item_code,
@@ -616,19 +736,17 @@ async function saveConversion(){
       }))
     ];
 
-    await sb.from("stock_conversion_items").insert(conversionItems);
+    const {error:itemErr} = await sb.from("stock_conversion_items").insert(conversionItems);
+    if(itemErr) throw itemErr;
 
-    // IMPORTANT:
-    // stock_ledger.reference_id is bigint, so it must receive ledgerReferenceId, not conversion_no.
-    // Also do not insert item_name / remarks unless those columns exist in stock_ledger.
     const ledgerRows = [
-      {
-        item_code:selectedFrom.item_code,
+      ...validFrom.map(r => ({
+        item_code:r.item.item_code,
         qty_in:0,
-        qty_out:outQty,
+        qty_out:r.qty,
         txn_type:"STOCK CONVERSION OUT",
         reference_id:ledgerReferenceId
-      },
+      })),
       ...validTo.map(r => ({
         item_code:r.item.item_code,
         qty_in:r.qty,
@@ -638,10 +756,7 @@ async function saveConversion(){
       }))
     ];
 
-    const {error:ledErr} = await sb
-      .from("stock_ledger")
-      .insert(ledgerRows);
-
+    const {error:ledErr} = await sb.from("stock_ledger").insert(ledgerRows);
     if(ledErr) throw ledErr;
 
     showMsg("Stock conversion saved successfully. Stock ledger updated.", "ok");
@@ -655,8 +770,49 @@ async function saveConversion(){
   }
 }
 
+function getValidFromRows(throwErrors){
+  const arr = [];
+
+  for(const r of fromRows){
+    const tr = document.getElementById(r.id);
+    if(!tr) continue;
+
+    const q = Number(tr.querySelector(".fromQty").value || 0);
+
+    if(!r.item && q > 0 && throwErrors) throw new Error("Select source item for every reduce qty line.");
+    if(r.item && q <= 0 && throwErrors) throw new Error("Enter reduce qty for source item: " + r.item.item_code);
+
+    if(r.item && q > 0){
+      if(q > Number(r.item.balance || 0)) throw new Error("Source item stock is not enough: " + r.item.item_code);
+      arr.push({item:r.item, qty:q});
+    }
+  }
+
+  return arr;
+}
+
+function getValidToRows(throwErrors){
+  const arr = [];
+
+  for(const r of toRows){
+    const tr = document.getElementById(r.id);
+    if(!tr) continue;
+
+    const q = Number(tr.querySelector(".toQty").value || 0);
+
+    if(!r.item && q > 0 && throwErrors) throw new Error("Select target item for every add qty line.");
+    if(r.item && q <= 0 && throwErrors) throw new Error("Enter add qty for target item: " + r.item.item_code);
+
+    if(r.item && q > 0){
+      arr.push({item:r.item, qty:q});
+    }
+  }
+
+  return arr;
+}
+
 async function loadHistory(){
-  historyBody.innerHTML = `<tr><td colspan="6">Loading...</td></tr>`;
+  historyBody.innerHTML = `<tr><td colspan="5">Loading...</td></tr>`;
 
   const {data,error} = await sb
     .from("stock_conversion_details")
@@ -665,7 +821,7 @@ async function loadHistory(){
     .limit(100);
 
   if(error){
-    historyBody.innerHTML = `<tr><td colspan="6">${esc(error.message)}</td></tr>`;
+    historyBody.innerHTML = `<tr><td colspan="5">${esc(error.message)}</td></tr>`;
     return;
   }
 
@@ -677,6 +833,11 @@ async function loadHistory(){
       .select("*")
       .eq("conversion_no", r.conversion_no);
 
+    const fromText = (items || [])
+      .filter(x => Number(x.qty_out || 0) > 0)
+      .map(x => `${esc(x.item_code)} - ${esc(x.item_name)} <span class="badge out">-${qty(x.qty_out)}</span>`)
+      .join("<br>");
+
     const toText = (items || [])
       .filter(x => Number(x.qty_in || 0) > 0)
       .map(x => `${esc(x.item_code)} - ${esc(x.item_name)} <span class="badge in">+${qty(x.qty_in)}</span>`)
@@ -686,8 +847,7 @@ async function loadHistory(){
     tr.innerHTML = `
       <td><b>${esc(r.conversion_no)}</b></td>
       <td>${esc(r.conversion_date)}</td>
-      <td>${esc(r.from_item_code)} - ${esc(r.from_item_name)}</td>
-      <td><span class="badge out">-${qty(r.from_qty)}</span></td>
+      <td>${fromText || `${esc(r.from_item_code)} - ${esc(r.from_item_name)} <span class="badge out">-${qty(r.from_qty)}</span>`}</td>
       <td>${toText || "-"}</td>
       <td>${esc(r.remarks || "")}</td>
     `;
@@ -696,18 +856,15 @@ async function loadHistory(){
 }
 
 function clearForm(newNo=true){
-  selectedFrom = null;
+  hideSuggest();
+  fromRows = [];
   toRows = [];
 
-  fromSearch.value = "";
-  fromCode.value = "";
-  fromName.value = "";
-  fromStock.value = "";
-  fromQty.value = "";
-  fromAfter.value = "";
   remarks.value = "";
-
+  fromBody.innerHTML = "";
   toBody.innerHTML = "";
+
+  addFromRow();
   addToRow();
 
   conversionDate.value = new Date().toISOString().slice(0,10);
@@ -716,28 +873,20 @@ function clearForm(newNo=true){
   updateSummary();
 }
 
+function displayItem(it){
+  return `${it.item_code || ""} - ${it.item_name || ""}`.trim();
+}
 function showMsg(text,type){
   msg.textContent = text;
   msg.className = "msg " + type;
   msg.style.display = "block";
 }
 function hideMsg(){msg.style.display="none"}
-
-function normalize(v){
-  return String(v || "").toLowerCase().replace(/\s+/g," ").trim();
-}
-function esc(v){
-  return String(v ?? "").replace(/[&<>"']/g,m=>({
-    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
-  }[m]));
-}
-function qty(v){
-  const n = Number(v || 0);
-  return Number.isInteger(n) ? String(n) : n.toFixed(2);
-}
-function money(v){
-  return Number(v || 0).toFixed(2);
-}
+function makeRowId(prefix){return prefix + Date.now() + Math.floor(Math.random()*9999)}
+function normalize(v){return String(v || "").toLowerCase().replace(/\s+/g," ").trim()}
+function esc(v){return String(v ?? "").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
+function qty(v){const n = Number(v || 0); return Number.isInteger(n) ? String(n) : n.toFixed(2)}
+function money(v){return Number(v || 0).toFixed(2)}
 </script>
 
 </body>

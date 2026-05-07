@@ -736,50 +736,91 @@ async function loadPOForViewOrPrint(key, autoPrint=false){
   }
 }
 
-async function savePO(){
+async function savePO(options = {}){
+  const resetAfter = options.resetAfter !== false;
   try{
-    hideDropdown();
-    const po_number = clean(byId("poNumber").value);
-    const order_date = byId("orderDate").value;
-    const supplier_gst = clean(byId("supplierGst").value);
-    const supplier_name = clean(byId("supplierName").value);
-    const supplier_mobile = clean(byId("supplierMobile").value);
-    const supplier_address = clean(byId("supplierAddress").value);
-    let remark = clean(byId("headerRemark").value);
-    const items = collectRows();
-    if(!supplier_name){ setStatus("Supplier name is required.", true); byId("supplierName").focus(); return; }
-    if(!items.length){ setStatus("At least one item is required.", true); return; }
-    const {data: authData} = await sb.auth.getUser();
-    const created_by = authData?.user?.email || "";
-    const headerBase = {po_number, order_date, supplier_name, supplier_gst, supplier_mobile, supplier_address, remark, status:"PENDING", created_by};
-    let header, headErr;
+    const header = await savePOCore({ resetAfter });
+    return header;
+  }catch(err){
+    console.error(err);
+    setStatus("Save failed: " + (err.message || err), true);
+    throw err;
+  }
+}
 
-    if(currentMode === "edit" && loadedPOId){
-      ({data: header, error: headErr} = await sb.from("purchase_order_details").update(headerBase).eq("id", loadedPOId).select().single());
-      if(headErr && String(headErr.message || "").includes("supplier_mobile")){
-        const remark2 = supplier_mobile ? (remark ? remark + " | " : "") + "MOBILE: " + supplier_mobile : remark;
-        ({data: header, error: headErr} = await sb.from("purchase_order_details").update({...headerBase, remark: remark2}).eq("id", loadedPOId).select().single());
-      }
-      if(headErr) throw headErr;
-      const del = await sb.from("purchase_order_item_details").delete().eq("purchase_order_id", loadedPOId);
-      if(del.error) throw del.error;
-    }else{
-      ({data: header, error: headErr} = await sb.from("purchase_order_details").insert([headerBase]).select().single());
-      if(headErr && String(headErr.message || "").includes("supplier_mobile")){
-        const remark2 = supplier_mobile ? (remark ? remark + " | " : "") + "MOBILE: " + supplier_mobile : remark;
-        ({data: header, error: headErr} = await sb.from("purchase_order_details").insert([{...headerBase, remark: remark2}]).select().single());
-      }
-      if(headErr) throw headErr;
+async function savePOCore({ resetAfter = true } = {}){
+  hideDropdown();
+  const po_number = clean(byId("poNumber").value);
+  const order_date = byId("orderDate").value;
+  const supplier_gst = clean(byId("supplierGst").value);
+  const supplier_name = clean(byId("supplierName").value);
+  const supplier_mobile = clean(byId("supplierMobile").value);
+  const supplier_address = clean(byId("supplierAddress").value);
+  let remark = clean(byId("headerRemark").value);
+  const items = collectRows();
+
+  if(!supplier_name){
+    byId("supplierName").focus();
+    throw new Error("Supplier name is required.");
+  }
+
+  if(!items.length){
+    throw new Error("At least one item is required.");
+  }
+
+  const {data: authData} = await sb.auth.getUser();
+  const created_by = authData?.user?.email || "";
+  const headerBase = {po_number, order_date, supplier_name, supplier_gst, supplier_mobile, supplier_address, remark, status:"PENDING", created_by};
+  let header, headErr;
+  const updateExisting = !!(loadedPOId || (currentMode === "edit" && loadedPOId));
+
+  if(updateExisting){
+    ({data: header, error: headErr} = await sb.from("purchase_order_details").update(headerBase).eq("id", loadedPOId).select().single());
+    if(headErr && String(headErr.message || "").includes("supplier_mobile")){
+      const remark2 = supplier_mobile ? (remark ? remark + " | " : "") + "MOBILE: " + supplier_mobile : remark;
+      ({data: header, error: headErr} = await sb.from("purchase_order_details").update({...headerBase, remark: remark2}).eq("id", loadedPOId).select().single());
     }
+    if(headErr) throw headErr;
+    const del = await sb.from("purchase_order_item_details").delete().eq("purchase_order_id", loadedPOId);
+    if(del.error) throw del.error;
+  }else{
+    ({data: header, error: headErr} = await sb.from("purchase_order_details").insert([headerBase]).select().single());
+    if(headErr && String(headErr.message || "").includes("supplier_mobile")){
+      const remark2 = supplier_mobile ? (remark ? remark + " | " : "") + "MOBILE: " + supplier_mobile : remark;
+      ({data: header, error: headErr} = await sb.from("purchase_order_details").insert([{...headerBase, remark: remark2}]).select().single());
+    }
+    if(headErr) throw headErr;
+  }
 
-    const payload = items.map(x => ({purchase_order_id: header.id, item_code:x.item_code, item_name:x.item_name, is_new_item:x.is_new_item, quantity:x.quantity, received_qty:0, price:x.price, remark:x.remark, status:"PENDING"}));
-    const {error:itemErr} = await sb.from("purchase_order_item_details").insert(payload);
-    if(itemErr) throw itemErr;
-    setStatus(currentMode === "edit" ? "Purchase order updated successfully." : "Purchase order saved successfully.");
+  const payload = items.map(x => ({
+    purchase_order_id: header.id,
+    item_code:x.item_code,
+    item_name:x.item_name,
+    is_new_item:x.is_new_item,
+    quantity:x.quantity,
+    received_qty:0,
+    price:x.price,
+    remark:x.remark,
+    status:"PENDING"
+  }));
+
+  const {error:itemErr} = await sb.from("purchase_order_item_details").insert(payload);
+  if(itemErr) throw itemErr;
+
+  loadedPOId = header.id;
+  currentMode = "edit";
+  byId("poNumber").value = header.po_number || po_number;
+
+  if(resetAfter){
+    setStatus(updateExisting ? "Purchase order updated successfully." : "Purchase order saved successfully.");
     currentMode = "new";
     loadedPOId = null;
     await afterSaveReset();
-  }catch(err){ console.error(err); setStatus("Save failed: " + (err.message || err), true); }
+  }else{
+    setStatus("Purchase order saved. Preparing WhatsApp image...");
+  }
+
+  return header;
 }
 
 async function afterSaveReset(){
@@ -861,42 +902,151 @@ function makeShareCard(){
   return stage;
 }
 
+function getCleanIndianMobile(mobile){
+  let m = String(mobile || "").replace(/\D/g, "");
+  if(m.length > 10 && m.startsWith("91")) m = m.slice(-10);
+  if(m.length > 10) m = m.slice(-10);
+  return m;
+}
+
+function downloadBlob(blob, fileName){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+
+function showWhatsAppShareHelper({ copied, downloaded, mobile, text }){
+  const old = document.getElementById("poWaOverlay");
+  if(old) old.remove();
+
+  const overlay = document.createElement("div");
+  overlay.id = "poWaOverlay";
+  overlay.style.cssText = `
+    position:fixed; inset:0; z-index:999999;
+    background:rgba(0,0,0,.68); backdrop-filter:blur(6px);
+    display:flex; align-items:center; justify-content:center; padding:18px;
+  `;
+
+  overlay.innerHTML = `
+    <div style="width:min(530px,96vw); background:linear-gradient(135deg,#092018,#064e3b); color:white; border:1px solid rgba(255,255,255,.18); border-radius:22px; box-shadow:0 28px 80px rgba(0,0,0,.5); overflow:hidden; font-family:Arial,sans-serif;">
+      <div style="padding:18px 20px; background:rgba(255,255,255,.08); display:flex; align-items:center; justify-content:space-between; gap:12px;">
+        <div style="font-size:20px; font-weight:900;">🚀 WhatsApp PO Image Ready</div>
+        <button type="button" id="poWaClose" style="background:#ef4444;color:white;border:0;border-radius:999px;padding:8px 12px;font-weight:900;cursor:pointer;">✕</button>
+      </div>
+      <div style="padding:22px; line-height:1.55;">
+        <div style="font-size:17px;font-weight:800;margin-bottom:12px;">Purchase Order saved and WhatsApp opened ${mobile ? 'for +91' + mobile : ''}</div>
+        ${copied ? `
+          <div style="background:rgba(34,197,94,.20); border:1px solid rgba(34,197,94,.45); padding:14px; border-radius:16px; margin-bottom:12px;">
+            ✅ PO image copied to clipboard.<br>
+            <b>Go to WhatsApp chat and press CTRL + V</b>, then send.
+          </div>
+        ` : `
+          <div style="background:rgba(245,158,11,.20); border:1px solid rgba(245,158,11,.50); padding:14px; border-radius:16px; margin-bottom:12px;">
+            ⚠ Browser blocked image clipboard copy.
+            ${downloaded ? '<br>✅ PO image downloaded. Attach it in WhatsApp.' : ''}
+          </div>
+        `}
+        <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:16px;">
+          <button type="button" id="poWaCopyTextBtn" style="flex:1;min-width:150px;background:#22c55e;color:#052e1a;border:0;border-radius:14px;padding:12px;font-weight:900;cursor:pointer;">Copy Text</button>
+          <button type="button" id="poWaOpenAgainBtn" style="flex:1;min-width:150px;background:#facc15;color:#3b2500;border:0;border-radius:14px;padding:12px;font-weight:900;cursor:pointer;">Open Again</button>
+        </div>
+        <div style="font-size:12px;opacity:.8;margin-top:14px;">Browser security does not allow auto-paste or auto-send inside WhatsApp. This works like your quotation image button: save → create image → copy/open WhatsApp.</div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+  document.getElementById("poWaClose").onclick = () => overlay.remove();
+  overlay.addEventListener("click", e => { if(e.target === overlay) overlay.remove(); });
+
+  document.getElementById("poWaCopyTextBtn").onclick = async () => {
+    try{ await navigator.clipboard.writeText(text || ""); alert("✅ WhatsApp text copied."); }
+    catch(_e){ alert("Could not copy text."); }
+  };
+
+  document.getElementById("poWaOpenAgainBtn").onclick = () => {
+    const encodedText = encodeURIComponent(text || "");
+    const waUrl = mobile
+      ? `https://web.whatsapp.com/send?phone=91${mobile}&text=${encodedText}`
+      : `https://web.whatsapp.com/?text=${encodedText}`;
+    window.open(waUrl, "_blank");
+  };
+}
+
 async function sharePOToWhatsApp(){
   try{
     hideDropdown();
-    setStatus("Preparing WhatsApp image...");
+    setStatus("Saving purchase order before WhatsApp share...");
+
+    const header = await savePO({ resetAfter:false });
+    if(!header || !header.id) throw new Error("Purchase order save failed.");
+
+    setStatus("Purchase order saved. Creating WhatsApp image...");
+
     const stage = makeShareCard();
     const card = stage.querySelector("#poShareCard");
     const canvas = await html2canvas(card, {backgroundColor:"#ffffff", scale:2, useCORS:true});
     stage.remove();
 
     const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/png", 1));
-    const fileName = `PO-${clean(byId("poNumber").value || "ORDER")}.png`;
+    if(!blob) throw new Error("Could not create image blob.");
+
+    const fileName = `PO-${clean(byId("poNumber").value || header.id)}.png`.replace(/\s+/g,"_");
     const file = new File([blob], fileName, {type:"image/png"});
-    const text = `VAJRA LIGHTS PURCHASE ORDER\nPO: ${clean(byId("poNumber").value)}\nSupplier: ${clean(byId("supplierName").value)}`;
+    const mobile = getCleanIndianMobile(clean(byId("supplierMobile").value) || getMobileFromRemark(clean(byId("headerRemark").value)));
+    const text = [
+      "*VAJRA LIGHTS & ELECTRICALS*",
+      "PURCHASE ORDER",
+      `PO No: ${clean(byId("poNumber").value)}`,
+      `Date: ${clean(byId("orderDate").value)}`,
+      `Supplier: ${clean(byId("supplierName").value)}`,
+      mobile ? `Mobile: ${mobile}` : "",
+      "",
+      "Please check the attached purchase order image."
+    ].filter(Boolean).join("\n");
 
-    if(navigator.canShare && navigator.canShare({files:[file]})){
-      await navigator.share({files:[file], title:"Purchase Order", text});
-      setStatus("Share sheet opened. Choose WhatsApp and send.");
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if(isMobile && navigator.canShare && navigator.canShare({ files:[file] }) && navigator.share){
+      await navigator.share({ title:"Purchase Order", text, files:[file] });
+      setStatus("Purchase order saved. Share sheet opened.");
       return;
     }
 
-    if(navigator.clipboard && window.ClipboardItem){
-      await navigator.clipboard.write([new ClipboardItem({"image/png": blob})]);
-      window.open("https://wa.me/?text=" + encodeURIComponent(text + "\nImage copied. Paste in WhatsApp chat."), "_blank");
-      setStatus("Image copied to clipboard. WhatsApp opened. Paste the image in chat and send.");
-      return;
+    let copied = false;
+    let downloaded = false;
+
+    try{
+      if(navigator.clipboard && window.ClipboardItem){
+        await navigator.clipboard.write([new ClipboardItem({"image/png": blob})]);
+        copied = true;
+      }
+    }catch(clipErr){
+      console.warn("PO image clipboard copy failed:", clipErr);
     }
 
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = fileName; a.click();
-    URL.revokeObjectURL(url);
-    window.open("https://wa.me/?text=" + encodeURIComponent(text), "_blank");
-    setStatus("Image downloaded and WhatsApp opened. Attach the downloaded PO image if clipboard sharing is not supported.");
+    if(!copied){
+      downloadBlob(blob, fileName);
+      downloaded = true;
+    }
+
+    const encodedText = encodeURIComponent(text);
+    const waUrl = mobile
+      ? `https://web.whatsapp.com/send?phone=91${mobile}&text=${encodedText}`
+      : `https://web.whatsapp.com/?text=${encodedText}`;
+
+    window.open(waUrl, "_blank");
+    showWhatsAppShareHelper({ copied, downloaded, mobile, text });
+    setStatus(copied ? "Purchase order saved. Image copied. WhatsApp opened." : "Purchase order saved. Image downloaded. WhatsApp opened.");
+
   }catch(err){
     console.error(err);
-    setStatus("Share failed: " + (err.message || err), true);
+    setStatus("WhatsApp share failed: " + (err.message || err), true);
+    alert("WhatsApp share failed: " + (err.message || err));
   }
 }
 

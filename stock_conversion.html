@@ -611,24 +611,24 @@ async function saveConversion(){
 
     await sb.from("stock_conversion_items").insert(conversionItems);
 
+    // IMPORTANT:
+    // stock_ledger table normally has only item_code, txn_type, qty_in, qty_out,
+    // reference_id and created_at. Do not insert item_name / remarks here unless
+    // those columns are actually added in Supabase.
     const ledgerRows = [
       {
         item_code:selectedFrom.item_code,
-        item_name:selectedFrom.item_name,
         qty_in:0,
         qty_out:outQty,
-        txn_type:"STOCK CONVERSION",
-        reference_id:conversion_no,
-        remarks:`Conversion OUT. ${remarkText}`
+        txn_type:"STOCK CONVERSION OUT",
+        reference_id:conversion_no
       },
       ...validTo.map(r => ({
         item_code:r.item.item_code,
-        item_name:r.item.item_name,
         qty_in:r.qty,
         qty_out:0,
-        txn_type:"STOCK CONVERSION",
-        reference_id:conversion_no,
-        remarks:`Conversion IN from ${selectedFrom.item_code}. ${remarkText}`
+        txn_type:"STOCK CONVERSION IN",
+        reference_id:conversion_no
       }))
     ];
 

@@ -292,10 +292,16 @@ async function loadPendingData(){
 }
 
 async function loadNextPONumber(){
-  const {data, error} = await sb.from("purchase_order_details").select("po_number").order("po_number",{ascending:false}).limit(1);
-  let next = 1;
-  if(!error && data && data.length){ next = (parseInt(String(data[0].po_number || "").replace(/[^0-9]/g,"")) || 0) + 1; }
-  byId("poNumber").value = "PO-" + next;
+  try{
+    const { data, error } = await sb.rpc("generate_po_number");
+
+    if(error) throw error;
+
+    byId("poNumber").value = data;
+  }catch(err){
+    console.error(err);
+    setStatus("PO number generation failed: " + err.message, true);
+  }
 }
 
 async function searchSupplier(input, field){

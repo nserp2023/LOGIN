@@ -362,6 +362,40 @@ th:first-child{z-index:30;background:#102039}
   .badge{padding:4px 7px;font-size:10px}
 }
 
+
+/* Hidden clean purchase-order print image stage for WhatsApp sharing */
+.po-share-stage{position:fixed;left:-10000px;top:0;width:900px;background:#fff;color:#000;z-index:-1}
+.po-share-card{background:#fff;color:#000;padding:18px 20px;font-family:Arial,Helvetica,sans-serif;border:2px solid #111;width:900px}
+.po-share-title{text-align:center;border-bottom:2px solid #111;padding-bottom:8px;margin-bottom:10px}
+.po-share-title h2{margin:0;font-size:24px;letter-spacing:.4px;color:#000;font-weight:900}
+.po-share-title div{font-size:14px;font-weight:800;color:#111;margin-top:2px}
+.po-share-meta{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid #111;margin-bottom:10px}
+.po-share-meta div{border:1px solid #111;padding:6px 8px;font-size:13px;color:#000;font-weight:700;min-height:30px}
+.po-share-table{width:100%;border-collapse:collapse;color:#000;font-size:13px}
+.po-share-table th,.po-share-table td{border:1px solid #111;padding:6px 7px;vertical-align:top;color:#000}
+.po-share-table th{background:#f2f2f2;font-weight:900;text-transform:uppercase;text-align:left}
+.po-share-table .right{text-align:right;font-variant-numeric:tabular-nums}
+.po-share-footer{display:flex;justify-content:space-between;gap:12px;margin-top:10px;border:1px solid #111;padding:8px;font-size:13px;font-weight:800;color:#000}
+
+.po-exact-print-stage{position:fixed;left:-10000px;top:0;width:900px;background:#fff;color:#000;z-index:-1}
+.po-exact-print-card{width:900px;background:#fff!important;color:#000!important;font-family:Arial,Helvetica,sans-serif!important;font-size:11px!important;line-height:1.22!important;padding:0!important;margin:0!important}
+.po-print-brand{display:block;text-align:center;margin:0 0 8px;border:2px solid #000;padding:7px 6px;color:#000;background:#fff}
+.po-print-brand h2{margin:0;font-size:18px;font-weight:900;letter-spacing:.3px;color:#000}
+.po-print-header{display:grid;grid-template-columns:repeat(2,1fr);border:1px solid #000;margin:0 0 8px;font-size:11px;font-weight:800;color:#000;background:#fff}
+.po-print-header span{border:1px solid #000;padding:5px 7px;min-height:24px;color:#000;background:#fff}
+.po-print-grid{display:grid;grid-template-columns:36px 82px 1.7fr 58px 68px 82px 86px 1fr;gap:0;align-items:stretch;width:100%;color:#000;background:#fff}
+.po-print-grid-head{border:1px solid #000;background:#eaeaea;break-inside:avoid}
+.po-print-grid-head>div{font-size:10px;font-weight:900;color:#000;text-transform:uppercase;border-right:1px solid #000;padding:5px 4px;background:#eaeaea;display:flex;align-items:center}
+.po-print-grid-head>div:last-child{border-right:none}
+.po-print-row{display:grid;grid-template-columns:36px 82px 1.7fr 58px 68px 82px 86px 1fr;gap:0;align-items:stretch;width:100%;break-inside:avoid;border-left:1px solid #000;border-right:1px solid #000;border-bottom:1px solid #000;background:#fff;min-height:25px;color:#000}
+.po-cell{border-right:1px solid #000;padding:4px 5px;min-height:25px;display:flex;align-items:center;color:#000;background:#fff;font-size:11px;font-weight:800;white-space:normal;word-break:break-word}
+.po-cell:last-child{border-right:none}
+.po-right{text-align:right!important;justify-content:flex-end!important;font-variant-numeric:tabular-nums!important}
+.po-center{text-align:center!important;justify-content:center!important}
+.po-print-total{display:grid;grid-template-columns:1fr 1fr;border:1px solid #000;border-top:none;color:#000;background:#fff;font-size:11px;font-weight:900}
+.po-print-total span{border-right:1px solid #000;padding:6px 7px;color:#000;background:#fff}
+.po-print-total span:last-child{border-right:none;text-align:right}
+
 </style>
 </head>
 
@@ -943,37 +977,145 @@ function downloadBlob(blob, fileName){
   setTimeout(() => URL.revokeObjectURL(url), 1500);
 }
 
+async function fetchPOForShare(orderId){
+  const {data:order,error:orderErr} = await sb
+    .from('purchase_order_details')
+    .select('*')
+    .eq('id', orderId)
+    .maybeSingle();
+
+  if(orderErr) throw orderErr;
+  if(!order) throw new Error('Purchase order not found.');
+
+  const {data:items,error:itemErr} = await sb
+    .from('purchase_order_item_details')
+    .select('*')
+    .eq('purchase_order_id', orderId)
+    .order('id', {ascending:true});
+
+  if(itemErr) throw itemErr;
+
+  const itemRows = items || [];
+  const codes = [...new Set(itemRows.map(x => String(x.item_code || '').trim()).filter(Boolean))];
+  const stockMap = {};
+
+  if(codes.length){
+    try{
+      const {data:stockRows,error:stockErr} = await sb
+        .from('stock_balance_view')
+        .select('item_code,balance')
+        .in('item_code', codes);
+      if(!stockErr){
+        (stockRows || []).forEach(x => stockMap[String(x.item_code || '')] = x.balance);
+      }
+    }catch(e){
+      console.warn('Stock balance skipped for PO print image:', e);
+    }
+  }
+
+  return {order, items:itemRows, stockMap};
+}
+
+function rawDateForPO(v){
+  return String(v || '').slice(0,10) || '-';
+}
+
+function two(v){
+  return Number(v || 0).toFixed(2);
+}
+
+function makePOExactPrintCardFromData(order, items, stockMap = {}){
+  const mobile = order.supplier_mobile || order.mobile || getMobileFromRemark(order.remark || order.remarks || '');
+  const poDate = rawDateForPO(order.order_date || order.purchase_order_date || order.bill_date || order.created_at);
+  const rows = (items || []).map((it, idx) => {
+    const qty = Number(it.quantity || it.qty || 0);
+    const price = Number(it.price ?? it.purchase_price_gst ?? it.purchase_price ?? 0);
+    const amount = qty * price;
+    const code = String(it.item_code || '').trim();
+    return {
+      sl: idx + 1,
+      item_code: code,
+      item_name: it.item_name || '',
+      stock: stockMap[code] == null ? '—' : two(stockMap[code]),
+      qty: two(qty),
+      price: price ? two(price) : '',
+      amount: two(amount),
+      remark: it.remark || it.remarks || ''
+    };
+  });
+
+  const totalQty = rows.reduce((a,r) => a + Number(r.qty || 0), 0);
+  const totalAmount = rows.reduce((a,r) => a + Number(r.amount || 0), 0);
+  const stage = document.createElement('div');
+  stage.className = 'po-exact-print-stage';
+
+  const rowHtml = rows.map(r => `
+    <div class="po-print-row">
+      <div class="po-cell po-center">${safe(r.sl)}</div>
+      <div class="po-cell">${safe(r.item_code)}</div>
+      <div class="po-cell">${safe(r.item_name)}</div>
+      <div class="po-cell po-right">${safe(r.stock)}</div>
+      <div class="po-cell po-right">${safe(r.qty)}</div>
+      <div class="po-cell po-right">${safe(r.price)}</div>
+      <div class="po-cell po-right">${safe(r.amount)}</div>
+      <div class="po-cell">${safe(r.remark)}</div>
+    </div>`).join('');
+
+  stage.innerHTML = `
+    <div class="po-exact-print-card" id="poExactPrintCard">
+      <div class="po-print-brand"><h2>VAJRA LIGHTS - PURCHASE ORDER</h2></div>
+
+      <div class="po-print-header">
+        <span><strong>PO No:</strong> ${safe(poNo(order) || '-')}</span>
+        <span><strong>Date:</strong> ${safe(poDate)}</span>
+        <span><strong>Supplier:</strong> ${safe(order.supplier_name || '-')}</span>
+        <span><strong>Mobile:</strong> ${safe(mobile || '-')}</span>
+        <span><strong>GST:</strong> ${safe(order.supplier_gst || order.gst_number || '-')}</span>
+        <span><strong>Address:</strong> ${safe(order.supplier_address || order.address || '-')}</span>
+      </div>
+
+      <div class="po-print-grid po-print-grid-head">
+        <div>#</div>
+        <div>Item Code</div>
+        <div>Item Name / Search</div>
+        <div>Stock</div>
+        <div class="po-right">Qty</div>
+        <div class="po-right">Price</div>
+        <div class="po-right">Amount</div>
+        <div>Remark</div>
+      </div>
+
+      <div class="po-print-body">
+        ${rowHtml || `<div class="po-print-row"><div class="po-cell" style="grid-column:1/-1">No items</div></div>`}
+      </div>
+
+      <div class="po-print-total">
+        <span><strong>Total Qty:</strong> ${two(totalQty)}</span>
+        <span><strong>Total Amount:</strong> ₹${two(totalAmount)}</span>
+      </div>
+    </div>`;
+
+  document.body.appendChild(stage);
+  return stage;
+}
+
 async function generatePOImageBlob(orderId){
-  const iframe = document.createElement('iframe');
-  iframe.style.position = 'fixed';
-  iframe.style.left = '-99999px';
-  iframe.style.top = '0';
-  iframe.style.width = '1000px';
-  iframe.style.height = '1400px';
-  iframe.style.border = '0';
-  iframe.src = `purchase_order.html?print=${encodeURIComponent(orderId)}`;
-  document.body.appendChild(iframe);
-
+  // Builds an image that matches the Purchase Order print layout, not the report page.
+  const {order, items, stockMap} = await fetchPOForShare(orderId);
+  const stage = makePOExactPrintCardFromData(order, items, stockMap);
   try{
-    await new Promise((resolve, reject) => {
-      iframe.onload = () => setTimeout(resolve, 1700);
-      setTimeout(() => reject(new Error('Purchase order print page load timeout')), 12000);
-    });
-
-    const doc = iframe.contentDocument || iframe.contentWindow.document;
-    const target = doc.body;
-
-    const canvas = await html2canvas(target, {
+    const card = stage.querySelector('#poExactPrintCard');
+    const canvas = await html2canvas(card, {
       scale: 2,
       backgroundColor: '#ffffff',
       useCORS: true
     });
 
     const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png', 1));
-    if(!blob) throw new Error('Could not create purchase order image');
+    if(!blob) throw new Error('Could not create purchase order print image');
     return blob;
   }finally{
-    iframe.remove();
+    stage.remove();
   }
 }
 

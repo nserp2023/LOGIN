@@ -883,7 +883,11 @@ function makeShareCard(){
     </tr>`).join("");
   stage.innerHTML = `
     <div class="po-share-card" id="poShareCard">
-      <div class="po-share-title"><h2>VAJRA LIGHTS - PURCHASE ORDER</h2><div>Professional Order Copy</div></div>
+      <div class="po-share-title"><h2>PURCHASE ORDER</h2>
+        <div>VAJRA LIGHTS, ELECTRICALS & SANITARY WARE</div>
+        <div>Kattakada, Trivandrum, Kerala - 695572</div>
+        <div>GST # : 32APBPN5593H1ZT</div>
+        </div>
       <div class="po-share-meta">
         <div><b>PO No:</b> ${esc(byId("poNumber").value || "-")}</div>
         <div><b>Date:</b> ${esc(byId("orderDate").value || "-")}</div>

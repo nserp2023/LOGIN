@@ -281,6 +281,7 @@
 
     body.manual-mode #cust_name,
     body.manual-mode #cust_mobile,
+    body.manual-mode #cust_gst,
     body.manual-mode #bill_date {
         background: white;
         color: #111827;
@@ -466,6 +467,11 @@
         <div class="form-group">
             <label>Customer Mobile</label>
             <input id="cust_mobile" class="form-control w-md" readonly>
+        </div>
+
+        <div class="form-group">
+            <label>GST Number</label>
+            <input id="cust_gst" class="form-control w-lg" readonly>
         </div>
 
         <div class="form-group">
@@ -745,7 +751,7 @@ function handleModeChange() {
     document.getElementById("search_mobile").value = "";
     document.getElementById("customer_bills").innerHTML = '<option value="">Select Bill</option>';
 
-    ["cust_name", "cust_mobile", "bill_date"].forEach(id => {
+    ["cust_name", "cust_mobile", "cust_gst", "bill_date"].forEach(id => {
         document.getElementById(id).readOnly = !manual;
     });
     document.getElementById("sale_ref").readOnly = true;
@@ -759,6 +765,7 @@ function handleModeChange() {
 function clearHeaderFields() {
     document.getElementById("cust_name").value = "";
     document.getElementById("cust_mobile").value = "";
+    document.getElementById("cust_gst").value = "";
     document.getElementById("bill_date").value = "";
     document.getElementById("sale_ref").value = "";
 }
@@ -845,6 +852,7 @@ async function loadBill(saleId) {
 
     document.getElementById("cust_name").value = sale.customer_name || "";
     document.getElementById("cust_mobile").value = sale.customer_mobile || "";
+    document.getElementById("cust_gst").value = sale.gst_number || "";
     document.getElementById("bill_date").value = sale.bill_date ? String(sale.bill_date).split("T")[0] : "";
     document.getElementById("sale_ref").value = sale.id || "";
 
@@ -1350,6 +1358,7 @@ async function saveReturn() {
                 return_date: returnDateValue,
                 customer_name: (document.getElementById("cust_name").value || "").trim() || null,
                 customer_mobile: (document.getElementById("cust_mobile").value || "").trim() || null,
+                gst_number: (document.getElementById("cust_gst").value || "").trim() || null,
                 total_return_amount: totalReturn
             }])
             .select()

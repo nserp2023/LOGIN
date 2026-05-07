@@ -644,6 +644,7 @@
             <th>Return Date</th>
             <th>Return No</th>
             <th>Customer</th>
+            <th>GSTIN</th>
             <th>Status</th>
 
             <th class="num">0% Tax</th>
@@ -1055,7 +1056,7 @@
   async function loadReturns(startDate, endDate){
     const { data: heads, error: hErr } = await sb
       .from("sales_return_details")
-      .select("id, return_number, return_date, customer_name, approval_status, is_accepted")
+      .select("id, return_number, return_date, customer_name, gst_number, approval_status, is_accepted")
       .gte("return_date", startDate)
       .lte("return_date", endDate)
       .eq("is_accepted", true)
@@ -1092,7 +1093,7 @@
         doc_no: h.return_number || "",
         series_code: "",
         party_name: h.customer_name || "",
-        party_gstin: "",
+        party_gstin: h.gst_number || "",
         invoice_number: "",
         invoice_date: "",
         status: h.approval_status || "",
@@ -1290,7 +1291,7 @@
   function renderReturnTable(rows){
     const body = document.getElementById("returnBody");
     if(!rows.length){
-      body.innerHTML = `<tr><td colspan="21" class="empty">No accepted sales returns found</td></tr>`;
+      body.innerHTML = `<tr><td colspan="22" class="empty">No accepted sales returns found</td></tr>`;
       return;
     }
 
@@ -1301,6 +1302,7 @@
         <td>${formatDate(r.bill_date)}</td>
         <td>${escapeHtml(r.doc_no)}</td>
         <td>${escapeHtml(r.party_name)}</td>
+        <td>${escapeHtml(r.party_gstin)}</td>
         <td>${escapeHtml(r.status)}</td>
 
         <td class="num">${fmt(r.tax0)}</td>
@@ -1611,7 +1613,7 @@
     const b2b = filterRows(b2bBills, q, ["doc_no","party_name","party_gstin","invoice_number","series_code"]);
     const b2c = filterRows(b2cBills, q, ["doc_no","party_name","invoice_number","series_code"]);
     const purchase = filterRows(purchaseBills, q, ["doc_no","party_name","party_gstin","invoice_number"]);
-    const returns = filterRows(returnBills, q, ["doc_no","party_name","status"]);
+    const returns = filterRows(returnBills, q, ["doc_no","party_name","party_gstin","status"]);
     const cancelled = filterRows(cancelledSalesBills, q, ["doc_no","party_name","party_gstin","invoice_number","series_code","cancelled_by","cancel_reason"]);
 
     renderSalesTable(sales);

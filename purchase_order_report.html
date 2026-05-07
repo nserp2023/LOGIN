@@ -8,6 +8,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabaseClient.js"></script>
 <script src="common-ui.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
 <style>
 :root{
@@ -737,6 +738,7 @@ function renderRows(rows){
         <td>${badge(r.status)}</td>
         <td class="right">
           <div class="row-actions">
+            <button class="smallbtn green" onclick="sharePOWhatsApp(${r.order_id})" ${cancelled ? "disabled" : ""}>🖼 WhatsApp</button>
             <button class="smallbtn ghost" onclick="printPO(${r.order_id})">🖨 Print</button>
             <button class="smallbtn green" onclick="openReceiveModal(${r.item_id})" ${cancelled || r.pending_qty<=0 ? "disabled" : ""}>📦 Material Received</button>
             <button class="smallbtn red" onclick="cancelPO(${r.order_id})" ${cancelled ? "disabled" : ""}>Cancel</button>
@@ -902,6 +904,207 @@ async function cancelPO(orderId){
 
   }catch(err){
     alert("Cancel failed: " + (err.message || err));
+  }
+}
+
+
+function getCleanIndianMobile(mobile){
+  let m = String(mobile || '').replace(/\D/g, '');
+  if(m.length > 10 && m.startsWith('91')) m = m.slice(-10);
+  if(m.length > 10) m = m.slice(-10);
+  return m;
+}
+
+function buildPOWhatsAppText(order){
+  const poNumber = poNo(order);
+  const mobile = order.supplier_mobile || order.mobile || getMobileFromRemark(order.remark || order.remarks || "");
+  return [
+    '*VAJRA LIGHTS & ELECTRICALS*',
+    'PURCHASE ORDER',
+    `PO No: ${poNumber || ''}`,
+    `Date: ${fmtDate(order.order_date || order.purchase_order_date || order.bill_date || order.created_at)}`,
+    `Supplier: ${order.supplier_name || ''}`,
+    `Mobile: ${mobile || ''}`,
+    '',
+    'Please check the attached purchase order image.',
+    '',
+    'VAJRA LIGHTS AND ELECTRICALS'
+  ].join('\n');
+}
+
+function downloadBlob(blob, fileName){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+
+async function generatePOImageBlob(orderId){
+  const iframe = document.createElement('iframe');
+  iframe.style.position = 'fixed';
+  iframe.style.left = '-99999px';
+  iframe.style.top = '0';
+  iframe.style.width = '1000px';
+  iframe.style.height = '1400px';
+  iframe.style.border = '0';
+  iframe.src = `purchase_order.html?print=${encodeURIComponent(orderId)}`;
+  document.body.appendChild(iframe);
+
+  try{
+    await new Promise((resolve, reject) => {
+      iframe.onload = () => setTimeout(resolve, 1700);
+      setTimeout(() => reject(new Error('Purchase order print page load timeout')), 12000);
+    });
+
+    const doc = iframe.contentDocument || iframe.contentWindow.document;
+    const target = doc.body;
+
+    const canvas = await html2canvas(target, {
+      scale: 2,
+      backgroundColor: '#ffffff',
+      useCORS: true
+    });
+
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png', 1));
+    if(!blob) throw new Error('Could not create purchase order image');
+    return blob;
+  }finally{
+    iframe.remove();
+  }
+}
+
+function showWhatsAppShareHelper({ copied, downloaded, mobile, text }){
+  const old = document.getElementById('poWaShareOverlay');
+  if(old) old.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'poWaShareOverlay';
+  overlay.style.cssText = `
+    position:fixed; inset:0; z-index:999999;
+    background:rgba(0,0,0,.72); backdrop-filter:blur(6px);
+    display:flex; align-items:center; justify-content:center; padding:18px;
+  `;
+
+  overlay.innerHTML = `
+    <div style="width:min(540px,96vw); background:linear-gradient(135deg,#092018,#064e3b); color:white; border:1px solid rgba(255,255,255,.18); border-radius:22px; box-shadow:0 28px 80px rgba(0,0,0,.5); overflow:hidden; font-family:Arial,sans-serif;">
+      <div style="padding:18px 20px; background:rgba(255,255,255,.08); display:flex; align-items:center; justify-content:space-between; gap:12px;">
+        <div style="font-size:20px; font-weight:900;">🚀 Purchase Order WhatsApp Share</div>
+        <button type="button" id="poWaClose" style="background:#ef4444;color:white;border:0;border-radius:999px;padding:8px 12px;font-weight:900;cursor:pointer;">✕</button>
+      </div>
+      <div style="padding:22px; line-height:1.55;">
+        <div style="font-size:17px;font-weight:800;margin-bottom:12px;">WhatsApp Web opened ${mobile ? 'for +91' + mobile : ''}</div>
+        ${copied ? `
+          <div style="background:rgba(34,197,94,.20); border:1px solid rgba(34,197,94,.45); padding:14px; border-radius:16px; margin-bottom:12px;">
+            ✅ Purchase order image copied to clipboard.<br>
+            <b>Go to WhatsApp chat and press CTRL + V</b>, then send.
+          </div>
+        ` : `
+          <div style="background:rgba(245,158,11,.20); border:1px solid rgba(245,158,11,.50); padding:14px; border-radius:16px; margin-bottom:12px;">
+            ⚠ Browser blocked image clipboard copy.
+            ${downloaded ? '<br>✅ Purchase order image downloaded. Attach it in WhatsApp Web.' : ''}
+          </div>
+        `}
+        <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:16px;">
+          <button type="button" id="poWaCopyTextBtn" style="flex:1;min-width:150px;background:#22c55e;color:#052e1a;border:0;border-radius:14px;padding:12px;font-weight:900;cursor:pointer;">Copy Text</button>
+          <button type="button" id="poWaOpenAgainBtn" style="flex:1;min-width:150px;background:#facc15;color:#3b2500;border:0;border-radius:14px;padding:12px;font-weight:900;cursor:pointer;">Open Again</button>
+        </div>
+        <div style="font-size:12px;opacity:.8;margin-top:14px;">Browser security does not allow auto-paste or auto-send in WhatsApp. This is the same fastest allowed image workflow.</div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+  document.getElementById('poWaClose').onclick = () => overlay.remove();
+  overlay.addEventListener('click', e => { if(e.target === overlay) overlay.remove(); });
+
+  document.getElementById('poWaCopyTextBtn').onclick = async () => {
+    try{
+      await navigator.clipboard.writeText(text || '');
+      alert('✅ WhatsApp text copied.');
+    }catch(e){
+      alert('Could not copy text.');
+    }
+  };
+
+  document.getElementById('poWaOpenAgainBtn').onclick = () => {
+    const encodedText = encodeURIComponent(text || '');
+    const waUrl = mobile
+      ? `https://web.whatsapp.com/send?phone=91${mobile}&text=${encodedText}`
+      : `https://web.whatsapp.com/?text=${encodedText}`;
+    window.open(waUrl, '_blank');
+  };
+}
+
+async function sharePOWhatsApp(orderId){
+  const firstRow = allRows.find(r => Number(r.order_id) === Number(orderId));
+
+  try{
+    let order = firstRow?.raw_order || null;
+
+    if(!order){
+      const {data, error} = await sb
+        .from('purchase_order_details')
+        .select('*')
+        .eq('id', orderId)
+        .maybeSingle();
+      if(error) throw error;
+      order = data;
+    }
+
+    if(!order){
+      alert('Purchase order not found.');
+      return;
+    }
+
+    if(getOrderCancelled(order)){
+      alert('Cancelled purchase order cannot be shared.');
+      return;
+    }
+
+    const text = buildPOWhatsAppText(order);
+    const mobile = getCleanIndianMobile(order.supplier_mobile || order.mobile || getMobileFromRemark(order.remark || order.remarks || ''));
+    const blob = await generatePOImageBlob(orderId);
+    const fileName = `purchase_order_${poNo(order) || orderId}.png`.replace(/[^a-z0-9_\-.]+/gi, '_');
+    const file = new File([blob], fileName, { type:'image/png' });
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+    if(isMobile && navigator.canShare && navigator.canShare({ files:[file] }) && navigator.share){
+      await navigator.share({ title:'VAJRA Purchase Order', text, files:[file] });
+      return;
+    }
+
+    let copied = false;
+    let downloaded = false;
+
+    try{
+      if(navigator.clipboard && window.ClipboardItem){
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+        copied = true;
+      }
+    }catch(clipErr){
+      console.warn('Image clipboard copy failed:', clipErr);
+    }
+
+    if(!copied){
+      downloadBlob(blob, fileName);
+      downloaded = true;
+    }
+
+    const encodedText = encodeURIComponent(text);
+    const waUrl = mobile
+      ? `https://web.whatsapp.com/send?phone=91${mobile}&text=${encodedText}`
+      : `https://web.whatsapp.com/?text=${encodedText}`;
+
+    window.open(waUrl, '_blank');
+    showWhatsAppShareHelper({ copied, downloaded, mobile, text });
+
+  }catch(err){
+    console.error(err);
+    alert('WhatsApp image share failed: ' + (err.message || err));
   }
 }
 

@@ -647,15 +647,25 @@
     async function fetchSales(dateStr){
       const { data, error } = await sb
         .from('sales_details')
-        .select('id,sales_number,series_code,bill_date,invoice_amount,customer_name,customer_mobile,payment_type,created_at')
+        .select('id,sales_number,series_code,bill_date,invoice_amount,customer_name,customer_mobile,payment_type,created_at,status,is_cancelled')
         .eq('bill_date', dateStr)
         .order('created_at', { ascending: true });
 
       if(error) throw error;
 
       const rows = Array.isArray(data) ? data : [];
-      const creditSales = rows.filter(isCreditSale);
-      const cashSales = rows.filter(r => !isCreditSale(r));
+
+      // Exclude cancelled bills from cash sales total, credit register and balance.
+      // Supports both cancellation styles used in different pages:
+      // 1) status = CANCELLED
+      // 2) is_cancelled = true
+      const activeRows = rows.filter(r =>
+        norm(r.status) !== 'cancelled' &&
+        r.is_cancelled !== true
+      );
+
+      const creditSales = activeRows.filter(isCreditSale);
+      const cashSales = activeRows.filter(r => !isCreditSale(r));
 
       return {
         creditSales,

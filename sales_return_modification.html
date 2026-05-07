@@ -240,6 +240,10 @@ body:not(.without-bill-mode) .col-act, body:not(.without-bill-mode) .manual-add-
             <input id="cust_mobile" class="form-control w-md" readonly>
         </div>
         <div class="form-group">
+            <label>GST Number</label>
+            <input id="cust_gst" class="form-control w-lg" readonly>
+        </div>
+        <div class="form-group">
             <label>Bill No</label>
             <input id="bill_no" class="form-control w-md" readonly>
         </div>
@@ -357,6 +361,7 @@ async function loadSavedReturn(returnId){
     if(isWithoutBillReturn){
         document.getElementById("cust_name").value = returnHead.customer_name || "";
         document.getElementById("cust_mobile").value = returnHead.customer_mobile || "";
+        document.getElementById("cust_gst").value = returnHead.gst_number || "";
         document.getElementById("bill_no").value = "WITHOUT BILL";
         renderWithoutBillReturnItems(oldReturnItems);
         return;
@@ -377,6 +382,7 @@ async function loadSavedReturn(returnId){
         document.getElementById("qty_head_label").innerText = "Ref Qty";
         document.getElementById("cust_name").value = returnHead.customer_name || "";
         document.getElementById("cust_mobile").value = returnHead.customer_mobile || "";
+        document.getElementById("cust_gst").value = returnHead.gst_number || "";
         document.getElementById("bill_no").value = "WITHOUT BILL";
         renderWithoutBillReturnItems(oldReturnItems);
         return;
@@ -384,6 +390,7 @@ async function loadSavedReturn(returnId){
 
     document.getElementById("cust_name").value = sale.customer_name || "";
     document.getElementById("cust_mobile").value = sale.customer_mobile || "";
+    document.getElementById("cust_gst").value = sale.gst_number || returnHead.gst_number || "";
     document.getElementById("bill_no").value = `${sale.series_code || ""}-${sale.sales_number || ""}`;
 
     const { data: salesItems, error: itemsErr } = await sb
@@ -892,6 +899,7 @@ async function updateReturn(){
                 total_return_amount: totalReturn,
                 customer_name: document.getElementById("cust_name").value || null,
                 customer_mobile: document.getElementById("cust_mobile").value || null,
+                gst_number: document.getElementById("cust_gst").value || null,
                 return_date: new Date().toISOString()
             })
             .eq("id", currentReturnId);

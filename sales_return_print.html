@@ -239,6 +239,13 @@ let rowsPerPage = items.length <= 10 ? 10 : 40;
 let pageClass = items.length <= 10 ? "page-half" : "page-full";
 let pages = Math.ceil(items.length / rowsPerPage);
 
+// GST / ADDRESS FALLBACKS
+// Priority: saved sales return header -> original sales bill -> blank/NA
+const printCustomerName = head.customer_name || sale?.customer_name || "";
+const printCustomerMobile = head.customer_mobile || sale?.customer_mobile || "NA";
+const printCustomerGst = head.gst_number || sale?.gst_number || sale?.customer_gst || "NA";
+const printCustomerAddress = head.address || head.customer_address || sale?.address || sale?.customer_address || "";
+
 let container = document.getElementById("pages");
 
 /* TOTALS */
@@ -276,10 +283,10 @@ for(let p = 0; p < pages; p++){
 
         <div>
             <b>Consignee</b><br>
-            ${(sale?.customer_name || head.customer_name || "")}<br>
-            ${(sale?.customer_address || "")}<br>
-            GSTIN: ${(sale?.customer_gst || "NA")}<br>
-            Mobile: ${(sale?.customer_mobile || head.customer_mobile || "NA")}
+            ${printCustomerName}<br>
+            ${printCustomerAddress}<br>
+            GSTIN: ${printCustomerGst}<br>
+            Mobile: ${printCustomerMobile}
         </div>
 
         <div class="right">

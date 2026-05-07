@@ -6,6 +6,7 @@
   <title>Purchase Order - VAJRA LIGHTS</title>
   <link rel="icon" href="favicon.ico" type="image/x-icon">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="supabaseClient.js"></script>
   <script src="page_permissions.js"></script>
   <script src="common-ui.js"></script>
@@ -56,6 +57,7 @@
     .btns{display:flex;gap:10px;flex-wrap:wrap}
     .btn{height:42px;padding:0 16px;border:none;border-radius:12px;cursor:pointer;font-weight:900;letter-spacing:.2px;box-shadow:0 8px 18px rgba(37,99,235,.08)}
     .btn.primary{background:linear-gradient(180deg,var(--primary),var(--primary2));color:#fff}
+    .btn.whatsapp{background:linear-gradient(180deg,#22c55e,#16a34a);color:#fff;border:1px solid #15803d}
     .btn.soft{background:#eef4ff;color:#1e4db7;border:1px solid #cdddff}
     .btn.gray{background:#fff;color:#42526b;border:1px solid var(--line)}
     .btn.danger{background:#fff1f2;color:#b91c1c;border:1px solid #f4b3b9;padding:0 12px}
@@ -111,8 +113,51 @@
     .entry-toggle-pill{position:fixed;right:14px;bottom:78px;z-index:120;height:36px;border-radius:999px;border:1px solid #cdddff;background:#eef4ff;color:#1e4db7;font-weight:900;padding:0 12px;box-shadow:var(--shadow);cursor:pointer}
     body:not(.compact-entry) .entry-toggle-pill{display:none}
     .pending-popup-overlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(15,23,42,.35);backdrop-filter:blur(5px);z-index:30000;padding:18px}.pending-popup-overlay.show{display:flex}.pending-popup{width:min(92vw,520px);background:#fff;color:#14213d;border:1px solid #fed7aa;border-radius:18px;box-shadow:0 24px 70px rgba(124,45,18,.28);padding:20px}.pending-popup h3{margin:0 0 10px;color:#c2410c;font-size:22px}.pending-popup p{margin:0 0 14px;color:#334155;line-height:1.55;white-space:pre-line}.pending-popup .popup-actions{display:flex;justify-content:flex-end;gap:10px}.pending-popup button{height:40px;padding:0 16px;border:none;border-radius:12px;font-weight:900;cursor:pointer}.pending-popup .ok-btn{background:#ea580c;color:white}.pending-popup .soft-btn{background:#ffedd5;color:#9a3412}
+
+    .num-input,.qty,.price{text-align:right;font-variant-numeric:tabular-nums}
+    .amount-cell,.stock-cell,.pending-box{font-variant-numeric:tabular-nums}
+    .po-share-stage{position:fixed;left:-10000px;top:0;width:900px;background:#fff;color:#000;z-index:-1}
+    .po-share-card{background:#fff;color:#000;padding:18px 20px;font-family:Arial,Helvetica,sans-serif;border:2px solid #111;width:900px}
+    .po-share-title{text-align:center;border-bottom:2px solid #111;padding-bottom:8px;margin-bottom:10px}
+    .po-share-title h2{margin:0;font-size:24px;letter-spacing:.4px;color:#000;font-weight:900}
+    .po-share-title div{font-size:14px;font-weight:800;color:#111;margin-top:2px}
+    .po-share-meta{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid #111;margin-bottom:10px}
+    .po-share-meta div{border:1px solid #111;padding:6px 8px;font-size:13px;color:#000;font-weight:700;min-height:30px}
+    .po-share-table{width:100%;border-collapse:collapse;color:#000;font-size:13px}
+    .po-share-table th,.po-share-table td{border:1px solid #111;padding:6px 7px;vertical-align:top;color:#000}
+    .po-share-table th{background:#f2f2f2;font-weight:900;text-transform:uppercase;text-align:left}
+    .po-share-table .right{text-align:right;font-variant-numeric:tabular-nums}
+    .po-share-footer{display:flex;justify-content:space-between;gap:12px;margin-top:10px;border:1px solid #111;padding:8px;font-size:13px;font-weight:800;color:#000}
+
     @media(max-width:900px){body{padding-bottom:210px}.wrap{padding:10px 8px 24px}.header-grid{grid-template-columns:repeat(2,minmax(220px,1fr))}.summary-strip{grid-template-columns:repeat(2,minmax(150px,1fr))}.btn{width:100%}.btns{width:100%}.sticky-inner{flex-direction:column;align-items:stretch}.dropdown{min-width:calc(100vw - 20px);left:10px!important}.opt{grid-template-columns:110px 1fr}.opt .hide-mobile{display:none}}
-    @media print{body{background:#fff;padding:0}.wrap{padding:0}.topbar,.chips,.btns,.sticky,.statusline,.header-grid,.panel-head small,#poStatusBadge{display:none!important}.panel{box-shadow:none;border:none;padding:0}.summary-strip{display:none}.table-shell{border:none;padding:0;overflow:visible;max-height:none}.grid{min-width:0;grid-template-columns:42px 90px 1.8fr 58px 70px 1.1fr!important;gap:4px}.grid.hdr>div{font-size:10px}.grid.hdr>div:nth-child(4),.grid.hdr>div:nth-child(7),.grid.hdr>div:nth-child(9),.grid.hdr>div:nth-child(10),#items .grid>div:nth-child(4),#items .grid>div:nth-child(7),#items .grid>div:nth-child(9),#items .grid>div:nth-child(10){display:none!important}#items .grid{break-inside:avoid;border-bottom:1px solid #ccc;border-radius:0;margin:0;padding:4px}.grid input{border:none!important;padding:0;min-height:24px}.btn.danger,.delete-col{display:none!important}.cell-muted{min-height:24px;border:none;background:#fff}.brand-print{display:block!important;text-align:center;margin-bottom:12px}.print-header{display:block!important;margin-bottom:10px;font-size:14px;font-weight:700}}
+    @media print{
+      @page{size:A4;margin:10mm}
+      *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;text-shadow:none!important;box-shadow:none!important}
+      html,body{background:#fff!important;color:#000!important;padding:0!important;margin:0!important;font-family:Arial,Helvetica,sans-serif!important;font-size:11px!important;line-height:1.22!important}
+      .wrap{padding:0!important;max-width:none!important;width:100%!important}
+      .topbar,.chips,.btns,.sticky,.statusline,.header-grid,.panel-head small,#poStatusBadge,.summary-strip,.entry-toggle-pill,.pending-popup-overlay{display:none!important}
+      .panel{box-shadow:none!important;border:none!important;padding:0!important;margin:0!important;background:#fff!important}
+      .items-panel{padding:0!important}
+      .panel-head{display:none!important}
+      .brand-print{display:block!important;text-align:center;margin:0 0 8px!important;border:2px solid #000!important;padding:7px 6px!important;color:#000!important}
+      .brand-print h2{margin:0!important;font-size:18px!important;font-weight:900!important;letter-spacing:.3px!important;color:#000!important}
+      .print-header{display:grid!important;grid-template-columns:repeat(2,1fr)!important;border:1px solid #000!important;margin:0 0 8px!important;font-size:11px!important;font-weight:800!important;color:#000!important;background:#fff!important}
+      .print-header span{border:1px solid #000!important;padding:5px 7px!important;min-height:24px!important;color:#000!important}
+      .table-shell{border:none!important;padding:0!important;overflow:visible!important;max-height:none!important;background:#fff!important}
+      .grid{display:grid!important;min-width:0!important;width:100%!important;grid-template-columns:36px 82px 1.7fr 58px 68px 82px 86px 1fr!important;gap:0!important;align-items:stretch!important;color:#000!important;background:#fff!important}
+      .grid.hdr{position:static!important;top:auto!important;margin:0!important;padding:0!important;border:1px solid #000!important;background:#eaeaea!important;break-inside:avoid!important}
+      .grid.hdr>div{font-size:10px!important;font-weight:900!important;color:#000!important;text-transform:uppercase!important;border-right:1px solid #000!important;padding:5px 4px!important;background:#eaeaea!important;display:flex!important;align-items:center!important}
+      .grid.hdr>div:nth-child(9),.grid.hdr>div:nth-child(10){display:none!important}
+      #items .grid{break-inside:avoid!important;border-left:1px solid #000!important;border-right:1px solid #000!important;border-bottom:1px solid #000!important;border-top:none!important;border-radius:0!important;margin:0!important;padding:0!important;background:#fff!important;min-height:25px!important}
+      #items .grid:nth-child(even){background:#fff!important}
+      #items .grid>div{border-right:1px solid #000!important;padding:0!important;min-height:25px!important;display:flex!important;align-items:center!important;color:#000!important;background:#fff!important}
+      #items .grid>div:nth-child(9),#items .grid>div:nth-child(10){display:none!important}
+      .grid input{border:none!important;border-radius:0!important;background:#fff!important;color:#000!important;padding:4px 5px!important;min-height:24px!important;font-size:11px!important;font-weight:800!important;width:100%!important;box-shadow:none!important}
+      .qty,.price,.amount-cell,.stock-cell{text-align:right!important;justify-content:flex-end!important;font-variant-numeric:tabular-nums!important}
+      .cell-muted{min-height:25px!important;border:none!important;border-radius:0!important;background:#fff!important;color:#000!important;font-size:11px!important;font-weight:800!important;padding:4px 5px!important}
+      .amount-cell,.stock-cell{background:#fff!important;color:#000!important}
+      .btn.danger,.delete-col{display:none!important}
+    }
     .brand-print,.print-header{display:none}
   </style>
 </head>
@@ -146,7 +191,7 @@
     </div>
 
     <div class="panel items-panel">
-      <div class="panel-head items-head"><div><h2>Order Items</h2><small>Search old items using code or name. Type new items manually if not found.</small></div><div class="btns"><button class="btn gray" id="addRowTop">+ Add Row</button><button class="btn soft" id="printTop">Print</button><button class="btn primary" id="saveTop">Save Purchase Order</button><button class="btn soft" id="focusModeBtn" type="button">Expand Entry</button></div></div>
+      <div class="panel-head items-head"><div><h2>Order Items</h2><small>Search old items using code or name. Type new items manually if not found.</small></div><div class="btns"><button class="btn gray" id="addRowTop">+ Add Row</button><button class="btn soft" id="printTop">Print</button><button class="btn whatsapp" id="shareTop" type="button">Share WhatsApp Image</button><button class="btn primary" id="saveTop">Save Purchase Order</button><button class="btn soft" id="focusModeBtn" type="button">Expand Entry</button></div></div>
       <div class="table-shell">
         <div class="grid hdr"><div>#</div><div>Item Code</div><div>Item Name / Search</div><div>Stock</div><div>Qty</div><div>Price</div><div>Amount</div><div>Remark</div><div>Pending</div><div></div></div>
         <div id="items"></div>
@@ -155,7 +200,7 @@
     </div>
   </div>
 
-  <div class="sticky auto-restore"><div class="sticky-inner"><div class="sticky-note">Enter = next • Empty row will not add new row • Shift+Enter = back • Arrow keys select dropdown</div><div class="btns"><button class="btn gray" id="addRowBottom">+ Add Row</button><button class="btn soft" id="printBottom">Print</button><button class="btn primary" id="saveBottom">Save Purchase Order</button></div></div></div>
+  <div class="sticky auto-restore"><div class="sticky-inner"><div class="sticky-note">Enter = next • Empty row will not add new row • Shift+Enter = back • Arrow keys select dropdown</div><div class="btns"><button class="btn gray" id="addRowBottom">+ Add Row</button><button class="btn soft" id="printBottom">Print</button><button class="btn whatsapp" id="shareBottom" type="button">Share WhatsApp Image</button><button class="btn primary" id="saveBottom">Save Purchase Order</button></div></div></div>
 
   <button id="entryTogglePill" class="entry-toggle-pill" type="button">Normal View</button>
 
@@ -229,6 +274,7 @@ document.addEventListener("input", e => {
 function bindButtons(){
   ["addRowTop","addRowBottom"].forEach(id => byId(id).onclick = () => focusNewRow(addRow()));
   ["printTop","printBottom"].forEach(id => byId(id).onclick = printPO);
+  ["shareTop","shareBottom"].forEach(id => byId(id).onclick = sharePOToWhatsApp);
   ["saveTop","saveBottom"].forEach(id => byId(id).onclick = savePO);
   byId("focusModeBtn").onclick = () => setEntryMode(!document.body.classList.contains("compact-entry"), true);
   byId("entryTogglePill").onclick = () => setEntryMode(false, true);
@@ -741,18 +787,119 @@ async function afterSaveReset(){
   await loadNextPONumber(); await loadPendingData(); addRow(); calcAll();
 }
 
-function printPO(){
+function buildPrintHeader(){
   const mobile = clean(byId("supplierMobile").value) || getMobileFromRemark(clean(byId("headerRemark").value));
   byId("printHeader").innerHTML = `
-    <strong>PO No:</strong> ${esc(byId("poNumber").value)}
-    &nbsp;
-    <strong>Date:</strong> ${esc(byId("orderDate").value)}
-    &nbsp;
-    <strong>Supplier:</strong> ${esc(byId("supplierName").value)}
-    ${mobile ? `&nbsp; <strong>Mobile:</strong> ${esc(mobile)}` : ""}
+    <span><strong>PO No:</strong> ${esc(byId("poNumber").value)}</span>
+    <span><strong>Date:</strong> ${esc(byId("orderDate").value)}</span>
+    <span><strong>Supplier:</strong> ${esc(byId("supplierName").value)}</span>
+    <span><strong>Mobile:</strong> ${esc(mobile || "-")}</span>
+    <span><strong>GST:</strong> ${esc(byId("supplierGst").value || "-")}</span>
+    <span><strong>Address:</strong> ${esc(byId("supplierAddress").value || "-")}</span>
   `;
+}
+
+function printPO(){
+  buildPrintHeader();
   window.print();
 }
+
+function getShareRows(){
+  const rows = [];
+  document.querySelectorAll("#items .item-row").forEach((row, i) => {
+    const item_code = clean(row.querySelector(".item-code")?.value);
+    const item_name = clean(row.querySelector(".item-name")?.value);
+    if(!item_code && !item_name) return;
+    rows.push({
+      sl: rows.length + 1,
+      item_code,
+      item_name,
+      qty: fmt2(num(row.querySelector(".qty")?.value)),
+      price: row.querySelector(".price")?.value === "" ? "" : fmt2(num(row.querySelector(".price")?.value)),
+      amount: fmt2(num(row.querySelector(".amount")?.textContent)),
+      remark: clean(row.querySelector(".remark")?.value)
+    });
+  });
+  return rows;
+}
+
+function makeShareCard(){
+  const mobile = clean(byId("supplierMobile").value) || getMobileFromRemark(clean(byId("headerRemark").value));
+  const rows = getShareRows();
+  const totalQty = rows.reduce((a,r)=>a+Number(r.qty||0),0);
+  const totalAmount = rows.reduce((a,r)=>a+Number(r.amount||0),0);
+  const stage = document.createElement("div");
+  stage.className = "po-share-stage";
+  const trs = rows.map(r => `
+    <tr>
+      <td class="right">${r.sl}</td>
+      <td>${esc(r.item_code || "")}</td>
+      <td>${esc(r.item_name || "")}</td>
+      <td class="right">${esc(r.qty)}</td>
+      <td class="right">${esc(r.price || "")}</td>
+      <td class="right">${esc(r.amount)}</td>
+      <td>${esc(r.remark || "")}</td>
+    </tr>`).join("");
+  stage.innerHTML = `
+    <div class="po-share-card" id="poShareCard">
+      <div class="po-share-title"><h2>VAJRA LIGHTS - PURCHASE ORDER</h2><div>Professional Order Copy</div></div>
+      <div class="po-share-meta">
+        <div><b>PO No:</b> ${esc(byId("poNumber").value || "-")}</div>
+        <div><b>Date:</b> ${esc(byId("orderDate").value || "-")}</div>
+        <div><b>Supplier:</b> ${esc(byId("supplierName").value || "-")}</div>
+        <div><b>Mobile:</b> ${esc(mobile || "-")}</div>
+        <div><b>GST:</b> ${esc(byId("supplierGst").value || "-")}</div>
+        <div><b>Address:</b> ${esc(byId("supplierAddress").value || "-")}</div>
+      </div>
+      <table class="po-share-table">
+        <thead><tr><th style="width:42px;text-align:right">#</th><th style="width:105px">Code</th><th>Item Name</th><th style="width:75px;text-align:right">Qty</th><th style="width:90px;text-align:right">Price</th><th style="width:105px;text-align:right">Amount</th><th style="width:145px">Remark</th></tr></thead>
+        <tbody>${trs || `<tr><td colspan="7">No items</td></tr>`}</tbody>
+      </table>
+      <div class="po-share-footer"><div>Total Qty: ${fmt2(totalQty)}</div><div>Total Amount: ${money(totalAmount)}</div></div>
+    </div>`;
+  document.body.appendChild(stage);
+  return stage;
+}
+
+async function sharePOToWhatsApp(){
+  try{
+    hideDropdown();
+    setStatus("Preparing WhatsApp image...");
+    const stage = makeShareCard();
+    const card = stage.querySelector("#poShareCard");
+    const canvas = await html2canvas(card, {backgroundColor:"#ffffff", scale:2, useCORS:true});
+    stage.remove();
+
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/png", 1));
+    const fileName = `PO-${clean(byId("poNumber").value || "ORDER")}.png`;
+    const file = new File([blob], fileName, {type:"image/png"});
+    const text = `VAJRA LIGHTS PURCHASE ORDER\nPO: ${clean(byId("poNumber").value)}\nSupplier: ${clean(byId("supplierName").value)}`;
+
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({files:[file], title:"Purchase Order", text});
+      setStatus("Share sheet opened. Choose WhatsApp and send.");
+      return;
+    }
+
+    if(navigator.clipboard && window.ClipboardItem){
+      await navigator.clipboard.write([new ClipboardItem({"image/png": blob})]);
+      window.open("https://wa.me/?text=" + encodeURIComponent(text + "\nImage copied. Paste in WhatsApp chat."), "_blank");
+      setStatus("Image copied to clipboard. WhatsApp opened. Paste the image in chat and send.");
+      return;
+    }
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = fileName; a.click();
+    URL.revokeObjectURL(url);
+    window.open("https://wa.me/?text=" + encodeURIComponent(text), "_blank");
+    setStatus("Image downloaded and WhatsApp opened. Attach the downloaded PO image if clipboard sharing is not supported.");
+  }catch(err){
+    console.error(err);
+    setStatus("Share failed: " + (err.message || err), true);
+  }
+}
+
 function setStatus(msg, isErr=false){ const el=byId("saveStatus"); el.textContent=msg; el.style.color=isErr?"#b91c1c":"#35507a"; el.style.background=isErr?"#fff1f2":"#f8fbff"; el.style.borderColor=isErr?"#f2b8c0":"#d9e2ef"; }
 </script>
 </body>

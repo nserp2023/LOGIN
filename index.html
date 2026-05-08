@@ -3,15 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
   <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+  <link rel="manifest" href="site.webmanifest">
 
-<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
-
-<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
-
-<link rel="manifest" href="site.webmanifest">
   <title>Billing Software Login</title>
+
   <style>
     * {
       margin: 0;
@@ -23,12 +23,13 @@
       font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       background: url("background.jpg") no-repeat center center fixed;
       background-size: cover;
-      height: 100vh;
+      min-height: 100vh;
       display: flex;
       justify-content: center;
       align-items: center;
       position: relative;
       overflow: hidden;
+      padding: 16px;
     }
 
     body::before {
@@ -36,6 +37,7 @@
       position: absolute;
       inset: 0;
       background: rgba(0, 0, 0, 0.45);
+      z-index: 0;
     }
 
     .shape {
@@ -44,6 +46,8 @@
       opacity: 0.6;
       filter: blur(40px);
       animation: float 12s infinite ease-in-out;
+      z-index: 1;
+      pointer-events: none;
     }
 
     .shape:nth-child(1) {
@@ -74,8 +78,12 @@
     }
 
     @keyframes float {
-      0%, 100% { transform: translateY(0) translateX(0); }
-      50% { transform: translateY(-40px) translateX(30px); }
+      0%, 100% {
+        transform: translateY(0) translateX(0);
+      }
+      50% {
+        transform: translateY(-40px) translateX(30px);
+      }
     }
 
     .login-container {
@@ -85,6 +93,7 @@
       border-radius: 20px;
       padding: 40px 35px;
       width: 380px;
+      max-width: 100%;
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
       border: 1px solid rgba(255, 255, 255, 0.25);
@@ -134,7 +143,6 @@
       box-shadow: 0 0 0 3px rgba(0, 120, 215, 0.4);
     }
 
-    /* Uppercase visual effect for name field */
     .uppercase-input {
       text-transform: uppercase;
     }
@@ -152,7 +160,7 @@
       transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
 
-    button:hover {
+    button:hover:not(:disabled) {
       transform: translateY(-2px);
       box-shadow: 0 6px 20px rgba(0, 120, 215, 0.5);
     }
@@ -170,6 +178,8 @@
       font-size: 14px;
       text-align: center;
       min-height: 20px;
+      line-height: 1.4;
+      font-weight: 600;
     }
 
     .login-container p {
@@ -197,6 +207,23 @@
       to {
         opacity: 1;
         transform: translateY(0);
+      }
+    }
+
+    @media (max-width: 480px) {
+      body {
+        align-items: flex-start;
+        padding-top: 55px;
+        overflow-y: auto;
+      }
+
+      .login-container {
+        padding: 30px 22px;
+        border-radius: 16px;
+      }
+
+      .login-container h2 {
+        font-size: 22px;
       }
     }
   </style>
@@ -243,6 +270,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabaseClient.js"></script>
+
   <script>
     const loginClient = window.sbcc;
     let isLoggingIn = false;
@@ -252,35 +280,92 @@
     const errorEl = document.getElementById("error-message");
     const loginBtn = document.getElementById("loginBtn");
 
-    // Fake caps lock behavior for name field
+    if (!loginClient) {
+      errorEl.textContent = "Supabase client not found. Please check supabaseClient.js";
+    }
+
+    function showError(message) {
+      errorEl.textContent = message || "Something went wrong.";
+    }
+
+    function clearSavedLoginData() {
+      localStorage.removeItem("user_id");
+      localStorage.removeItem("email");
+      localStorage.removeItem("full_name");
+      localStorage.removeItem("role");
+    }
+
     function forceUppercase(el) {
       el.addEventListener("input", () => {
         const start = el.selectionStart;
         const end = el.selectionEnd;
         el.value = el.value.toUpperCase();
+
         try {
           el.setSelectionRange(start, end);
         } catch (_) {}
       });
     }
 
+    async function clearExpiredSessionOnly() {
+      if (!loginClient) return;
+
+      try {
+        const { data } = await loginClient.auth.getSession();
+
+        if (!data || !data.session) {
+          clearSavedLoginData();
+          return;
+        }
+
+        const { error } = await loginClient.auth.refreshSession();
+
+        if (error) {
+          const msg = String(error.message || "").toLowerCase();
+
+          if (
+            msg.includes("jwt") ||
+            msg.includes("expired") ||
+            msg.includes("refresh") ||
+            msg.includes("invalid")
+          ) {
+            await loginClient.auth.signOut();
+            clearSavedLoginData();
+          }
+        }
+      } catch (_) {
+        try {
+          await loginClient.auth.signOut();
+        } catch (__) {}
+
+        clearSavedLoginData();
+      }
+    }
+
     forceUppercase(fullNameInput);
 
-    window.addEventListener("load", () => {
+    window.addEventListener("load", async () => {
       fullNameInput.focus();
+      await clearExpiredSessionOnly();
     });
 
     document.getElementById("loginForm").addEventListener("submit", async function (e) {
       e.preventDefault();
+
       if (isLoggingIn) return;
 
       errorEl.textContent = "";
+
+      if (!loginClient) {
+        showError("Supabase client not found. Please check supabaseClient.js");
+        return;
+      }
 
       const full_name = fullNameInput.value.trim().toUpperCase();
       const password = passwordInput.value;
 
       if (!full_name || !password) {
-        errorEl.textContent = "Please enter full name and password.";
+        showError("Please enter full name and password.");
         return;
       }
 
@@ -289,7 +374,16 @@
         loginBtn.disabled = true;
         loginBtn.textContent = "Logging in...";
 
-        // Step 1: Find email by full name from user_profiles
+        // IMPORTANT FIX:
+        // Old expired JWT can affect the first user_profiles query.
+        // So clear old auth session before checking name.
+        try {
+          await loginClient.auth.signOut();
+        } catch (_) {}
+
+        clearSavedLoginData();
+
+        // STEP 1: Find email by full name from user_profiles
         const { data: profileByName, error: nameLookupError } = await loginClient
           .from("user_profiles")
           .select("id, email, full_name, role, approved")
@@ -297,45 +391,64 @@
           .maybeSingle();
 
         if (nameLookupError) {
-          errorEl.textContent = "Login failed while checking name: " + nameLookupError.message;
+          const msg = String(nameLookupError.message || "");
+
+          if (msg.toLowerCase().includes("jwt") || msg.toLowerCase().includes("expired")) {
+            try {
+              await loginClient.auth.signOut();
+            } catch (_) {}
+
+            clearSavedLoginData();
+            showError("Old login session expired. Please click Login again.");
+            return;
+          }
+
+          showError("Login failed while checking name: " + msg);
           return;
         }
 
         if (!profileByName) {
-          errorEl.textContent = "Login failed: Full name not found.";
+          showError("Login failed: Full name not found.");
           return;
         }
 
         if (!profileByName.email) {
-          errorEl.textContent = "Login failed: Email not found for this user.";
+          showError("Login failed: Email not found for this user.");
           return;
         }
 
-        // Step 2: Login using found email + password
+        // STEP 2: Login using found email + password
         const { data, error } = await loginClient.auth.signInWithPassword({
           email: String(profileByName.email).trim().toLowerCase(),
-          password
+          password: password
         });
 
         if (error) {
-          if ((error.message || "").toLowerCase().includes("email not confirmed")) {
-            errorEl.textContent = "Login failed: Email confirmation is still enabled in Supabase, or this user was created before it was turned off.";
-          } else if ((error.message || "").toLowerCase().includes("invalid login credentials")) {
-            errorEl.textContent = "Login failed: Wrong password or invalid name.";
+          const msg = String(error.message || "").toLowerCase();
+
+          if (msg.includes("email not confirmed")) {
+            showError("Login failed: Email confirmation is still enabled in Supabase, or this user was created before it was turned off.");
+          } else if (msg.includes("invalid login credentials")) {
+            showError("Login failed: Wrong password or invalid name.");
+          } else if (msg.includes("jwt") || msg.includes("expired")) {
+            await loginClient.auth.signOut();
+            clearSavedLoginData();
+            showError("Session expired. Please try login again.");
           } else {
-            errorEl.textContent = "Login failed: " + error.message;
+            showError("Login failed: " + error.message);
           }
+
           return;
         }
 
-        const user = data?.user;
+        const user = data && data.user ? data.user : null;
 
         if (!user) {
-          errorEl.textContent = "Login failed: User not found.";
+          showError("Login failed: User not found.");
           return;
         }
 
-        // Step 3: Load fresh profile using auth user id
+        // STEP 3: Load fresh profile using authenticated user id
         const { data: profile, error: profileError } = await loginClient
           .from("user_profiles")
           .select("id, email, full_name, role, approved")
@@ -343,14 +456,16 @@
           .maybeSingle();
 
         if (profileError || !profile) {
-          errorEl.textContent = "Login failed: User profile not found.";
+          showError("Login failed: User profile not found.");
           await loginClient.auth.signOut();
+          clearSavedLoginData();
           return;
         }
 
         if (!profile.approved) {
-          errorEl.textContent = "Your account is waiting for OWNER / ADMIN approval.";
+          showError("Your account is waiting for OWNER / ADMIN approval.");
           await loginClient.auth.signOut();
+          clearSavedLoginData();
           return;
         }
 
@@ -361,7 +476,7 @@
 
         window.location.href = "dashboard.html";
       } catch (err) {
-        errorEl.textContent = "Unexpected error: " + (err.message || err);
+        showError("Unexpected error: " + (err && err.message ? err.message : err));
       } finally {
         isLoggingIn = false;
         loginBtn.disabled = false;

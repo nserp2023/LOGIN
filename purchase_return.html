@@ -411,7 +411,7 @@
 
     .dropdown .opt.item-opt{
       display:grid;
-      grid-template-columns:130px 1fr 110px 100px 100px;
+      grid-template-columns:130px minmax(320px, 1fr) 90px 110px 120px 130px;
       gap:10px;
       align-items:center;
     }
@@ -840,12 +840,18 @@
         opt.className = type === "item" ? "opt item-opt" : (type === "supplier" ? "opt supplier-opt" : "opt purchase-opt");
 
         if(type === "item"){
+          const bal = Number(it.balance_qty ?? it.balance ?? 0);
+          const balColor = bal <= 0 ? "#ff5b5b" : "#4ade80";
           opt.innerHTML = `
             <div class="muted">${it.item_code || ""}</div>
-            <div>${it.item_name || ""}</div>
-            <div class="muted">${it.barcode || ""}</div>
+            <div>
+              <div style="font-weight:800;color:#f8fbff;">${it.item_name || ""}</div>
+              <div class="muted" style="margin-top:3px;">BARCODE : ${it.barcode || "-"}</div>
+            </div>
             <div class="muted">GST ${fmt2(it.gst_percent || 0)}%</div>
-            <div class="muted">₹${fmt2(it.purchase_price_gst || it.landing || it.purchase_price || 0)}</div>
+            <div class="muted">₹${fmt2(it.purchase_price_gst || it.landing || it.purchase_price || it.price1 || 0)}</div>
+            <div class="muted">DEPT : ${it.department || "-"}</div>
+            <div style="font-weight:900;color:${balColor};text-align:right;">STOCK : ${fmt2(bal)}</div>
           `;
         } else if(type === "supplier"){
           opt.innerHTML = `
@@ -1279,31 +1285,36 @@
 
     async function ensureStockLoaded(){
       if(stockLoaded) return;
-      byId("saveStatus").textContent = "Loading stock items for manual return...";
+      byId("saveStatus").textContent = "Loading live stock balance for manual return...";
 
       let all = [];
       const pageSize = 1000;
+
       for(let from = 0; ; from += pageSize){
         const to = from + pageSize - 1;
         const { data, error } = await sb
-          .from("stock_items")
-          .select("id,item_code,item_name,barcode,hsn_code,department,gst_percent,purchase_price,purchase_price_gst,landing,price,price1,price1_gst")
+          .from("stock_balance_view")
+          .select("item_code,item_name,barcode,hsn_code,department,gst_percent,purchase_price,purchase_price_gst,landing,price1,price1_gst,balance")
           .order("item_name", { ascending: true })
           .range(from, to);
 
         if(error){
           console.error(error);
-          byId("saveStatus").innerHTML = `<span class="err">Stock load failed: ${error.message}</span>`;
+          byId("saveStatus").innerHTML = `<span class="err">Live stock balance load failed from stock_balance_view: ${error.message}</span>`;
           return;
         }
 
-        all = all.concat(data || []);
+        all = all.concat((data || []).map(it => ({
+          ...it,
+          balance_qty: Number(it.balance || 0)
+        })));
+
         if(!data || data.length < pageSize) break;
       }
 
       stockCache = all;
       stockLoaded = true;
-      byId("saveStatus").innerHTML = `<span class="ok">${stockCache.length} stock items loaded for manual return.</span>`;
+      byId("saveStatus").innerHTML = `<span class="ok">${stockCache.length} stock items loaded with live balance qty.</span>`;
     }
 
     function searchStockForRow(row, q, anchor){

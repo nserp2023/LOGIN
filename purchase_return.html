@@ -626,6 +626,7 @@
         <button class="btn green" id="addManualRowBtnBottom">+ Add Item</button>
         <button class="btn" id="fullReturnBtn">Fill Full Return</button>
         <button class="btn" id="reloadBtn">Reload Original Items</button>
+        <button class="btn primary" id="printAuditBtn">Print Audit Copy</button>
         <button class="btn danger" id="saveBtn" disabled>Save Purchase Return</button>
       </div>
     </div>
@@ -642,6 +643,7 @@
         <button class="btn green" id="addManualRowBtnSticky">+ Add Item</button>
         <button class="btn" id="fullReturnBtnSticky">Fill Full Return</button>
         <button class="btn" id="reloadBtnSticky">Reload Original Items</button>
+        <button class="btn primary" id="printAuditBtnSticky">Print Audit Copy</button>
         <button class="btn danger" id="saveBtnSticky" disabled>Save Purchase Return</button>
       </div>
     </div>
@@ -1537,6 +1539,186 @@
       maybeEnableSave();
     }
 
+
+    function escPrint(v){
+      return String(v ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function printPurchaseReturnAudit(){
+      const items = collectItems();
+      if(!items.length){
+        alert("Enter at least one return item before printing.");
+        return;
+      }
+
+      updateSummaryFromItems();
+
+      const prNo = byId("purchaseReturnNumber").value || "";
+      const retDate = byId("returnDate").value || "";
+      const purNo = byId("purchaseNumber").value || "";
+      const gstNo = byId("gstNumber").value || "";
+      const supName = byId("supplierName").value || "";
+      const supAddress = byId("supplierAddress").value || "";
+      const invNo = byId("invoiceNumber").value || "";
+      const invDate = byId("invoiceDate").value || "";
+      const roundOff = num(byId("roundOff").value);
+      const payable = num(byId("payable").value);
+      const invoiceAmount = num(byId("invoiceAmount").value);
+      const totalQty = items.reduce((sum, it) => sum + num(it.return_quantity), 0);
+      const taxableTotal = items.reduce((sum, it) => sum + num(it.total), 0);
+      const gstTotal = items.reduce((sum, it) => sum + (num(it.total_gst) - num(it.total)), 0);
+
+      const rowsHtml = items.map((it, index) => `
+        <tr>
+          <td class="c">${index + 1}</td>
+          <td class="c">${escPrint(it.hsn_code)}</td>
+          <td class="c strong">${escPrint(it.item_code)}</td>
+          <td class="l strong">${escPrint(it.item_name)}</td>
+          <td class="c">${escPrint(it.department)}</td>
+          <td class="r">${fmt2(it.original_quantity)}</td>
+          <td class="r strong">${fmt2(it.return_quantity)}</td>
+          <td class="r">${fmt2(it.price)}</td>
+          <td class="r">${fmt2(it.discount_percent)}</td>
+          <td class="r">${fmt2(it.gst_percent)}</td>
+          <td class="r">${fmt2(it.total)}</td>
+          <td class="r strong">${fmt2(it.total_gst)}</td>
+        </tr>
+      `).join("");
+
+      const printHtml = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Purchase Return Audit Print - ${escPrint(prNo)}</title>
+<style>
+  @page{ size:A4; margin:8mm; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:#fff; color:#000; font-family:Arial, Helvetica, sans-serif; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  .sheet{ width:100%; padding:0; }
+  .audit-border{ border:2px solid #000; padding:8px; }
+  .company{ text-align:center; border-bottom:2px solid #000; padding-bottom:7px; }
+  .company h1{ margin:0; font-size:28px; line-height:1.05; font-weight:900; letter-spacing:.7px; }
+  .company .line{ margin-top:3px; font-size:12px; font-weight:700; }
+  .doc-title{ display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #000; padding:7px 2px; margin-bottom:8px; }
+  .doc-title .main{ font-size:22px; font-weight:900; letter-spacing:1px; }
+  .copy-badge{ border:2px solid #000; padding:5px 10px; font-size:12px; font-weight:900; background:#efefef; }
+  .info-grid{ width:100%; border-collapse:collapse; margin-bottom:8px; }
+  .info-grid td{ border:1px solid #000; padding:6px 7px; vertical-align:top; font-size:12px; height:36px; }
+  .lbl{ font-size:10px; text-transform:uppercase; font-weight:900; color:#111; margin-bottom:3px; }
+  .val{ font-size:13px; font-weight:800; color:#000; word-break:break-word; }
+  .items{ width:100%; border-collapse:collapse; table-layout:fixed; }
+  .items th{ border:1px solid #000; padding:6px 4px; background:#d9d9d9; color:#000; font-size:10px; font-weight:900; text-align:center; }
+  .items td{ border:1px solid #000; padding:5px 4px; font-size:10.5px; font-weight:700; vertical-align:top; }
+  .items .c{text-align:center}.items .r{text-align:right}.items .l{text-align:left}.strong{font-weight:900!important;}
+  .summary-area{ display:flex; gap:10px; margin-top:9px; align-items:flex-start; }
+  .audit-box{ flex:1; min-height:104px; border:1px solid #000; padding:8px; font-size:11px; font-weight:700; }
+  .summary{ width:320px; border-collapse:collapse; }
+  .summary td{ border:1px solid #000; padding:7px; font-size:12px; font-weight:900; }
+  .summary .grand td{ font-size:15px; background:#efefef; }
+  .sign{ width:100%; border-collapse:collapse; margin-top:20px; }
+  .sign td{ width:33.33%; border:1px solid #000; text-align:center; padding-top:36px; padding-bottom:7px; font-size:12px; font-weight:900; }
+  .footer-note{ margin-top:7px; font-size:10px; font-weight:700; display:flex; justify-content:space-between; }
+  .no-print{ position:fixed; right:14px; top:14px; display:flex; gap:8px; }
+  .no-print button{ padding:9px 14px; border:0; border-radius:8px; background:#111; color:#fff; font-weight:800; cursor:pointer; }
+  @media print{ .no-print{display:none!important;} .audit-border{border:2px solid #000;} }
+</style>
+</head>
+<body>
+  <div class="no-print"><button onclick="window.print()">Print</button><button onclick="window.close()">Close</button></div>
+  <div class="sheet">
+    <div class="audit-border">
+      <div class="company">
+        <h1>VAJRA LIGHTS AND ELECTRICALS</h1>
+        <div class="line">PURCHASE RETURN / SUPPLIER DEBIT NOTE / AUDIT COPY</div>
+        <div class="line">All details verified from purchase return entry</div>
+      </div>
+      <div class="doc-title">
+        <div class="main">PURCHASE RETURN</div>
+        <div class="copy-badge">AUDIT COPY</div>
+      </div>
+      <table class="info-grid">
+        <tr>
+          <td style="width:25%"><div class="lbl">Purchase Return No</div><div class="val">${escPrint(prNo)}</div></td>
+          <td style="width:25%"><div class="lbl">Return Date</div><div class="val">${escPrint(retDate)}</div></td>
+          <td style="width:25%"><div class="lbl">Original Purchase No</div><div class="val">${escPrint(purNo)}</div></td>
+          <td style="width:25%"><div class="lbl">Return Mode</div><div class="val">${getMode() === "without_bill" ? "WITHOUT PURCHASE BILL" : "WITH PURCHASE BILL"}</div></td>
+        </tr>
+        <tr>
+          <td colspan="2"><div class="lbl">Supplier Name</div><div class="val">${escPrint(supName)}</div></td>
+          <td><div class="lbl">Supplier GST Number</div><div class="val">${escPrint(gstNo)}</div></td>
+          <td><div class="lbl">Total Return Qty</div><div class="val">${fmt2(totalQty)}</div></td>
+        </tr>
+        <tr>
+          <td colspan="2"><div class="lbl">Supplier Address</div><div class="val">${escPrint(supAddress)}</div></td>
+          <td><div class="lbl">Original Invoice No</div><div class="val">${escPrint(invNo)}</div></td>
+          <td><div class="lbl">Original Invoice Date</div><div class="val">${escPrint(invDate)}</div></td>
+        </tr>
+      </table>
+      <table class="items">
+        <thead>
+          <tr>
+            <th style="width:4%">SL</th>
+            <th style="width:7%">HSN</th>
+            <th style="width:10%">ITEM CODE</th>
+            <th style="width:22%">ITEM NAME</th>
+            <th style="width:9%">DEPT</th>
+            <th style="width:7%">PUR QTY</th>
+            <th style="width:7%">RET QTY</th>
+            <th style="width:7%">PRICE</th>
+            <th style="width:6%">DISC%</th>
+            <th style="width:6%">GST%</th>
+            <th style="width:8%">TAXABLE</th>
+            <th style="width:9%">NET</th>
+          </tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+      <div class="summary-area">
+        <div class="audit-box">
+          <div><b>Audit Remarks:</b></div>
+          <div style="margin-top:8px">Reason for return / supplier verification / damaged goods note:</div>
+          <div style="margin-top:34px;border-top:1px solid #000;padding-top:5px">Checked with original purchase invoice and stock movement.</div>
+        </div>
+        <table class="summary">
+          <tr><td>Total Qty</td><td style="text-align:right">${fmt2(totalQty)}</td></tr>
+          <tr><td>Taxable Amount</td><td style="text-align:right">${fmt2(taxableTotal)}</td></tr>
+          <tr><td>GST Amount</td><td style="text-align:right">${fmt2(gstTotal)}</td></tr>
+          <tr><td>Payable</td><td style="text-align:right">${fmt2(payable)}</td></tr>
+          <tr><td>Round Off</td><td style="text-align:right">${fmt2(roundOff)}</td></tr>
+          <tr class="grand"><td>Grand Total</td><td style="text-align:right">${fmt2(invoiceAmount)}</td></tr>
+        </table>
+      </div>
+      <table class="sign">
+        <tr>
+          <td>Prepared By</td>
+          <td>Checked By</td>
+          <td>Authorized Signatory</td>
+        </tr>
+      </table>
+      <div class="footer-note"><span>Generated: ${escPrint(new Date().toLocaleString())}</span><span>Computer generated audit print</span></div>
+    </div>
+  </div>
+<script>
+  window.onload = function(){ setTimeout(function(){ window.print(); }, 250); };
+<\/script>
+</body>
+</html>`;
+
+      const w = window.open("", "_blank", "width=1100,height=800");
+      if(!w){
+        alert("Popup blocked. Please allow popups for this page and try again.");
+        return;
+      }
+      w.document.open();
+      w.document.write(printHtml);
+      w.document.close();
+    }
+
     async function savePurchaseReturn(){
       const status = byId("saveStatus");
       const mode = getMode();
@@ -1735,6 +1917,8 @@
     byId("fullReturnBtnSticky").addEventListener("click", fillFullReturn);
     byId("reloadBtn").addEventListener("click", reloadOriginalItems);
     byId("reloadBtnSticky").addEventListener("click", reloadOriginalItems);
+    byId("printAuditBtn").addEventListener("click", printPurchaseReturnAudit);
+    byId("printAuditBtnSticky").addEventListener("click", printPurchaseReturnAudit);
     byId("saveBtn").addEventListener("click", savePurchaseReturn);
     byId("saveBtnSticky").addEventListener("click", () => {
       if(!byId("saveBtnSticky").disabled) savePurchaseReturn();

@@ -749,6 +749,35 @@
       return !!(el && el.offsetParent !== null && !el.classList.contains("col-hidden"));
     }
 
+    function getRowFields(row){
+      const byKey = key => row.querySelector(`[data-col="${key}"]`);
+      return {
+        hsn: byKey("hsn"),
+        code: byKey("item_code"),
+        barcode: byKey("barcode"),
+        name: byKey("item_name"),
+        department: byKey("department"),
+        qty: byKey("quantity"),
+        price: byKey("price"),
+        disc: byKey("discount_percent"),
+        total: byKey("total"),
+        gstp: byKey("gst_percent"),
+        totalG: byKey("total_gst"),
+        purch: byKey("purchase_price"),
+        purchG: byKey("purchase_price_gst"),
+        landing: byKey("landing"),
+        p1p: byKey("price1_percent"),
+        p1: byKey("price1"),
+        p1g: byKey("price1_gst"),
+        p2p: byKey("price2_percent"),
+        p2: byKey("price2"),
+        p2g: byKey("price2_gst"),
+        p3p: byKey("price3_percent"),
+        p3: byKey("price3"),
+        p3g: byKey("price3_gst")
+      };
+    }
+
     function syncStickySaveState(){
       const mainSave = byId("saveBtn");
       const stickySave = byId("saveBtnSticky");
@@ -1209,8 +1238,7 @@
     }
 
     function fillRowFromStock(row, item){
-      const all = row.querySelectorAll("input, select");
-      const [hsn, code, barcode, name, department, qty, price, disc, total, gstp, totalG, purch, purchG, landing, p1p, p1, p1g, p2p, p2, p2g, p3p, p3, p3g] = all;
+      const { hsn, code, barcode, name, department, qty, price, disc, total, gstp, totalG, purch, purchG, landing, p1p, p1, p1g, p2p, p2, p2g, p3p, p3, p3g } = getRowFields(row);
 
       code.value    = item.item_code || "";
       barcode.value = item.barcode || item.item_code || "";
@@ -1388,9 +1416,10 @@ if (baseLanding > 0) {
       return wrap;
     }
 
-    function calculateRow(row){
-      const all = row.querySelectorAll("input, select");
-      const [hsn, code, barcode, name, department, qty, price, disc, total, gstp, totalG, purch, purchG, landing, p1p, p1, p1g, p2p, p2, p2g, p3p, p3, p3g] = all;
+    function calculateRow(row, silent=false){
+      const { hsn, code, barcode, name, department, qty, price, disc, total, gstp, totalG, purch, purchG, landing, p1p, p1, p1g, p2p, p2, p2g, p3p, p3, p3g } = getRowFields(row);
+
+      if(!qty || !price || !disc || !total || !gstp || !totalG || !purch || !purchG || !landing || !p1p || !p1 || !p1g || !p2p || !p2 || !p2g || !p3p || !p3 || !p3g) return;
 
       const Q = num(qty.value);
       const P = num(price.value);
@@ -1420,8 +1449,10 @@ if (baseLanding > 0) {
       syncTier(p2p, p2, p2g, Gp, landing.value);
       syncTier(p3p, p3, p3g, Gp, landing.value);
 
-      maybeEnableSave();
-      updatePayableFromItems();
+      if(!silent){
+        maybeEnableSave();
+        updatePayableFromItems();
+      }
     }
 
     function syncTier(pctEl, baseEl, gstEl, gstPercent, unitBaseValue){
@@ -1449,12 +1480,19 @@ if (baseLanding > 0) {
         const p = unitBase ? ((b/unitBase)-1)*100 : 0;
         pctEl.value = fmt2(p);
       }else{
-        if(pctEl.value !== ""){
+        if(baseEl.value !== ""){
+          const p = unitBase ? ((base/unitBase)-1)*100 : 0;
+          pctEl.value = fmt2(p);
+          gstEl.value = fmt2(base * (1 + gstPercent/100));
+        }else if(gstEl.value !== ""){
+          const b = gst / (1 + gstPercent/100);
+          baseEl.value = fmt2(b);
+          const p = unitBase ? ((b/unitBase)-1)*100 : 0;
+          pctEl.value = fmt2(p);
+        }else if(pctEl.value !== ""){
           const b = unitBase * (1 + pct/100);
           baseEl.value = fmt2(b);
           gstEl.value = fmt2(b * (1 + gstPercent/100));
-        }else if(baseEl.value !== ""){
-          gstEl.value = fmt2(base * (1 + gstPercent/100));
         }
       }
     }
@@ -1478,36 +1516,34 @@ if (baseLanding > 0) {
     function collectItems(){
       const rows = [...byId("items").querySelectorAll(".grid")];
       return rows.map(r=>{
-        const fields = [...r.querySelectorAll("input, select")];
-        const [
-          hsn, code, barcode, name, department, qty, price, disc, total, gstp, totalG, purch, purchG, landing,
-          p1p, p1, p1g, p2p, p2, p2g, p3p, p3, p3g
-        ] = fields.map(i=>i.value);
+        calculateRow(r, true);
+        const f = getRowFields(r);
+        const val = key => f[key] ? f[key].value : "";
 
         return {
-          hsn_code: hsn,
-          item_code: code,
-          barcode: barcode || code,
-          item_name: name,
-          department: String(department || "").toUpperCase(),
-          quantity: num(qty),
-          price: num(price),
-          discount_percent: num(disc),
-          total: num(total),
-          gst_percent: num(gstp),
-          total_gst: num(totalG),
-          purchase_price: num(purch),
-          purchase_price_gst: num(purchG),
-          landing: num(landing),
-          price1_percent: num(p1p),
-          price1: num(p1),
-          price1_gst: num(p1g),
-          price2_percent: num(p2p),
-          price2: num(p2),
-          price2_gst: num(p2g),
-          price3_percent: num(p3p),
-          price3: num(p3),
-          price3_gst: num(p3g),
+          hsn_code: val("hsn"),
+          item_code: val("code"),
+          barcode: val("barcode") || val("code"),
+          item_name: val("name"),
+          department: String(val("department") || "").toUpperCase(),
+          quantity: num(val("qty")),
+          price: num(val("price")),
+          discount_percent: num(val("disc")),
+          total: num(val("total")),
+          gst_percent: num(val("gstp")),
+          total_gst: num(val("totalG")),
+          purchase_price: num(val("purch")),
+          purchase_price_gst: num(val("purchG")),
+          landing: num(val("landing")),
+          price1_percent: num(val("p1p")),
+          price1: num(val("p1")),
+          price1_gst: num(val("p1g")),
+          price2_percent: num(val("p2p")),
+          price2: num(val("p2")),
+          price2_gst: num(val("p2g")),
+          price3_percent: num(val("p3p")),
+          price3: num(val("p3")),
+          price3_gst: num(val("p3g")),
         };
       }).filter(it=>it.item_code || it.item_name || it.barcode);
     }

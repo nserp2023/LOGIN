@@ -216,6 +216,27 @@
       background:linear-gradient(180deg, #10223e, #0e1c33) !important;
     }
 
+    .qty-stock-alert{
+      border-color:#ff4d4d !important;
+      background:linear-gradient(180deg, #4a0d0d, #2a0707) !important;
+      color:#ffd1d1 !important;
+      box-shadow:0 0 0 3px rgba(244,63,94,.18) !important;
+      font-weight:900 !important;
+    }
+
+    .qty-stock-ok{
+      border-color:#22c55e !important;
+      background:linear-gradient(180deg, #10261a, #0c1f15) !important;
+      color:#d8ffe5 !important;
+      font-weight:800 !important;
+    }
+
+    #items .grid.stock-danger-row{
+      border-color:#ff4d4d !important;
+      box-shadow:0 0 0 2px rgba(244,63,94,.20), inset 0 0 0 1px rgba(244,63,94,.25);
+      background:linear-gradient(180deg, rgba(80,12,12,.88), rgba(32,8,12,.88)) !important;
+    }
+
     .table-container{
       overflow:auto;
       width:100%;
@@ -1122,6 +1143,7 @@
       row.dataset.itemCode = data.item_code || "";
       row.dataset.mode = mode;
       row.dataset.originalQty = mode === "with_bill" ? num(data.original_quantity) : 0;
+      row.dataset.stockQty = Number(data.stock_qty || data.balance_qty || data.balance || 0);
 
       const sl = createInput(data.sl || "", "", true);
       const hsn = createInput(data.hsn_code || "", "", mode === "with_bill");
@@ -1181,16 +1203,14 @@
         el.addEventListener("input", () => calculateRow(row));
       });
 
-      retQty.addEventListener("keydown", (e) => {
-        const qtyInputs = Array.from(document.querySelectorAll('#items .grid input[type="number"]'));
-        const pos = qtyInputs.indexOf(e.target);
-
-        if(e.key === "Enter"){
-          e.preventDefault();
-          const next = qtyInputs[pos + 1];
-          if(next) next.focus();
-          else byId("saveBtn").focus();
-        }
+      [retQty, price, disc, gst, purchaseG].forEach(el => {
+        el.addEventListener("keydown", handleItemNumberKeyNav);
+        el.addEventListener("focus", () => {
+          setTimeout(() => {
+            el.select?.();
+            scrollRowIntoEntryView(row, el);
+          }, 0);
+        });
       });
 
       removeBtn.addEventListener("click", () => {
@@ -1201,6 +1221,104 @@
       });
 
       return row;
+    }
+
+    function getItemRows(){
+      return Array.from(document.querySelectorAll("#items .grid"));
+    }
+
+    function getCellIndex(input){
+      const row = input.closest(".grid");
+      if(!row) return -1;
+      return Array.from(row.querySelectorAll("input")).indexOf(input);
+    }
+
+    function focusItemCell(rowIndex, cellIndex){
+      const rows = getItemRows();
+      const row = rows[rowIndex];
+      if(!row) return false;
+      const inputs = row.querySelectorAll("input");
+      const target = inputs[cellIndex];
+      if(!target || target.readOnly) return false;
+      target.focus();
+      target.select?.();
+      scrollRowIntoEntryView(row, target);
+      return true;
+    }
+
+    function handleItemNumberKeyNav(e){
+      if(dropdown) return;
+
+      const rows = getItemRows();
+      const row = e.target.closest(".grid");
+      const rowIndex = rows.indexOf(row);
+      const cellIndex = getCellIndex(e.target);
+      if(rowIndex < 0 || cellIndex < 0) return;
+
+      if(e.key === "ArrowDown"){
+        e.preventDefault();
+        focusItemCell(rowIndex + 1, cellIndex);
+      } else if(e.key === "ArrowUp"){
+        e.preventDefault();
+        focusItemCell(rowIndex - 1, cellIndex);
+      } else if(e.key === "ArrowRight"){
+        const nextEditable = [7,9,10,12,14].find(i => i > cellIndex);
+        if(nextEditable !== undefined){
+          e.preventDefault();
+          focusItemCell(rowIndex, nextEditable);
+        }
+      } else if(e.key === "ArrowLeft"){
+        const editable = [7,9,10,12,14].filter(i => i < cellIndex);
+        const prevEditable = editable[editable.length - 1];
+        if(prevEditable !== undefined){
+          e.preventDefault();
+          focusItemCell(rowIndex, prevEditable);
+        }
+      } else if(e.key === "Enter"){
+        e.preventDefault();
+        const nextEditable = [7,9,10,12,14].find(i => i > cellIndex);
+        if(nextEditable !== undefined){
+          focusItemCell(rowIndex, nextEditable);
+        } else if(focusItemCell(rowIndex + 1, 7)){
+          return;
+        } else if(getMode() === "without_bill"){
+          addManualRow();
+        } else {
+          byId("saveBtn").focus();
+        }
+      }
+    }
+
+    function scrollRowIntoEntryView(row, focusInput = null){
+      const table = row?.closest(".table-container");
+      if(!table || !row) return;
+
+      const tableRect = table.getBoundingClientRect();
+      const rowRect = row.getBoundingClientRect();
+
+      if(rowRect.bottom > tableRect.bottom - 16){
+        table.scrollTop += rowRect.bottom - tableRect.bottom + 28;
+      } else if(rowRect.top < tableRect.top + 52){
+        table.scrollTop -= tableRect.top - rowRect.top + 62;
+      }
+
+      if(focusInput){
+        const inputRect = focusInput.getBoundingClientRect();
+        if(inputRect.right > tableRect.right - 24){
+          table.scrollLeft += inputRect.right - tableRect.right + 60;
+        } else if(inputRect.left < tableRect.left + 24){
+          table.scrollLeft -= tableRect.left - inputRect.left + 60;
+        }
+      }
+    }
+
+    function scrollToLastItemRow(){
+      const table = document.querySelector(".table-container");
+      const rows = getItemRows();
+      const last = rows[rows.length - 1];
+      if(!table || !last) return;
+      table.scrollTop = table.scrollHeight;
+      scrollRowIntoEntryView(last, last.querySelectorAll("input")[2]);
     }
 
     function renumberRows(){
@@ -1350,8 +1468,13 @@
       inputs[12].value = fmt2(it.gst_percent || 0);
       inputs[14].value = fmt2(it.purchase_price_gst || it.landing || it.price1_gst || it.purchase_price || 0);
       row.dataset.itemCode = it.item_code || "";
+      row.dataset.stockQty = Number(it.balance_qty || it.balance || 0);
       calculateRow(row);
-      setTimeout(() => inputs[7].focus(), 50);
+      setTimeout(() => {
+        inputs[7].focus();
+        inputs[7].select?.();
+        scrollRowIntoEntryView(row, inputs[7]);
+      }, 50);
     }
 
     function addManualRow(prefill = {}){
@@ -1371,12 +1494,17 @@
         discount_percent: prefill.discount_percent || 0,
         gst_percent: prefill.gst_percent || 0,
         purchase_price_gst: prefill.purchase_price_gst || prefill.landing || 0,
+        stock_qty: prefill.stock_qty || prefill.balance_qty || prefill.balance || 0,
         item_id: prefill.item_id || ""
       });
       box.appendChild(row);
       calculateRow(row);
       const inputs = row.querySelectorAll("input");
-      setTimeout(() => inputs[2].focus(), 30);
+      setTimeout(() => {
+        scrollToLastItemRow();
+        inputs[2].focus();
+        inputs[2].select?.();
+      }, 30);
     }
 
     function calculateRow(row){
@@ -1394,6 +1522,18 @@
 
       inputs[7].value = retQty ? String(retQty) : "";
       inputs[8].value = rowMode === "with_bill" ? fmt2(purQty - retQty) : fmt2(0);
+
+      const stockQty = Number(row.dataset.stockQty || 0);
+      inputs[7].classList.remove("qty-stock-alert", "qty-stock-ok");
+      row.classList.remove("stock-danger-row");
+
+      if(rowMode === "without_bill" && retQty > 0 && retQty > stockQty){
+        inputs[7].classList.add("qty-stock-alert");
+        row.classList.add("stock-danger-row");
+        inputs[8].value = `STK ${fmt2(stockQty)}`;
+      } else if(retQty > 0){
+        inputs[7].classList.add("qty-stock-ok");
+      }
 
       const gross = retQty * price;
       const discAmt = gross * (disc / 100);

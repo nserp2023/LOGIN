@@ -933,9 +933,10 @@
             <div id="address_suggestions" class="autocomplete-list address-autocomplete-list"></div>
         </div>
         
-        <div class="form-group">
+        <div class="form-group" style="position: relative;">
             <label>GST No</label>
-            <input type="text" id="cust_gst" class="form-control w-md nav-input" tabindex="6">
+            <input type="text" id="cust_gst" class="form-control w-md nav-input" tabindex="6" autocomplete="off" placeholder="GST Number">
+            <div id="gst_suggestions" class="autocomplete-list"></div>
         </div>
 
 
@@ -2688,6 +2689,144 @@ ${data.map((c, idx) => {
 
     bindCustomerSearch(mobileInput, mobileList);
     bindCustomerSearch(customerNameInput, nameList);
+
+    const gstInput = document.getElementById('cust_gst');
+    const gstList = document.getElementById('gst_suggestions');
+    let gstSearchTimer = null;
+
+    function normalizeGstNumber(value){
+        return String(value || '')
+            .toUpperCase()
+            .replace(/[^0-9A-Z]/g, '')
+            .slice(0, 15);
+    }
+
+    function isValidGstLike(value){
+        return /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(normalizeGstNumber(value));
+    }
+
+    function showGstStatus(message, tone = 'info'){
+        if(!gstList || !gstInput) return;
+        const bg = tone === 'success' ? '#ecfdf5' : tone === 'warning' ? '#fff7ed' : '#eff6ff';
+        const color = tone === 'success' ? '#065f46' : tone === 'warning' ? '#9a3412' : '#1e3a8a';
+        gstList.innerHTML = `<div class="autocomplete-item" style="background:${bg};color:${color};font-weight:900;">${escapeHtml(message)}</div>`;
+        gstList.style.display = 'block';
+        gstList.setAttribute('data-open', 'true');
+        adjustDropdownPosition(gstInput, gstList);
+    }
+
+    function hideGstSuggestions(){
+        if(!gstList) return;
+        gstList.style.display = 'none';
+        gstList.removeAttribute('data-open');
+        gstList.innerHTML = '';
+    }
+
+    function applyCustomerFromGst(c){
+        if(!c) return;
+
+        const currentMobile = document.getElementById('cust_mobile')?.value || '';
+
+        // Do not overwrite a manually typed mobile with blank.
+        document.getElementById('cust_mobile').value = c.mobile || currentMobile || '';
+        document.getElementById('cust_name').value = c.name || '';
+        document.getElementById('cust_address').value = c.address || '';
+        document.getElementById('cust_gst').value = normalizeGstNumber(c.gst_number || gstInput?.value || '');
+
+        selectedCustomerFromDropdown = true;
+        updateGstCustomerHighlight();
+        hideGstSuggestions();
+        lastHistoryKey = '';
+
+        const name = c.name || 'GST customer';
+        showStockWarning(`${name} details fetched from saved customers.`, document.getElementById('cust_name'), 'GST CUSTOMER FOUND');
+    }
+
+    async function fetchCustomerByGst(gstNo, showNewMessage = true){
+        const gst = normalizeGstNumber(gstNo);
+        if(!gst || gst.length < 5){
+            hideGstSuggestions();
+            return null;
+        }
+
+        try{
+            showGstStatus('Checking GST customer...', 'info');
+
+            const { data, error } = await sb
+                .from('customers')
+                .select('*')
+                .ilike('gst_number', gst)
+                .order('customer_id', { ascending: false })
+                .limit(1);
+
+            if(error){
+                console.error('GST customer search error:', error);
+                showGstStatus('GST search failed. Check connection.', 'warning');
+                return null;
+            }
+
+            const found = Array.isArray(data) && data.length ? data[0] : null;
+
+            if(found){
+                applyCustomerFromGst(found);
+                return found;
+            }
+
+            if(showNewMessage){
+                const msg = isValidGstLike(gst)
+                    ? 'New GST customer - not found in saved customers.'
+                    : 'GST not found. Continue typing full GST number.';
+                showGstStatus(msg, 'warning');
+            }
+            return null;
+        }catch(err){
+            console.error('GST customer fetch error:', err);
+            showGstStatus('GST search failed. Check connection.', 'warning');
+            return null;
+        }
+    }
+
+    if(gstInput && !gstInput.dataset.gstAutoFillBound){
+        gstInput.addEventListener('input', (e) => {
+            const clean = normalizeGstNumber(e.target.value);
+            if(e.target.value !== clean) e.target.value = clean;
+
+            updateGstCustomerHighlight();
+            clearTimeout(gstSearchTimer);
+
+            if(clean.length < 5){
+                hideGstSuggestions();
+                return;
+            }
+
+            gstSearchTimer = setTimeout(() => {
+                fetchCustomerByGst(clean, clean.length >= 10);
+            }, clean.length >= 15 ? 150 : 450);
+        });
+
+        gstInput.addEventListener('blur', () => {
+            clearTimeout(gstSearchTimer);
+            const clean = normalizeGstNumber(gstInput.value);
+            if(clean.length >= 5){
+                fetchCustomerByGst(clean, false);
+            }
+        });
+
+        gstInput.addEventListener('keydown', (e) => {
+            if(e.key === 'Enter'){
+                clearTimeout(gstSearchTimer);
+                fetchCustomerByGst(gstInput.value, true);
+            }
+        });
+
+        gstInput.dataset.gstAutoFillBound = '1';
+    }
+
+    document.addEventListener('click', (e) => {
+        if(gstInput && gstList && e.target !== gstInput && !gstList.contains(e.target)){
+            hideGstSuggestions();
+        }
+    });
 
     document.getElementById('cust_name')?.addEventListener('focus', () => {
         if(cleanCustomerSearch(document.getElementById('cust_mobile')?.value || '')){

@@ -470,6 +470,123 @@
             cursor: pointer;
         }
 
+
+        /* ===== NON-BLOCKING DRAFT RESTORE MESSAGE ===== */
+        .draft-toast {
+            position: fixed;
+            right: 16px;
+            bottom: 86px;
+            width: min(390px, calc(100vw - 24px));
+            background: rgba(15, 23, 42, 0.96);
+            color: #ffffff;
+            border: 1px solid rgba(34, 197, 94, 0.55);
+            border-radius: 18px;
+            box-shadow: 0 18px 45px rgba(0,0,0,0.34);
+            z-index: 16000;
+            padding: 12px;
+            display: none;
+            animation: draftToastIn 0.22s ease-out;
+        }
+
+        .draft-toast.show {
+            display: block;
+        }
+
+        .draft-toast-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .draft-toast-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 900;
+            color: #bbf7d0;
+            font-size: 14px;
+            letter-spacing: .2px;
+        }
+
+        .draft-toast-close {
+            width: 28px;
+            height: 28px;
+            border: none;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.1);
+            color: #ffffff;
+            cursor: pointer;
+            font-size: 18px;
+            line-height: 1;
+        }
+
+        .draft-toast-body {
+            font-size: 12px;
+            line-height: 1.45;
+            color: #e2e8f0;
+            margin-bottom: 10px;
+        }
+
+        .draft-toast-body b {
+            color: #ffffff;
+        }
+
+        .draft-toast-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .draft-toast-btn {
+            border: none;
+            border-radius: 10px;
+            padding: 8px 11px;
+            font-size: 12px;
+            font-weight: 900;
+            cursor: pointer;
+        }
+
+        .draft-toast-restore {
+            background: #22c55e;
+            color: #052e16;
+        }
+
+        .draft-toast-ignore {
+            background: #334155;
+            color: #ffffff;
+        }
+
+        .draft-toast-delete {
+            background: #7f1d1d;
+            color: #fee2e2;
+        }
+
+        @keyframes draftToastIn {
+            from { transform: translateY(10px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        @media (max-width: 600px){
+            .draft-toast{
+                left: 8px;
+                right: 8px;
+                bottom: 76px;
+                width: auto;
+                border-radius: 14px;
+            }
+
+            .draft-toast-actions{
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .draft-toast-restore{
+                grid-column: 1 / -1;
+            }
+        }
+
         @media print {
             .footer-section, .autocomplete-list, button { display: none !important; }
             .container { box-shadow: none; border: none; height: auto; }
@@ -1260,6 +1377,24 @@
         }
     }
 
+    function hideDraftRestoreToast(){
+        const toast = document.getElementById("draft_restore_toast");
+        if(toast) toast.classList.remove("show");
+    }
+
+    function ensureDraftRestoreToast(){
+        let toast = document.getElementById("draft_restore_toast");
+        if(toast) return toast;
+
+        toast = document.createElement("div");
+        toast.id = "draft_restore_toast";
+        toast.className = "draft-toast";
+        toast.setAttribute("role", "status");
+        toast.setAttribute("aria-live", "polite");
+        document.body.appendChild(toast);
+        return toast;
+    }
+
     function showRestoreDraftPromptIfNeeded(){
         const draft = readSavedBillDraft();
         if(!draft || !billDraftHasData(draft)) return false;
@@ -1268,25 +1403,54 @@
         const rowCount = Array.isArray(draft.rows) ? draft.rows.length : 0;
         const customer = draft.header?.customer_name || draft.header?.customer_mobile || "customer not entered";
         const total = draft.totals?.grand_total || "₹0.00";
+        const toast = ensureDraftRestoreToast();
 
-        const restore = confirm(
-            `Recovered unsaved bill found.\n\nCustomer: ${customer}\nItems: ${rowCount}\nTotal: ${total}\nSaved: ${savedTime}\n\nDo you want to restore it?`
-        );
+        toast.innerHTML = `
+            <div class="draft-toast-head">
+                <div class="draft-toast-title">💬 Unsaved bill found</div>
+                <button type="button" class="draft-toast-close" title="Ignore">×</button>
+            </div>
+            <div class="draft-toast-body">
+                <div><b>Customer:</b> ${escapeHtml(customer)}</div>
+                <div><b>Items:</b> ${rowCount} &nbsp; <b>Total:</b> ${escapeHtml(total)}</div>
+                <div><b>Saved:</b> ${escapeHtml(savedTime)}</div>
+            </div>
+            <div class="draft-toast-actions">
+                <button type="button" class="draft-toast-btn draft-toast-restore">RESTORE DRAFT</button>
+                <button type="button" class="draft-toast-btn draft-toast-ignore">IGNORE</button>
+                <button type="button" class="draft-toast-btn draft-toast-delete">DELETE DRAFT</button>
+            </div>
+        `;
 
-        if(restore){
+        toast.querySelector(".draft-toast-close")?.addEventListener("click", hideDraftRestoreToast);
+        toast.querySelector(".draft-toast-ignore")?.addEventListener("click", hideDraftRestoreToast);
+
+        toast.querySelector(".draft-toast-restore")?.addEventListener("click", () => {
+            hideDraftRestoreToast();
             restoreBillDraft(draft);
-            return true;
-        }
+            setTimeout(() => document.getElementById('cust_mobile')?.focus(), 50);
+        });
 
-        const remove = confirm("Do you want to delete this old unsaved draft?");
-        if(remove) clearBillDraft();
-        return false;
+        toast.querySelector(".draft-toast-delete")?.addEventListener("click", () => {
+            clearBillDraft();
+            hideDraftRestoreToast();
+            updateDraftStatus("Draft deleted");
+        });
+
+        toast.classList.add("show");
+        updateDraftStatus("Draft available");
+        return true;
     }
 
     function updateDraftStatus(text){
         const el = document.getElementById('draft_status_text');
         if(el){
             el.textContent = text || "Auto Backup ON";
+            el.title = "Click to check saved draft";
+            if(!el.dataset.draftClickBound){
+                el.addEventListener("click", () => showRestoreDraftPromptIfNeeded());
+                el.dataset.draftClickBound = "1";
+            }
         }
     }
 

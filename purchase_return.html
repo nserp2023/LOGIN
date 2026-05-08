@@ -402,6 +402,13 @@
       gap:10px;
     }
 
+    .dropdown .opt.supplier-opt{
+      display:grid;
+      grid-template-columns:180px 1fr 240px;
+      gap:10px;
+      align-items:center;
+    }
+
     .dropdown .opt.item-opt{
       display:grid;
       grid-template-columns:130px 1fr 110px 100px 100px;
@@ -658,6 +665,8 @@
     let loadedItems = [];
     let stockCache = [];
     let stockLoaded = false;
+    let supplierCache = [];
+    let supplierLoaded = false;
     let isEditMode = false;
     let editingReturnId = null;
     let currentMode = "with_bill";
@@ -785,7 +794,8 @@
       if(!dropdown) return;
       const opts = dropdown.querySelectorAll(".opt");
       opts.forEach((opt, i) => {
-        opt.style.background = (i === activeIndex) ? "#1b2130" : "";
+        opt.style.background = (i === activeIndex) ? "#2563eb" : "";
+        opt.style.color = (i === activeIndex) ? "#ffffff" : "";
         if(i === activeIndex) opt.scrollIntoView({ block: "nearest" });
       });
     }
@@ -825,7 +835,7 @@
 
       items.forEach((it) => {
         const opt = document.createElement("div");
-        opt.className = type === "item" ? "opt item-opt" : "opt purchase-opt";
+        opt.className = type === "item" ? "opt item-opt" : (type === "supplier" ? "opt supplier-opt" : "opt purchase-opt");
 
         if(type === "item"){
           opt.innerHTML = `
@@ -834,6 +844,12 @@
             <div class="muted">${it.barcode || ""}</div>
             <div class="muted">GST ${fmt2(it.gst_percent || 0)}%</div>
             <div class="muted">₹${fmt2(it.purchase_price_gst || it.landing || it.purchase_price || 0)}</div>
+          `;
+        } else if(type === "supplier"){
+          opt.innerHTML = `
+            <div class="muted">${it.gst_number || "NO GST"}</div>
+            <div>${it.supplier_name || ""}</div>
+            <div class="muted">${it.address || ""}</div>
           `;
         } else {
           opt.innerHTML = `
@@ -851,7 +867,7 @@
         dropdown.appendChild(opt);
       });
 
-      placeDropdown(anchorInput, type === "item" ? 760 : 760);
+      placeDropdown(anchorInput, type === "item" ? 760 : (type === "supplier" ? 760 : 760));
       activeIndex = 0;
       highlightOption();
 
@@ -943,6 +959,7 @@
         byId("returnStatus").innerHTML = `<span class="ok">Manual mode active. Enter supplier details and add items.</span>`;
         setItemsEnabled(true);
         await ensureStockLoaded();
+        await ensureSupplierLoaded();
         addManualRow();
       }
       maybeEnableSave();
@@ -1186,6 +1203,78 @@
       });
     }
 
+
+    async function ensureSupplierLoaded(){
+      if(supplierLoaded) return;
+
+      let all = [];
+      const pageSize = 1000;
+      for(let from = 0; ; from += pageSize){
+        const to = from + pageSize - 1;
+        const { data, error } = await sb
+          .from("purchase_details")
+          .select("supplier_name,gst_number,address,created_at")
+          .order("created_at", { ascending: false })
+          .range(from, to);
+
+        if(error){
+          console.error(error);
+          byId("returnStatus").innerHTML = `<span class="err">Supplier list load failed: ${error.message}</span>`;
+          return;
+        }
+
+        all = all.concat(data || []);
+        if(!data || data.length < pageSize) break;
+      }
+
+      const map = new Map();
+      all.forEach(sup => {
+        const name = String(sup.supplier_name || "").trim();
+        const gst = String(sup.gst_number || "").trim();
+        const address = String(sup.address || "").trim();
+        if(!name && !gst) return;
+        const key = `${gst.toUpperCase()}|${name.toUpperCase()}`;
+        if(!map.has(key)) map.set(key, { supplier_name:name, gst_number:gst, address });
+        else if(address && !map.get(key).address) map.get(key).address = address;
+      });
+
+      supplierCache = Array.from(map.values()).sort((a,b) => (a.supplier_name || "").localeCompare(b.supplier_name || ""));
+      supplierLoaded = true;
+    }
+
+    async function searchSupplierForHeader(anchor){
+      if(getMode() !== "without_bill") return;
+      await ensureSupplierLoaded();
+
+      const q = String(anchor.value || "").trim().toUpperCase();
+      if(q.length < 1){
+        hideDropdown();
+        return;
+      }
+
+      const parts = q.split(/\s+/).filter(Boolean);
+      const result = supplierCache.filter(sup => {
+        const hay = `${sup.gst_number || ""} ${sup.supplier_name || ""} ${sup.address || ""}`.toUpperCase();
+        return parts.every(p => hay.includes(p));
+      }).slice(0, 50);
+
+      if(!result.length){
+        hideDropdown();
+        return;
+      }
+
+      showDropdown(anchor, result, pick => fillSupplierHeader(pick), "supplier");
+    }
+
+    function fillSupplierHeader(sup){
+      byId("gstNumber").value = sup.gst_number || "";
+      byId("supplierName").value = sup.supplier_name || "";
+      byId("supplierAddress").value = sup.address || "";
+      byId("returnStatus").innerHTML = `<span class="ok">Supplier selected from old purchase records.</span>`;
+      maybeEnableSave();
+      setTimeout(() => byId("invoiceNumber").focus(), 50);
+    }
+
     async function ensureStockLoaded(){
       if(stockLoaded) return;
       byId("saveStatus").textContent = "Loading stock items for manual return...";
@@ -1414,6 +1503,7 @@
         byId("items").innerHTML = "";
         setItemsEnabled(true);
         await ensureStockLoaded();
+        await ensureSupplierLoaded();
         (returnItems || []).forEach(it => addManualRow(it));
         if(!(returnItems || []).length) addManualRow();
       } else {
@@ -1613,6 +1703,16 @@
     ["gstNumber", "supplierName", "supplierAddress", "invoiceNumber", "invoiceDate", "returnDate"].forEach(id => {
       byId(id).addEventListener("input", maybeEnableSave);
       byId(id).addEventListener("change", maybeEnableSave);
+    });
+
+    ["gstNumber", "supplierName"].forEach(id => {
+      byId(id).addEventListener("input", (e) => {
+        maybeEnableSave();
+        searchSupplierForHeader(e.target);
+      });
+      byId(id).addEventListener("focus", (e) => {
+        if(getMode() === "without_bill" && String(e.target.value || "").trim()) searchSupplierForHeader(e.target);
+      });
     });
 
     byId("searchBtn").addEventListener("click", searchPurchases);

@@ -1012,6 +1012,12 @@
     let currentUserRole = "";
     let canSeeLandingColumn = false;
 
+    // --- BELOW LANDING SECRET UNLOCK ---
+    // Normal save blocks 0 price and below-landing sales.
+    // OWNER / ADMIN can long-press bottom-left hidden area for 4 seconds to unlock below-landing save for 2 minutes.
+    let belowLandingUnlocked = false;
+    let belowLandingUnlockTimer = null;
+
     // --- GEOAPIFY ADDRESS AUTOCOMPLETE ---
     const GEOAPIFY_API_KEY = "990205e0a84c4f7ea549a0485e60ceab";
     let geoapifyAddressTimer = null;
@@ -1378,6 +1384,7 @@
 
         bindPaymentEvents();
         initAddressGeoapify();
+        setupBelowLandingSecretUnlock();
 
         const params = new URLSearchParams(window.location.search);
         const convertId = params.get("convert");
@@ -1682,6 +1689,85 @@
         return Number.isFinite(n) ? n : 0;
     }
 
+    function canUseBelowLandingUnlock() {
+        return currentUserRole === "OWNER" || currentUserRole === "ADMIN";
+    }
+
+    function unlockBelowLandingTemporarily() {
+        if (!canUseBelowLandingUnlock()) {
+            showStockWarning("Only OWNER / ADMIN can unlock below landing sale.", null, "LOCKED");
+            return;
+        }
+
+        belowLandingUnlocked = true;
+
+        clearTimeout(belowLandingUnlockTimer);
+        belowLandingUnlockTimer = setTimeout(() => {
+            belowLandingUnlocked = false;
+            updateDraftStatus("Below landing lock ON");
+        }, 2 * 60 * 1000);
+
+        updateDraftStatus("Below landing unlocked 2 min");
+        showStockWarning(
+            "Below landing sale unlocked for 2 minutes.\nUse carefully.",
+            null,
+            "SECRET UNLOCK ENABLED"
+        );
+    }
+
+    function getRowLandingValue(row) {
+        let landing = parseFloat(row?.querySelector('.landing-inp')?.value || 0) || 0;
+
+        if (landing <= 0) {
+            const rawItem = getRowRawItem(row);
+            landing = parseFloat(rawItem?.landing || 0) || 0;
+        }
+
+        return Number.isFinite(landing) ? landing : 0;
+    }
+
+    function validateSellingPriceNotBelowLanding(row) {
+        if (!row) return true;
+
+        const code = row.querySelector('.code-inp')?.value?.trim() || "";
+        const name = row.querySelector('.name-inp')?.value?.trim() || "";
+        const qty = parseFloat(row.querySelector('.qty-inp')?.value || 0) || 0;
+
+        if (!code && !name) return true;
+        if (qty <= 0) return true;
+
+        const priceGstInput = row.querySelector('.price-gst-inp');
+        const priceInput = row.querySelector('.price-inp');
+        const sellingPriceGst = parseFloat(priceGstInput?.value || 0) || 0;
+        const landing = getRowLandingValue(row);
+
+        // Never allow zero price, even after secret unlock.
+        if (sellingPriceGst <= 0) {
+            showStockWarning(
+                `${name || code}\nSelling price cannot be 0.`,
+                priceGstInput || priceInput,
+                "PRICE WARNING"
+            );
+            return false;
+        }
+
+        // Owner/Admin temporary secret unlock allows below-landing sale, but not zero price.
+        if (belowLandingUnlocked) {
+            return true;
+        }
+
+        if (landing > 0 && sellingPriceGst < landing) {
+            showStockWarning(
+                `${name || code}\nSelling Price+GST: ₹${sellingPriceGst.toFixed(2)}\nLanding: ₹${landing.toFixed(2)}\n\nCannot save below landing price.`,
+                priceGstInput || priceInput,
+                "BELOW LANDING WARNING"
+            );
+            return false;
+        }
+
+        return true;
+    }
+
     function getCurrentDocType() {
         return document.getElementById("doc_type")?.value || "sales";
     }
@@ -1934,9 +2020,7 @@ async function loadStockData() {
         let error = null;
 
         for (let attempt = 1; attempt <= 3; attempt++) {
-const stockSelect = canSeeLandingColumn
-                ? 'item_code,item_name,barcode,price1,price2,price3,landing,balance,gst_percent,hsn_code,department,minimum_qty,maximum_qty'
-                : 'item_code,item_name,barcode,price1,price2,price3,balance,gst_percent,hsn_code,department,minimum_qty,maximum_qty';
+const stockSelect = 'item_code,item_name,barcode,price1,price2,price3,landing,balance,gst_percent,hsn_code,department,minimum_qty,maximum_qty';
 
             const res = await sb
                 .from('stock_balance_view')
@@ -3045,14 +3129,58 @@ function calcTotal() {
     const trigger = document.getElementById('profit_trigger');
     const profitBox = document.getElementById('profit_box');
 
-    trigger.addEventListener('dblclick', () => {
-        if (profitBox.style.display === 'none') {
-            calcProfit();
-            profitBox.style.display = 'block';
-        } else {
-            profitBox.style.display = 'none';
+    if (trigger) {
+        trigger.addEventListener('dblclick', () => {
+            if (profitBox.style.display === 'none') {
+                calcProfit();
+                profitBox.style.display = 'block';
+            } else {
+                profitBox.style.display = 'none';
+            }
+        });
+    }
+
+    function setupBelowLandingSecretUnlock() {
+        const secretArea = document.getElementById("profit_trigger");
+        if (!secretArea || secretArea.dataset.belowLandingUnlockBound === "1") return;
+
+        secretArea.dataset.belowLandingUnlockBound = "1";
+        let pressTimer = null;
+        let longPressTriggered = false;
+
+        function startPress(e) {
+            if (e && e.cancelable) e.preventDefault();
+
+            longPressTriggered = false;
+            clearTimeout(pressTimer);
+
+            pressTimer = setTimeout(() => {
+                longPressTriggered = true;
+                unlockBelowLandingTemporarily();
+            }, 4000);
         }
-    });
+
+        function cancelPress() {
+            clearTimeout(pressTimer);
+            pressTimer = null;
+        }
+
+        secretArea.addEventListener("mousedown", startPress);
+        secretArea.addEventListener("mouseup", cancelPress);
+        secretArea.addEventListener("mouseleave", cancelPress);
+
+        secretArea.addEventListener("touchstart", startPress, { passive: false });
+        secretArea.addEventListener("touchend", cancelPress);
+        secretArea.addEventListener("touchcancel", cancelPress);
+
+        secretArea.addEventListener("click", (e) => {
+            if (longPressTriggered) {
+                e.preventDefault();
+                e.stopPropagation();
+                longPressTriggered = false;
+            }
+        }, true);
+    }
 
     function handleListNav(e, list, callback) {
         if(getComputedStyle(list).display === 'none') return false;
@@ -3577,6 +3705,10 @@ function calcTotal() {
 
             if (docType === "sales" && !validateSalesRowQty(row, { showWarning: true })) {
                 throw new Error(`Entered qty is more than available stock for item: ${code}`);
+            }
+
+            if (!validateSellingPriceNotBelowLanding(row)) {
+                throw new Error(`Selling price is below landing or zero for item: ${code}`);
             }
 
             const baseItem = {

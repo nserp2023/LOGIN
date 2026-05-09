@@ -693,6 +693,7 @@
     let isEditMode = false;
     let editingReturnId = null;
     let currentMode = "with_bill";
+    let navLock = false;
 
     document.addEventListener("DOMContentLoaded", async () => {
       const ok = await requirePageAccess("purchase");
@@ -1234,19 +1235,33 @@
     }
 
     function focusItemCell(rowIndex, cellIndex){
+      if(navLock) return false;
+      navLock = true;
+      setTimeout(() => { navLock = false; }, 120);
+
       const rows = getItemRows();
       const row = rows[rowIndex];
       if(!row) return false;
+
       const inputs = row.querySelectorAll("input");
       const target = inputs[cellIndex];
       if(!target || target.readOnly) return false;
-      target.focus();
-      target.select?.();
-      scrollRowIntoEntryView(row, target);
+
+      target.focus({ preventScroll: true });
+      setTimeout(() => {
+        target.select?.();
+        scrollRowIntoEntryView(row, target);
+      }, 20);
+
       return true;
     }
 
     function handleItemNumberKeyNav(e){
+      if(e.repeat){
+        e.preventDefault();
+        return;
+      }
+
       if(dropdown) return;
 
       const rows = getItemRows();

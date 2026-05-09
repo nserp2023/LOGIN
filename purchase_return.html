@@ -1173,12 +1173,14 @@
       const purQty = createInput(mode === "with_bill" ? fmt2(data.original_quantity || 0) : "", "", mode === "with_bill", "number");
       const retQty = createInput(data.return_quantity ? String(num(data.return_quantity)) : "", "", false, "number");
       const balQty = createInput("0.00", "", true);
-      const price = createInput(fmt2(data.price || 0), "", mode === "with_bill", "number");
-      const disc = createInput(fmt2(data.discount_percent || 0), "", mode === "with_bill", "number");
+      // Keep price/discount/GST editable even in WITH BILL mode.
+      // User may need to correct supplier return price, and Enter from Return Qty must land on Price.
+      const price = createInput(fmt2(data.price || 0), "", false, "number");
+      const disc = createInput(fmt2(data.discount_percent || 0), "", false, "number");
       const total = createInput("0.00", "", true);
-      const gst = createInput(fmt2(data.gst_percent || 0), "", mode === "with_bill", "number");
+      const gst = createInput(fmt2(data.gst_percent || 0), "", false, "number");
       const totalG = createInput("0.00", "", true);
-      const purchaseG = createInput(fmt2(data.purchase_price_gst || data.landing || 0), "", mode === "with_bill", "number");
+      const purchaseG = createInput(fmt2(data.purchase_price_gst || data.landing || 0), "", false, "number");
       const removeBtn = document.createElement("button");
       removeBtn.type = "button";
       removeBtn.className = "btn danger";
@@ -1288,6 +1290,11 @@
       const cellIndex = getCellIndex(e.target);
       if(rowIndex < 0 || cellIndex < 0) return;
 
+      // Fixed entry order:
+      // Return Qty → Price → Disc% → GST% → Purchase+GST → next row Return Qty
+      const entryOrder = [7, 9, 10, 12, 14];
+      const orderPos = entryOrder.indexOf(cellIndex);
+
       if(e.key === "ArrowDown"){
         e.preventDefault();
         focusItemCell(rowIndex + 1, cellIndex);
@@ -1295,23 +1302,19 @@
         e.preventDefault();
         focusItemCell(rowIndex - 1, cellIndex);
       } else if(e.key === "ArrowRight"){
-        const nextEditable = [7,9,10,12,14].find(i => i > cellIndex);
-        if(nextEditable !== undefined){
+        if(orderPos >= 0 && orderPos < entryOrder.length - 1){
           e.preventDefault();
-          focusItemCell(rowIndex, nextEditable);
+          focusItemCell(rowIndex, entryOrder[orderPos + 1]);
         }
       } else if(e.key === "ArrowLeft"){
-        const editable = [7,9,10,12,14].filter(i => i < cellIndex);
-        const prevEditable = editable[editable.length - 1];
-        if(prevEditable !== undefined){
+        if(orderPos > 0){
           e.preventDefault();
-          focusItemCell(rowIndex, prevEditable);
+          focusItemCell(rowIndex, entryOrder[orderPos - 1]);
         }
       } else if(e.key === "Enter"){
         e.preventDefault();
-        const nextEditable = [7,9,10,12,14].find(i => i > cellIndex);
-        if(nextEditable !== undefined){
-          focusItemCell(rowIndex, nextEditable);
+        if(orderPos >= 0 && orderPos < entryOrder.length - 1){
+          focusItemCell(rowIndex, entryOrder[orderPos + 1]);
         } else if(focusItemCell(rowIndex + 1, 7)){
           return;
         } else if(getMode() === "without_bill"){

@@ -713,7 +713,13 @@
     });
 
     document.addEventListener("input", function(e){
-      if(e.target.tagName === "INPUT" && e.target.type !== "date" && !e.target.readOnly){
+      if(
+        e.target.tagName === "INPUT" &&
+        e.target.type !== "date" &&
+        e.target.inputMode !== "decimal" &&
+        !e.target.classList.contains("decimal-input") &&
+        !e.target.readOnly
+      ){
         e.target.value = String(e.target.value || "").toUpperCase();
       }
     });
@@ -1097,7 +1103,19 @@
     function createInput(val = "", cls = "", readonly = false, type = "text"){
       const el = document.createElement("input");
       el.value = val ?? "";
-      el.type = type;
+
+      // IMPORTANT:
+      // Price / qty / GST fields are kept as text with decimal input mode.
+      // Browser number inputs can temporarily reject values like "100." while typing,
+      // and our live calculation/input handlers can then wipe the decimal value.
+      if(type === "number"){
+        el.type = "text";
+        el.inputMode = "decimal";
+        el.classList.add("decimal-input");
+      } else {
+        el.type = type;
+      }
+
       if(cls) el.classList.add(cls);
       if(readonly){
         el.readOnly = true;

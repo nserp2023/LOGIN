@@ -1462,39 +1462,31 @@ if (baseLanding > 0) {
       const unitBase = num(unitBaseValue);
 
       const active = document.activeElement;
-      const fromPct = active === pctEl;
       const fromBase = active === baseEl;
       const fromGst = active === gstEl;
 
-      if(fromPct){
-        const b = unitBase * (1 + pct/100);
-        baseEl.value = fmt2(b);
-        gstEl.value = fmt2(b * (1 + gstPercent/100));
-      }else if(fromBase){
-        const p = unitBase ? ((base/unitBase)-1)*100 : 0;
+      if(fromBase){
+        const p = unitBase ? ((base / unitBase) - 1) * 100 : 0;
         pctEl.value = fmt2(p);
-        gstEl.value = fmt2(base * (1 + gstPercent/100));
-      }else if(fromGst){
-        const b = gst / (1 + gstPercent/100);
-        baseEl.value = fmt2(b);
-        const p = unitBase ? ((b/unitBase)-1)*100 : 0;
-        pctEl.value = fmt2(p);
-      }else{
-        if(baseEl.value !== ""){
-          const p = unitBase ? ((base/unitBase)-1)*100 : 0;
-          pctEl.value = fmt2(p);
-          gstEl.value = fmt2(base * (1 + gstPercent/100));
-        }else if(gstEl.value !== ""){
-          const b = gst / (1 + gstPercent/100);
-          baseEl.value = fmt2(b);
-          const p = unitBase ? ((b/unitBase)-1)*100 : 0;
-          pctEl.value = fmt2(p);
-        }else if(pctEl.value !== ""){
-          const b = unitBase * (1 + pct/100);
-          baseEl.value = fmt2(b);
-          gstEl.value = fmt2(b * (1 + gstPercent/100));
-        }
+        gstEl.value = fmt2(base * (1 + gstPercent / 100));
+        return;
       }
+
+      if(fromGst){
+        const b = gst / (1 + gstPercent / 100);
+        baseEl.value = fmt2(b);
+        const p = unitBase ? ((b / unitBase) - 1) * 100 : 0;
+        pctEl.value = fmt2(p);
+        return;
+      }
+
+      // Important fix:
+      // When purchase price, discount, GST, purchase+GST, or landing changes,
+      // sales prices must auto-change from saved P1% / P2% / P3%.
+      // Previous logic kept old P1/P2/P3 and changed only the percentages.
+      const b = unitBase * (1 + pct / 100);
+      baseEl.value = fmt2(b);
+      gstEl.value = fmt2(b * (1 + gstPercent / 100));
     }
 
     function collectInvoice(){

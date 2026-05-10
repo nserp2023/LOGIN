@@ -477,7 +477,6 @@ function render(){
         <td>
           <div class="actions">
             <button class="btn btn-blue" onclick="viewDetails(${i})">View</button>
-            <button class="btn btn-dark" onclick="convertToBill(${i})">Convert</button>
             ${bal > 0 ? `<button class="btn btn-green" onclick="collectBalance(${i})">Collect</button>` : ""}
             <button class="btn ${type === "FULL" ? "btn-purple" : type === "CREDIT" ? "btn-orange" : "btn-red"}" onclick="sendReminder(${i})">${type === "FULL" ? "Bill Alert" : type === "CREDIT" ? "Credit Alert" : "Remind"}</button>
           </div>
@@ -539,7 +538,6 @@ function viewDetails(i){
     </div>
     <br>
     <div class="actions">
-      <button class="btn btn-dark" onclick="convertToBill(${i})">Convert To Bill</button>
       ${bal > 0 ? `<button class="btn btn-green" onclick="collectBalance(${i})">Collect Balance</button>` : ""}
       <button class="btn ${type === "FULL" ? "btn-purple" : type === "CREDIT" ? "btn-orange" : "btn-red"}" onclick="sendReminder(${i})">${type === "FULL" ? "Send Billing Alert" : type === "CREDIT" ? "Send Credit Alert" : "WhatsApp Reminder"}</button>
     </div>

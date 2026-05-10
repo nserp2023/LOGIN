@@ -1130,6 +1130,7 @@
     let currentUserRole = "";
     let canSeeLandingColumn = false;
     let isSalesOrderConversionMode = false;
+    let salesOrderAdvancePaid = 0;
 
 
     // --- BELOW LANDING SECRET UNLOCK ---
@@ -1594,6 +1595,7 @@
 
             if(!window.loadedSalesOrderId){
                 isSalesOrderConversionMode = false;
+                salesOrderAdvancePaid = 0;
             }
             fetchNextBillNumber();
 
@@ -1947,6 +1949,34 @@
         return document.getElementById("doc_type")?.value || "sales";
     }
 
+    function getSalesOrderConversionPaidAmount(totalAmount = getCurrentRoundedGrandTotal()) {
+        const total = parseFloat(totalAmount || 0) || 0;
+        const advance = parseFloat(salesOrderAdvancePaid || 0) || 0;
+        return Math.max(0, total - advance);
+    }
+
+    function applySalesOrderConversionPaidAmount(totalAmount = getCurrentRoundedGrandTotal()) {
+        if (!isSalesOrderConversionMode) return;
+
+        const paymentTypeEl = document.getElementById("payment_type");
+        const paidAmountEl = document.getElementById("paid_amount");
+
+        if (paymentTypeEl) {
+            paymentTypeEl.value = "CREDIT";
+            paymentTypeEl.disabled = true;
+            paymentTypeEl.dataset.justChangedToCredit = "0";
+        }
+
+        if (paidAmountEl) {
+            const payableAfterAdvance = getSalesOrderConversionPaidAmount(totalAmount);
+            paidAmountEl.value = payableAfterAdvance.toFixed(2);
+            paidAmountEl.readOnly = true;
+            paidAmountEl.disabled = false;
+            paidAmountEl.placeholder = "Bill Total - Advance";
+            paidAmountEl.title = `Current bill amount - sales order advance paid (Advance: ₹${(parseFloat(salesOrderAdvancePaid || 0) || 0).toFixed(2)})`;
+        }
+    }
+
     function forceSalesOrderCreditMode() {
         const docType = getCurrentDocType();
         const paymentTypeEl = document.getElementById("payment_type");
@@ -1962,6 +1992,7 @@
             paidAmountEl.placeholder = isSalesOrderConversionMode ? "Advance / Paid Amount" : "Advance Amount";
         } else {
             paymentTypeEl.disabled = false;
+            paidAmountEl.readOnly = false;
             paidAmountEl.placeholder = "0.00";
         }
     }
@@ -2007,17 +2038,23 @@
         }
 
         if (paidLabel) {
-            paidLabel.textContent = (docType === "sales_order" || isSalesOrderConversionMode) ? "Advance / Paid" : "Credit Paid";
+            paidLabel.textContent = isSalesOrderConversionMode
+                ? "Bill Total - Advance"
+                : (docType === "sales_order" ? "Advance" : "Credit Paid");
         }
 
-        if (docType === "sales_order" || isSalesOrderConversionMode) {
+        if (isSalesOrderConversionMode) {
+            applySalesOrderConversionPaidAmount(total);
+        } else if (docType === "sales_order") {
             paymentTypeEl.value = "CREDIT";
             paymentTypeEl.disabled = true;
             paymentTypeEl.dataset.justChangedToCredit = "0";
             paidAmountEl.disabled = false;
-            paidAmountEl.placeholder = isSalesOrderConversionMode ? "Advance / Paid Amount" : "Advance Amount";
+            paidAmountEl.readOnly = false;
+            paidAmountEl.placeholder = "Advance Amount";
         } else {
             paymentTypeEl.disabled = false;
+            paidAmountEl.readOnly = false;
             paidAmountEl.placeholder = "0.00";
         }
 
@@ -2028,8 +2065,11 @@
         if (paymentType === "CASH") {
             paidAmountEl.value = total.toFixed(2);
             paidAmountEl.disabled = true;
+        } else if (isSalesOrderConversionMode) {
+            applySalesOrderConversionPaidAmount(total);
         } else {
             paidAmountEl.disabled = false;
+            paidAmountEl.readOnly = false;
 
             let paid = getMoneyValue(paidAmountEl.value);
 
@@ -4107,6 +4147,10 @@ function calcTotal() {
             const roundedTotal = Math.round(exactTotal);
             const roundOff = roundedTotal - exactTotal;
 
+            if (isSalesOrderConversionMode) {
+                applySalesOrderConversionPaidAmount(roundedTotal);
+            }
+
             let paidAmount = parseFloat(document.getElementById("paid_amount")?.value) || 0;
             paidAmount = Math.max(0, Math.min(roundedTotal, paidAmount));
 
@@ -4477,6 +4521,7 @@ function calcTotal() {
 
                 window.loadedSalesOrderId = null;
                 isSalesOrderConversionMode = false;
+                salesOrderAdvancePaid = 0;
             }
 
             window.location.replace(window.location.pathname + "?fresh=" + Date.now());
@@ -4575,6 +4620,9 @@ function calcTotal() {
             document.getElementById("cust_mobile").value = head.customer_mobile || "";
             document.getElementById("cust_gst").value = head.gst_number || "";
             document.getElementById("cust_address").value = head.address || "";
+            salesOrderAdvancePaid = parseFloat(head.advance_amount ?? head.paid_amount ?? 0) || 0;
+        } else {
+            salesOrderAdvancePaid = 0;
         }
 
         const {data, error} = await sb
@@ -4623,10 +4671,9 @@ function calcTotal() {
         });
 
         calcTotal();
-        document.getElementById("payment_type").value = "CASH";
-        document.getElementById("paid_amount").value = "0.00";
-        syncPaymentUI();
-        alert("Sales Order loaded. Modify if needed and save as Sales.");
+        applySalesOrderConversionPaidAmount();
+        syncPaymentUI(true);
+        alert(`Sales Order loaded. Advance paid: ₹${salesOrderAdvancePaid.toFixed(2)}. Paid Amount is auto-set as Current Bill Total - Advance.`);
     }
 
 

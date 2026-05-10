@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Bulk Sales Edit - VAJRA</title>
+  <title>Safe Bulk Sales Edit - VAJRA</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root{
@@ -21,12 +21,12 @@
       --soft-red:#fff1f2;
       --soft-green:#ecfdf5;
       --soft-yellow:#fff7ed;
+      --soft-blue:#eff6ff;
       --shadow:0 10px 30px rgba(15,23,42,.08);
-      --radius:18px;
     }
     *{box-sizing:border-box}
     html,body{margin:0;padding:0;background:var(--bg);font-family:Arial,Helvetica,sans-serif;color:var(--text)}
-    .wrap{max-width:1700px;margin:0 auto;padding:18px}
+    .wrap{max-width:1550px;margin:0 auto;padding:18px}
     .hero{
       background:linear-gradient(135deg,var(--head),var(--head2));
       color:#fff;border-radius:24px;padding:18px 22px;box-shadow:var(--shadow);margin-bottom:16px
@@ -40,58 +40,111 @@
     .toolbar-card{
       background:var(--card);border:1px solid var(--line);border-radius:22px;padding:16px;box-shadow:var(--shadow)
     }
-    .grid{display:grid;grid-template-columns:repeat(7,minmax(120px,1fr));gap:12px;align-items:end}
+    .grid{display:grid;grid-template-columns:repeat(8,minmax(120px,1fr));gap:12px;align-items:end}
     .field label{display:block;font-size:12px;font-weight:700;margin:0 0 6px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
     .field input,.field select,.field button{
       width:100%;height:46px;border-radius:12px;border:1px solid var(--line);padding:0 12px;font-size:14px;background:#fff;color:var(--text)
     }
     .field button{font-weight:800;cursor:pointer;border:none}
+    .field button:disabled{opacity:.55;cursor:not-allowed}
     .btn-blue{background:var(--blue)!important;color:#fff!important}
     .btn-dark{background:var(--head)!important;color:#fff!important}
     .btn-green{background:var(--green)!important;color:#fff!important}
+    .btn-red{background:var(--red)!important;color:#fff!important}
+    .btn-amber{background:var(--amber)!important;color:#fff!important}
     .stats{display:flex;gap:12px;flex-wrap:wrap;margin-top:14px}
-    .stat{background:#f8fafc;border:1px solid var(--line);border-radius:14px;padding:10px 14px;min-width:180px}
+    .stat{background:#f8fafc;border:1px solid var(--line);border-radius:14px;padding:10px 14px;min-width:155px}
     .stat .k{font-size:12px;color:var(--muted);font-weight:700;text-transform:uppercase}
     .stat .v{font-size:20px;font-weight:800;margin-top:4px}
     .summary-strip{margin:14px 0 10px;color:var(--muted);font-size:13px;font-weight:700}
-    .bill-card{background:var(--card);border:1px solid var(--line);border-radius:22px;overflow:hidden;box-shadow:var(--shadow);margin-bottom:18px}
-    .bill-head{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:16px 18px;background:linear-gradient(135deg,#0f172a,#334155);color:#fff}
+    .bill-card{background:var(--card);border:1px solid var(--line);border-radius:22px;overflow:visible;box-shadow:var(--shadow);margin-bottom:18px}
+    .bill-head{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:16px 18px;background:linear-gradient(135deg,#0f172a,#334155);color:#fff;border-radius:22px 22px 0 0}
     .bill-title{font-size:20px;font-weight:900}
     .bill-sub{font-size:13px;opacity:.92;margin-top:6px;line-height:1.5}
     .bill-total{text-align:right}
     .bill-total .amt{font-size:24px;font-weight:900}
     .bill-total .note{font-size:12px;opacity:.9;margin-top:4px}
     .bill-body{padding:14px}
-    .table-wrap{overflow:auto;border:1px solid var(--line);border-radius:16px}
-    table{width:100%;border-collapse:separate;border-spacing:0;min-width:1400px}
+    .bill-tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+    .mini-btn{height:38px;border:none;border-radius:11px;padding:0 14px;font-weight:900;cursor:pointer;font-size:12px}
+    .table-wrap{overflow:auto;border:1px solid var(--line);border-radius:16px;max-height:70vh;background:#fff}
+    table{width:100%;border-collapse:separate;border-spacing:0;min-width:1180px}
     th,td{padding:10px 8px;border-bottom:1px solid var(--line);font-size:13px;vertical-align:middle;background:#fff}
     th{position:sticky;top:0;background:#f8fafc;color:#334155;font-size:12px;text-transform:uppercase;letter-spacing:.4px;z-index:2}
     tr:last-child td{border-bottom:none}
-    .cell-input{width:100%;height:38px;border:1px solid var(--line);border-radius:10px;padding:0 10px;font-size:13px}
+    .cell-input{width:100%;height:38px;border:1px solid var(--line);border-radius:10px;padding:0 10px;font-size:13px;background:#fff}
+    .cell-input.changed{border-color:var(--amber);background:#fffbeb;font-weight:800}
+    .cell-input:focus{outline:2px solid rgba(37,99,235,.2);border-color:var(--blue)}
     .num{text-align:right}
     .center{text-align:center}
     .row-negative td{background:var(--soft-yellow)}
     .row-zero td{background:#f8fafc;color:#94a3b8}
-    .tag{display:inline-block;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:800}
+    .row-changed td{box-shadow:inset 4px 0 0 var(--amber)}
+    .row-new td{box-shadow:inset 4px 0 0 var(--green)}
+    .tag{display:inline-block;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:800;white-space:nowrap}
     .tag-neg{background:#fff1f2;color:#b91c1c}
     .tag-ok{background:#ecfdf5;color:#047857}
     .tag-zero{background:#eef2ff;color:#4338ca}
-    .bill-footer{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 16px;background:#f8fafc;border-top:1px solid var(--line)}
+    .tag-change{background:#fffbeb;color:#92400e}
+    .tag-new{background:#ecfdf5;color:#047857}
+    .bill-footer{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 16px;background:#f8fafc;border-top:1px solid var(--line);border-radius:0 0 22px 22px}
     .bill-footer .mini{font-size:12px;color:var(--muted);font-weight:700}
-    .msg{padding:14px 16px;border-radius:16px;border:1px solid var(--line);background:#fff;color:var(--muted);box-shadow:var(--shadow)}
+    .msg{padding:14px 16px;border-radius:16px;border:1px solid var(--line);background:#fff;color:var(--muted);box-shadow:var(--shadow);margin-bottom:12px;line-height:1.5}
     .warn{background:var(--soft-yellow);border-color:#fed7aa;color:#9a3412}
     .success{background:var(--soft-green);border-color:#a7f3d0;color:#065f46}
     .error{background:var(--soft-red);border-color:#fecdd3;color:#991b1b}
-    .hidden{display:none}
-    @media (max-width:1200px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-    @media (max-width:700px){.grid{grid-template-columns:1fr}.hero h1{font-size:22px}.bill-title{font-size:18px}.bill-total .amt{font-size:20px}}
+    .info{background:var(--soft-blue);border-color:#bfdbfe;color:#1e40af}
+    .hidden{display:none!important}
+
+    .item-search-wrap{position:relative;min-width:360px;max-width:620px;flex:1}
+    .item-search{width:100%;height:40px;border:1px solid var(--line);border-radius:12px;padding:0 12px;font-size:13px}
+    .suggest-box{
+      position:absolute;left:0;right:0;top:44px;background:#fff;border:1px solid var(--line);
+      border-radius:14px;box-shadow:0 18px 45px rgba(15,23,42,.18);z-index:200;max-height:320px;overflow:auto
+    }
+    .suggest-item{padding:10px 12px;border-bottom:1px solid var(--line);cursor:pointer}
+    .suggest-item:hover,.suggest-item.active{background:#eff6ff}
+    .suggest-item b{font-size:13px}
+    .suggest-item div{font-size:12px;color:var(--muted);margin-top:3px}
+    .remove-btn{height:34px;border:none;border-radius:10px;padding:0 10px;font-size:12px;font-weight:900;cursor:pointer;background:#fee2e2;color:#991b1b}
+
+    .modal-backdrop{
+      position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:1000;
+      display:flex;align-items:center;justify-content:center;padding:18px
+    }
+    .modal{
+      background:#fff;border-radius:22px;box-shadow:0 25px 70px rgba(0,0,0,.25);
+      max-width:780px;width:100%;max-height:88vh;overflow:auto;border:1px solid var(--line)
+    }
+    .modal-head{padding:18px 20px;background:#111827;color:#fff;border-radius:22px 22px 0 0}
+    .modal-head h2{margin:0;font-size:22px}
+    .modal-body{padding:18px 20px}
+    .modal-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;padding:16px 20px;border-top:1px solid var(--line);background:#f8fafc;border-radius:0 0 22px 22px}
+    .modal-actions button{height:44px;border:none;border-radius:12px;padding:0 18px;font-weight:900;cursor:pointer}
+    .review-list{margin:12px 0 0;padding:0;list-style:none}
+    .review-list li{padding:10px 0;border-bottom:1px solid var(--line);font-size:14px}
+    .review-list li:last-child{border-bottom:none}
+    .danger-text{color:#b91c1c;font-weight:900}
+    .safe-text{color:#047857;font-weight:900}
+    .small-note{font-size:12px;color:var(--muted);line-height:1.5;margin-top:8px}
+    @media (max-width:1400px){.grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+    @media (max-width:900px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.item-search-wrap{min-width:100%}}
+    @media (max-width:700px){
+      .wrap{padding:10px}
+      .grid{grid-template-columns:1fr}
+      .hero h1{font-size:22px}
+      .bill-title{font-size:18px}
+      .bill-total{text-align:left}
+      .bill-total .amt{font-size:20px}
+      .modal-actions button{width:100%}
+    }
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="hero">
-      <h1>VAJRA BULK SALES EDIT</h1>
-      <p>Load bills by date and salesman, change top price type, auto-adjust negative stock item quantities, and save all as edited bills.</p>
+      <h1>VAJRA SAFE BULK SALES EDIT</h1>
+      <p>Clean safe correction page: only important row columns shown. Price type values are kept internally and applied from the top selector.</p>
     </div>
 
     <div class="toolbar">
@@ -123,15 +176,18 @@
             </select>
           </div>
           <div class="field"><label>&nbsp;</label><button class="btn-blue" id="loadBtn">LOAD BILLS</button></div>
-          <div class="field"><label>&nbsp;</label><button class="btn-dark" id="adjustBtn">ADJUST QUANTITY</button></div>
-          <div class="field"><label>&nbsp;</label><button class="btn-green" id="saveBtn">SAVE ALL</button></div>
+          <div class="field"><label>&nbsp;</label><button class="btn-dark" id="applyPriceBtn">APPLY PRICE</button></div>
+          <div class="field"><label>&nbsp;</label><button class="btn-amber" id="adjustBtn">ADJUST QTY</button></div>
+          <div class="field"><label>&nbsp;</label><button class="btn-green" id="saveBtn">REVIEW & SAVE</button></div>
         </div>
 
         <div class="stats">
           <div class="stat"><div class="k">Loaded Bills</div><div class="v" id="statBills">0</div></div>
           <div class="stat"><div class="k">Loaded Items</div><div class="v" id="statItems">0</div></div>
-          <div class="stat"><div class="k">Bills Total</div><div class="v" id="statTotal">₹ 0.00</div></div>
+          <div class="stat"><div class="k">New Total</div><div class="v" id="statTotal">₹ 0.00</div></div>
+          <div class="stat"><div class="k">Changed Rows</div><div class="v" id="statChanged">0</div></div>
           <div class="stat"><div class="k">Zero Qty Rows</div><div class="v" id="statZero">0</div></div>
+          <div class="stat"><div class="k">New Rows</div><div class="v" id="statNew">0</div></div>
         </div>
       </div>
     </div>
@@ -139,6 +195,19 @@
     <div id="messageBox" class="msg hidden"></div>
     <div class="summary-strip" id="summaryStrip">No bills loaded.</div>
     <div id="billsRoot"></div>
+  </div>
+
+  <div class="modal-backdrop hidden" id="confirmModal">
+    <div class="modal">
+      <div class="modal-head">
+        <h2>Review Bulk Sales Edit</h2>
+      </div>
+      <div class="modal-body" id="confirmBody"></div>
+      <div class="modal-actions">
+        <button class="btn-dark" id="cancelSaveBtn">CANCEL</button>
+        <button class="btn-green" id="confirmSaveBtn">SAVE NOW</button>
+      </div>
+    </div>
   </div>
 
 <script>
@@ -150,6 +219,10 @@
   const sb = supabase.createClient(supabaseUrl, supabaseKey);
 
   let loadedBills = [];
+  let allItems = [];
+  let dirty = false;
+  let pendingPayload = null;
+  let activeSuggest = { billIndex: null, selectedIndex: 0, matches: [] };
 
   const els = {
     fromDate: document.getElementById('fromDate'),
@@ -157,6 +230,7 @@
     salesmanSelect: document.getElementById('salesmanSelect'),
     priceTypeSelect: document.getElementById('priceTypeSelect'),
     loadBtn: document.getElementById('loadBtn'),
+    applyPriceBtn: document.getElementById('applyPriceBtn'),
     adjustBtn: document.getElementById('adjustBtn'),
     saveBtn: document.getElementById('saveBtn'),
     billsRoot: document.getElementById('billsRoot'),
@@ -165,8 +239,26 @@
     statBills: document.getElementById('statBills'),
     statItems: document.getElementById('statItems'),
     statTotal: document.getElementById('statTotal'),
-    statZero: document.getElementById('statZero')
+    statChanged: document.getElementById('statChanged'),
+    statZero: document.getElementById('statZero'),
+    statNew: document.getElementById('statNew'),
+    confirmModal: document.getElementById('confirmModal'),
+    confirmBody: document.getElementById('confirmBody'),
+    cancelSaveBtn: document.getElementById('cancelSaveBtn'),
+    confirmSaveBtn: document.getElementById('confirmSaveBtn')
   };
+
+  function n(v){
+    if(v === '' || v === null || v === undefined) return 0;
+    const x = Number(v);
+    return Number.isFinite(x) ? x : 0;
+  }
+  function fmt(v){ return n(v).toFixed(2); }
+  function money(v){ return '₹ ' + n(v).toFixed(2); }
+  function esc(v){ return String(v ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+  function isChanged(item){
+    return !!item.is_new || Math.abs(n(item.quantity) - n(item.old_quantity)) > 0.0001 || Math.abs(n(item.price) - n(item.old_price)) > 0.0001;
+  }
 
   function showMessage(text, type=''){
     els.messageBox.className = 'msg';
@@ -180,10 +272,17 @@
     els.messageBox.textContent = '';
   }
 
-  function n(v){ return Number(v || 0); }
-  function fmt(v){ return n(v).toFixed(2); }
-  function money(v){ return '₹ ' + n(v).toFixed(2); }
-  function esc(v){ return String(v ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+  function setBusy(button, busyText, busy){
+    if(!button) return;
+    if(busy){
+      button.dataset.oldText = button.textContent;
+      button.textContent = busyText;
+      button.disabled = true;
+    }else{
+      button.textContent = button.dataset.oldText || button.textContent;
+      button.disabled = false;
+    }
+  }
 
   function setTodayDefaults(){
     const now = new Date();
@@ -217,8 +316,45 @@
     });
   }
 
+  async function loadAllItems(){
+    const { data, error } = await sb
+      .from('stock_balance_view')
+      .select('item_code,item_name,barcode,hsn_code,gst_percent,department,balance,landing,price1,price1_gst,price2,price2_gst,price3,price3_gst')
+      .order('item_name', { ascending:true })
+      .limit(20000);
+
+    if(error){
+      showMessage('Could not load item list for Add Item: ' + error.message, 'warn');
+      allItems = [];
+      return;
+    }
+
+    allItems = (data || []).map(x => ({
+      item_code: x.item_code || '',
+      item_name: x.item_name || '',
+      barcode: x.barcode || '',
+      hsn_code: x.hsn_code || '',
+      gst_percent: n(x.gst_percent),
+      department: x.department || '',
+      balance_qty: n(x.balance),
+      landing: n(x.landing),
+      price1: n(x.price1),
+      price1_gst: n(x.price1_gst),
+      price2: n(x.price2),
+      price2_gst: n(x.price2_gst),
+      price3: n(x.price3),
+      price3_gst: n(x.price3_gst)
+    }));
+  }
+
   async function loadBills(){
     clearMessage();
+
+    if(dirty && loadedBills.length){
+      const ok = confirm('You have unsaved changes. Loading again will remove current changes. Continue?');
+      if(!ok) return;
+    }
+
     const fromDate = els.fromDate.value;
     const toDate = els.toDate.value;
     const salesman = els.salesmanSelect.value;
@@ -227,27 +363,31 @@
       showMessage('Please select From Date and To Date.', 'warn');
       return;
     }
+    if(fromDate > toDate){
+      showMessage('From Date cannot be greater than To Date.', 'warn');
+      return;
+    }
 
-    els.loadBtn.disabled = true;
-    els.loadBtn.textContent = 'LOADING...';
+    setBusy(els.loadBtn, 'LOADING...', true);
 
     const { data, error } = await sb.rpc('get_bulk_sales_bills', {
       p_from_date: fromDate,
       p_to_date: toDate,
-      p_salesman: salesman
+      p_salesman: salesman || null
     });
 
-    els.loadBtn.disabled = false;
-    els.loadBtn.textContent = 'LOAD BILLS';
+    setBusy(els.loadBtn, 'LOADING...', false);
 
     if(error){
-      showMessage('Load failed: ' + error.message, 'error');
+      showMessage('Load failed: ' + error.message + '. Please confirm RPC get_bulk_sales_bills exists and has permission.', 'error');
       return;
     }
 
     const grouped = {};
     (data || []).forEach(row => {
       const sid = row.sales_id;
+      if(!sid) return;
+
       if(!grouped[sid]){
         grouped[sid] = {
           sales_id: sid,
@@ -258,17 +398,23 @@
           customer_mobile: row.customer_mobile || '',
           address: row.address || '',
           salesman: row.salesman || '',
+          original_total: 0,
           items: []
         };
       }
+
+      const oldPrice = n(row.price);
+      const oldQty = n(row.quantity);
+      grouped[sid].original_total += oldQty * oldPrice;
+
       grouped[sid].items.push({
         item_id: row.item_id,
         item_code: row.item_code || '',
         item_name: row.item_name || '',
-        quantity: n(row.quantity),
-        old_quantity: n(row.quantity),
-        price: n(row.price),
-        old_price: n(row.price),
+        quantity: oldQty,
+        old_quantity: oldQty,
+        price: oldPrice,
+        old_price: oldPrice,
         gst_percent: n(row.gst_percent),
         hsn_code: row.hsn_code || '',
         balance_qty: n(row.balance_qty),
@@ -278,7 +424,8 @@
         price2: n(row.price2),
         price2_gst: n(row.price2_gst),
         price3: n(row.price3),
-        price3_gst: n(row.price3_gst)
+        price3_gst: n(row.price3_gst),
+        is_new: false
       });
     });
 
@@ -287,24 +434,36 @@
       return String(a.bill_date).localeCompare(String(b.bill_date));
     });
 
-    applyPriceType(false);
+    dirty = false;
     renderAll();
 
     if(!loadedBills.length){
       showMessage('No bills found for selected date range and salesman.', 'warn');
     } else {
-      showMessage(`${loadedBills.length} bill(s) loaded successfully.`, 'success');
+      showMessage(`${loadedBills.length} bill(s) loaded successfully. Cleaner row view is enabled.`, 'success');
     }
   }
 
-  function applyPriceType(reRender=true){
+  function applyPriceType(){
+    clearMessage();
+    if(!loadedBills.length){
+      showMessage('Load bills first.', 'warn');
+      return;
+    }
+
     const key = els.priceTypeSelect.value;
+    const ok = confirm('Apply selected price type to all loaded item rows? This will mark price changes but will not save until Review & Save.');
+    if(!ok) return;
+
     loadedBills.forEach(bill => {
       bill.items.forEach(item => {
         item.price = n(item[key]);
       });
     });
-    if(reRender) renderAll();
+
+    dirty = true;
+    renderAll();
+    showMessage('Selected price type applied internally. Only old price and new price are shown for safety.', 'info');
   }
 
   function recalcBillTotal(bill){
@@ -312,13 +471,16 @@
   }
 
   function getAllStats(){
-    let itemCount = 0, total = 0, zeroCount = 0;
+    let itemCount = 0, total = 0, zeroCount = 0, changedCount = 0, originalTotal = 0, newCount = 0;
     loadedBills.forEach(bill => {
       itemCount += bill.items.length;
       total += recalcBillTotal(bill);
+      originalTotal += n(bill.original_total);
       zeroCount += bill.items.filter(x => n(x.quantity) <= 0).length;
+      changedCount += bill.items.filter(isChanged).length;
+      newCount += bill.items.filter(x => !!x.is_new).length;
     });
-    return { billCount: loadedBills.length, itemCount, total, zeroCount };
+    return { billCount: loadedBills.length, itemCount, total, zeroCount, changedCount, originalTotal, newCount };
   }
 
   function statusTag(balance){
@@ -332,7 +494,9 @@
     els.statBills.textContent = String(stats.billCount);
     els.statItems.textContent = String(stats.itemCount);
     els.statTotal.textContent = money(stats.total);
+    els.statChanged.textContent = String(stats.changedCount);
     els.statZero.textContent = String(stats.zeroCount);
+    els.statNew.textContent = String(stats.newCount);
 
     if(!loadedBills.length){
       els.summaryStrip.textContent = 'No bills loaded.';
@@ -340,12 +504,16 @@
       return;
     }
 
-    els.summaryStrip.textContent = `${stats.billCount} bill(s), ${stats.itemCount} row(s), ${stats.zeroCount} row(s) with quantity 0. Rows with quantity 0 will not be saved.`;
+    const diff = stats.total - stats.originalTotal;
+    els.summaryStrip.textContent = `${stats.billCount} bill(s), ${stats.itemCount} row(s), new rows: ${stats.newCount}, changed rows: ${stats.changedCount}, zero qty rows: ${stats.zeroCount}, total difference: ${money(diff)}.`;
 
     els.billsRoot.innerHTML = loadedBills.map((bill, billIndex) => {
       const total = recalcBillTotal(bill);
       const liveRows = bill.items.filter(x => n(x.quantity) > 0).length;
       const zeroRows = bill.items.filter(x => n(x.quantity) <= 0).length;
+      const changedRows = bill.items.filter(isChanged).length;
+      const billDiff = total - n(bill.original_total);
+
       return `
         <div class="bill-card">
           <div class="bill-head">
@@ -359,63 +527,74 @@
             </div>
             <div class="bill-total">
               <div class="amt">${money(total)}</div>
-              <div class="note">Live rows: ${liveRows} | Zero rows: ${zeroRows}</div>
+              <div class="note">Old: ${money(bill.original_total)} | Diff: ${money(billDiff)}</div>
+              <div class="note">Live: ${liveRows} | Zero: ${zeroRows} | Changed: ${changedRows}</div>
             </div>
           </div>
 
           <div class="bill-body">
+            <div class="bill-tools">
+              <div class="item-search-wrap">
+                <input class="item-search" placeholder="Search item code / barcode / item name to add replacement item..."
+                       data-add-search="${billIndex}" autocomplete="off" />
+                <div class="suggest-box hidden" id="suggest-${billIndex}"></div>
+              </div>
+              <button class="mini-btn btn-dark" onclick="clearZeroRows(${billIndex})">REMOVE ZERO QTY ROWS</button>
+            </div>
+
             <div class="table-wrap">
               <table>
                 <thead>
                   <tr>
                     <th>#</th>
                     <th>Status</th>
+                    <th>Change</th>
                     <th>Item Code</th>
                     <th>Item Name</th>
                     <th>Old Qty</th>
-                    <th>Qty</th>
+                    <th>New Qty</th>
                     <th>Balance</th>
                     <th>GST %</th>
-                    <th>Landing</th>
-                    <th>P1</th>
-                    <th>P1+GST</th>
-                    <th>P2</th>
-                    <th>P2+GST</th>
-                    <th>P3</th>
-                    <th>P3+GST</th>
-                    <th>Price</th>
+                    <th>Old Price</th>
+                    <th>New Price</th>
                     <th>Amount</th>
+                    <th>Remove</th>
                   </tr>
                 </thead>
                 <tbody>
                   ${bill.items.map((item, itemIndex) => {
-                    const rowClass = n(item.quantity) <= 0 ? 'row-zero' : (n(item.balance_qty) < 0 ? 'row-negative' : '');
+                    const changed = isChanged(item);
+                    const rowClass = [
+                      n(item.quantity) <= 0 ? 'row-zero' : '',
+                      n(item.balance_qty) < 0 ? 'row-negative' : '',
+                      changed ? 'row-changed' : '',
+                      item.is_new ? 'row-new' : ''
+                    ].join(' ');
                     const amt = n(item.quantity) * n(item.price);
+
                     return `
                       <tr class="${rowClass}">
                         <td class="center">${itemIndex + 1}</td>
                         <td>${statusTag(item.balance_qty)}</td>
+                        <td>${item.is_new ? '<span class="tag tag-new">NEW</span>' : (changed ? '<span class="tag tag-change">CHANGED</span>' : '')}</td>
                         <td>${esc(item.item_code)}</td>
                         <td>${esc(item.item_name)}</td>
                         <td class="num">${fmt(item.old_quantity)}</td>
                         <td>
-                          <input class="cell-input num" type="number" min="0" step="0.01" value="${fmt(item.quantity)}"
-                                 oninput="updateQty(${billIndex},${itemIndex},this.value)">
+                          <input class="cell-input num ${Math.abs(n(item.quantity)-n(item.old_quantity)) > 0.0001 ? 'changed' : ''}"
+                                 type="number" min="0" step="0.01" value="${fmt(item.quantity)}"
+                                 data-bill="${billIndex}" data-item="${itemIndex}" data-field="quantity">
                         </td>
                         <td class="num">${fmt(item.balance_qty)}</td>
                         <td class="num">${fmt(item.gst_percent)}</td>
-                        <td class="num">${fmt(item.landing)}</td>
-                        <td class="num">${fmt(item.price1)}</td>
-                        <td class="num">${fmt(item.price1_gst)}</td>
-                        <td class="num">${fmt(item.price2)}</td>
-                        <td class="num">${fmt(item.price2_gst)}</td>
-                        <td class="num">${fmt(item.price3)}</td>
-                        <td class="num">${fmt(item.price3_gst)}</td>
+                        <td class="num">${fmt(item.old_price)}</td>
                         <td>
-                          <input class="cell-input num" type="number" min="0" step="0.01" value="${fmt(item.price)}"
-                                 oninput="updatePrice(${billIndex},${itemIndex},this.value)">
+                          <input class="cell-input num ${Math.abs(n(item.price)-n(item.old_price)) > 0.0001 ? 'changed' : ''}"
+                                 type="number" min="0" step="0.01" value="${fmt(item.price)}"
+                                 data-bill="${billIndex}" data-item="${itemIndex}" data-field="price">
                         </td>
                         <td class="num">${fmt(amt)}</td>
+                        <td class="center"><button class="remove-btn" onclick="removeRow(${billIndex},${itemIndex})">REMOVE</button></td>
                       </tr>
                     `;
                   }).join('')}
@@ -426,26 +605,241 @@
 
           <div class="bill-footer">
             <div class="mini">Bill total: <b>${money(total)}</b></div>
-            <div class="mini">Rows with qty 0 are kept visible for checking, but they will be skipped during save.</div>
+            <div class="mini">Only important columns are shown. Price type columns are hidden but used internally.</div>
           </div>
         </div>
       `;
     }).join('');
   }
 
-  function updateQty(billIndex, itemIndex, value){
-    const val = Math.max(0, n(value));
-    loadedBills[billIndex].items[itemIndex].quantity = val;
-    renderAll();
+  function getPriceForItem(item){
+    return n(item[els.priceTypeSelect.value] || item.price3_gst || item.price3 || item.price1_gst || item.price1 || 0);
   }
-  window.updateQty = updateQty;
 
-  function updatePrice(billIndex, itemIndex, value){
-    const val = Math.max(0, n(value));
-    loadedBills[billIndex].items[itemIndex].price = val;
+  function searchItems(q){
+    const s = String(q || '').trim().toLowerCase();
+    if(s.length < 1) return [];
+
+    const words = s.split(/\s+/).filter(Boolean);
+
+    return allItems.filter(it => {
+      const hay = `${it.item_code} ${it.barcode} ${it.item_name} ${it.department}`.toLowerCase();
+      return words.every(w => hay.includes(w));
+    }).slice(0, 40);
+  }
+
+  function renderSuggestBox(billIndex, matches, selectedIndex=0){
+    const box = document.getElementById(`suggest-${billIndex}`);
+    if(!box) return;
+
+    activeSuggest = { billIndex, selectedIndex, matches };
+
+    if(!matches.length){
+      box.innerHTML = '<div class="suggest-item"><b>No matching item found</b><div>Check spelling/item code/barcode.</div></div>';
+      box.classList.remove('hidden');
+      return;
+    }
+
+    box.innerHTML = matches.map((it, idx) => `
+      <div class="suggest-item ${idx === selectedIndex ? 'active' : ''}" data-suggest-bill="${billIndex}" data-suggest-index="${idx}">
+        <b>${esc(it.item_code)} - ${esc(it.item_name)}</b>
+        <div>Bal: ${fmt(it.balance_qty)} | GST: ${fmt(it.gst_percent)}% | Selected Price: ${fmt(getPriceForItem(it))} | ${esc(it.department || '')}</div>
+      </div>
+    `).join('');
+    box.classList.remove('hidden');
+  }
+
+  function hideSuggestBoxes(){
+    document.querySelectorAll('.suggest-box').forEach(x => x.classList.add('hidden'));
+  }
+
+  function addItemToBill(billIndex, item){
+    const bill = loadedBills[billIndex];
+    if(!bill || !item) return;
+
+    const existing = bill.items.find(x => !x.is_new && String(x.item_code || '').trim() === String(item.item_code || '').trim() && n(x.quantity) <= 0);
+    if(existing){
+      existing.quantity = 1;
+      existing.price = getPriceForItem(item);
+      existing.gst_percent = n(item.gst_percent);
+      existing.hsn_code = item.hsn_code || '';
+      existing.balance_qty = n(item.balance_qty);
+      existing.landing = n(item.landing);
+      existing.price1 = n(item.price1);
+      existing.price1_gst = n(item.price1_gst);
+      existing.price2 = n(item.price2);
+      existing.price2_gst = n(item.price2_gst);
+      existing.price3 = n(item.price3);
+      existing.price3_gst = n(item.price3_gst);
+    } else {
+      bill.items.push({
+        item_id: null,
+        item_code: item.item_code || '',
+        item_name: item.item_name || '',
+        quantity: 1,
+        old_quantity: 0,
+        price: getPriceForItem(item),
+        old_price: 0,
+        gst_percent: n(item.gst_percent),
+        hsn_code: item.hsn_code || '',
+        balance_qty: n(item.balance_qty),
+        landing: n(item.landing),
+        price1: n(item.price1),
+        price1_gst: n(item.price1_gst),
+        price2: n(item.price2),
+        price2_gst: n(item.price2_gst),
+        price3: n(item.price3),
+        price3_gst: n(item.price3_gst),
+        is_new: true
+      });
+    }
+
+    dirty = true;
+    hideSuggestBoxes();
+    renderAll();
+
+    setTimeout(() => {
+      const inputs = [...document.querySelectorAll(`input[data-bill="${billIndex}"][data-field="quantity"]`)];
+      const last = inputs[inputs.length - 1];
+      if(last){
+        last.focus();
+        last.select();
+      }
+    }, 50);
+  }
+
+  function clearZeroRows(billIndex){
+    const bill = loadedBills[billIndex];
+    if(!bill) return;
+
+    const before = bill.items.length;
+    bill.items = bill.items.filter(x => n(x.quantity) > 0);
+    const removed = before - bill.items.length;
+
+    if(removed > 0){
+      dirty = true;
+      renderAll();
+      showMessage(`${removed} zero quantity row(s) removed from ${bill.series_code}-${bill.sales_number}. Add replacement item if needed before saving.`, 'info');
+    }else{
+      showMessage('No zero quantity rows found in this bill.', 'info');
+    }
+  }
+  window.clearZeroRows = clearZeroRows;
+
+  function removeRow(billIndex, itemIndex){
+    const bill = loadedBills[billIndex];
+    if(!bill || !bill.items[itemIndex]) return;
+
+    const item = bill.items[itemIndex];
+    const ok = confirm(`Remove this row from bill ${bill.series_code}-${bill.sales_number}?\n\n${item.item_code} - ${item.item_name}\n\nThis will not save until Review & Save.`);
+    if(!ok) return;
+
+    if(item.is_new){
+      bill.items.splice(itemIndex, 1);
+    }else{
+      item.quantity = 0;
+    }
+
+    dirty = true;
     renderAll();
   }
-  window.updatePrice = updatePrice;
+  window.removeRow = removeRow;
+
+  function updateFieldFromInput(input, renderAfter=false){
+    const billIndex = Number(input.dataset.bill);
+    const itemIndex = Number(input.dataset.item);
+    const field = input.dataset.field;
+    if(!loadedBills[billIndex] || !loadedBills[billIndex].items[itemIndex]) return;
+
+    let val = n(input.value);
+    if(val < 0) val = 0;
+
+    loadedBills[billIndex].items[itemIndex][field] = val;
+    dirty = true;
+
+    if(renderAfter) renderAll();
+  }
+
+  els.billsRoot.addEventListener('input', (e) => {
+    if(e.target && e.target.matches('input[data-field]')){
+      updateFieldFromInput(e.target, false);
+      return;
+    }
+
+    if(e.target && e.target.matches('input[data-add-search]')){
+      const billIndex = Number(e.target.dataset.addSearch);
+      const matches = searchItems(e.target.value);
+      renderSuggestBox(billIndex, matches, 0);
+    }
+  });
+
+  els.billsRoot.addEventListener('click', (e) => {
+    const sug = e.target.closest('[data-suggest-bill]');
+    if(sug){
+      const billIndex = Number(sug.dataset.suggestBill);
+      const idx = Number(sug.dataset.suggestIndex);
+      const item = activeSuggest.matches[idx];
+      addItemToBill(billIndex, item);
+      return;
+    }
+  });
+
+  els.billsRoot.addEventListener('focusin', (e) => {
+    if(e.target && e.target.matches('input[data-add-search]') && e.target.value.trim()){
+      const billIndex = Number(e.target.dataset.addSearch);
+      renderSuggestBox(billIndex, searchItems(e.target.value), 0);
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    if(!e.target.closest('.item-search-wrap')) hideSuggestBoxes();
+  });
+
+  els.billsRoot.addEventListener('change', (e) => {
+    if(e.target && e.target.matches('input[data-field]')){
+      updateFieldFromInput(e.target, true);
+    }
+  });
+
+  els.billsRoot.addEventListener('keydown', (e) => {
+    const input = e.target;
+
+    if(input && input.matches('input[data-add-search]')){
+      if(e.key === 'ArrowDown'){
+        e.preventDefault();
+        if(activeSuggest.matches.length){
+          activeSuggest.selectedIndex = Math.min(activeSuggest.selectedIndex + 1, activeSuggest.matches.length - 1);
+          renderSuggestBox(Number(input.dataset.addSearch), activeSuggest.matches, activeSuggest.selectedIndex);
+        }
+      }else if(e.key === 'ArrowUp'){
+        e.preventDefault();
+        if(activeSuggest.matches.length){
+          activeSuggest.selectedIndex = Math.max(activeSuggest.selectedIndex - 1, 0);
+          renderSuggestBox(Number(input.dataset.addSearch), activeSuggest.matches, activeSuggest.selectedIndex);
+        }
+      }else if(e.key === 'Enter'){
+        e.preventDefault();
+        const item = activeSuggest.matches[activeSuggest.selectedIndex || 0];
+        if(item) addItemToBill(Number(input.dataset.addSearch), item);
+      }else if(e.key === 'Escape'){
+        hideSuggestBoxes();
+      }
+      return;
+    }
+
+    if(!input || !input.matches('input[data-field]')) return;
+
+    if(e.key === 'Enter'){
+      e.preventDefault();
+      updateFieldFromInput(input, true);
+      const all = [...document.querySelectorAll('input[data-field]')];
+      const idx = all.indexOf(input);
+      if(idx >= 0 && all[idx + 1]){
+        all[idx + 1].focus();
+        all[idx + 1].select();
+      }
+    }
+  });
 
   function adjustQuantities(){
     clearMessage();
@@ -453,6 +847,9 @@
       showMessage('Load bills first.', 'warn');
       return;
     }
+
+    const ok = confirm('Adjust negative-stock items by reducing latest bill quantities first? This will not save until Review & Save.');
+    if(!ok) return;
 
     const groups = {};
 
@@ -462,17 +859,13 @@
         if(!code) return;
 
         if(!groups[code]){
-          groups[code] = {
-            balance: n(item.balance_qty),
-            rows: []
-          };
+          groups[code] = { balance: n(item.balance_qty), rows: [] };
         }
 
         groups[code].rows.push({
           billIndex,
           itemIndex,
           billDate: bill.bill_date || '',
-          salesNumber: n(bill.sales_number),
           salesId: n(bill.sales_id)
         });
       });
@@ -488,7 +881,6 @@
       let shortage = Math.abs(n(group.balance));
       touchedItems++;
 
-      // latest bills first - usually better for correction
       group.rows.sort((a,b) => {
         if(a.billDate === b.billDate) return b.salesId - a.salesId;
         return String(b.billDate).localeCompare(String(a.billDate));
@@ -509,81 +901,233 @@
       }
     });
 
+    dirty = true;
     renderAll();
-    showMessage(`Adjustment complete. Changed ${adjustedRows} row(s) across ${touchedItems} item group(s). Quantity never went below 0.`, 'success');
+    showMessage(`Adjustment complete. Changed ${adjustedRows} row(s) across ${touchedItems} item group(s). You may add replacement items before saving.`, 'success');
   }
 
-  async function saveAll(){
+  function buildPayloadAndReview(){
+    const skippedBills = [];
+    const zeroRows = [];
+    const changedBills = [];
+    const changedRows = [];
+    const newRows = [];
+    const payload = [];
+
+    loadedBills.forEach(bill => {
+      const liveItems = [];
+      let billChanged = false;
+
+      bill.items.forEach(item => {
+        if(n(item.quantity) <= 0){
+          zeroRows.push({
+            billNo: `${bill.series_code || ''}-${bill.sales_number || ''}`,
+            itemName: item.item_name,
+            itemCode: item.item_code,
+            oldQty: n(item.old_quantity)
+          });
+          if(n(item.old_quantity) > 0 || item.is_new) billChanged = true;
+          return;
+        }
+
+        if(item.is_new){
+          billChanged = true;
+          newRows.push({
+            billNo: `${bill.series_code || ''}-${bill.sales_number || ''}`,
+            itemName: item.item_name,
+            itemCode: item.item_code,
+            qty: n(item.quantity),
+            price: n(item.price)
+          });
+        }
+
+        if(isChanged(item)){
+          billChanged = true;
+          changedRows.push({
+            billNo: `${bill.series_code || ''}-${bill.sales_number || ''}`,
+            itemName: item.item_name,
+            itemCode: item.item_code,
+            oldQty: n(item.old_quantity),
+            newQty: n(item.quantity),
+            oldPrice: n(item.old_price),
+            newPrice: n(item.price),
+            isNew: !!item.is_new
+          });
+        }
+
+        liveItems.push({
+          item_code: item.item_code || '',
+          item_name: item.item_name || '',
+          quantity: n(item.quantity),
+          price: n(item.price),
+          gst_percent: n(item.gst_percent),
+          hsn_code: item.hsn_code || ''
+        });
+      });
+
+      if(!liveItems.length){
+        skippedBills.push(`${bill.series_code || ''}-${bill.sales_number || ''}`);
+        return;
+      }
+
+      if(billChanged){
+        changedBills.push(`${bill.series_code || ''}-${bill.sales_number || ''}`);
+      }
+
+      payload.push({
+        sales_id: n(bill.sales_id),
+        items: liveItems
+      });
+    });
+
+    return { payload, skippedBills, zeroRows, changedBills, changedRows, newRows };
+  }
+
+  function openConfirmModal(review){
+    pendingPayload = review.payload;
+
+    const stats = getAllStats();
+    const topChanged = review.changedRows.slice(0, 15).map(r => `
+      <li>
+        <b>${esc(r.billNo)}</b> — ${esc(r.itemCode)} ${esc(r.itemName)} ${r.isNew ? '<span class="tag tag-new">NEW</span>' : ''}<br>
+        Qty: ${fmt(r.oldQty)} → <b>${fmt(r.newQty)}</b>,
+        Price: ${fmt(r.oldPrice)} → <b>${fmt(r.newPrice)}</b>
+      </li>
+    `).join('');
+
+    els.confirmBody.innerHTML = `
+      <div class="msg warn">
+        <b>Please check carefully before saving.</b><br>
+        This will update loaded sales bills through RPC <b>save_bulk_sales_edit</b>. Your SQL function must delete/replace item rows and recalculate sales totals safely.
+      </div>
+
+      <ul class="review-list">
+        <li>Changed bills: <b>${review.changedBills.length}</b></li>
+        <li>Changed rows: <b>${review.changedRows.length}</b></li>
+        <li>New rows added: <b class="${review.newRows.length ? 'safe-text' : ''}">${review.newRows.length}</b></li>
+        <li>Rows becoming zero/removing from bill: <b class="${review.zeroRows.length ? 'danger-text' : 'safe-text'}">${review.zeroRows.length}</b></li>
+        <li>Blocked/skipped empty bills: <b class="${review.skippedBills.length ? 'danger-text' : 'safe-text'}">${review.skippedBills.length}</b></li>
+        <li>Old total: <b>${money(stats.originalTotal)}</b></li>
+        <li>New total: <b>${money(stats.total)}</b></li>
+        <li>Total difference: <b>${money(stats.total - stats.originalTotal)}</b></li>
+      </ul>
+
+      ${review.skippedBills.length ? `
+        <div class="msg error" style="margin-top:12px">
+          These bills still have no valid item rows and will NOT be saved: ${esc(review.skippedBills.join(', '))}<br>
+          Cancel and add replacement item if you want to repair them.
+        </div>
+      ` : ''}
+
+      <h3>First Changed Rows</h3>
+      <ul class="review-list">${topChanged || '<li>No row changes detected.</li>'}</ul>
+
+      <div class="field" style="margin-top:16px">
+        <label>Type SAVE to confirm</label>
+        <input id="saveConfirmText" autocomplete="off" placeholder="Type SAVE here" />
+      </div>
+      <div class="small-note">
+        This extra confirmation prevents accidental bulk edits.
+      </div>
+    `;
+
+    els.confirmSaveBtn.disabled = true;
+    els.confirmModal.classList.remove('hidden');
+
+    setTimeout(() => {
+      const inp = document.getElementById('saveConfirmText');
+      if(inp){
+        inp.focus();
+        inp.addEventListener('input', () => {
+          els.confirmSaveBtn.disabled = inp.value.trim().toUpperCase() !== 'SAVE';
+        });
+      }
+    }, 50);
+  }
+
+  function closeConfirmModal(){
+    els.confirmModal.classList.add('hidden');
+    pendingPayload = null;
+  }
+
+  async function reviewAndSave(){
     clearMessage();
+
     if(!loadedBills.length){
       showMessage('No bills loaded.', 'warn');
       return;
     }
 
-    const skippedBills = [];
-    const payload = loadedBills
-      .map(bill => {
-        const liveItems = bill.items
-          .filter(item => n(item.quantity) > 0)
-          .map(item => ({
-            item_code: item.item_code || '',
-            item_name: item.item_name || '',
-            quantity: n(item.quantity),
-            price: n(item.price),
-            gst_percent: n(item.gst_percent),
-            hsn_code: item.hsn_code || ''
-          }));
+    const review = buildPayloadAndReview();
 
-        if(!liveItems.length){
-          skippedBills.push(`${bill.series_code || ''}-${bill.sales_number || ''}`);
-          return null;
-        }
+    if(review.skippedBills.length){
+      const ok = confirm(`${review.skippedBills.length} bill(s) still have no valid items. They will be skipped and not saved.\n\nDo you want to continue review?`);
+      if(!ok) return;
+    }
 
-        return {
-          sales_id: n(bill.sales_id),
-          items: liveItems
-        };
-      })
-      .filter(Boolean);
-
-    if(!payload.length){
-      showMessage('All loaded bills became zero-qty bills, so nothing was saved.', 'warn');
+    if(!review.payload.length){
+      showMessage('All loaded bills became zero/no-item bills, so nothing can be saved. Add at least one valid item to a bill first.', 'warn');
       return;
     }
 
-    els.saveBtn.disabled = true;
-    els.saveBtn.textContent = 'SAVING...';
+    if(review.changedRows.length === 0 && review.zeroRows.length === 0 && review.newRows.length === 0){
+      showMessage('No changes found to save.', 'info');
+      return;
+    }
+
+    openConfirmModal(review);
+  }
+
+  async function confirmSaveNow(){
+    if(!pendingPayload || !pendingPayload.length){
+      showMessage('Nothing prepared to save.', 'warn');
+      closeConfirmModal();
+      return;
+    }
+
+    els.confirmSaveBtn.disabled = true;
+    els.confirmSaveBtn.textContent = 'SAVING...';
 
     const { data, error } = await sb.rpc('save_bulk_sales_edit', {
-      p_bills: payload
+      p_bills: pendingPayload
     });
 
-    els.saveBtn.disabled = false;
-    els.saveBtn.textContent = 'SAVE ALL';
+    els.confirmSaveBtn.textContent = 'SAVE NOW';
 
     if(error){
-      showMessage('Save failed: ' + error.message, 'error');
+      els.confirmSaveBtn.disabled = false;
+      showMessage('Save failed: ' + error.message + '. Please confirm RPC save_bulk_sales_edit supports added replacement items and recalculates stock/totals.', 'error');
+      closeConfirmModal();
       return;
     }
 
+    closeConfirmModal();
+    dirty = false;
+
     let msg = 'Bulk save completed successfully.';
-    if(skippedBills.length){
-      msg += ' Skipped zero-item bills: ' + skippedBills.join(', ');
-    }
-    if(data && data.message){
-      msg = data.message + (skippedBills.length ? (' Skipped zero-item bills: ' + skippedBills.join(', ')) : '');
-    }
+    if(data && data.message) msg = data.message;
     showMessage(msg, 'success');
+
     await loadBills();
   }
 
+  window.addEventListener('beforeunload', (e) => {
+    if(dirty){
+      e.preventDefault();
+      e.returnValue = '';
+    }
+  });
+
   els.loadBtn.addEventListener('click', loadBills);
+  els.applyPriceBtn.addEventListener('click', applyPriceType);
   els.adjustBtn.addEventListener('click', adjustQuantities);
-  els.saveBtn.addEventListener('click', saveAll);
-  els.priceTypeSelect.addEventListener('change', () => applyPriceType(true));
+  els.saveBtn.addEventListener('click', reviewAndSave);
+  els.cancelSaveBtn.addEventListener('click', closeConfirmModal);
+  els.confirmSaveBtn.addEventListener('click', confirmSaveNow);
 
   setTodayDefaults();
   loadSalesmen();
+  loadAllItems();
   renderAll();
 </script>
 </body>

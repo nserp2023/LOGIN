@@ -340,10 +340,9 @@
     <div class="topbar">
         <div class="title-wrap">
             <h1>Credit Dashboard</h1>
-            <p>Customer-wise outstanding, quick search, and direct collection entry for credit bills.</p>
+            <p>Customer-wise outstanding, quick search, credit report view, and direct collection entry for credit bills.</p>
         </div>
         <div class="top-actions">
-            <button class="btn btn-green" onclick="openLedgerPage()">Customer Ledger</button>
             <button class="btn btn-ghost" onclick="openCreditReport()">Credit Report</button>
             <button class="btn btn-ghost" onclick="location.href='advance_dashboard.html'">Advance Page</button>
         </div>
@@ -420,7 +419,7 @@
                     <th class="amount">Paid</th>
                     <th class="amount">Outstanding</th>
                     <th>Level</th>
-                    <th>Ledger</th>
+                    <th>Report</th>
                     <th>Collect</th>
                     <th>WhatsApp</th>
                 </tr>
@@ -521,22 +520,31 @@ function openCreditReport(){
     window.open("credit_report.html", "_blank");
 }
 
-function openLedgerPage(){
-    window.open("customer_ledger.html", "_blank");
-}
-
-function openCustomerLedger(customer){
+function openCustomerReport(customer){
     const params = new URLSearchParams();
-    if (customer.mobile && customer.mobile !== "-") params.set("search", customer.mobile);
-    if (customer.name && customer.name !== "-") params.set("name", customer.name);
-    window.open(`customer_ledger.html?${params.toString()}`, "_blank");
+
+    /*
+      Opens credit_report.html directly with this customer pre-filtered.
+      credit_report.html should read URL params: mobile and name.
+    */
+    if (customer.mobile && customer.mobile !== "-"){
+        params.set("mobile", customer.mobile);
+    }
+
+    if (customer.name && customer.name !== "-"){
+        params.set("name", customer.name);
+    }
+
+    window.open(`credit_report.html?${params.toString()}`, "_blank");
 }
 
 function openCollect(customer){
     const params = new URLSearchParams();
     params.set("type", "receipt");
+    params.set("source", "credit_dashboard");
     if (customer.mobile && customer.mobile !== "-") params.set("mobile", customer.mobile);
     if (customer.name && customer.name !== "-") params.set("name", customer.name);
+    if (customer.total_balance && Number(customer.total_balance) > 0) params.set("amount", Number(customer.total_balance).toFixed(2));
     window.open(`paymentreceipt.html?${params.toString()}`, "_blank");
 }
 
@@ -671,7 +679,7 @@ function renderDashboard(customers, billRows){
                 <td class="amount">${money(c.total_paid)}</td>
                 <td class="amount ${balanceClass(c.total_balance)}">${money(c.total_balance)}</td>
                 <td>${riskChip(c.total_balance)}</td>
-                <td><button class="btn btn-ghost btn-sm" onclick='openCustomerLedger(${safeCustomer})'>Ledger</button></td>
+                <td><button class="btn btn-ghost btn-sm" onclick='openCustomerReport(${safeCustomer})'>Report</button></td>
                 <td><button class="btn btn-green btn-sm" onclick='openCollect(${safeCustomer})'>Collect</button></td>
                 <td><button class="btn btn-whatsapp btn-sm" onclick='openWhatsAppReminder(${safeCustomer})'>WhatsApp</button></td>
             </tr>

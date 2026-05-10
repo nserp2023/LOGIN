@@ -199,6 +199,7 @@
     .chip{ display:inline-flex; align-items:center; padding:4px 8px; border-radius:999px; font-size:11px; font-weight:700; letter-spacing:.4px; border:1px solid transparent; }
     .chip-bill{ background:rgba(245,158,11,.12); color:#fcd34d; border-color:rgba(245,158,11,.35); }
     .chip-receipt{ background:rgba(34,197,94,.12); color:#86efac; border-color:rgba(34,197,94,.35); }
+    .chip-advance{ background:rgba(59,130,246,.12); color:#93c5fd; border-color:rgba(59,130,246,.35); }
     .chip-settled{ background:rgba(34,197,94,.12); color:#86efac; border-color:rgba(34,197,94,.35); }
     .chip-partial{ background:rgba(59,130,246,.12); color:#93c5fd; border-color:rgba(59,130,246,.35); }
     .chip-credit{ background:rgba(245,158,11,.12); color:#fcd34d; border-color:rgba(245,158,11,.35); }
@@ -264,7 +265,7 @@
     <div class="topbar">
       <div class="title-wrap">
         <h1>Credit Report</h1>
-        <p>Customer-wise credit ledger book with bills, receipts, and running balance.</p>
+        <p>Book verification ledger with credit sales, cash received, and running balance.</p>
       </div>
       <div class="top-actions">
         <button class="btn btn-green" onclick="openSalesPage()">+ New Sales Bill</button>
@@ -338,7 +339,7 @@
         <div class="value" id="sum_total">₹0.00</div>
       </div>
       <div class="summary-box green">
-        <div class="label">Total Receipt Amount</div>
+        <div class="label">Cash Received</div>
         <div class="value" id="sum_paid">₹0.00</div>
       </div>
       <div class="summary-box red">
@@ -359,7 +360,7 @@
             <th>Mobile</th>
             <th>Customer</th>
             <th class="right">Bill Amount</th>
-            <th class="right">Paid</th>
+            <th class="right">Cash Received</th>
             <th class="right">Running Balance</th>
             <th class="center">Book Check</th>
           </tr>
@@ -374,21 +375,71 @@
   <script>
     const sb = window.sbcc;
     const qs = (id) => document.getElementById(id);
+
+    let CURRENT_USER_NAME = "";
+    let CAN_BOOK_CHECK = false;
+
     let sortAscending = false;
     let effectiveAscending = false;
+
+    function applyUrlFilters(){
+      const params = new URLSearchParams(window.location.search);
+
+      const mobile = params.get("mobile") || params.get("search") || "";
+      const name = params.get("name") || "";
+      const bill = params.get("bill") || params.get("voucher") || "";
+
+      if (mobile) qs("mobile_filter").value = mobile;
+      if (name) qs("name_filter").value = name;
+      if (bill) qs("bill_filter").value = bill;
+    }
 
     document.addEventListener("DOMContentLoaded", async () => {
       const ok = await requirePageAccess("sales");
       if (!ok) return;
 
+      await loadCurrentUserForBookCheck();
+
       const today = new Date();
       qs("from_date").value = "2000-01-01";
       qs("to_date").value = today.toISOString().split("T")[0];
+
+      applyUrlFilters();
 
       await loadSeries();
       bindEvents();
       await loadCreditReport();
     });
+
+    async function loadCurrentUserForBookCheck(){
+      try{
+        const { data:{ user }, error:userError } = await sb.auth.getUser();
+        if(userError) throw userError;
+
+        if(!user){
+          CURRENT_USER_NAME = "";
+          CAN_BOOK_CHECK = false;
+          return;
+        }
+
+        const { data: profile, error: profileError } = await sb
+          .from("user_profiles")
+          .select("name")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        if(profileError) throw profileError;
+
+        CURRENT_USER_NAME = String(profile?.name || "").trim().toUpperCase();
+        CAN_BOOK_CHECK = CURRENT_USER_NAME === "SN";
+
+        console.log("Book check user:", CURRENT_USER_NAME, "Allowed:", CAN_BOOK_CHECK);
+      }catch(err){
+        console.error("Book check user load failed:", err);
+        CURRENT_USER_NAME = "";
+        CAN_BOOK_CHECK = false;
+      }
+    }
 
     function bindEvents() {
       qs("btn_load").addEventListener("click", loadCreditReport);
@@ -586,6 +637,7 @@
           const invoiceAmount = num(r.invoice_amount);
           const balanceAmount = num(r.balance_amount);
           const paidAmount = num(r.paid_amount);
+          const advancePaid = paidAmount;
           return {
             rowKind:"bill",
             id:r.id,
@@ -596,7 +648,9 @@
             mobile:r.customer_mobile || "",
             customer:r.customer_name || "",
             billAmount: invoiceAmount,
+            cashReceived: 0,
             paidAmount: paidAmount,
+            advancePaid: advancePaid,
             receiptAmount: 0,
             balanceAmount: balanceAmount,
             payment_type:r.payment_type || "",
@@ -639,6 +693,7 @@
 
     async function loadReceiptRows(filters){
       const lookup = filters.customerLookup || { names:[], mobiles:[], customerMobileMap:{}, customerNameMap:{} };
+      const hasCustomerSearch = Boolean((filters.mobile || "").trim() || (filters.name || "").trim());
 
       let receiptQuery = sb
         .from("cash_transactions")
@@ -651,21 +706,28 @@
 
       const orParts = [];
 
-      (lookup.mobiles || []).slice(0, 20).forEach(m => {
-        const mobile = safeLikeValue(m);
-        if (mobile){
-          orParts.push(`party_name.ilike.%${mobile}%`);
-          orParts.push(`remarks.ilike.%${mobile}%`);
-        }
-      });
+      /*
+        IMPORTANT:
+        - Without customer filter: load all approved receipt transactions, then keep only credit / sales order advance related entries.
+        - With customer filter: narrow by typed mobile/name and matching customer lookup.
+      */
+      if (hasCustomerSearch) {
+        (lookup.mobiles || []).slice(0, 20).forEach(m => {
+          const mobile = safeLikeValue(m);
+          if (mobile){
+            orParts.push(`party_name.ilike.%${mobile}%`);
+            orParts.push(`remarks.ilike.%${mobile}%`);
+          }
+        });
 
-      (lookup.names || []).slice(0, 20).forEach(n => {
-        const name = safeLikeValue(n);
-        if (name){
-          orParts.push(`party_name.ilike.%${name}%`);
-          orParts.push(`remarks.ilike.%${name}%`);
-        }
-      });
+        (lookup.names || []).slice(0, 20).forEach(n => {
+          const name = safeLikeValue(n);
+          if (name){
+            orParts.push(`party_name.ilike.%${name}%`);
+            orParts.push(`remarks.ilike.%${name}%`);
+          }
+        });
+      }
 
       if (filters.bill) {
         const bill = safeLikeValue(filters.bill);
@@ -685,14 +747,46 @@
         .filter(r => {
           const ref = String(r.reference_type || "").toLowerCase();
           const text = String(`${r.remarks || ""} ${r.voucher_no || ""}`).toLowerCase();
-          const isCreditReceipt = ref === "sales_credit" || ref === "customer_credit_auto" || text.includes("credit collection") || text.includes("auto_alloc");
-          return isCreditReceipt && receiptMatchesCustomer(r, lookup, filters);
+
+          const isCreditReceipt =
+            ref === "sales_credit" ||
+            ref === "customer_credit_auto" ||
+            text.includes("credit collection") ||
+            text.includes("auto_alloc");
+
+          const isSalesOrderAdvance =
+            ref === "sales_order" ||
+            ref === "sales_order_advance" ||
+            ref === "sales_order_advance_receipt" ||
+            ref === "sales order" ||
+            text.includes("sales order advance") ||
+            text.includes("order advance") ||
+            text.includes("advance received") ||
+            text.includes("advance paid");
+
+          if (!isCreditReceipt && !isSalesOrderAdvance) return false;
+          if (hasCustomerSearch && !receiptMatchesCustomer(r, lookup, filters)) return false;
+          return true;
         })
         .map(r => {
+          const ref = String(r.reference_type || "").toLowerCase();
+          const text = String(`${r.remarks || ""} ${r.voucher_no || ""}`).toLowerCase();
+          const isSalesOrderAdvance =
+            ref === "sales_order" ||
+            ref === "sales_order_advance" ||
+            ref === "sales_order_advance_receipt" ||
+            ref === "sales order" ||
+            text.includes("sales order advance") ||
+            text.includes("order advance") ||
+            text.includes("advance received") ||
+            text.includes("advance paid");
+
           const receiptMobile = getReceiptMobile(r, lookup.customerMobileMap || {});
           const fallbackName = receiptMobile && lookup.customerNameMap ? lookup.customerNameMap[receiptMobile] : "";
+          const amount = num(r.amount);
+
           return {
-            rowKind:"receipt",
+            rowKind: isSalesOrderAdvance ? "advance" : "receipt",
             id:`receipt_${r.id}`,
             real_id:r.id,
             is_checked: !!r.is_checked,
@@ -701,11 +795,13 @@
             mobile: receiptMobile,
             customer:r.party_name || fallbackName || "",
             billAmount:0,
-            paidAmount:num(r.amount),
-            receiptAmount:num(r.amount),
+            cashReceived:amount,
+            advancePaid:isSalesOrderAdvance ? amount : 0,
+            paidAmount:isSalesOrderAdvance ? 0 : amount,
+            receiptAmount:isSalesOrderAdvance ? 0 : amount,
             balanceAmount:0,
             remarks:r.remarks || "",
-            status:"RECEIPT"
+            status:isSalesOrderAdvance ? "ADVANCE" : "RECEIPT"
           };
         });
     }
@@ -715,15 +811,33 @@
         return `<button type="button" class="check-btn checked" disabled>✓ CHECKED</button>`;
       }
 
+      /*
+        Only SN can operate the book check tick.
+        Other users can only view already checked lines.
+      */
+      if(!CAN_BOOK_CHECK){
+        return `<button type="button" class="check-btn" disabled style="opacity:.45; cursor:not-allowed;" title="Only SN can mark book check">✓</button>`;
+      }
+
       const kind = String(row.rowKind || "").replace(/[^a-zA-Z0-9_-]/g, "");
-      const id = kind === "receipt" ? String(row.real_id || String(row.id || "").replace("receipt_", "")) : String(row.id || "");
-      const safeId = id.replace(/'/g, "\\'");
+
+      const id =
+        kind === "receipt" || kind === "advance"
+          ? String(row.real_id || String(row.id || "").replace("receipt_", ""))
+          : String(row.id || "");
+
+      const safeId = id.replace(/'/g, "\'");
 
       return `<button type="button" class="check-btn" onclick="markLedgerChecked('${kind}', '${safeId}', this, event)">✓</button>`;
     }
 
     async function markLedgerChecked(type, id, btn, event){
       if(event) event.stopPropagation();
+
+      if(!CAN_BOOK_CHECK){
+        alert("Only SN can mark book check.");
+        return;
+      }
 
       const ok = confirm("Mark this line as checked? This tick is saved in database and cannot be unticked from this page.");
       if(!ok) return;
@@ -744,7 +858,7 @@
           error = res.error;
         }
 
-        if(type === "receipt"){
+        if(type === "receipt" || type === "advance"){
           const realId = String(id || "").replace("receipt_", "");
           const res = await sb
             .from("cash_transactions")
@@ -776,9 +890,11 @@
       const statusBox = qs("status_box");
 
       const totalBills = billRows.length;
+      const advanceRows = receiptRows.filter(r => r.rowKind === "advance");
+      const normalReceiptRows = receiptRows.filter(r => r.rowKind === "receipt");
       const totalAmount = billRows.reduce((s,r) => s + num(r.billAmount), 0);
-      const totalPaid = receiptRows.reduce((s,r) => s + num(r.receiptAmount), 0);
-      const totalBalance = totalAmount - totalPaid;
+      const totalCashReceived = receiptRows.reduce((s,r) => s + num(r.cashReceived || r.receiptAmount || r.advancePaid), 0);
+      const totalBalance = totalAmount - totalCashReceived;
 
       if (!rows.length) {
         body.innerHTML = `<tr><td colspan="9" class="empty">No credit records found.</td></tr>`;
@@ -801,7 +917,7 @@
       let runningBalance = 0;
       chronologicalRows.forEach(row => {
         if (row.rowKind === "bill") runningBalance += num(row.billAmount);
-        if (row.rowKind === "receipt") runningBalance -= num(row.receiptAmount);
+        if (row.rowKind === "advance" || row.rowKind === "receipt") runningBalance -= num(row.cashReceived || row.receiptAmount || row.advancePaid);
         row.runningBalance = runningBalance;
       });
 
@@ -818,16 +934,17 @@
       displayRows.forEach((row) => {
         const balanceClass = num(row.runningBalance) > 0 ? "chip-credit" : "chip-settled";
 
-        if (row.rowKind === "receipt") {
+        if (row.rowKind === "receipt" || row.rowKind === "advance") {
+          const isAdvance = row.rowKind === "advance";
           html += `
             <tr class="receipt-row">
               <td>${escapeHtml(row.date || "")}</td>
               <td>${escapeHtml(row.docNo || "")}</td>
-              <td><span class="chip chip-receipt">RECEIPT</span></td>
+              <td><span class="chip ${isAdvance ? "chip-advance" : "chip-receipt"}">${isAdvance ? "SALES ORDER ADVANCE" : "RECEIPT"}</span></td>
               <td>${escapeHtml(row.mobile || "")}</td>
               <td>${escapeHtml(row.customer || "")}</td>
               <td class="right">-</td>
-              <td class="right">${money(row.receiptAmount)}</td>
+              <td class="right">${money(row.cashReceived || row.receiptAmount || row.advancePaid)}</td>
               <td class="right">${money(row.runningBalance)}</td>
               <td class="center">${renderCheckButton(row)}</td>
             </tr>
@@ -861,10 +978,11 @@
 
       qs("sum_bills").textContent = String(totalBills);
       qs("sum_total").textContent = money(totalAmount);
-      qs("sum_paid").textContent = money(totalPaid);
+      qs("sum_paid").textContent = money(totalCashReceived);
       qs("sum_balance").textContent = money(totalBalance);
 
-      statusBox.textContent = `${displayRows.length} ledger row(s) loaded. Bills: ${totalBills}, Receipts: ${receiptRows.length}, Balance: ${money(totalBalance)}.`;
+      const filterText = (qs("mobile_filter").value || qs("name_filter").value) ? " Customer filter applied." : "";
+      statusBox.textContent = `${displayRows.length} ledger row(s) loaded. Bills: ${totalBills}, Cash received lines: ${receiptRows.length}, Balance: ${money(totalBalance)}.${filterText}${CAN_BOOK_CHECK ? " Book check enabled for SN." : " Book check is view-only for this user."}`;
     }
 
     async function toggleDetails(salesId) {

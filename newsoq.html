@@ -1950,9 +1950,16 @@
     }
 
     function getSalesOrderConversionPaidAmount(totalAmount = getCurrentRoundedGrandTotal()) {
+        /*
+          FINAL CONFIRMED FLOW:
+          Sales Order conversion to Sales/Bill must always be CREDIT.
+          paid_amount = advance already received in Sales Order.
+          balance_amount = current bill total - advance.
+          No new cash_transactions receipt is created during conversion.
+        */
         const total = parseFloat(totalAmount || 0) || 0;
         const advance = parseFloat(salesOrderAdvancePaid || 0) || 0;
-        return Math.max(0, total - advance);
+        return Math.max(0, Math.min(total, advance));
     }
 
     function applySalesOrderConversionPaidAmount(totalAmount = getCurrentRoundedGrandTotal()) {
@@ -1968,12 +1975,12 @@
         }
 
         if (paidAmountEl) {
-            const payableAfterAdvance = getSalesOrderConversionPaidAmount(totalAmount);
-            paidAmountEl.value = payableAfterAdvance.toFixed(2);
+            const advanceAdjusted = getSalesOrderConversionPaidAmount(totalAmount);
+            paidAmountEl.value = advanceAdjusted.toFixed(2);
             paidAmountEl.readOnly = true;
             paidAmountEl.disabled = false;
-            paidAmountEl.placeholder = "Bill Total - Advance";
-            paidAmountEl.title = `Current bill amount - sales order advance paid (Advance: ₹${(parseFloat(salesOrderAdvancePaid || 0) || 0).toFixed(2)})`;
+            paidAmountEl.placeholder = "Sales Order Advance";
+            paidAmountEl.title = `Sales order advance adjusted into this credit bill (Advance: ₹${(parseFloat(salesOrderAdvancePaid || 0) || 0).toFixed(2)})`;
         }
     }
 
@@ -1989,7 +1996,7 @@
             paymentTypeEl.disabled = true;
             paymentTypeEl.dataset.justChangedToCredit = "0";
             paidAmountEl.disabled = false;
-            paidAmountEl.placeholder = isSalesOrderConversionMode ? "Advance / Paid Amount" : "Advance Amount";
+            paidAmountEl.placeholder = isSalesOrderConversionMode ? "Sales Order Advance" : "Advance Amount";
         } else {
             paymentTypeEl.disabled = false;
             paidAmountEl.readOnly = false;
@@ -2039,7 +2046,7 @@
 
         if (paidLabel) {
             paidLabel.textContent = isSalesOrderConversionMode
-                ? "Bill Total - Advance"
+                ? "Advance Adjusted"
                 : (docType === "sales_order" ? "Advance" : "Credit Paid");
         }
 
@@ -4152,9 +4159,17 @@ function calcTotal() {
             }
 
             let paidAmount = parseFloat(document.getElementById("paid_amount")?.value) || 0;
-            paidAmount = Math.max(0, Math.min(roundedTotal, paidAmount));
 
-            if (paymentType === "CASH" && ["sales", "sales_pack"].includes(docType)) {
+            if (isSalesOrderConversionMode) {
+                // paid_amount = advance already received; balance_amount = current bill total - advance
+                paidAmount = Math.max(0, Math.min(roundedTotal, parseFloat(salesOrderAdvancePaid || 0) || 0));
+                const paidAmountEl = document.getElementById("paid_amount");
+                if (paidAmountEl) paidAmountEl.value = paidAmount.toFixed(2);
+            } else {
+                paidAmount = Math.max(0, Math.min(roundedTotal, paidAmount));
+            }
+
+            if (paymentType === "CASH" && ["sales", "sales_pack"].includes(docType) && !isSalesOrderConversionMode) {
                 paidAmount = roundedTotal;
             }
 
@@ -4416,7 +4431,12 @@ function calcTotal() {
                 const isCredit = String(paymentType || "").toUpperCase() === "CREDIT";
                 const paidNum = parseFloat(paidAmount || 0) || 0;
 
-                if (isCredit && paidNum > 0) {
+                if (isCredit && paidNum > 0 && !isSalesOrderConversionMode) {
+                    /*
+                      Do not create another receipt during Sales Order conversion.
+                      The advance was already collected and stored when the Sales Order was made.
+                      Converted bill only carries paid_amount = advance and balance_amount = bill total - advance.
+                    */
                     await upsertCreditPaymentTransaction({
                         docType,
                         headerId,

@@ -1129,6 +1129,8 @@
     let stockLoaded = false;
     let currentUserRole = "";
     let canSeeLandingColumn = false;
+    let isSalesOrderConversionMode = false;
+
 
     // --- BELOW LANDING SECRET UNLOCK ---
     // Normal save blocks 0 price and below-landing sales.
@@ -1558,16 +1560,20 @@
         const editType = params.get("type");
 
         if(editId){
+            isSalesOrderConversionMode = false;
             await loadEditDocument(editId, editType);
         }
         else if(convertId){
+            isSalesOrderConversionMode = false;
             await loadQuotation(convertId);
         }
         else if(convertSO){
+            isSalesOrderConversionMode = true;
             window.loadedSalesOrderId = convertSO;
             await loadSalesOrder(convertSO);
         }
         else{
+            isSalesOrderConversionMode = false;
             addNewRow();
         }
 
@@ -1585,6 +1591,10 @@
 
             const type=document.getElementById("doc_type").value;
             const sm=document.getElementById("salesman");
+
+            if(!window.loadedSalesOrderId){
+                isSalesOrderConversionMode = false;
+            }
             fetchNextBillNumber();
 
             if(type==="quotation"){
@@ -1623,7 +1633,7 @@
                 }
             }
 
-            syncPaymentUI();
+            syncPaymentUI(true);
         });
 
         document.getElementById("department_filter").addEventListener("change", () => {
@@ -1944,12 +1954,12 @@
 
         if (!paymentTypeEl || !paidAmountEl) return;
 
-        if (docType === "sales_order") {
+        if (docType === "sales_order" || isSalesOrderConversionMode) {
             paymentTypeEl.value = "CREDIT";
             paymentTypeEl.disabled = true;
             paymentTypeEl.dataset.justChangedToCredit = "0";
             paidAmountEl.disabled = false;
-            paidAmountEl.placeholder = "Advance Amount";
+            paidAmountEl.placeholder = isSalesOrderConversionMode ? "Advance / Paid Amount" : "Advance Amount";
         } else {
             paymentTypeEl.disabled = false;
             paidAmountEl.placeholder = "0.00";
@@ -1997,21 +2007,21 @@
         }
 
         if (paidLabel) {
-            paidLabel.textContent = docType === "sales_order" ? "Advance" : "Credit Paid";
+            paidLabel.textContent = (docType === "sales_order" || isSalesOrderConversionMode) ? "Advance / Paid" : "Credit Paid";
         }
 
-        if (docType === "sales_order") {
+        if (docType === "sales_order" || isSalesOrderConversionMode) {
             paymentTypeEl.value = "CREDIT";
             paymentTypeEl.disabled = true;
             paymentTypeEl.dataset.justChangedToCredit = "0";
             paidAmountEl.disabled = false;
-            paidAmountEl.placeholder = "Advance Amount";
+            paidAmountEl.placeholder = isSalesOrderConversionMode ? "Advance / Paid Amount" : "Advance Amount";
         } else {
             paymentTypeEl.disabled = false;
             paidAmountEl.placeholder = "0.00";
         }
 
-        const paymentType = docType === "sales_order"
+        const paymentType = (docType === "sales_order" || isSalesOrderConversionMode)
             ? "CREDIT"
             : String(paymentTypeEl.value || "CASH").toUpperCase();
 
@@ -2044,7 +2054,7 @@
 
         if (paymentTypeEl && !paymentTypeEl.dataset.boundCreditFix) {
             paymentTypeEl.addEventListener("change", (e) => {
-                if (getCurrentDocType() === "sales_order") {
+                if (getCurrentDocType() === "sales_order" || isSalesOrderConversionMode) {
                     e.target.value = "CREDIT";
                     e.target.dataset.justChangedToCredit = "0";
                     syncPaymentUI(true);
@@ -4083,10 +4093,14 @@ function calcTotal() {
             };
 
             let paymentType = String(document.getElementById("payment_type")?.value || "CASH").toUpperCase();
-            if (docType === "sales_order") {
+            if (docType === "sales_order" || isSalesOrderConversionMode) {
                 paymentType = "CREDIT";
                 const paymentTypeEl = document.getElementById("payment_type");
-                if (paymentTypeEl) paymentTypeEl.value = "CREDIT";
+                if (paymentTypeEl) {
+                    paymentTypeEl.value = "CREDIT";
+                    paymentTypeEl.disabled = true;
+                    paymentTypeEl.dataset.justChangedToCredit = "0";
+                }
             }
 
             const exactTotal = parseFloat(head.total || 0) || 0;
@@ -4462,6 +4476,7 @@ function calcTotal() {
                 }
 
                 window.loadedSalesOrderId = null;
+                isSalesOrderConversionMode = false;
             }
 
             window.location.replace(window.location.pathname + "?fresh=" + Date.now());
@@ -4528,8 +4543,23 @@ function calcTotal() {
     }
 
     async function loadSalesOrder(id){
+        isSalesOrderConversionMode = true;
+        window.loadedSalesOrderId = id;
         document.getElementById("doc_type").value = "sales";
         await fetchNextBillNumber();
+
+        const paymentTypeEl = document.getElementById("payment_type");
+        const paidAmountEl = document.getElementById("paid_amount");
+        if (paymentTypeEl) {
+            paymentTypeEl.value = "CREDIT";
+            paymentTypeEl.disabled = true;
+            paymentTypeEl.dataset.justChangedToCredit = "0";
+        }
+        if (paidAmountEl) {
+            paidAmountEl.disabled = false;
+            paidAmountEl.placeholder = "Advance / Paid Amount";
+        }
+        syncPaymentUI(true);
 
         document.getElementById("bill_body").innerHTML="";
         currentRowId=0;

@@ -1220,17 +1220,28 @@
         barcode.addEventListener("input", () => searchStockForRow(row, barcode.value, barcode));
       }
 
+      // Stable live calculation:
+      // Do not calculate on every single key stroke immediately.
+      // A tiny delay prevents focus racing between Price, Disc%, and GST while typing decimals.
       [purQty, retQty, price, disc, gst, purchaseG].forEach(el => {
-        el.addEventListener("input", () => calculateRow(row));
+        let calcTimer = null;
+        el.addEventListener("input", () => {
+          clearTimeout(calcTimer);
+          calcTimer = setTimeout(() => calculateRow(row), 45);
+        });
       });
 
       [retQty, price, disc, gst, purchaseG].forEach(el => {
         el.addEventListener("keydown", handleItemNumberKeyNav);
         el.addEventListener("focus", () => {
+          // Select on focus only after user/tab/enter navigation settles.
+          // This avoids auto jump between Price / Disc% / GST.
           setTimeout(() => {
-            el.select?.();
-            scrollRowIntoEntryView(row, el);
-          }, 0);
+            if(document.activeElement === el){
+              el.select?.();
+              scrollRowIntoEntryView(row, el);
+            }
+          }, 30);
         });
       });
 
@@ -1583,6 +1594,7 @@
 
     function calculateRow(row){
       const inputs = row.querySelectorAll("input");
+      const activeEl = document.activeElement;
       const rowMode = row.dataset.mode || getMode();
       let purQty = num(inputs[6].value);
       let retQty = num(inputs[7].value);
@@ -1594,9 +1606,21 @@
       if(rowMode === "with_bill" && retQty > purQty) retQty = purQty;
       if(rowMode === "without_bill" && purQty <= 0) purQty = retQty;
 
-      if(document.activeElement !== inputs[7]){
+      // Never rewrite the field currently being typed.
+      // This is the main protection for decimal entry and Price/Disc/GST focus stability.
+      if(activeEl !== inputs[7]){
         inputs[7].value = retQty ? String(retQty) : "";
       }
+      if(activeEl !== inputs[9] && inputs[9].value !== ""){
+        inputs[9].value = fmt2(price);
+      }
+      if(activeEl !== inputs[10] && inputs[10].value !== ""){
+        inputs[10].value = fmt2(disc);
+      }
+      if(activeEl !== inputs[12] && inputs[12].value !== ""){
+        inputs[12].value = fmt2(gst);
+      }
+
       inputs[8].value = rowMode === "with_bill" ? fmt2(purQty - retQty) : fmt2(0);
 
       const stockQty = Number(row.dataset.stockQty || 0);

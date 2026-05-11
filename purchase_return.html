@@ -1278,7 +1278,7 @@
       const target = inputs[cellIndex];
       if(!target || target.readOnly) return false;
 
-      target.focus({ preventScroll: true });
+      target.focus();
       setTimeout(() => {
         target.select?.();
         scrollRowIntoEntryView(row, target);
@@ -1381,20 +1381,30 @@
       const tableRect = table.getBoundingClientRect();
       const rowRect = row.getBoundingClientRect();
 
-      if(rowRect.bottom > tableRect.bottom - 16){
-        table.scrollTop += rowRect.bottom - tableRect.bottom + 28;
-      } else if(rowRect.top < tableRect.top + 52){
-        table.scrollTop -= tableRect.top - rowRect.top + 62;
+      // Vertical auto-scroll: keep the active row clearly visible while entering items.
+      if(rowRect.bottom > tableRect.bottom - 80){
+        table.scrollTop += rowRect.bottom - tableRect.bottom + 120;
+      } else if(rowRect.top < tableRect.top + 80){
+        table.scrollTop -= tableRect.top - rowRect.top + 120;
       }
 
+      // Horizontal auto-scroll: follow Price / Disc% / GST / Purchase+GST fields.
       if(focusInput){
         const inputRect = focusInput.getBoundingClientRect();
-        if(inputRect.right > tableRect.right - 24){
-          table.scrollLeft += inputRect.right - tableRect.right + 60;
-        } else if(inputRect.left < tableRect.left + 24){
-          table.scrollLeft -= tableRect.left - inputRect.left + 60;
+
+        if(inputRect.right > tableRect.right - 120){
+          table.scrollLeft += inputRect.right - tableRect.right + 180;
+        } else if(inputRect.left < tableRect.left + 120){
+          table.scrollLeft -= tableRect.left - inputRect.left + 180;
         }
       }
+
+      // Extra smooth follow inside the scrollable table.
+      row.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+        inline: "nearest"
+      });
     }
 
     function scrollToLastItemRow(){

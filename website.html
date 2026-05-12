@@ -3,28 +3,38 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>VAJRA LIGHTS - Products</title>
+<title>VAJRA LIGHTS AND ELECTRICALS</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
+
 body{
-  font-family:Arial,sans-serif;
+  font-family:Arial,Helvetica,sans-serif;
   background:#f1f3f6;
   color:#111;
 }
 
-:root{
-  --primary:#2874f0;
-  --line:#ddd;
-  --green:#388e3c;
-  --orange:#fb641b;
+button,input,select{
+  font:inherit;
 }
 
-a{text-decoration:none;color:inherit}
-button,input,select{font:inherit}
+button{
+  cursor:pointer;
+}
+
+:root{
+  --blue:#2874f0;
+  --orange:#ff9f00;
+  --green:#388e3c;
+  --wa:#25d366;
+  --dark:#172337;
+}
 
 .topbar{
-  background:var(--primary);
-  color:white;
+  background:var(--blue);
+  padding:10px 14px;
   position:sticky;
   top:0;
   z-index:100;
@@ -32,143 +42,104 @@ button,input,select{font:inherit}
 }
 
 .top-inner{
-  max-width:1400px;
+  max-width:1500px;
   margin:auto;
   display:flex;
   align-items:center;
-  gap:14px;
-  padding:10px 14px;
+  gap:12px;
 }
 
 .logo{
-  font-size:24px;
-  font-weight:bold;
+  color:white;
+  font-size:22px;
+  font-weight:900;
   white-space:nowrap;
 }
 
-.search-box{
+.logo span{
+  display:block;
+  font-size:11px;
+  opacity:.9;
+}
+
+.search{
   flex:1;
-  position:relative;
+  display:flex;
+  background:white;
+  border-radius:4px;
+  overflow:hidden;
 }
 
-.search-box input{
-  width:100%;
-  padding:12px 14px;
+.search input{
+  flex:1;
   border:none;
-  border-radius:4px;
   outline:none;
-}
-
-.top-btns{
-  display:flex;
-  gap:10px;
-}
-
-.top-btn{
-  background:white;
-  color:var(--primary);
-  border:none;
-  padding:10px 14px;
-  border-radius:4px;
-  font-weight:bold;
-  cursor:pointer;
-}
-
-.category-bar{
-  background:white;
-  border-bottom:1px solid var(--line);
-  overflow:auto;
-  white-space:nowrap;
-}
-
-.category-inner{
-  max-width:1400px;
-  margin:auto;
-  display:flex;
-  gap:18px;
-  padding:12px 14px;
-}
-
-.category-btn{
-  background:none;
-  border:none;
-  font-weight:bold;
-  cursor:pointer;
-  color:#333;
-}
-
-.main{
-  max-width:1400px;
-  margin:auto;
-  display:grid;
-  grid-template-columns:260px 1fr;
-  gap:14px;
-  padding:14px;
-}
-
-.sidebar{
-  background:white;
-  border-radius:4px;
-  padding:14px;
-  height:max-content;
-}
-
-.sidebar h3{
-  margin-bottom:12px;
-  font-size:18px;
-}
-
-.filter-group{
-  margin-bottom:20px;
-}
-
-.filter-group h4{
-  margin-bottom:10px;
+  padding:12px;
   font-size:15px;
 }
 
-.filter-group label{
-  display:flex;
-  gap:8px;
-  margin-bottom:8px;
-  font-size:14px;
+.search button{
+  width:55px;
+  border:none;
+  background:white;
+  color:var(--blue);
+  font-size:20px;
+  font-weight:900;
 }
 
-.content{
-  display:grid;
-  gap:14px;
-}
-
-.banner{
-  background:linear-gradient(90deg,#2874f0,#4fa3ff);
-  color:white;
+.top-btn{
+  border:none;
+  background:white;
+  color:var(--blue);
+  padding:10px 14px;
   border-radius:4px;
-  padding:28px;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  flex-wrap:wrap;
-  gap:20px;
+  font-weight:800;
+  cursor:pointer;
 }
 
-.banner h1{
-  font-size:38px;
+.container{
+  max-width:1500px;
+  margin:auto;
+  padding:14px;
+}
+
+.hero{
+  background:linear-gradient(90deg,#2874f0,#5aa9ff);
+  color:white;
+  padding:30px;
+  border-radius:6px;
+  margin-bottom:14px;
+}
+
+.hero h1{
+  font-size:34px;
   margin-bottom:10px;
 }
 
-.banner p{
-  max-width:600px;
+.hero p{
+  max-width:760px;
   line-height:1.6;
 }
 
-.banner button{
+.status{
   background:white;
-  color:var(--primary);
-  border:none;
-  padding:12px 18px;
+  padding:12px 14px;
+  border-radius:6px;
+  margin-bottom:14px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+}
+
+.status small{
+  color:#666;
+}
+
+.sort{
+  border:1px solid #ccc;
   border-radius:4px;
-  font-weight:bold;
-  cursor:pointer;
+  padding:9px;
 }
 
 .products{
@@ -177,110 +148,158 @@ button,input,select{font:inherit}
   gap:14px;
 }
 
-.product{
+.card{
   background:white;
-  border-radius:4px;
+  border-radius:6px;
   overflow:hidden;
-  transition:.15s;
   border:1px solid #eee;
+  transition:.15s;
+  display:flex;
+  flex-direction:column;
 }
 
-.product:hover{
-  box-shadow:0 2px 18px rgba(0,0,0,.15);
+.card:hover{
   transform:translateY(-2px);
+  box-shadow:0 2px 18px rgba(0,0,0,.12);
 }
 
-.product-img{
-  background:#fff;
+.img{
   height:240px;
+  background:white;
+  border-bottom:1px solid #eee;
+  position:relative;
   display:flex;
   align-items:center;
   justify-content:center;
-  font-size:80px;
-  border-bottom:1px solid #eee;
 }
 
-.product-body{
-  padding:14px;
+.img img{
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  padding:12px;
 }
 
-.product-title{
+.stock{
+  position:absolute;
+  top:10px;
+  left:10px;
+  background:#e8f5e9;
+  color:#1b5e20;
+  padding:4px 8px;
+  border-radius:4px;
+  font-size:11px;
+  font-weight:900;
+}
+
+.stock.out{
+  background:#ffebee;
+  color:#b71c1c;
+}
+
+.body{
+  padding:12px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  flex:1;
+}
+
+.name{
   font-size:15px;
-  margin-bottom:8px;
-  height:40px;
+  line-height:1.4;
+  height:42px;
   overflow:hidden;
 }
 
-.rating{
-  display:inline-flex;
-  align-items:center;
-  gap:4px;
-  background:var(--green);
-  color:white;
+.code{
   font-size:12px;
-  padding:4px 6px;
-  border-radius:3px;
-  margin-bottom:10px;
+  color:#777;
 }
 
-.price-row{
+.rating{
+  width:max-content;
+  background:var(--green);
+  color:white;
+  padding:4px 7px;
+  border-radius:4px;
+  font-size:12px;
+  font-weight:800;
+}
+
+.price-line{
   display:flex;
   align-items:center;
-  gap:10px;
-  margin-bottom:10px;
+  gap:8px;
+  flex-wrap:wrap;
 }
 
 .price{
   font-size:22px;
-  font-weight:bold;
+  font-weight:900;
 }
 
-.old-price{
-  color:#888;
+.old{
   text-decoration:line-through;
-  font-size:14px;
+  color:#777;
+  font-size:13px;
 }
 
 .off{
   color:var(--green);
-  font-size:14px;
-  font-weight:bold;
+  font-size:13px;
+  font-weight:800;
 }
 
-.product-actions{
+.meta{
+  font-size:13px;
+  color:#555;
+}
+
+.actions{
+  margin-top:auto;
   display:grid;
   grid-template-columns:1fr 1fr;
   gap:8px;
 }
 
-.cart-btn{
-  background:#ff9f00;
-  color:white;
+.cart{
   border:none;
+  background:var(--orange);
+  color:white;
   padding:10px;
-  font-weight:bold;
   border-radius:4px;
+  font-weight:900;
+  cursor:pointer;
 }
 
-.whatsapp-btn{
-  background:#25d366;
-  color:white;
+.wa{
   border:none;
+  background:var(--wa);
+  color:white;
   padding:10px;
-  font-weight:bold;
   border-radius:4px;
+  font-weight:900;
+  cursor:pointer;
+}
+
+.empty{
+  background:white;
+  border-radius:6px;
+  padding:40px;
+  text-align:center;
 }
 
 .footer{
-  background:#172337;
+  margin-top:30px;
+  background:var(--dark);
   color:white;
-  margin-top:40px;
-  padding:30px 14px;
 }
 
 .footer-inner{
-  max-width:1400px;
+  max-width:1500px;
   margin:auto;
+  padding:30px 14px;
   display:grid;
   grid-template-columns:repeat(4,1fr);
   gap:20px;
@@ -291,182 +310,171 @@ button,input,select{font:inherit}
 }
 
 .footer p{
-  color:#ddd;
   line-height:1.8;
   font-size:14px;
 }
 
-.cart-float{
+.copy{
+  border-top:1px solid rgba(255,255,255,.1);
+  text-align:center;
+  padding:12px;
+  font-size:13px;
+}
+
+.float-wa{
   position:fixed;
   right:18px;
   bottom:18px;
-  background:var(--orange);
-  color:white;
   width:60px;
   height:60px;
   border-radius:50%;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:28px;
-  box-shadow:0 2px 18px rgba(0,0,0,.25);
-  cursor:pointer;
-  z-index:200;
-}
-
-.cart-count{
-  position:absolute;
-  top:-4px;
-  right:-4px;
-  background:red;
+  border:none;
+  background:var(--wa);
   color:white;
-  width:24px;
-  height:24px;
-  border-radius:50%;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:12px;
-  font-weight:bold;
+  font-size:30px;
+  z-index:100;
+  box-shadow:0 2px 18px rgba(0,0,0,.2);
+  cursor:pointer;
 }
 
 @media(max-width:1100px){
-  .products{grid-template-columns:repeat(3,1fr)}
+  .products{
+    grid-template-columns:repeat(3,1fr);
+  }
 }
 
-@media(max-width:900px){
-  .main{grid-template-columns:1fr}
-  .sidebar{display:none}
-  .products{grid-template-columns:repeat(2,1fr)}
-}
+@media(max-width:800px){
+  .products{
+    grid-template-columns:repeat(2,1fr);
+  }
 
-@media(max-width:600px){
   .top-inner{
     flex-wrap:wrap;
   }
 
-  .products{
-    grid-template-columns:1fr 1fr;
-    gap:10px;
-  }
-
-  .product-img{
-    height:170px;
-    font-size:60px;
-  }
-
-  .banner h1{
-    font-size:26px;
+  .search{
+    width:100%;
+    order:3;
   }
 
   .footer-inner{
     grid-template-columns:1fr;
   }
+}
 
-  .product-title{
-    font-size:14px;
-    height:38px;
+@media(max-width:500px){
+  .products{
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+  }
+
+  .img{
+    height:170px;
+  }
+
+  .hero{
+    padding:20px;
+  }
+
+  .hero h1{
+    font-size:25px;
   }
 
   .price{
     font-size:18px;
   }
+
+  .top-btn{
+    display:none;
+  }
 }
 </style>
 </head>
+
 <body>
 
 <header class="topbar">
   <div class="top-inner">
-    <div class="logo">VAJRA LIGHTS</div>
 
-    <div class="search-box">
-      <input type="text" id="searchInput" placeholder="Search for products, brands and more" oninput="renderProducts()">
+    <div class="logo">
+      VAJRA LIGHTS
+      <span>ELECTRICALS • PLUMBING • INTERLOCK</span>
     </div>
 
-    <div class="top-btns">
-      <button class="top-btn">Login</button>
-      <button class="top-btn">Cart</button>
+    <div class="search">
+      <input
+        id="searchInput"
+        placeholder="Search products or item code"
+        oninput="renderProducts()"
+      >
+      <button onclick="renderProducts()">⌕</button>
     </div>
+
+    <button
+      class="top-btn"
+      onclick="sendGeneralWhatsApp()"
+    >
+      Enquiry
+    </button>
+
   </div>
 </header>
 
-<div class="category-bar">
-  <div class="category-inner">
-    <button class="category-btn" onclick="setCategory('all')">All</button>
-    <button class="category-btn" onclick="setCategory('LED')">LED Lights</button>
-    <button class="category-btn" onclick="setCategory('Decorative')">Decorative</button>
-    <button class="category-btn" onclick="setCategory('Outdoor')">Outdoor</button>
-    <button class="category-btn" onclick="setCategory('Electrical')">Electrical</button>
-    <button class="category-btn" onclick="setCategory('Fan')">Fans</button>
-  </div>
-</div>
+<div class="container">
 
-<div class="main">
-
-  <aside class="sidebar">
-    <h3>Filters</h3>
-
-    <div class="filter-group">
-      <h4>Category</h4>
-      <label><input type="radio" name="cat" checked onclick="setCategory('all')"> All</label>
-      <label><input type="radio" name="cat" onclick="setCategory('LED')"> LED</label>
-      <label><input type="radio" name="cat" onclick="setCategory('Decorative')"> Decorative</label>
-      <label><input type="radio" name="cat" onclick="setCategory('Outdoor')"> Outdoor</label>
-      <label><input type="radio" name="cat" onclick="setCategory('Electrical')"> Electrical</label>
-      <label><input type="radio" name="cat" onclick="setCategory('Fan')"> Fan</label>
-    </div>
-
-    <div class="filter-group">
-      <h4>Price</h4>
-      <label><input type="checkbox"> Under ₹500</label>
-      <label><input type="checkbox"> ₹500 - ₹1000</label>
-      <label><input type="checkbox"> ₹1000 - ₹5000</label>
-    </div>
-
-    <div class="filter-group">
-      <h4>Customer Rating</h4>
-      <label><input type="checkbox"> 4★ & above</label>
-      <label><input type="checkbox"> 3★ & above</label>
-    </div>
-  </aside>
-
-  <section class="content">
-
-    <div class="banner">
-      <div>
-        <h1>Lighting Products</h1>
-        <p>LED lights, decorative lights, fans, switches, outdoor lights and electrical products with WhatsApp enquiry support.</p>
-      </div>
-
-      <button onclick="sendGeneralWhatsApp()">WhatsApp Enquiry</button>
-    </div>
-
-    <div class="products" id="products"></div>
-
+  <section class="hero">
+    <h1>Lighting & Electrical Products</h1>
+    <p>
+      Browse our real product catalogue loaded from Supabase.
+      Only products having images are shown. Supports 10,000–20,000 products by loading in batches.
+    </p>
   </section>
+
+  <section class="status">
+    <div>
+      <b id="countText">Products</b><br>
+      <small id="statusText">Loading products...</small>
+    </div>
+
+    <select
+      class="sort"
+      id="sortSelect"
+      onchange="renderProducts()"
+    >
+      <option value="featured">Sort: Featured</option>
+      <option value="name">Name A-Z</option>
+      <option value="priceLow">Price Low to High</option>
+      <option value="priceHigh">Price High to Low</option>
+      <option value="stockHigh">Stock High to Low</option>
+    </select>
+  </section>
+
+  <section class="products" id="products"></section>
 
 </div>
 
 <footer class="footer">
   <div class="footer-inner">
+
     <div>
       <h4>ABOUT</h4>
       <p>VAJRA LIGHTS AND ELECTRICALS</p>
-      <p>Lighting and electrical products for homes and projects.</p>
+      <p>Electricals • Plumbing • Interlock</p>
     </div>
 
     <div>
       <h4>CONTACT</h4>
-      <p>Phone: +91 00000 00000</p>
-      <p>WhatsApp: +91 00000 00000</p>
+      <p>Phone: +91 86068 08063</p>
+      <p>WhatsApp: +91 86068 08063</p>
+      <p>Kerala, India</p>
     </div>
 
     <div>
-      <h4>CATEGORIES</h4>
-      <p>LED Lights</p>
-      <p>Decorative Lights</p>
-      <p>Outdoor Lights</p>
+      <h4>PRODUCTS</h4>
+      <p>Lighting Products</p>
+      <p>Electrical Products</p>
+      <p>Plumbing Products</p>
+      <p>Interlock Products</p>
     </div>
 
     <div>
@@ -474,93 +482,528 @@ button,input,select{font:inherit}
       <p>WhatsApp Enquiry</p>
       <p>Bulk Quotation</p>
       <p>Project Supply</p>
+      <p>Product Catalogue</p>
     </div>
+
+  </div>
+
+  <div class="copy">
+    © <span id="year"></span> VAJRA LIGHTS AND ELECTRICALS
   </div>
 </footer>
 
-<div class="cart-float">
-  🛒
-  <div class="cart-count" id="cartCount">0</div>
-</div>
+<button
+  class="float-wa"
+  onclick="sendGeneralWhatsApp()"
+>
+☘
+</button>
 
 <script>
-const WHATSAPP_NUMBER = '910000000000';
+const supabaseUrl =
+  "https://kzxwjujjvnehhthazicc.supabase.co";
 
-let selectedCategory = 'all';
-let cartCount = 0;
+const supabaseKey =
+  "sb_publishable_Iu3sQGl9gq_VsVYxR3j_7g_SLvgqp_9";
 
-const products = [
-  {name:'LED Panel Light 18W',category:'LED',price:'₹450',old:'₹699',off:'35% off',rating:'4.5',emoji:'💡'},
-  {name:'LED Tube Light 20W',category:'LED',price:'₹320',old:'₹499',off:'30% off',rating:'4.2',emoji:'🔦'},
-  {name:'Crystal Chandelier',category:'Decorative',price:'₹4,500',old:'₹6,999',off:'35% off',rating:'4.8',emoji:'✨'},
-  {name:'Fancy Wall Light',category:'Decorative',price:'₹890',old:'₹1,299',off:'31% off',rating:'4.3',emoji:'🏮'},
-  {name:'Garden Spike Light',category:'Outdoor',price:'₹750',old:'₹1,099',off:'32% off',rating:'4.1',emoji:'🌳'},
-  {name:'Gate Light',category:'Outdoor',price:'₹1,250',old:'₹1,899',off:'34% off',rating:'4.4',emoji:'🚪'},
-  {name:'Modular Switch',category:'Electrical',price:'₹65',old:'₹99',off:'35% off',rating:'4.0',emoji:'🔌'},
-  {name:'MCB 32A',category:'Electrical',price:'₹310',old:'₹450',off:'31% off',rating:'4.2',emoji:'⚙️'},
-  {name:'Premium Ceiling Fan',category:'Fan',price:'₹2,450',old:'₹3,499',off:'30% off',rating:'4.6',emoji:'🌀'},
-  {name:'Exhaust Fan',category:'Fan',price:'₹980',old:'₹1,399',off:'29% off',rating:'4.1',emoji:'🌬️'}
-];
+window.sbcc =
+  supabase.createClient(
+    supabaseUrl,
+    supabaseKey
+  );
 
-function setCategory(cat){
-  selectedCategory = cat;
+const WHATSAPP_NUMBER =
+  "918606808063";
+
+let allProducts = [];
+
+async function loadProducts(){
+
+  try{
+
+    document.getElementById('statusText').textContent =
+      'Loading products from Supabase...';
+
+    let rows = [];
+    let from = 0;
+    const batchSize = 1000;
+
+    while(true){
+
+      const to = from + batchSize - 1;
+
+      document.getElementById('statusText').textContent =
+        `Loading products ${from + 1} - ${to + 1}...`;
+
+      const {data,error} =
+        await window.sbcc
+          .from('stock_items')
+          .select('*')
+          .order('item_name',{ascending:true})
+          .range(from,to);
+
+      if(error) throw error;
+
+      if(!data || data.length === 0){
+        break;
+      }
+
+      rows = rows.concat(data);
+
+      document.getElementById('statusText').textContent =
+        `Loaded ${rows.length} products...`;
+
+      if(data.length < batchSize){
+        break;
+      }
+
+      from += batchSize;
+
+      if(from > 50000){
+        break;
+      }
+
+    }
+
+    allProducts =
+      rows.map(normalizeProduct);
+
+    await attachStockBalance();
+
+    document.getElementById('statusText').textContent =
+      `Loaded ${allProducts.length} products. Showing only products with images.`;
+
+  }catch(err){
+
+    console.error(err);
+
+    document.getElementById('statusText').textContent =
+      'Failed loading products. Check RLS or table structure.';
+
+  }
+
   renderProducts();
+
+}
+
+function normalizeProduct(row){
+
+  const price = Number(
+    row.price1 ||
+    row.price ||
+    row.sales_price ||
+    row.price1_gst ||
+    row.sales_price_gst ||
+    0
+  );
+
+  return {
+
+    id:
+      row.id ||
+      row.item_code ||
+      Math.random(),
+
+    item_code:
+      row.item_code || '',
+
+    item_name:
+      row.item_name || 'Unnamed Product',
+
+    brand:
+      row.brand || '',
+
+    department:
+      row.department || '',
+
+    price,
+
+    old_price:
+      Math.round(price * 1.25),
+
+    balance:
+      Number(row.balance || 0),
+
+    gst_percent:
+      Number(row.gst_percent || 0),
+
+    product_image_url:
+      row.product_image_url ||
+      row.image_url ||
+      '',
+
+    description:
+      row.description ||
+      row.item_name ||
+      ''
+
+  };
+
+}
+
+async function attachStockBalance(){
+
+  try{
+
+    let rows = [];
+    let from = 0;
+    const batchSize = 1000;
+
+    while(true){
+
+      const to = from + batchSize - 1;
+
+      const {data,error} =
+        await window.sbcc
+          .from('stock_balance_view')
+          .select('item_code,balance')
+          .range(from,to);
+
+      if(error) return;
+
+      if(!data || data.length === 0){
+        break;
+      }
+
+      rows = rows.concat(data);
+
+      if(data.length < batchSize){
+        break;
+      }
+
+      from += batchSize;
+
+      if(from > 50000){
+        break;
+      }
+
+    }
+
+    const map = new Map(
+      rows.map(x=>[
+        String(x.item_code),
+        Number(x.balance || 0)
+      ])
+    );
+
+    allProducts.forEach(p=>{
+
+      if(map.has(String(p.item_code))){
+        p.balance =
+          map.get(String(p.item_code));
+      }
+
+    });
+
+  }catch(e){
+
+    console.log(e);
+
+  }
+
 }
 
 function renderProducts(){
-  const search = document.getElementById('searchInput').value.toLowerCase();
 
-  const filtered = products.filter(p=>{
-    const matchSearch = p.name.toLowerCase().includes(search);
-    const matchCat = selectedCategory === 'all' || p.category === selectedCategory;
-    return matchSearch && matchCat;
-  });
+  const q =
+    (
+      document.getElementById('searchInput')
+      .value || ''
+    ).toLowerCase();
 
-  document.getElementById('products').innerHTML = filtered.map((p,index)=>`
-    <div class="product">
+  const sort =
+    document.getElementById('sortSelect')
+    .value;
 
-      <div class="product-img">${p.emoji}</div>
+  let list =
+    allProducts.filter(p=>{
 
-      <div class="product-body">
+      const txt = [
 
-        <div class="product-title">${p.name}</div>
+        p.item_name,
+        p.item_code,
+        p.brand,
+        p.department,
+        p.description
 
-        <div class="rating">⭐ ${p.rating}</div>
+      ].join(' ').toLowerCase();
 
-        <div class="price-row">
-          <div class="price">${p.price}</div>
-          <div class="old-price">${p.old}</div>
+      return (
+
+        txt.includes(q)
+
+        &&
+
+        p.product_image_url
+
+        &&
+
+        p.product_image_url.trim() !== ''
+
+      );
+
+    });
+
+  if(sort === 'name'){
+    list.sort((a,b)=>
+      a.item_name.localeCompare(b.item_name)
+    );
+  }
+
+  if(sort === 'priceLow'){
+    list.sort((a,b)=>a.price-b.price);
+  }
+
+  if(sort === 'priceHigh'){
+    list.sort((a,b)=>b.price-a.price);
+  }
+
+  if(sort === 'stockHigh'){
+    list.sort((a,b)=>b.balance-a.balance);
+  }
+
+  document.getElementById('countText')
+    .textContent =
+      `${list.length} Products`;
+
+  const box =
+    document.getElementById('products');
+
+  if(!list.length){
+
+    box.innerHTML = `
+      <div
+        class="empty"
+        style="grid-column:1/-1"
+      >
+        <b>No products found</b><br>
+        Only products with product_image_url are shown.
+      </div>
+    `;
+
+    return;
+
+  }
+
+  box.innerHTML =
+    list.map(productCard).join('');
+
+}
+
+function productCard(p){
+
+  const off =
+    p.price && p.old_price
+    ?
+    Math.round(
+      (
+        (p.old_price - p.price)
+        /
+        p.old_price
+      ) * 100
+    )
+    :
+    0;
+
+  return `
+
+    <div class="card">
+
+      <div class="img">
+
+        <span class="stock ${p.balance>0?'':'out'}">
+          ${p.balance>0?'In Stock':'Ask Stock'}
+        </span>
+
+        <img
+          src="${optimizeImage(p.product_image_url)}"
+          loading="lazy"
+          onerror="this.closest('.card').style.display='none'"
+        >
+
+      </div>
+
+      <div class="body">
+
+        <div class="name">
+          ${escapeHtml(p.item_name)}
         </div>
 
-        <div class="off">${p.off}</div>
+        <div class="code">
+          ${escapeHtml(p.item_code)}
+        </div>
 
-        <div class="product-actions">
-          <button class="cart-btn" onclick="addToCart()">Cart</button>
-          <button class="whatsapp-btn" onclick="whatsappProduct('${p.name}')">WhatsApp</button>
+        <div class="rating">
+          ★ 4.5
+        </div>
+
+        <div class="price-line">
+
+          <div class="price">
+            ${formatPrice(p.price)}
+          </div>
+
+          ${
+            p.old_price && p.old_price > p.price
+            ?
+            `<div class="old">${formatPrice(p.old_price)}</div>`
+            :
+            ''
+          }
+
+        </div>
+
+        <div class="off">
+          ${off ? off + '% off' : 'Best price'}
+        </div>
+
+        <div class="meta">
+
+          ${escapeHtml(p.department)}
+
+          ${
+            p.gst_percent
+            ?
+            '• GST '+p.gst_percent+'%'
+            :
+            ''
+          }
+
+        </div>
+
+        <div class="actions">
+
+          <button
+            class="cart"
+            onclick="
+              sendProductWhatsApp(
+                '${escapeAttr(p.item_name)}',
+                '${escapeAttr(p.item_code)}'
+              )
+            "
+          >
+            Enquiry
+          </button>
+
+          <button
+            class="wa"
+            onclick="
+              sendProductWhatsApp(
+                '${escapeAttr(p.item_name)}',
+                '${escapeAttr(p.item_code)}'
+              )
+            "
+          >
+            WhatsApp
+          </button>
+
         </div>
 
       </div>
 
     </div>
-  `).join('');
+
+  `;
+
 }
 
-function addToCart(){
-  cartCount++;
-  document.getElementById('cartCount').innerText = cartCount;
+function optimizeImage(url){
+
+  if(
+    url.includes('res.cloudinary.com')
+    &&
+    url.includes('/upload/')
+  ){
+
+    return url.replace(
+      '/upload/',
+      '/upload/f_auto,q_auto,w_700,c_pad,b_white/'
+    );
+
+  }
+
+  return url;
+
 }
 
-function whatsappProduct(name){
-  const text = encodeURIComponent(`Hi, I need details and best price for ${name}`);
-  window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${text}`,'_blank');
+function formatPrice(n){
+
+  const v =
+    Number(n || 0);
+
+  if(!v){
+    return 'Ask Price';
+  }
+
+  return '₹' +
+    v.toLocaleString('en-IN',{
+      maximumFractionDigits:2
+    });
+
 }
 
 function sendGeneralWhatsApp(){
-  const text = encodeURIComponent('Hi, I need lighting and electrical product details');
-  window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${text}`,'_blank');
+
+  openWhatsApp(
+    'Hi, I need product details from VAJRA LIGHTS AND ELECTRICALS.'
+  );
+
 }
 
-renderProducts();
+function sendProductWhatsApp(name,code){
+
+  openWhatsApp(
+
+`Hi, I need details and best price for this product:
+
+Product: ${name}
+Code: ${code}`
+
+  );
+
+}
+
+function openWhatsApp(text){
+
+  window.open(
+
+    `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`,
+
+    '_blank'
+
+  );
+
+}
+
+function escapeHtml(str){
+
+  return String(str || '')
+    .replace(/[&<>'"]/g,s=>({
+
+      '&':'&amp;',
+      '<':'&lt;',
+      '>':'&gt;',
+      "'":'&#039;',
+      '"':'&quot;'
+
+    }[s]));
+
+}
+
+function escapeAttr(str){
+
+  return escapeHtml(str)
+    .replace(/`/g,'&#096;');
+
+}
+
+document.getElementById('year')
+  .textContent =
+    new Date().getFullYear();
+
+loadProducts();
+
 </script>
 
-</body
+</body>
+</html>

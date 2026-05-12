@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VAJRA LIGHTS - Products</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:Arial,sans-serif;
+  background:#f1f3f6;
+  color:#111;
+}
+
+:root{
+  --primary:#2874f0;
+  --line:#ddd;
+  --green:#388e3c;
+  --orange:#fb641b;
+}
+
+a{text-decoration:none;color:inherit}
+button,input,select{font:inherit}
+
+.topbar{
+  background:var(--primary);
+  color:white;
+  position:sticky;
+  top:0;
+  z-index:100;
+  box-shadow:0 2px 10px rgba(0,0,0,.15);
+}
+
+.top-inner{
+  max-width:1400px;
+  margin:auto;
+  display:flex;
+  align-items:center;
+  gap:14px;
+  padding:10px 14px;
+}
+
+.logo{
+  font-size:24px;
+  font-weight:bold;
+  white-space:nowrap;
+}
+
+.search-box{
+  flex:1;
+  position:relative;
+}
+
+.search-box input{
+  width:100%;
+  padding:12px 14px;
+  border:none;
+  border-radius:4px;
+  outline:none;
+}
+
+.top-btns{
+  display:flex;
+  gap:10px;
+}
+
+.top-btn{
+  background:white;
+  color:var(--primary);
+  border:none;
+  padding:10px 14px;
+  border-radius:4px;
+  font-weight:bold;
+  cursor:pointer;
+}
+
+.category-bar{
+  background:white;
+  border-bottom:1px solid var(--line);
+  overflow:auto;
+  white-space:nowrap;
+}
+
+.category-inner{
+  max-width:1400px;
+  margin:auto;
+  display:flex;
+  gap:18px;
+  padding:12px 14px;
+}
+
+.category-btn{
+  background:none;
+  border:none;
+  font-weight:bold;
+  cursor:pointer;
+  color:#333;
+}
+
+.main{
+  max-width:1400px;
+  margin:auto;
+  display:grid;
+  grid-template-columns:260px 1fr;
+  gap:14px;
+  padding:14px;
+}
+
+.sidebar{
+  background:white;
+  border-radius:4px;
+  padding:14px;
+  height:max-content;
+}
+
+.sidebar h3{
+  margin-bottom:12px;
+  font-size:18px;
+}
+
+.filter-group{
+  margin-bottom:20px;
+}
+
+.filter-group h4{
+  margin-bottom:10px;
+  font-size:15px;
+}
+
+.filter-group label{
+  display:flex;
+  gap:8px;
+  margin-bottom:8px;
+  font-size:14px;
+}
+
+.content{
+  display:grid;
+  gap:14px;
+}
+
+.banner{
+  background:linear-gradient(90deg,#2874f0,#4fa3ff);
+  color:white;
+  border-radius:4px;
+  padding:28px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  flex-wrap:wrap;
+  gap:20px;
+}
+
+.banner h1{
+  font-size:38px;
+  margin-bottom:10px;
+}
+
+.banner p{
+  max-width:600px;
+  line-height:1.6;
+}
+
+.banner button{
+  background:white;
+  color:var(--primary);
+  border:none;
+  padding:12px 18px;
+  border-radius:4px;
+  font-weight:bold;
+  cursor:pointer;
+}
+
+.products{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:14px;
+}
+
+.product{
+  background:white;
+  border-radius:4px;
+  overflow:hidden;
+  transition:.15s;
+  border:1px solid #eee;
+}
+
+.product:hover{
+  box-shadow:0 2px 18px rgba(0,0,0,.15);
+  transform:translateY(-2px);
+}
+
+.product-img{
+  background:#fff;
+  height:240px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:80px;
+  border-bottom:1px solid #eee;
+}
+
+.product-body{
+  padding:14px;
+}
+
+.product-title{
+  font-size:15px;
+  margin-bottom:8px;
+  height:40px;
+  overflow:hidden;
+}
+
+.rating{
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  background:var(--green);
+  color:white;
+  font-size:12px;
+  padding:4px 6px;
+  border-radius:3px;
+  margin-bottom:10px;
+}
+
+.price-row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-bottom:10px;
+}
+
+.price{
+  font-size:22px;
+  font-weight:bold;
+}
+
+.old-price{
+  color:#888;
+  text-decoration:line-through;
+  font-size:14px;
+}
+
+.off{
+  color:var(--green);
+  font-size:14px;
+  font-weight:bold;
+}
+
+.product-actions{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+
+.cart-btn{
+  background:#ff9f00;
+  color:white;
+  border:none;
+  padding:10px;
+  font-weight:bold;
+  border-radius:4px;
+}
+
+.whatsapp-btn{
+  background:#25d366;
+  color:white;
+  border:none;
+  padding:10px;
+  font-weight:bold;
+  border-radius:4px;
+}
+
+.footer{
+  background:#172337;
+  color:white;
+  margin-top:40px;
+  padding:30px 14px;
+}
+
+.footer-inner{
+  max-width:1400px;
+  margin:auto;
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:20px;
+}
+
+.footer h4{
+  margin-bottom:12px;
+}
+
+.footer p{
+  color:#ddd;
+  line-height:1.8;
+  font-size:14px;
+}
+
+.cart-float{
+  position:fixed;
+  right:18px;
+  bottom:18px;
+  background:var(--orange);
+  color:white;
+  width:60px;
+  height:60px;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:28px;
+  box-shadow:0 2px 18px rgba(0,0,0,.25);
+  cursor:pointer;
+  z-index:200;
+}
+
+.cart-count{
+  position:absolute;
+  top:-4px;
+  right:-4px;
+  background:red;
+  color:white;
+  width:24px;
+  height:24px;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:12px;
+  font-weight:bold;
+}
+
+@media(max-width:1100px){
+  .products{grid-template-columns:repeat(3,1fr)}
+}
+
+@media(max-width:900px){
+  .main{grid-template-columns:1fr}
+  .sidebar{display:none}
+  .products{grid-template-columns:repeat(2,1fr)}
+}
+
+@media(max-width:600px){
+  .top-inner{
+    flex-wrap:wrap;
+  }
+
+  .products{
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+  }
+
+  .product-img{
+    height:170px;
+    font-size:60px;
+  }
+
+  .banner h1{
+    font-size:26px;
+  }
+
+  .footer-inner{
+    grid-template-columns:1fr;
+  }
+
+  .product-title{
+    font-size:14px;
+    height:38px;
+  }
+
+  .price{
+    font-size:18px;
+  }
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="top-inner">
+    <div class="logo">VAJRA LIGHTS</div>
+
+    <div class="search-box">
+      <input type="text" id="searchInput" placeholder="Search for products, brands and more" oninput="renderProducts()">
+    </div>
+
+    <div class="top-btns">
+      <button class="top-btn">Login</button>
+      <button class="top-btn">Cart</button>
+    </div>
+  </div>
+</header>
+
+<div class="category-bar">
+  <div class="category-inner">
+    <button class="category-btn" onclick="setCategory('all')">All</button>
+    <button class="category-btn" onclick="setCategory('LED')">LED Lights</button>
+    <button class="category-btn" onclick="setCategory('Decorative')">Decorative</button>
+    <button class="category-btn" onclick="setCategory('Outdoor')">Outdoor</button>
+    <button class="category-btn" onclick="setCategory('Electrical')">Electrical</button>
+    <button class="category-btn" onclick="setCategory('Fan')">Fans</button>
+  </div>
+</div>
+
+<div class="main">
+
+  <aside class="sidebar">
+    <h3>Filters</h3>
+
+    <div class="filter-group">
+      <h4>Category</h4>
+      <label><input type="radio" name="cat" checked onclick="setCategory('all')"> All</label>
+      <label><input type="radio" name="cat" onclick="setCategory('LED')"> LED</label>
+      <label><input type="radio" name="cat" onclick="setCategory('Decorative')"> Decorative</label>
+      <label><input type="radio" name="cat" onclick="setCategory('Outdoor')"> Outdoor</label>
+      <label><input type="radio" name="cat" onclick="setCategory('Electrical')"> Electrical</label>
+      <label><input type="radio" name="cat" onclick="setCategory('Fan')"> Fan</label>
+    </div>
+
+    <div class="filter-group">
+      <h4>Price</h4>
+      <label><input type="checkbox"> Under ₹500</label>
+      <label><input type="checkbox"> ₹500 - ₹1000</label>
+      <label><input type="checkbox"> ₹1000 - ₹5000</label>
+    </div>
+
+    <div class="filter-group">
+      <h4>Customer Rating</h4>
+      <label><input type="checkbox"> 4★ & above</label>
+      <label><input type="checkbox"> 3★ & above</label>
+    </div>
+  </aside>
+
+  <section class="content">
+
+    <div class="banner">
+      <div>
+        <h1>Lighting Products</h1>
+        <p>LED lights, decorative lights, fans, switches, outdoor lights and electrical products with WhatsApp enquiry support.</p>
+      </div>
+
+      <button onclick="sendGeneralWhatsApp()">WhatsApp Enquiry</button>
+    </div>
+
+    <div class="products" id="products"></div>
+
+  </section>
+
+</div>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <div>
+      <h4>ABOUT</h4>
+      <p>VAJRA LIGHTS AND ELECTRICALS</p>
+      <p>Lighting and electrical products for homes and projects.</p>
+    </div>
+
+    <div>
+      <h4>CONTACT</h4>
+      <p>Phone: +91 00000 00000</p>
+      <p>WhatsApp: +91 00000 00000</p>
+    </div>
+
+    <div>
+      <h4>CATEGORIES</h4>
+      <p>LED Lights</p>
+      <p>Decorative Lights</p>
+      <p>Outdoor Lights</p>
+    </div>
+
+    <div>
+      <h4>SUPPORT</h4>
+      <p>WhatsApp Enquiry</p>
+      <p>Bulk Quotation</p>
+      <p>Project Supply</p>
+    </div>
+  </div>
+</footer>
+
+<div class="cart-float">
+  🛒
+  <div class="cart-count" id="cartCount">0</div>
+</div>
+
+<script>
+const WHATSAPP_NUMBER = '910000000000';
+
+let selectedCategory = 'all';
+let cartCount = 0;
+
+const products = [
+  {name:'LED Panel Light 18W',category:'LED',price:'₹450',old:'₹699',off:'35% off',rating:'4.5',emoji:'💡'},
+  {name:'LED Tube Light 20W',category:'LED',price:'₹320',old:'₹499',off:'30% off',rating:'4.2',emoji:'🔦'},
+  {name:'Crystal Chandelier',category:'Decorative',price:'₹4,500',old:'₹6,999',off:'35% off',rating:'4.8',emoji:'✨'},
+  {name:'Fancy Wall Light',category:'Decorative',price:'₹890',old:'₹1,299',off:'31% off',rating:'4.3',emoji:'🏮'},
+  {name:'Garden Spike Light',category:'Outdoor',price:'₹750',old:'₹1,099',off:'32% off',rating:'4.1',emoji:'🌳'},
+  {name:'Gate Light',category:'Outdoor',price:'₹1,250',old:'₹1,899',off:'34% off',rating:'4.4',emoji:'🚪'},
+  {name:'Modular Switch',category:'Electrical',price:'₹65',old:'₹99',off:'35% off',rating:'4.0',emoji:'🔌'},
+  {name:'MCB 32A',category:'Electrical',price:'₹310',old:'₹450',off:'31% off',rating:'4.2',emoji:'⚙️'},
+  {name:'Premium Ceiling Fan',category:'Fan',price:'₹2,450',old:'₹3,499',off:'30% off',rating:'4.6',emoji:'🌀'},
+  {name:'Exhaust Fan',category:'Fan',price:'₹980',old:'₹1,399',off:'29% off',rating:'4.1',emoji:'🌬️'}
+];
+
+function setCategory(cat){
+  selectedCategory = cat;
+  renderProducts();
+}
+
+function renderProducts(){
+  const search = document.getElementById('searchInput').value.toLowerCase();
+
+  const filtered = products.filter(p=>{
+    const matchSearch = p.name.toLowerCase().includes(search);
+    const matchCat = selectedCategory === 'all' || p.category === selectedCategory;
+    return matchSearch && matchCat;
+  });
+
+  document.getElementById('products').innerHTML = filtered.map((p,index)=>`
+    <div class="product">
+
+      <div class="product-img">${p.emoji}</div>
+
+      <div class="product-body">
+
+        <div class="product-title">${p.name}</div>
+
+        <div class="rating">⭐ ${p.rating}</div>
+
+        <div class="price-row">
+          <div class="price">${p.price}</div>
+          <div class="old-price">${p.old}</div>
+        </div>
+
+        <div class="off">${p.off}</div>
+
+        <div class="product-actions">
+          <button class="cart-btn" onclick="addToCart()">Cart</button>
+          <button class="whatsapp-btn" onclick="whatsappProduct('${p.name}')">WhatsApp</button>
+        </div>
+
+      </div>
+
+    </div>
+  `).join('');
+}
+
+function addToCart(){
+  cartCount++;
+  document.getElementById('cartCount').innerText = cartCount;
+}
+
+function whatsappProduct(name){
+  const text = encodeURIComponent(`Hi, I need details and best price for ${name}`);
+  window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${text}`,'_blank');
+}
+
+function sendGeneralWhatsApp(){
+  const text = encodeURIComponent('Hi, I need lighting and electrical product details');
+  window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${text}`,'_blank');
+}
+
+renderProducts();
+</script>
+
+</body

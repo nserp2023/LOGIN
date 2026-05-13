@@ -10,437 +10,349 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 
+:root{
+  --amazon-dark:#131921;
+  --amazon-mid:#232f3e;
+  --amazon-yellow:#febd69;
+  --amazon-orange:#ff9900;
+  --page:#e7e9ec;
+  --card:#ffffff;
+  --text:#111827;
+  --muted:#64748b;
+  --line:#d5d9d9;
+  --green:#007600;
+  --wa:#25d366;
+  --red-led:#ff1616;
+  --white-led:#f8fbff;
+}
+
 body{
   font-family:Arial,Helvetica,sans-serif;
-  background:#f1f3f6;
-  color:#111;
+  background:var(--page);
+  color:var(--text);
 }
 
-button,input,select{
-  font:inherit;
-}
-
-button{
-  cursor:pointer;
-}
-
-:root{
-  --blue:#2874f0;
-  --orange:#ff9f00;
-  --green:#388e3c;
-  --wa:#25d366;
-  --dark:#172337;
-}
+button,input,select{font:inherit}
+button{cursor:pointer;-webkit-tap-highlight-color:transparent}
 
 .topbar{
-  background:var(--blue);
-  padding:10px 14px;
+  background:var(--amazon-dark);
   position:sticky;
   top:0;
-  z-index:100;
-  box-shadow:0 2px 10px rgba(0,0,0,.15);
+  z-index:1000;
+  box-shadow:0 2px 12px rgba(0,0,0,.28);
 }
 
 .top-inner{
   max-width:1500px;
   margin:auto;
-  display:flex;
+  padding:8px 12px 10px;
+  display:grid;
+  grid-template-columns:auto 1fr auto;
   align-items:center;
-  gap:12px;
+  gap:10px;
 }
 
-.logo{
-  color:white;
-  font-size:22px;
-  font-weight:900;
-  white-space:nowrap;
-}
-
-.logo span{
-  display:block;
-  font-size:11px;
-  opacity:.9;
-}
-
-.search{
-  flex:1;
-  display:flex;
-  background:white;
-  border-radius:4px;
+.led-board{
+  background:linear-gradient(180deg,#080b10,#111827 55%,#05070a);
+  border:2px solid #343a46;
+  border-radius:8px;
+  padding:8px 12px 7px;
+  min-width:285px;
+  box-shadow:
+    inset 0 0 18px rgba(255,255,255,.08),
+    inset 0 -8px 16px rgba(0,0,0,.55),
+    0 0 18px rgba(255,255,255,.10);
+  position:relative;
   overflow:hidden;
 }
 
-.search input{
+.led-board:before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:
+    radial-gradient(circle at 12px 10px,rgba(255,255,255,.08) 0 1px,transparent 2px),
+    linear-gradient(90deg,rgba(255,255,255,.04),transparent 32%,rgba(255,255,255,.04));
+  background-size:14px 14px,100% 100%;
+  pointer-events:none;
+  opacity:.8;
+}
+
+.shop-led{
+  position:relative;
+  z-index:1;
+  display:block;
+  font-weight:950;
+  letter-spacing:1.2px;
+  line-height:1.02;
+  white-space:nowrap;
+  font-size:21px;
+  text-transform:uppercase;
+}
+
+.led-v{
+  color:var(--red-led);
+  text-shadow:
+    0 0 2px #fff,
+    0 0 6px #ff2b2b,
+    0 0 12px #ff0000,
+    0 0 24px #ff0000;
+  animation:redFlicker 4.7s infinite steps(1,end);
+}
+
+.led-white{
+  color:var(--white-led);
+  text-shadow:
+    0 0 2px #fff,
+    0 0 6px #dceeff,
+    0 0 13px #acd8ff,
+    0 0 25px #72b8ff;
+  animation:whiteFlicker 6.3s infinite steps(1,end);
+}
+
+.led-word-2{animation-delay:.9s}
+.led-word-3{animation-delay:1.6s}
+.led-word-4{animation-delay:2.4s}
+
+.led-sub{
+  position:relative;
+  z-index:1;
+  margin-top:3px;
+  display:block;
+  color:#cbd5e1;
+  font-size:10px;
+  letter-spacing:1.8px;
+  text-transform:uppercase;
+  opacity:.92;
+  text-shadow:0 0 8px rgba(255,255,255,.38);
+}
+
+@keyframes whiteFlicker{
+  0%,7%,12%,16%,31%,44%,58%,73%,88%,100%{opacity:1;filter:brightness(1.12)}
+  8%,15%,45%,74%{opacity:.55;filter:brightness(.55)}
+  9%,46%,75%{opacity:.18;filter:brightness(.25)}
+  10%,47%,76%{opacity:.95;filter:brightness(1)}
+  32%,59%,89%{opacity:.78;filter:brightness(.75)}
+}
+
+@keyframes redFlicker{
+  0%,11%,18%,26%,41%,67%,81%,100%{opacity:1;filter:brightness(1.2)}
+  12%,27%,68%{opacity:.45;filter:brightness(.5)}
+  13%,28%,69%{opacity:.95;filter:brightness(1.08)}
+  42%,82%{opacity:.2;filter:brightness(.28)}
+  43%,83%{opacity:1;filter:brightness(1.25)}
+}
+
+.search-wrap{
+  display:flex;
+  border-radius:8px;
+  overflow:hidden;
+  background:#fff;
+  border:2px solid transparent;
+  height:44px;
+}
+
+.search-wrap:focus-within{border-color:var(--amazon-yellow);box-shadow:0 0 0 2px rgba(254,189,105,.28)}
+.search-wrap input{
   flex:1;
   border:none;
   outline:none;
-  padding:12px;
+  padding:0 12px;
   font-size:15px;
+  min-width:0;
 }
-
-.search button{
-  width:55px;
+.search-wrap button{
+  width:52px;
   border:none;
-  background:white;
-  color:var(--blue);
-  font-size:20px;
+  background:var(--amazon-yellow);
+  color:#111;
+  font-size:23px;
   font-weight:900;
 }
 
 .top-btn{
-  border:none;
-  background:white;
-  color:var(--blue);
-  padding:10px 14px;
-  border-radius:4px;
+  border:1px solid rgba(255,255,255,.24);
+  background:transparent;
+  color:white;
+  padding:10px 12px;
+  border-radius:6px;
   font-weight:800;
-  cursor:pointer;
+  white-space:nowrap;
 }
+.top-btn:hover{border-color:var(--amazon-yellow);color:var(--amazon-yellow)}
 
-.container{
+.nav-strip{
+  background:var(--amazon-mid);
+  color:#fff;
+  overflow:auto;
+  white-space:nowrap;
+  scrollbar-width:none;
+}
+.nav-strip::-webkit-scrollbar{display:none}
+.nav-strip-inner{
   max-width:1500px;
   margin:auto;
-  padding:14px;
+  display:flex;
+  gap:6px;
+  padding:7px 12px;
 }
+.nav-pill{
+  border:none;
+  color:#fff;
+  background:rgba(255,255,255,.08);
+  border-radius:999px;
+  padding:7px 12px;
+  font-size:13px;
+  font-weight:800;
+}
+
+.container{max-width:1500px;margin:auto;padding:12px}
 
 .hero{
-  background:linear-gradient(90deg,#2874f0,#5aa9ff);
+  background:
+    radial-gradient(circle at top left,rgba(254,189,105,.38),transparent 38%),
+    linear-gradient(135deg,#1f2937,#111827 55%,#030712);
   color:white;
-  padding:30px;
-  border-radius:6px;
-  margin-bottom:14px;
+  border-radius:12px;
+  padding:22px;
+  margin-bottom:12px;
+  box-shadow:0 2px 14px rgba(0,0,0,.16);
 }
-
-.hero h1{
-  font-size:34px;
-  margin-bottom:10px;
+.hero h1{font-size:30px;margin-bottom:8px;letter-spacing:.2px}
+.hero p{max-width:760px;line-height:1.55;color:#e5e7eb;font-size:15px}
+.hero-actions{margin-top:14px;display:flex;gap:10px;flex-wrap:wrap}
+.hero-actions button{
+  border:none;
+  border-radius:999px;
+  padding:10px 15px;
+  font-weight:900;
 }
-
-.hero p{
-  max-width:760px;
-  line-height:1.6;
-}
+.hero-wa{background:var(--wa);color:white}
+.hero-call{background:var(--amazon-yellow);color:#111}
 
 .status{
-  background:white;
-  padding:12px 14px;
-  border-radius:6px;
-  margin-bottom:14px;
+  background:#fff;
+  padding:10px 12px;
+  border-radius:10px;
+  margin-bottom:12px;
   display:flex;
   justify-content:space-between;
   align-items:center;
-  gap:12px;
+  gap:10px;
+  border:1px solid var(--line);
+  position:sticky;
+  top:70px;
+  z-index:500;
 }
+.status small{color:var(--muted)}
+.sort{border:1px solid #b8b8b8;border-radius:8px;padding:9px;background:#fff;max-width:170px}
 
-.status small{
-  color:#666;
-}
-
-.sort{
-  border:1px solid #ccc;
-  border-radius:4px;
-  padding:9px;
-}
-
-.products{
-  display:grid;
-  grid-template-columns:repeat(4,1fr);
-  gap:14px;
-}
-
+.products{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
 .card{
-  background:white;
-  border-radius:6px;
+  background:#fff;
+  border-radius:10px;
+  border:1px solid var(--line);
   overflow:hidden;
-  border:1px solid #eee;
-  transition:.15s;
   display:flex;
   flex-direction:column;
+  min-width:0;
+  box-shadow:0 1px 4px rgba(15,23,42,.08);
 }
-
-.card:hover{
-  transform:translateY(-2px);
-  box-shadow:0 2px 18px rgba(0,0,0,.12);
-}
-
-.img{
-  height:240px;
-  background:white;
-  border-bottom:1px solid #eee;
-  position:relative;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-}
-
-.img img{
-  width:100%;
-  height:100%;
-  object-fit:contain;
-  padding:12px;
-}
-
+.card:hover{box-shadow:0 3px 16px rgba(15,23,42,.16);transform:translateY(-1px)}
+.img{height:210px;background:#fff;position:relative;display:flex;align-items:center;justify-content:center;border-bottom:1px solid #eef0f2}
+.img img{width:100%;height:100%;object-fit:contain;padding:10px}
 .stock{
-  position:absolute;
-  top:10px;
-  left:10px;
-  background:#e8f5e9;
-  color:#1b5e20;
-  padding:4px 8px;
-  border-radius:4px;
-  font-size:11px;
-  font-weight:900;
+  position:absolute;top:8px;left:8px;background:#e6f4ea;color:#0a6d22;
+  border:1px solid #b7dfc1;padding:4px 7px;border-radius:999px;font-size:11px;font-weight:900;
 }
+.stock.out{background:#fff1f2;color:#b91c1c;border-color:#fecdd3}
+.body{padding:10px;display:flex;flex-direction:column;gap:7px;flex:1}
+.name{font-size:14px;line-height:1.35;height:38px;overflow:hidden;font-weight:650;color:#111827}
+.code{font-size:12px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rating{width:max-content;background:#007185;color:white;padding:3px 6px;border-radius:4px;font-size:11px;font-weight:900}
+.price-line{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.price{font-size:21px;font-weight:950;color:#0f1111}
+.old{text-decoration:line-through;color:#6b7280;font-size:12px}
+.off{color:var(--green);font-size:13px;font-weight:900}
+.meta{font-size:12px;color:#4b5563;min-height:16px}
+.actions{margin-top:auto;display:grid;grid-template-columns:1fr;gap:7px}
+.cart,.wa{border:none;padding:10px;border-radius:999px;font-weight:950}
+.cart{background:#ffd814;color:#111;border:1px solid #fcd200}
+.wa{background:var(--wa);color:white}
+.empty{background:white;border-radius:10px;padding:40px;text-align:center;border:1px solid var(--line)}
 
-.stock.out{
-  background:#ffebee;
-  color:#b71c1c;
-}
+.footer{margin-top:24px;background:var(--amazon-mid);color:white}
+.footer-inner{max-width:1500px;margin:auto;padding:26px 14px;display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
+.footer h4{margin-bottom:10px;color:var(--amazon-yellow)}
+.footer p{line-height:1.8;font-size:14px;color:#e5e7eb}
+.copy{background:var(--amazon-dark);text-align:center;padding:12px;font-size:13px;color:#cbd5e1}
+.float-wa{position:fixed;right:16px;bottom:16px;width:58px;height:58px;border-radius:50%;border:none;background:var(--wa);color:white;font-size:28px;z-index:1001;box-shadow:0 4px 18px rgba(0,0,0,.28)}
 
-.body{
-  padding:12px;
-  display:flex;
-  flex-direction:column;
-  gap:8px;
-  flex:1;
-}
-
-.name{
-  font-size:15px;
-  line-height:1.4;
-  height:42px;
-  overflow:hidden;
-}
-
-.code{
-  font-size:12px;
-  color:#777;
-}
-
-.rating{
-  width:max-content;
-  background:var(--green);
-  color:white;
-  padding:4px 7px;
-  border-radius:4px;
-  font-size:12px;
-  font-weight:800;
-}
-
-.price-line{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  flex-wrap:wrap;
-}
-
-.price{
-  font-size:22px;
-  font-weight:900;
-}
-
-.old{
-  text-decoration:line-through;
-  color:#777;
-  font-size:13px;
-}
-
-.off{
-  color:var(--green);
-  font-size:13px;
-  font-weight:800;
-}
-
-.meta{
-  font-size:13px;
-  color:#555;
-}
-
-.actions{
-  margin-top:auto;
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:8px;
-}
-
-.cart{
-  border:none;
-  background:var(--orange);
-  color:white;
-  padding:10px;
-  border-radius:4px;
-  font-weight:900;
-  cursor:pointer;
-}
-
-.wa{
-  border:none;
-  background:var(--wa);
-  color:white;
-  padding:10px;
-  border-radius:4px;
-  font-weight:900;
-  cursor:pointer;
-}
-
-.empty{
-  background:white;
-  border-radius:6px;
-  padding:40px;
-  text-align:center;
-}
-
-.footer{
-  margin-top:30px;
-  background:var(--dark);
-  color:white;
-}
-
-.footer-inner{
-  max-width:1500px;
-  margin:auto;
-  padding:30px 14px;
-  display:grid;
-  grid-template-columns:repeat(4,1fr);
-  gap:20px;
-}
-
-.footer h4{
-  margin-bottom:12px;
-}
-
-.footer p{
-  line-height:1.8;
-  font-size:14px;
-}
-
-.copy{
-  border-top:1px solid rgba(255,255,255,.1);
-  text-align:center;
-  padding:12px;
-  font-size:13px;
-}
-
-.float-wa{
-  position:fixed;
-  right:18px;
-  bottom:18px;
-  width:60px;
-  height:60px;
-  border-radius:50%;
-  border:none;
-  background:var(--wa);
-  color:white;
-  font-size:30px;
-  z-index:100;
-  box-shadow:0 2px 18px rgba(0,0,0,.2);
-  cursor:pointer;
-}
-
-@media(max-width:1100px){
-  .products{
-    grid-template-columns:repeat(3,1fr);
-  }
-}
-
-@media(max-width:800px){
-  .products{
-    grid-template-columns:repeat(2,1fr);
-  }
-
-  .top-inner{
-    flex-wrap:wrap;
-  }
-
-  .search{
-    width:100%;
-    order:3;
-  }
-
-  .footer-inner{
-    grid-template-columns:1fr;
-  }
-}
-
-@media(max-width:500px){
-  .products{
-    grid-template-columns:1fr 1fr;
-    gap:8px;
-  }
-
-  .img{
-    height:170px;
-  }
-
-  .hero{
-    padding:20px;
-  }
-
-  .hero h1{
-    font-size:25px;
-  }
-
-  .price{
-    font-size:18px;
-  }
-
-  .top-btn{
-    display:none;
-  }
+@media(max-width:1200px){.products{grid-template-columns:repeat(4,1fr)}}
+@media(max-width:950px){.products{grid-template-columns:repeat(3,1fr)}.top-inner{grid-template-columns:1fr auto}.search-wrap{grid-column:1/-1;grid-row:2}.led-board{min-width:0}.status{top:112px}}
+@media(max-width:650px){
+  body{background:#f3f4f6}
+  .top-inner{padding:7px 8px 9px;gap:7px}
+  .led-board{padding:7px 9px;border-radius:7px;width:100%}
+  .shop-led{font-size:15.8px;letter-spacing:.45px}
+  .led-sub{font-size:8px;letter-spacing:1px}
+  .top-btn{padding:8px 9px;font-size:12px}
+  .search-wrap{height:41px;border-radius:7px}
+  .container{padding:8px}
+  .hero{padding:16px;border-radius:10px;margin-bottom:8px}
+  .hero h1{font-size:22px}.hero p{font-size:13px}
+  .status{top:100px;border-radius:8px;padding:8px;align-items:flex-start}
+  .status small{font-size:11px}.sort{padding:8px;font-size:12px;max-width:135px}
+  .products{grid-template-columns:repeat(2,1fr);gap:8px}
+  .img{height:155px}.body{padding:8px;gap:6px}
+  .name{font-size:12.5px;height:34px}.price{font-size:17px}.old,.code,.meta{font-size:11px}.off{font-size:12px}
+  .cart,.wa{padding:8px;font-size:12px}.footer-inner{grid-template-columns:1fr;padding:22px 14px}.float-wa{width:54px;height:54px}
 }
 </style>
 </head>
-
 <body>
 
 <header class="topbar">
   <div class="top-inner">
-
-    <div class="logo">
-      VAJRA LIGHTS
-      <span>ELECTRICALS • PLUMBING • INTERLOCK</span>
+    <div class="led-board" aria-label="VAJRA LIGHTS AND ELECTRICALS">
+      <span class="shop-led"><span class="led-v">V</span><span class="led-white led-word-1">AJRA</span> <span class="led-white led-word-2">LIGHTS</span></span>
+      <span class="shop-led"><span class="led-white led-word-3">AND</span> <span class="led-white led-word-4">ELECTRICALS</span></span>
+      <span class="led-sub">Electricals • Plumbing • Interlock</span>
     </div>
 
-    <div class="search">
-      <input
-        id="searchInput"
-        placeholder="Search products or item code"
-        oninput="renderProducts()"
-      >
+    <div class="search-wrap">
+      <input id="searchInput" placeholder="Search products or item code" oninput="renderProducts()">
       <button onclick="renderProducts()">⌕</button>
     </div>
 
-    <button
-      class="top-btn"
-      onclick="sendGeneralWhatsApp()"
-    >
-      Enquiry
-    </button>
-
+    <button class="top-btn" onclick="sendGeneralWhatsApp()">Enquiry</button>
+  </div>
+  <div class="nav-strip">
+    <div class="nav-strip-inner">
+      <button class="nav-pill" onclick="quickSearch('')">All</button>
+      <button class="nav-pill" onclick="quickSearch('light')">Lights</button>
+      <button class="nav-pill" onclick="quickSearch('wire')">Wires</button>
+      <button class="nav-pill" onclick="quickSearch('switch')">Switches</button>
+      <button class="nav-pill" onclick="quickSearch('pipe')">Plumbing</button>
+      <button class="nav-pill" onclick="quickSearch('interlock')">Interlock</button>
+    </div>
   </div>
 </header>
 
 <div class="container">
-
   <section class="hero">
-    <h1>Lighting & Electrical Products</h1>
-    <p>
-      Browse our real product catalogue loaded from Supabase.
-      Only products having images are shown. Supports 10,000–20,000 products by loading in batches.
-    </p>
+    <h1>Shop lighting, electrical and project materials</h1>
+    <p>Browse our real product catalogue loaded from Supabase. Only products having images are shown, and large stock lists are loaded in batches for smoother mobile use.</p>
+    <div class="hero-actions">
+      <button class="hero-wa" onclick="sendGeneralWhatsApp()">WhatsApp Enquiry</button>
+      <button class="hero-call" onclick="window.location.href='tel:+918606808063'">Call 86068 08063</button>
+    </div>
   </section>
 
   <section class="status">
-    <div>
-      <b id="countText">Products</b><br>
-      <small id="statusText">Loading products...</small>
-    </div>
-
-    <select
-      class="sort"
-      id="sortSelect"
-      onchange="renderProducts()"
-    >
+    <div><b id="countText">Products</b><br><small id="statusText">Loading products...</small></div>
+    <select class="sort" id="sortSelect" onchange="renderProducts()">
       <option value="featured">Sort: Featured</option>
       <option value="name">Name A-Z</option>
       <option value="priceLow">Price Low to High</option>
@@ -450,560 +362,161 @@ button{
   </section>
 
   <section class="products" id="products"></section>
-
 </div>
 
 <footer class="footer">
   <div class="footer-inner">
-
-    <div>
-      <h4>ABOUT</h4>
-      <p>VAJRA LIGHTS AND ELECTRICALS</p>
-      <p>Electricals • Plumbing • Interlock</p>
-    </div>
-
-    <div>
-      <h4>CONTACT</h4>
-      <p>Phone: +91 86068 08063</p>
-      <p>WhatsApp: +91 86068 08063</p>
-      <p>Kerala, India</p>
-    </div>
-
-    <div>
-      <h4>PRODUCTS</h4>
-      <p>Lighting Products</p>
-      <p>Electrical Products</p>
-      <p>Plumbing Products</p>
-      <p>Interlock Products</p>
-    </div>
-
-    <div>
-      <h4>SUPPORT</h4>
-      <p>WhatsApp Enquiry</p>
-      <p>Bulk Quotation</p>
-      <p>Project Supply</p>
-      <p>Product Catalogue</p>
-    </div>
-
+    <div><h4>ABOUT</h4><p>VAJRA LIGHTS AND ELECTRICALS</p><p>Electricals • Plumbing • Interlock</p></div>
+    <div><h4>CONTACT</h4><p>Phone: +91 86068 08063</p><p>WhatsApp: +91 86068 08063</p><p>Kerala, India</p></div>
+    <div><h4>PRODUCTS</h4><p>Lighting Products</p><p>Electrical Products</p><p>Plumbing Products</p><p>Interlock Products</p></div>
+    <div><h4>SUPPORT</h4><p>WhatsApp Enquiry</p><p>Bulk Quotation</p><p>Project Supply</p><p>Product Catalogue</p></div>
   </div>
-
-  <div class="copy">
-    © <span id="year"></span> VAJRA LIGHTS AND ELECTRICALS
-  </div>
+  <div class="copy">© <span id="year"></span> VAJRA LIGHTS AND ELECTRICALS</div>
 </footer>
 
-<button
-  class="float-wa"
-  onclick="sendGeneralWhatsApp()"
->
-☘
-</button>
+<button class="float-wa" onclick="sendGeneralWhatsApp()">☘</button>
 
 <script>
-const supabaseUrl =
-  "https://kzxwjujjvnehhthazicc.supabase.co";
-
-const supabaseKey =
-  "sb_publishable_Iu3sQGl9gq_VsVYxR3j_7g_SLvgqp_9";
-
-window.sbcc =
-  supabase.createClient(
-    supabaseUrl,
-    supabaseKey
-  );
-
-const WHATSAPP_NUMBER =
-  "918606808063";
-
+const supabaseUrl = "https://kzxwjujjvnehhthazicc.supabase.co";
+const supabaseKey = "sb_publishable_Iu3sQGl9gq_VsVYxR3j_7g_SLvgqp_9";
+window.sbcc = supabase.createClient(supabaseUrl, supabaseKey);
+const WHATSAPP_NUMBER = "918606808063";
 let allProducts = [];
 
 async function loadProducts(){
-
   try{
-
-    document.getElementById('statusText').textContent =
-      'Loading products from Supabase...';
-
+    document.getElementById('statusText').textContent = 'Loading products from Supabase...';
     let rows = [];
     let from = 0;
     const batchSize = 1000;
-
     while(true){
-
       const to = from + batchSize - 1;
-
-      document.getElementById('statusText').textContent =
-        `Loading products ${from + 1} - ${to + 1}...`;
-
-      const {data,error} =
-        await window.sbcc
-          .from('stock_items')
-          .select('*')
-          .order('item_name',{ascending:true})
-          .range(from,to);
-
+      document.getElementById('statusText').textContent = `Loading products ${from + 1} - ${to + 1}...`;
+      const {data,error} = await window.sbcc.from('stock_items').select('*').order('item_name',{ascending:true}).range(from,to);
       if(error) throw error;
-
-      if(!data || data.length === 0){
-        break;
-      }
-
+      if(!data || data.length === 0) break;
       rows = rows.concat(data);
-
-      document.getElementById('statusText').textContent =
-        `Loaded ${rows.length} products...`;
-
-      if(data.length < batchSize){
-        break;
-      }
-
+      document.getElementById('statusText').textContent = `Loaded ${rows.length} products...`;
+      if(data.length < batchSize) break;
       from += batchSize;
-
-      if(from > 50000){
-        break;
-      }
-
+      if(from > 50000) break;
     }
-
-    allProducts =
-      rows.map(normalizeProduct);
-
+    allProducts = rows.map(normalizeProduct);
     await attachStockBalance();
-
-    document.getElementById('statusText').textContent =
-      `Loaded ${allProducts.length} products. Showing only products with images.`;
-
+    document.getElementById('statusText').textContent = `Loaded ${allProducts.length} products. Showing only products with images.`;
   }catch(err){
-
     console.error(err);
-
-    document.getElementById('statusText').textContent =
-      'Failed loading products. Check RLS or table structure.';
-
+    document.getElementById('statusText').textContent = 'Failed loading products. Check RLS or table structure.';
   }
-
   renderProducts();
-
 }
 
 function normalizeProduct(row){
-
-  const price = Number(
-    row.price1 ||
-    row.price ||
-    row.sales_price ||
-    row.price1_gst ||
-    row.sales_price_gst ||
-    0
-  );
-
+  const price = Number(row.price1 || row.price || row.sales_price || row.price1_gst || row.sales_price_gst || 0);
   return {
-
-    id:
-      row.id ||
-      row.item_code ||
-      Math.random(),
-
-    item_code:
-      row.item_code || '',
-
-    item_name:
-      row.item_name || 'Unnamed Product',
-
-    brand:
-      row.brand || '',
-
-    department:
-      row.department || '',
-
+    id: row.id || row.item_code || Math.random(),
+    item_code: row.item_code || '',
+    item_name: row.item_name || 'Unnamed Product',
+    brand: row.brand || '',
+    department: row.department || '',
     price,
-
-    old_price:
-      Math.round(price * 1.25),
-
-    balance:
-      Number(row.balance || 0),
-
-    gst_percent:
-      Number(row.gst_percent || 0),
-
-    product_image_url:
-      row.product_image_url ||
-      row.image_url ||
-      '',
-
-    description:
-      row.description ||
-      row.item_name ||
-      ''
-
+    old_price: Math.round(price * 1.25),
+    balance: Number(row.balance || 0),
+    gst_percent: Number(row.gst_percent || 0),
+    product_image_url: row.product_image_url || row.image_url || '',
+    description: row.description || row.item_name || ''
   };
-
 }
 
 async function attachStockBalance(){
-
   try{
-
     let rows = [];
     let from = 0;
     const batchSize = 1000;
-
     while(true){
-
       const to = from + batchSize - 1;
-
-      const {data,error} =
-        await window.sbcc
-          .from('stock_balance_view')
-          .select('item_code,balance')
-          .range(from,to);
-
+      const {data,error} = await window.sbcc.from('stock_balance_view').select('item_code,balance').range(from,to);
       if(error) return;
-
-      if(!data || data.length === 0){
-        break;
-      }
-
+      if(!data || data.length === 0) break;
       rows = rows.concat(data);
-
-      if(data.length < batchSize){
-        break;
-      }
-
+      if(data.length < batchSize) break;
       from += batchSize;
-
-      if(from > 50000){
-        break;
-      }
-
+      if(from > 50000) break;
     }
+    const map = new Map(rows.map(x=>[String(x.item_code),Number(x.balance || 0)]));
+    allProducts.forEach(p=>{ if(map.has(String(p.item_code))) p.balance = map.get(String(p.item_code)); });
+  }catch(e){ console.log(e); }
+}
 
-    const map = new Map(
-      rows.map(x=>[
-        String(x.item_code),
-        Number(x.balance || 0)
-      ])
-    );
-
-    allProducts.forEach(p=>{
-
-      if(map.has(String(p.item_code))){
-        p.balance =
-          map.get(String(p.item_code));
-      }
-
-    });
-
-  }catch(e){
-
-    console.log(e);
-
-  }
-
+function quickSearch(text){
+  document.getElementById('searchInput').value = text;
+  renderProducts();
 }
 
 function renderProducts(){
-
-  const q =
-    (
-      document.getElementById('searchInput')
-      .value || ''
-    ).toLowerCase();
-
-  const sort =
-    document.getElementById('sortSelect')
-    .value;
-
-  let list =
-    allProducts.filter(p=>{
-
-      const txt = [
-
-        p.item_name,
-        p.item_code,
-        p.brand,
-        p.department,
-        p.description
-
-      ].join(' ').toLowerCase();
-
-      return (
-
-        txt.includes(q)
-
-        &&
-
-        p.product_image_url
-
-        &&
-
-        p.product_image_url.trim() !== ''
-
-      );
-
-    });
-
-  if(sort === 'name'){
-    list.sort((a,b)=>
-      a.item_name.localeCompare(b.item_name)
-    );
-  }
-
-  if(sort === 'priceLow'){
-    list.sort((a,b)=>a.price-b.price);
-  }
-
-  if(sort === 'priceHigh'){
-    list.sort((a,b)=>b.price-a.price);
-  }
-
-  if(sort === 'stockHigh'){
-    list.sort((a,b)=>b.balance-a.balance);
-  }
-
-  document.getElementById('countText')
-    .textContent =
-      `${list.length} Products`;
-
-  const box =
-    document.getElementById('products');
-
+  const q = (document.getElementById('searchInput').value || '').toLowerCase();
+  const sort = document.getElementById('sortSelect').value;
+  let list = allProducts.filter(p=>{
+    const txt = [p.item_name,p.item_code,p.brand,p.department,p.description].join(' ').toLowerCase();
+    return txt.includes(q) && p.product_image_url && p.product_image_url.trim() !== '';
+  });
+  if(sort === 'name') list.sort((a,b)=>a.item_name.localeCompare(b.item_name));
+  if(sort === 'priceLow') list.sort((a,b)=>a.price-b.price);
+  if(sort === 'priceHigh') list.sort((a,b)=>b.price-a.price);
+  if(sort === 'stockHigh') list.sort((a,b)=>b.balance-a.balance);
+  document.getElementById('countText').textContent = `${list.length} Products`;
+  const box = document.getElementById('products');
   if(!list.length){
-
-    box.innerHTML = `
-      <div
-        class="empty"
-        style="grid-column:1/-1"
-      >
-        <b>No products found</b><br>
-        Only products with product_image_url are shown.
-      </div>
-    `;
-
+    box.innerHTML = `<div class="empty" style="grid-column:1/-1"><b>No products found</b><br>Only products with product_image_url are shown.</div>`;
     return;
-
   }
-
-  box.innerHTML =
-    list.map(productCard).join('');
-
+  box.innerHTML = list.map(productCard).join('');
 }
 
 function productCard(p){
-
-  const off =
-    p.price && p.old_price
-    ?
-    Math.round(
-      (
-        (p.old_price - p.price)
-        /
-        p.old_price
-      ) * 100
-    )
-    :
-    0;
-
+  const off = p.price && p.old_price ? Math.round(((p.old_price - p.price) / p.old_price) * 100) : 0;
   return `
-
     <div class="card">
-
       <div class="img">
-
-        <span class="stock ${p.balance>0?'':'out'}">
-          ${p.balance>0?'In Stock':'Ask Stock'}
-        </span>
-
-        <img
-          src="${optimizeImage(p.product_image_url)}"
-          loading="lazy"
-          onerror="this.closest('.card').style.display='none'"
-        >
-
+        <span class="stock ${p.balance>0?'':'out'}">${p.balance>0?'In Stock':'Ask Stock'}</span>
+        <img src="${optimizeImage(p.product_image_url)}" loading="lazy" onerror="this.closest('.card').style.display='none'">
       </div>
-
       <div class="body">
-
-        <div class="name">
-          ${escapeHtml(p.item_name)}
-        </div>
-
-        <div class="code">
-          ${escapeHtml(p.item_code)}
-        </div>
-
-        <div class="rating">
-          ★ 4.5
-        </div>
-
-        <div class="price-line">
-
-          <div class="price">
-            ${formatPrice(p.price)}
-          </div>
-
-          ${
-            p.old_price && p.old_price > p.price
-            ?
-            `<div class="old">${formatPrice(p.old_price)}</div>`
-            :
-            ''
-          }
-
-        </div>
-
-        <div class="off">
-          ${off ? off + '% off' : 'Best price'}
-        </div>
-
-        <div class="meta">
-
-          ${escapeHtml(p.department)}
-
-          ${
-            p.gst_percent
-            ?
-            '• GST '+p.gst_percent+'%'
-            :
-            ''
-          }
-
-        </div>
-
+        <div class="name">${escapeHtml(p.item_name)}</div>
+        <div class="code">Code: ${escapeHtml(p.item_code)}</div>
+        <div class="rating">★ 4.5</div>
+        <div class="price-line"><div class="price">${formatPrice(p.price)}</div>${p.old_price && p.old_price > p.price ? `<div class="old">${formatPrice(p.old_price)}</div>` : ''}</div>
+        <div class="off">${off ? off + '% off' : 'Best price'}</div>
+        <div class="meta">${escapeHtml(p.department)}${p.gst_percent ? ' • GST '+p.gst_percent+'%' : ''}</div>
         <div class="actions">
-
-          <button
-            class="cart"
-            onclick="
-              sendProductWhatsApp(
-                '${escapeAttr(p.item_name)}',
-                '${escapeAttr(p.item_code)}'
-              )
-            "
-          >
-            Enquiry
-          </button>
-
-          <button
-            class="wa"
-            onclick="
-              sendProductWhatsApp(
-                '${escapeAttr(p.item_name)}',
-                '${escapeAttr(p.item_code)}'
-              )
-            "
-          >
-            WhatsApp
-          </button>
-
+          <button class="cart" onclick="sendProductWhatsApp('${escapeAttr(p.item_name)}','${escapeAttr(p.item_code)}')">Enquiry</button>
+          <button class="wa" onclick="sendProductWhatsApp('${escapeAttr(p.item_name)}','${escapeAttr(p.item_code)}')">WhatsApp</button>
         </div>
-
       </div>
-
-    </div>
-
-  `;
-
+    </div>`;
 }
 
 function optimizeImage(url){
-
-  if(
-    url.includes('res.cloudinary.com')
-    &&
-    url.includes('/upload/')
-  ){
-
-    return url.replace(
-      '/upload/',
-      '/upload/f_auto,q_auto,w_700,c_pad,b_white/'
-    );
-
+  if(url.includes('res.cloudinary.com') && url.includes('/upload/')){
+    return url.replace('/upload/','/upload/f_auto,q_auto,w_700,c_pad,b_white/');
   }
-
   return url;
-
 }
 
 function formatPrice(n){
-
-  const v =
-    Number(n || 0);
-
-  if(!v){
-    return 'Ask Price';
-  }
-
-  return '₹' +
-    v.toLocaleString('en-IN',{
-      maximumFractionDigits:2
-    });
-
+  const v = Number(n || 0);
+  if(!v) return 'Ask Price';
+  return '₹' + v.toLocaleString('en-IN',{maximumFractionDigits:2});
 }
 
-function sendGeneralWhatsApp(){
+function sendGeneralWhatsApp(){ openWhatsApp('Hi, I need product details from VAJRA LIGHTS AND ELECTRICALS.'); }
+function sendProductWhatsApp(name,code){ openWhatsApp(`Hi, I need details and best price for this product:\n\nProduct: ${name}\nCode: ${code}`); }
+function openWhatsApp(text){ window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`,'_blank'); }
+function escapeHtml(str){ return String(str || '').replace(/[&<>'"]/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[s])); }
+function escapeAttr(str){ return escapeHtml(str).replace(/`/g,'&#096;'); }
 
-  openWhatsApp(
-    'Hi, I need product details from VAJRA LIGHTS AND ELECTRICALS.'
-  );
-
-}
-
-function sendProductWhatsApp(name,code){
-
-  openWhatsApp(
-
-`Hi, I need details and best price for this product:
-
-Product: ${name}
-Code: ${code}`
-
-  );
-
-}
-
-function openWhatsApp(text){
-
-  window.open(
-
-    `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`,
-
-    '_blank'
-
-  );
-
-}
-
-function escapeHtml(str){
-
-  return String(str || '')
-    .replace(/[&<>'"]/g,s=>({
-
-      '&':'&amp;',
-      '<':'&lt;',
-      '>':'&gt;',
-      "'":'&#039;',
-      '"':'&quot;'
-
-    }[s]));
-
-}
-
-function escapeAttr(str){
-
-  return escapeHtml(str)
-    .replace(/`/g,'&#096;');
-
-}
-
-document.getElementById('year')
-  .textContent =
-    new Date().getFullYear();
-
+document.getElementById('year').textContent = new Date().getFullYear();
 loadProducts();
-
 </script>
-
 </body>
 </html>

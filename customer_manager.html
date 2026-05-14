@@ -329,6 +329,60 @@
       box-shadow:0 0 0 3px rgba(37,99,235,0.14);
     }
 
+
+    .merge-bar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+      background:#f8fafc;
+      border:1px solid #e2e8f0;
+      border-radius:14px;
+      padding:12px 14px;
+      margin-bottom:14px;
+    }
+
+    .merge-left{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+      font-size:13px;
+      font-weight:800;
+      color:#334155;
+    }
+
+    .merge-left label{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      cursor:pointer;
+    }
+
+    .merge-note{
+      color:#64748b;
+      font-weight:600;
+      font-size:12px;
+    }
+
+    .merge-actions{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+
+    .row-check{
+      width:18px;
+      height:18px;
+      cursor:pointer;
+    }
+
+    .select-col{
+      width:46px;
+      text-align:center;
+    }
+
     .table-wrap{
       overflow:auto;
       border:1px solid #e2e8f0;
@@ -681,10 +735,23 @@ MEERA,8888888888,NEDUMANGAD,,32</div>
             <input type="text" id="addressSearchInput" placeholder="SEARCH ADDRESS...">
           </div>
 
+          <div class="merge-bar">
+            <div class="merge-left">
+              <label><input type="checkbox" id="selectAllVisibleCustomers"> Select visible</label>
+              <span id="selectedCustomerCount">0 selected</span>
+              <span class="merge-note">Merge = keep one customer and delete selected duplicates only from customer master.</span>
+            </div>
+            <div class="merge-actions">
+              <button type="button" class="btn btn-warning" id="mergeSelectedBtn">Merge Selected</button>
+              <button type="button" class="btn btn-light" id="clearSelectionBtn">Clear Selection</button>
+            </div>
+          </div>
+
           <div class="table-wrap">
             <table>
               <thead>
                 <tr>
+                  <th class="select-col">✓</th>
                   <th>ID</th>
                   <th>Name</th>
                   <th>Mobile</th>
@@ -696,7 +763,7 @@ MEERA,8888888888,NEDUMANGAD,,32</div>
               </thead>
               <tbody id="customerTableBody">
                 <tr>
-                  <td colspan="7" class="empty">Loading customers...</td>
+                  <td colspan="8" class="empty">Loading customers...</td>
                 </tr>
               </tbody>
             </table>
@@ -717,6 +784,7 @@ MEERA,8888888888,NEDUMANGAD,,32</div>
 
 
     let customers = [];
+    let selectedCustomerIds = new Set();
     let editingCustomerId = null;
     let bulkPreviewRows = [];
     let addressDebounceTimer = null;
@@ -745,6 +813,10 @@ MEERA,8888888888,NEDUMANGAD,,32</div>
     const stateSearchInput = document.getElementById("stateSearchInput");
     const addressSearchInput = document.getElementById("addressSearchInput");
     const customerTableBody = document.getElementById("customerTableBody");
+    const selectAllVisibleCustomers = document.getElementById("selectAllVisibleCustomers");
+    const selectedCustomerCount = document.getElementById("selectedCustomerCount");
+    const mergeSelectedBtn = document.getElementById("mergeSelectedBtn");
+    const clearSelectionBtn = document.getElementById("clearSelectionBtn");
     const totalCustomers = document.getElementById("totalCustomers");
     const filteredCustomers = document.getElementById("filteredCustomers");
 
@@ -792,6 +864,10 @@ MEERA,8888888888,NEDUMANGAD,,32</div>
       gstSearchInput.addEventListener("input", renderCustomers);
       stateSearchInput.addEventListener("input", renderCustomers);
       addressSearchInput.addEventListener("input", renderCustomers);
+
+      selectAllVisibleCustomers.addEventListener("change", toggleSelectAllVisibleCustomers);
+      mergeSelectedBtn.addEventListener("click", mergeSelectedCustomers);
+      clearSelectionBtn.addEventListener("click", clearCustomerSelection);
 
       parseCsvBtn.addEventListener("click", handleCsvPreview);
       uploadCsvBtn.addEventListener("click", uploadCsvRows);
@@ -887,7 +963,7 @@ MEERA,8888888888,NEDUMANGAD,,32</div>
 
     async function loadCustomers() {
       customerTableBody.innerHTML = `
-        <tr><td colspan="7" class="empty">Loading customers...</td></tr>
+        <tr><td colspan="8" class="empty">Loading customers...</td></tr>
       `;
 
       try {
@@ -897,7 +973,7 @@ MEERA,8888888888,NEDUMANGAD,,32</div>
       } catch (error) {
         showStatus("Error loading customers: " + (error.message || "Unknown error"), "error");
         customerTableBody.innerHTML = `
-          <tr><td colspan="7" class="empty">Error loading customers</td></tr>
+          <tr><td colspan="8" class="empty">Error loading customers</td></tr>
         `;
       }
     }
@@ -931,13 +1007,13 @@ MEERA,8888888888,NEDUMANGAD,,32</div>
       return allRows;
     }
 
-    function renderCustomers() {
+    function getFilteredCustomers() {
       const term = normalizeValue(searchInput.value);
       const gstTerm = normalizeValue(gstSearchInput.value);
       const stateTerm = normalizeValue(stateSearchInput.value);
       const addressTerm = normalizeValue(addressSearchInput.value);
 
-      const filtered = customers.filter(c =>
+      return customers.filter(c =>
         (
           !term ||
           normalizeValue(c.name).includes(term) ||
@@ -947,32 +1023,146 @@ MEERA,8888888888,NEDUMANGAD,,32</div>
         (!stateTerm || normalizeValue(c.state_code).includes(stateTerm)) &&
         (!addressTerm || normalizeValue(c.address).includes(addressTerm))
       );
+    }
 
+    function updateSelectedCustomerCount() {
+      const count = selectedCustomerIds.size;
+      selectedCustomerCount.textContent = `${count} selected`;
+      mergeSelectedBtn.disabled = count < 2;
+
+      const visible = getFilteredCustomers();
+      const visibleIds = visible.map(c => Number(c.customer_id));
+      const selectedVisibleCount = visibleIds.filter(id => selectedCustomerIds.has(id)).length;
+      selectAllVisibleCustomers.checked = visible.length > 0 && selectedVisibleCount === visible.length;
+      selectAllVisibleCustomers.indeterminate = selectedVisibleCount > 0 && selectedVisibleCount < visible.length;
+    }
+
+    function renderCustomers() {
+      const filtered = getFilteredCustomers();
       filteredCustomers.textContent = filtered.length;
 
       if (!filtered.length) {
         customerTableBody.innerHTML = `
-          <tr><td colspan="7" class="empty">No customers found</td></tr>
+          <tr><td colspan="8" class="empty">No customers found</td></tr>
         `;
+        updateSelectedCustomerCount();
         return;
       }
 
-      customerTableBody.innerHTML = filtered.map(cust => `
-        <tr>
-          <td>${cust.customer_id ?? ""}</td>
-          <td>${escapeHtml(normalizeValue(cust.name))}</td>
-          <td>${escapeHtml(normalizeValue(cust.mobile))}</td>
-          <td>${escapeHtml(normalizeValue(cust.address))}</td>
-          <td>${escapeHtml(normalizeValue(cust.gst_number))}</td>
-          <td>${escapeHtml(normalizeValue(cust.state_code))}</td>
-          <td>
-            <div class="table-actions">
-              <button class="mini-btn mini-edit" onclick="editCustomer(${cust.customer_id})">Edit</button>
-              <button class="mini-btn mini-delete" onclick="deleteCustomer(${cust.customer_id}, '${escapeJs(normalizeValue(cust.name))}')">Delete</button>
-            </div>
-          </td>
-        </tr>
-      `).join("");
+      customerTableBody.innerHTML = filtered.map(cust => {
+        const id = Number(cust.customer_id);
+        const checked = selectedCustomerIds.has(id) ? "checked" : "";
+        return `
+          <tr>
+            <td class="select-col"><input type="checkbox" class="row-check" ${checked} onchange="toggleCustomerSelection(${id}, this.checked)"></td>
+            <td>${cust.customer_id ?? ""}</td>
+            <td>${escapeHtml(normalizeValue(cust.name))}</td>
+            <td>${escapeHtml(normalizeValue(cust.mobile))}</td>
+            <td>${escapeHtml(normalizeValue(cust.address))}</td>
+            <td>${escapeHtml(normalizeValue(cust.gst_number))}</td>
+            <td>${escapeHtml(normalizeValue(cust.state_code))}</td>
+            <td>
+              <div class="table-actions">
+                <button class="mini-btn mini-edit" onclick="editCustomer(${id})">Edit</button>
+                <button class="mini-btn mini-delete" onclick="deleteCustomer(${id}, '${escapeJs(normalizeValue(cust.name))}')">Delete</button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join("");
+
+      updateSelectedCustomerCount();
+    }
+
+    function toggleCustomerSelection(customerId, checked) {
+      const id = Number(customerId);
+      if (checked) selectedCustomerIds.add(id);
+      else selectedCustomerIds.delete(id);
+      updateSelectedCustomerCount();
+    }
+
+    function toggleSelectAllVisibleCustomers() {
+      const visible = getFilteredCustomers();
+      const shouldSelect = selectAllVisibleCustomers.checked;
+
+      visible.forEach(c => {
+        const id = Number(c.customer_id);
+        if (shouldSelect) selectedCustomerIds.add(id);
+        else selectedCustomerIds.delete(id);
+      });
+
+      renderCustomers();
+    }
+
+    function clearCustomerSelection() {
+      selectedCustomerIds.clear();
+      renderCustomers();
+      showStatus("Customer selection cleared.", "info");
+    }
+
+    async function mergeSelectedCustomers() {
+      hideStatus();
+
+      const selectedCustomers = customers.filter(c => selectedCustomerIds.has(Number(c.customer_id)));
+      if (selectedCustomers.length < 2) {
+        showStatus("Select at least 2 customers to merge.", "error");
+        return;
+      }
+
+      const listText = selectedCustomers.map(c =>
+        `${c.customer_id} - ${normalizeValue(c.name)} - ${normalizeValue(c.mobile)} - ${normalizeValue(c.gst_number)}`
+      ).join("\n");
+
+      const keepIdText = prompt(
+        "MERGE SELECTED CUSTOMERS\n\nEnter the CUSTOMER ID to KEEP.\nAll other selected customers will be DELETED from customer master only.\n\n" + listText
+      );
+
+      if (keepIdText === null) return;
+
+      const keepId = Number(String(keepIdText).trim());
+      if (!selectedCustomerIds.has(keepId)) {
+        showStatus("Invalid keep customer ID. Please enter one ID from the selected customers.", "error");
+        return;
+      }
+
+      const keepCustomer = customers.find(c => Number(c.customer_id) === keepId);
+      const deleteIds = selectedCustomers
+        .map(c => Number(c.customer_id))
+        .filter(id => id !== keepId);
+
+      const confirmText =
+        `KEEP CUSTOMER:\n${keepCustomer.customer_id} - ${normalizeValue(keepCustomer.name)} - ${normalizeValue(keepCustomer.mobile)}\n\n` +
+        `DELETE ${deleteIds.length} DUPLICATE CUSTOMER(S):\n` +
+        selectedCustomers
+          .filter(c => Number(c.customer_id) !== keepId)
+          .map(c => `${c.customer_id} - ${normalizeValue(c.name)} - ${normalizeValue(c.mobile)}`)
+          .join("\n") +
+        "\n\nOld bills/reports/ledger tables will NOT be changed. Continue?";
+
+      const ok = confirm(confirmText);
+      if (!ok) return;
+
+      mergeSelectedBtn.disabled = true;
+      mergeSelectedBtn.textContent = "Merging...";
+
+      try {
+        const { error } = await supabaseClient
+          .from("customers")
+          .delete()
+          .in("customer_id", deleteIds);
+
+        if (error) throw error;
+
+        selectedCustomerIds.clear();
+        showStatus(`Merge completed. Kept customer ID ${keepId}. Deleted ${deleteIds.length} duplicate customer(s).`, "success");
+        await loadCustomers();
+      } catch (error) {
+        showStatus("Merge failed: " + (error.message || "Unknown error"), "error");
+      } finally {
+        mergeSelectedBtn.disabled = false;
+        mergeSelectedBtn.textContent = "Merge Selected";
+        updateSelectedCustomerCount();
+      }
     }
 
     async function handleSubmit(e) {
@@ -1077,6 +1267,7 @@ MEERA,8888888888,NEDUMANGAD,,32</div>
         return;
       }
 
+      selectedCustomerIds.delete(Number(customerId));
       showStatus("Customer deleted successfully.", "success");
 
       if (Number(editingCustomerId) === Number(customerId)) resetForm();
@@ -1338,6 +1529,7 @@ MEERA,8888888888,NEDUMANGAD,,32</div>
 
     window.editCustomer = editCustomer;
     window.deleteCustomer = deleteCustomer;
+    window.toggleCustomerSelection = toggleCustomerSelection;
   </script>
 </body>
 </html>

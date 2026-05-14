@@ -890,22 +890,45 @@ MEERA,8888888888,NEDUMANGAD,,32</div>
         <tr><td colspan="7" class="empty">Loading customers...</td></tr>
       `;
 
-      const { data, error } = await supabaseClient
-        .from("customers")
-        .select("*")
-        .order("customer_id", { ascending: false });
-
-      if (error) {
-        showStatus("Error loading customers: " + error.message, "error");
+      try {
+        customers = await fetchAllCustomers();
+        totalCustomers.textContent = customers.length;
+        renderCustomers();
+      } catch (error) {
+        showStatus("Error loading customers: " + (error.message || "Unknown error"), "error");
         customerTableBody.innerHTML = `
           <tr><td colspan="7" class="empty">Error loading customers</td></tr>
         `;
-        return;
+      }
+    }
+
+    async function fetchAllCustomers() {
+      const pageSize = 1000;
+      let from = 0;
+      let allRows = [];
+
+      while (true) {
+        const to = from + pageSize - 1;
+
+        const { data, error } = await supabaseClient
+          .from("customers")
+          .select("*")
+          .order("customer_id", { ascending: false })
+          .range(from, to);
+
+        if (error) throw error;
+
+        const rows = data || [];
+        allRows = allRows.concat(rows);
+
+        totalCustomers.textContent = allRows.length + "+";
+        filteredCustomers.textContent = allRows.length + "+";
+
+        if (rows.length < pageSize) break;
+        from += pageSize;
       }
 
-      customers = data || [];
-      totalCustomers.textContent = customers.length;
-      renderCustomers();
+      return allRows;
     }
 
     function renderCustomers() {

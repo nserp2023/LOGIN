@@ -307,7 +307,7 @@
 
     .toolbar{
       display:grid;
-      grid-template-columns:1.4fr 1fr 1fr 1fr;
+      grid-template-columns:1.4fr 1fr 1fr 1fr 1fr;
       gap:12px;
       margin-bottom:14px;
     }
@@ -393,7 +393,7 @@
     table{
       width:100%;
       border-collapse:collapse;
-      min-width:980px;
+      min-width:1120px;
     }
 
     th, td{
@@ -564,7 +564,7 @@
       .toolbar{ grid-template-columns:1fr; }
       .topbar-actions{ width:100%; }
       .topbar-actions .btn{ flex:1; }
-      table{ min-width:820px; }
+      table{ min-width:980px; }
       .stat-value{ font-size:24px; }
     }
 
@@ -584,7 +584,7 @@
         <div class="logo">👥</div>
         <div class="title-block">
           <h1>Customer Manager</h1>
-          <p>Create, edit, search, address suggestion, duplicate-mobile support, and bulk upload</p>
+          <p>Create, edit, search, remarks, merge duplicates, address suggestion, duplicate-mobile support, and bulk upload</p>
         </div>
       </div>
 
@@ -659,6 +659,12 @@
                   <input type="text" id="customerGST" placeholder="ENTER GST NUMBER">
                   <div class="helper">All typing is converted to uppercase automatically.</div>
                 </div>
+
+                <div class="field full">
+                  <label for="customerRemark">Customer Remark</label>
+                  <textarea id="customerRemark" placeholder="TYPE CUSTOMER REMARKS HERE..."></textarea>
+                  <div class="helper">Internal notes about customer. Example: VIP CUSTOMER, DO NOT GIVE CREDIT, DELIVERY AFTER 6 PM.</div>
+                </div>
               </div>
 
               <div class="form-actions">
@@ -691,20 +697,20 @@
 
                 <div class="field">
                   <label for="csvText">Or Paste CSV Data</label>
-                  <textarea id="csvText" placeholder="NAME,MOBILE,ADDRESS,GST_NUMBER,STATE_CODE&#10;ARUN,9999999999,TRIVANDRUM,,32"></textarea>
+                  <textarea id="csvText" placeholder="NAME,MOBILE,ADDRESS,GST_NUMBER,STATE_CODE,CUSTOMER_REMARK&#10;ARUN,9999999999,TRIVANDRUM,,32,VIP CUSTOMER"></textarea>
                 </div>
 
                 <div class="field">
                   <label>Sample CSV Format</label>
-                  <div class="sample-box">NAME,MOBILE,ADDRESS,GST_NUMBER,STATE_CODE
-ARUN,9999999999,TRIVANDRUM,,32
-RAJESH,9999999999,KATTAKADA,32ABCDE1234F1Z5,32
-MEERA,8888888888,NEDUMANGAD,,32</div>
+                  <div class="sample-box">NAME,MOBILE,ADDRESS,GST_NUMBER,STATE_CODE,CUSTOMER_REMARK
+ARUN,9999999999,TRIVANDRUM,,32,VIP CUSTOMER
+RAJESH,9999999999,KATTAKADA,32ABCDE1234F1Z5,32,OLD BALANCE CHECK
+MEERA,8888888888,NEDUMANGAD,,32,WHATSAPP ONLY</div>
                 </div>
 
                 <ul class="note-list">
                   <li>Duplicate mobile numbers are allowed by this page.</li>
-                  <li>CSV header can be: NAME, MOBILE, ADDRESS, GST_NUMBER, STATE_CODE</li>
+                  <li>CSV header can be: NAME, MOBILE, ADDRESS, GST_NUMBER, STATE_CODE, CUSTOMER_REMARK</li>
                   <li>All uploaded values are automatically converted to uppercase.</li>
                   <li>If database still blocks duplicate mobile, run the SQL shown above once.</li>
                 </ul>
@@ -733,6 +739,7 @@ MEERA,8888888888,NEDUMANGAD,,32</div>
             <input type="text" id="gstSearchInput" placeholder="SEARCH GST NUMBER...">
             <input type="text" id="stateSearchInput" placeholder="SEARCH STATE CODE...">
             <input type="text" id="addressSearchInput" placeholder="SEARCH ADDRESS...">
+            <input type="text" id="remarkSearchInput" placeholder="SEARCH REMARK...">
           </div>
 
           <div class="merge-bar">
@@ -758,12 +765,13 @@ MEERA,8888888888,NEDUMANGAD,,32</div>
                   <th>Address</th>
                   <th>GST Number</th>
                   <th>State Code</th>
+                  <th>Remark</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody id="customerTableBody">
                 <tr>
-                  <td colspan="8" class="empty">Loading customers...</td>
+                  <td colspan="9" class="empty">Loading customers...</td>
                 </tr>
               </tbody>
             </table>
@@ -805,6 +813,7 @@ MEERA,8888888888,NEDUMANGAD,,32</div>
     const customerMobile = document.getElementById("customerMobile");
     const customerAddress = document.getElementById("customerAddress");
     const customerGST = document.getElementById("customerGST");
+    const customerRemark = document.getElementById("customerRemark");
     const customerStateCode = document.getElementById("customerStateCode");
     const addressSuggestions = document.getElementById("addressSuggestions");
 
@@ -812,6 +821,7 @@ MEERA,8888888888,NEDUMANGAD,,32</div>
     const gstSearchInput = document.getElementById("gstSearchInput");
     const stateSearchInput = document.getElementById("stateSearchInput");
     const addressSearchInput = document.getElementById("addressSearchInput");
+    const remarkSearchInput = document.getElementById("remarkSearchInput");
     const customerTableBody = document.getElementById("customerTableBody");
     const selectAllVisibleCustomers = document.getElementById("selectAllVisibleCustomers");
     const selectedCustomerCount = document.getElementById("selectedCustomerCount");
@@ -864,6 +874,7 @@ MEERA,8888888888,NEDUMANGAD,,32</div>
       gstSearchInput.addEventListener("input", renderCustomers);
       stateSearchInput.addEventListener("input", renderCustomers);
       addressSearchInput.addEventListener("input", renderCustomers);
+      remarkSearchInput.addEventListener("input", renderCustomers);
 
       selectAllVisibleCustomers.addEventListener("change", toggleSelectAllVisibleCustomers);
       mergeSelectedBtn.addEventListener("click", mergeSelectedCustomers);
@@ -954,6 +965,7 @@ MEERA,8888888888,NEDUMANGAD,,32</div>
       customerMobile.value = normalizeValue(data.mobile);
       customerAddress.value = normalizeValue(data.address);
       customerGST.value = normalizeValue(data.gst_number);
+      customerRemark.value = normalizeValue(data.customer_remark);
       customerStateCode.value = normalizeValue(data.state_code);
 
       setMode("edit");
@@ -963,7 +975,7 @@ MEERA,8888888888,NEDUMANGAD,,32</div>
 
     async function loadCustomers() {
       customerTableBody.innerHTML = `
-        <tr><td colspan="8" class="empty">Loading customers...</td></tr>
+        <tr><td colspan="9" class="empty">Loading customers...</td></tr>
       `;
 
       try {
@@ -973,7 +985,7 @@ MEERA,8888888888,NEDUMANGAD,,32</div>
       } catch (error) {
         showStatus("Error loading customers: " + (error.message || "Unknown error"), "error");
         customerTableBody.innerHTML = `
-          <tr><td colspan="8" class="empty">Error loading customers</td></tr>
+          <tr><td colspan="9" class="empty">Error loading customers</td></tr>
         `;
       }
     }
@@ -1012,6 +1024,7 @@ MEERA,8888888888,NEDUMANGAD,,32</div>
       const gstTerm = normalizeValue(gstSearchInput.value);
       const stateTerm = normalizeValue(stateSearchInput.value);
       const addressTerm = normalizeValue(addressSearchInput.value);
+      const remarkTerm = normalizeValue(remarkSearchInput.value);
 
       return customers.filter(c =>
         (
@@ -1021,7 +1034,8 @@ MEERA,8888888888,NEDUMANGAD,,32</div>
         ) &&
         (!gstTerm || normalizeValue(c.gst_number).includes(gstTerm)) &&
         (!stateTerm || normalizeValue(c.state_code).includes(stateTerm)) &&
-        (!addressTerm || normalizeValue(c.address).includes(addressTerm))
+        (!addressTerm || normalizeValue(c.address).includes(addressTerm)) &&
+        (!remarkTerm || normalizeValue(c.customer_remark).includes(remarkTerm))
       );
     }
 
@@ -1043,7 +1057,7 @@ MEERA,8888888888,NEDUMANGAD,,32</div>
 
       if (!filtered.length) {
         customerTableBody.innerHTML = `
-          <tr><td colspan="8" class="empty">No customers found</td></tr>
+          <tr><td colspan="9" class="empty">No customers found</td></tr>
         `;
         updateSelectedCustomerCount();
         return;
@@ -1061,6 +1075,7 @@ MEERA,8888888888,NEDUMANGAD,,32</div>
             <td>${escapeHtml(normalizeValue(cust.address))}</td>
             <td>${escapeHtml(normalizeValue(cust.gst_number))}</td>
             <td>${escapeHtml(normalizeValue(cust.state_code))}</td>
+            <td>${escapeHtml(normalizeValue(cust.customer_remark))}</td>
             <td>
               <div class="table-actions">
                 <button class="mini-btn mini-edit" onclick="editCustomer(${id})">Edit</button>
@@ -1173,6 +1188,7 @@ MEERA,8888888888,NEDUMANGAD,,32</div>
       const mobile = normalizeValue(customerMobile.value);
       const address = normalizeValue(customerAddress.value);
       const gst = normalizeValue(customerGST.value);
+      const remark = normalizeValue(customerRemark.value);
       const stateCode = normalizeValue(customerStateCode.value);
 
       if (!name || !mobile || !address || !stateCode) {
@@ -1188,8 +1204,11 @@ MEERA,8888888888,NEDUMANGAD,,32</div>
           const { error } = await supabaseClient
             .from("customers")
             .update({
-              name, mobile, address,
+              name,
+              mobile,
+              address,
               gst_number: gst,
+              customer_remark: remark,
               state_code: stateCode
             })
             .eq("customer_id", editingCustomerId);
@@ -1200,8 +1219,11 @@ MEERA,8888888888,NEDUMANGAD,,32</div>
           const { error } = await supabaseClient
             .from("customers")
             .insert([{
-              name, mobile, address,
+              name,
+              mobile,
+              address,
               gst_number: gst,
+              customer_remark: remark,
               state_code: stateCode
             }]);
 
@@ -1218,6 +1240,12 @@ MEERA,8888888888,NEDUMANGAD,,32</div>
             "DATABASE STILL HAS UNIQUE MOBILE RESTRICTION.\n\nRUN THIS IN SUPABASE SQL EDITOR:\n" +
             "alter table customers drop constraint if exists unique_mobile;\n" +
             "alter table customers drop constraint if exists customers_mobile_key;",
+            "error"
+          );
+        } else if (String(error.message || "").toLowerCase().includes("customer_remark")) {
+          showStatus(
+            "DATABASE COLUMN MISSING. RUN THIS IN SUPABASE SQL EDITOR:\n\n" +
+            "alter table customers add column if not exists customer_remark text;",
             "error"
           );
         } else {
@@ -1241,6 +1269,7 @@ MEERA,8888888888,NEDUMANGAD,,32</div>
       customerMobile.value = normalizeValue(customer.mobile);
       customerAddress.value = normalizeValue(customer.address);
       customerGST.value = normalizeValue(customer.gst_number);
+      customerRemark.value = normalizeValue(customer.customer_remark);
       customerStateCode.value = normalizeValue(customer.state_code);
 
       setMode("edit");
@@ -1331,7 +1360,8 @@ MEERA,8888888888,NEDUMANGAD,,32</div>
         mobile: headers.indexOf("MOBILE"),
         address: headers.indexOf("ADDRESS"),
         gst_number: headers.indexOf("GST_NUMBER"),
-        state_code: headers.indexOf("STATE_CODE")
+        state_code: headers.indexOf("STATE_CODE"),
+        customer_remark: headers.indexOf("CUSTOMER_REMARK")
       };
 
       if (indexMap.name === -1 || indexMap.mobile === -1 || indexMap.address === -1 || indexMap.state_code === -1) {
@@ -1346,7 +1376,8 @@ MEERA,8888888888,NEDUMANGAD,,32</div>
           mobile: normalizeValue(cols[indexMap.mobile]),
           address: normalizeValue(cols[indexMap.address]),
           gst_number: indexMap.gst_number >= 0 ? normalizeValue(cols[indexMap.gst_number]) : "",
-          state_code: normalizeValue(cols[indexMap.state_code])
+          state_code: normalizeValue(cols[indexMap.state_code]),
+          customer_remark: indexMap.customer_remark >= 0 ? normalizeValue(cols[indexMap.customer_remark]) : ""
         };
 
         if (!row.name && !row.mobile && !row.address && !row.state_code) continue;

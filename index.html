@@ -10,263 +10,638 @@
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
   <link rel="manifest" href="site.webmanifest">
 
-  <title>Billing Software Login</title>
+  <title>VAJRA Login</title>
 
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
+    :root{
+      --bg:#05070b;
+      --panel:#0c111d;
+      --panel2:#111827;
+      --line:rgba(255,255,255,.14);
+      --text:#f8fafc;
+      --muted:#aeb8c7;
+      --red:#ff1f35;
+      --white-led:#f8fbff;
+      --blue:#2dd4ff;
+      --green:#2dffb3;
+      --warning:#ff6b6b;
+      --gold:#ffd166;
     }
 
-    body {
-      font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background: url("background.jpg") no-repeat center center fixed;
-      background-size: cover;
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      position: relative;
-      overflow: hidden;
-      padding: 16px;
+    *{
+      margin:0;
+      padding:0;
+      box-sizing:border-box;
     }
 
-    body::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.45);
-      z-index: 0;
+    html,body{
+      min-height:100%;
     }
 
-    .shape {
-      position: absolute;
-      border-radius: 50%;
-      opacity: 0.6;
-      filter: blur(40px);
-      animation: float 12s infinite ease-in-out;
-      z-index: 1;
-      pointer-events: none;
+    body{
+      font-family:"Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      min-height:100vh;
+      background:
+        radial-gradient(circle at 18% 18%, rgba(255,31,53,.23), transparent 28%),
+        radial-gradient(circle at 82% 22%, rgba(45,212,255,.20), transparent 30%),
+        radial-gradient(circle at 50% 90%, rgba(45,255,179,.12), transparent 32%),
+        linear-gradient(135deg, #020617 0%, #07111f 48%, #030712 100%);
+      color:var(--text);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      overflow:hidden;
+      padding:18px;
+      position:relative;
     }
 
-    .shape:nth-child(1) {
-      width: 200px;
-      height: 200px;
-      background: #00c6ff;
-      top: 10%;
-      left: 15%;
-      animation-delay: 0s;
+    body::before{
+      content:"";
+      position:fixed;
+      inset:0;
+      background:
+        linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+      background-size:42px 42px;
+      mask-image:radial-gradient(circle at center, black 0%, transparent 78%);
+      pointer-events:none;
     }
 
-    .shape:nth-child(2) {
-      width: 150px;
-      height: 150px;
-      background: #ff6b6b;
-      bottom: 15%;
-      right: 20%;
-      animation-delay: 4s;
+    body::after{
+      content:"";
+      position:fixed;
+      inset:-80px;
+      background:
+        conic-gradient(from 90deg, transparent, rgba(45,212,255,.12), transparent, rgba(255,31,53,.10), transparent);
+      filter:blur(60px);
+      animation:slowSpin 18s linear infinite;
+      pointer-events:none;
+      opacity:.8;
     }
 
-    .shape:nth-child(3) {
-      width: 250px;
-      height: 250px;
-      background: #7d5fff;
-      top: 60%;
-      left: 5%;
-      animation-delay: 8s;
+    @keyframes slowSpin{
+      to{ transform:rotate(360deg); }
     }
 
-    @keyframes float {
-      0%, 100% {
-        transform: translateY(0) translateX(0);
+    .spark{
+      position:absolute;
+      width:4px;
+      height:4px;
+      border-radius:50%;
+      background:#fff;
+      box-shadow:0 0 12px #fff, 0 0 24px var(--blue);
+      opacity:.45;
+      animation:rise 8s linear infinite;
+      pointer-events:none;
+      z-index:1;
+    }
+
+    .spark:nth-child(1){ left:12%; bottom:8%; animation-delay:0s; }
+    .spark:nth-child(2){ left:30%; bottom:16%; animation-delay:1.5s; }
+    .spark:nth-child(3){ left:70%; bottom:9%; animation-delay:3s; }
+    .spark:nth-child(4){ left:86%; bottom:22%; animation-delay:4.8s; }
+    .spark:nth-child(5){ left:47%; bottom:4%; animation-delay:6s; }
+
+    @keyframes rise{
+      0%{ transform:translateY(0) scale(.75); opacity:0; }
+      15%{ opacity:.55; }
+      100%{ transform:translateY(-105vh) scale(1.25); opacity:0; }
+    }
+
+    .login-shell{
+      width:min(980px, 100%);
+      min-height:570px;
+      position:relative;
+      z-index:2;
+      display:grid;
+      grid-template-columns:1.08fr .92fr;
+      border:1px solid var(--line);
+      border-radius:30px;
+      overflow:hidden;
+      background:rgba(8,13,24,.76);
+      box-shadow:0 32px 90px rgba(0,0,0,.55);
+      backdrop-filter:blur(20px);
+      -webkit-backdrop-filter:blur(20px);
+      animation:pageIn .65s ease both;
+    }
+
+    @keyframes pageIn{
+      from{ opacity:0; transform:translateY(18px) scale(.985); }
+      to{ opacity:1; transform:translateY(0) scale(1); }
+    }
+
+    .brand-side{
+      padding:42px;
+      position:relative;
+      overflow:hidden;
+      background:
+        linear-gradient(145deg, rgba(255,255,255,.08), rgba(255,255,255,.02)),
+        radial-gradient(circle at 20% 30%, rgba(255,31,53,.18), transparent 34%),
+        radial-gradient(circle at 82% 78%, rgba(45,212,255,.16), transparent 36%);
+      display:flex;
+      flex-direction:column;
+      justify-content:space-between;
+      min-height:570px;
+    }
+
+    .brand-side::before{
+      content:"";
+      position:absolute;
+      inset:24px;
+      border-radius:24px;
+      border:1px solid rgba(255,255,255,.12);
+      pointer-events:none;
+    }
+
+    .led-board{
+      position:relative;
+      padding:22px;
+      border-radius:24px;
+      background:
+        linear-gradient(180deg, rgba(0,0,0,.58), rgba(0,0,0,.26)),
+        repeating-linear-gradient(90deg, rgba(255,255,255,.04) 0 1px, transparent 1px 7px);
+      border:1px solid rgba(255,255,255,.17);
+      box-shadow:
+        inset 0 0 35px rgba(0,0,0,.65),
+        0 0 22px rgba(45,212,255,.10);
+    }
+
+    .shop-name{
+      font-weight:900;
+      line-height:1;
+      letter-spacing:2px;
+      text-transform:uppercase;
+      text-align:center;
+      font-size:clamp(34px, 5vw, 58px);
+      text-shadow:0 0 12px rgba(255,255,255,.92), 0 0 28px rgba(255,255,255,.42);
+      filter:drop-shadow(0 0 10px rgba(255,255,255,.20));
+    }
+
+    .shop-name .v{
+      color:var(--red);
+      text-shadow:0 0 10px var(--red), 0 0 24px var(--red), 0 0 42px rgba(255,31,53,.75);
+      animation:flickerRed 3.6s infinite;
+    }
+
+    .shop-name .white{
+      color:var(--white-led);
+      animation:flickerWhite 5.1s infinite;
+    }
+
+    .shop-sub{
+      margin-top:12px;
+      font-size:clamp(16px, 2.1vw, 24px);
+      font-weight:800;
+      letter-spacing:1.5px;
+      text-align:center;
+      color:#f8fbff;
+      text-shadow:0 0 10px rgba(255,255,255,.85), 0 0 24px rgba(45,212,255,.35);
+      animation:flickerWhite 6.2s infinite .7s;
+    }
+
+    @keyframes flickerRed{
+      0%, 18%, 22%, 25%, 53%, 57%, 100%{ opacity:1; filter:brightness(1.2); }
+      20%, 24%, 55%{ opacity:.62; filter:brightness(.8); }
+      76%{ opacity:.9; }
+      77%{ opacity:.45; }
+      78%{ opacity:1; }
+    }
+
+    @keyframes flickerWhite{
+      0%, 9%, 11%, 30%, 32%, 70%, 72%, 100%{ opacity:1; filter:brightness(1.12); }
+      10%, 31%, 71%{ opacity:.72; filter:brightness(.72); }
+      45%{ opacity:.95; }
+      46%{ opacity:.58; }
+      47%{ opacity:1; }
+    }
+
+    .brand-content{
+      position:relative;
+      z-index:1;
+      margin-top:34px;
+    }
+
+    .tagline{
+      font-size:30px;
+      line-height:1.18;
+      font-weight:850;
+      max-width:460px;
+      margin-top:32px;
+    }
+
+    .tagline span{
+      color:var(--gold);
+      text-shadow:0 0 18px rgba(255,209,102,.28);
+    }
+
+    .features{
+      display:grid;
+      gap:12px;
+      margin-top:26px;
+      max-width:430px;
+    }
+
+    .feature{
+      display:flex;
+      gap:12px;
+      align-items:center;
+      color:#d8e1ee;
+      font-size:15px;
+      padding:12px 14px;
+      border:1px solid rgba(255,255,255,.10);
+      border-radius:16px;
+      background:rgba(255,255,255,.055);
+    }
+
+    .feature b{
+      width:26px;
+      height:26px;
+      min-width:26px;
+      display:grid;
+      place-items:center;
+      border-radius:9px;
+      background:rgba(45,212,255,.13);
+      box-shadow:0 0 16px rgba(45,212,255,.18);
+      color:#bff4ff;
+    }
+
+    .footer-note{
+      position:relative;
+      z-index:1;
+      font-size:13px;
+      color:#9fb0c7;
+      display:flex;
+      gap:10px;
+      align-items:center;
+    }
+
+    .live-dot{
+      width:9px;
+      height:9px;
+      border-radius:50%;
+      background:var(--green);
+      box-shadow:0 0 14px var(--green);
+      animation:pulse 1.4s infinite;
+    }
+
+    @keyframes pulse{
+      50%{ transform:scale(1.35); opacity:.72; }
+    }
+
+    .form-side{
+      padding:42px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.015));
+    }
+
+    .login-card{
+      width:100%;
+      max-width:385px;
+    }
+
+    .mini-title{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 12px;
+      border-radius:999px;
+      background:rgba(45,212,255,.10);
+      border:1px solid rgba(45,212,255,.18);
+      color:#c8f6ff;
+      font-size:13px;
+      font-weight:700;
+      margin-bottom:16px;
+    }
+
+    .login-card h2{
+      font-size:31px;
+      line-height:1.12;
+      margin-bottom:8px;
+    }
+
+    .login-card .help{
+      color:var(--muted);
+      font-size:14px;
+      line-height:1.45;
+      margin-bottom:26px;
+    }
+
+    .input-group{
+      margin-bottom:16px;
+    }
+
+    .input-group label{
+      display:block;
+      color:#d8e1ee;
+      font-size:13px;
+      font-weight:750;
+      margin-bottom:8px;
+    }
+
+    .field-wrap{
+      position:relative;
+    }
+
+    .input-group input{
+      width:100%;
+      height:52px;
+      border:1px solid rgba(255,255,255,.14);
+      border-radius:16px;
+      padding:0 46px 0 15px;
+      background:rgba(255,255,255,.075);
+      color:#fff;
+      font-size:16px;
+      outline:none;
+      transition:.2s ease;
+    }
+
+    .input-group input::placeholder{
+      color:#7f8da1;
+    }
+
+    .input-group input:focus{
+      border-color:rgba(45,212,255,.70);
+      box-shadow:0 0 0 4px rgba(45,212,255,.12), 0 0 26px rgba(45,212,255,.08);
+      background:rgba(255,255,255,.105);
+    }
+
+    .uppercase-input{
+      text-transform:uppercase;
+    }
+
+    .icon{
+      position:absolute;
+      right:14px;
+      top:50%;
+      transform:translateY(-50%);
+      color:#91a3ba;
+      font-size:18px;
+      user-select:none;
+    }
+
+    .eye-btn{
+      position:absolute;
+      right:8px;
+      top:50%;
+      transform:translateY(-50%);
+      width:38px;
+      height:38px;
+      border-radius:12px;
+      border:none;
+      background:transparent;
+      color:#b8c6d9;
+      cursor:pointer;
+      font-size:18px;
+      display:grid;
+      place-items:center;
+    }
+
+    .eye-btn:hover{
+      background:rgba(255,255,255,.08);
+    }
+
+    .login-button{
+      width:100%;
+      height:54px;
+      border:0;
+      border-radius:17px;
+      margin-top:6px;
+      color:#06111a;
+      font-size:16px;
+      font-weight:900;
+      letter-spacing:.2px;
+      cursor:pointer;
+      background:linear-gradient(135deg, #73f7ff, #2dd4ff 42%, #ffd166);
+      box-shadow:0 16px 34px rgba(45,212,255,.20);
+      transition:.2s ease;
+      position:relative;
+      overflow:hidden;
+    }
+
+    .login-button::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      background:linear-gradient(90deg, transparent, rgba(255,255,255,.45), transparent);
+      transform:translateX(-120%);
+      transition:.55s ease;
+    }
+
+    .login-button:hover:not(:disabled){
+      transform:translateY(-2px);
+      box-shadow:0 20px 40px rgba(45,212,255,.26);
+    }
+
+    .login-button:hover:not(:disabled)::before{
+      transform:translateX(120%);
+    }
+
+    .login-button:disabled{
+      opacity:.75;
+      cursor:not-allowed;
+      transform:none;
+    }
+
+    #error-message{
+      min-height:22px;
+      margin-top:13px;
+      color:#ff8d8d;
+      text-align:center;
+      font-size:14px;
+      line-height:1.35;
+      font-weight:750;
+    }
+
+    .signup-line{
+      margin-top:22px;
+      color:#aeb8c7;
+      text-align:center;
+      font-size:14px;
+    }
+
+    .signup-line a{
+      color:#7ee7ff;
+      font-weight:800;
+      text-decoration:none;
+    }
+
+    .signup-line a:hover{
+      text-decoration:underline;
+    }
+
+    .bottom-strip{
+      margin-top:22px;
+      padding:12px;
+      border-radius:16px;
+      background:rgba(255,255,255,.055);
+      border:1px solid rgba(255,255,255,.10);
+      color:#94a3b8;
+      font-size:12px;
+      line-height:1.45;
+      text-align:center;
+    }
+
+    @media (max-width:860px){
+      body{
+        overflow:auto;
+        align-items:flex-start;
+        padding:14px;
       }
-      50% {
-        transform: translateY(-40px) translateX(30px);
+
+      .login-shell{
+        grid-template-columns:1fr;
+        min-height:auto;
+        border-radius:24px;
+      }
+
+      .brand-side{
+        min-height:auto;
+        padding:24px;
+      }
+
+      .tagline,
+      .features,
+      .footer-note{
+        display:none;
+      }
+
+      .led-board{
+        padding:16px;
+      }
+
+      .form-side{
+        padding:24px;
+      }
+
+      .login-card h2{
+        font-size:26px;
       }
     }
 
-    .login-container {
-      position: relative;
-      z-index: 2;
-      background: rgba(255, 255, 255, 0.15);
-      border-radius: 20px;
-      padding: 40px 35px;
-      width: 380px;
-      max-width: 100%;
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border: 1px solid rgba(255, 255, 255, 0.25);
-      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
-      animation: fadeInUp 0.8s ease;
-    }
-
-    .login-container h2 {
-      margin-bottom: 25px;
-      font-size: 26px;
-      font-weight: 600;
-      color: #fff;
-      text-align: center;
-      letter-spacing: 0.5px;
-    }
-
-    .input-group {
-      margin-bottom: 20px;
-    }
-
-    .input-group label {
-      display: block;
-      margin-bottom: 8px;
-      font-weight: 500;
-      color: #f1f1f1;
-      font-size: 14px;
-    }
-
-    .input-group input {
-      width: 100%;
-      padding: 12px 14px;
-      border: none;
-      border-radius: 10px;
-      font-size: 15px;
-      background: rgba(255, 255, 255, 0.25);
-      color: #fff;
-      transition: all 0.3s ease;
-    }
-
-    .input-group input::placeholder {
-      color: #e0e0e0;
-    }
-
-    .input-group input:focus {
-      background: rgba(255, 255, 255, 0.35);
-      outline: none;
-      box-shadow: 0 0 0 3px rgba(0, 120, 215, 0.4);
-    }
-
-    .uppercase-input {
-      text-transform: uppercase;
-    }
-
-    button {
-      width: 100%;
-      padding: 14px;
-      background: linear-gradient(135deg, #00c6ff, #0078d7);
-      border: none;
-      border-radius: 10px;
-      color: #fff;
-      font-size: 16px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-
-    button:hover:not(:disabled) {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(0, 120, 215, 0.5);
-    }
-
-    button:disabled {
-      opacity: 0.7;
-      cursor: not-allowed;
-      transform: none;
-      box-shadow: none;
-    }
-
-    #error-message {
-      color: #ff6b6b;
-      margin-top: 12px;
-      font-size: 14px;
-      text-align: center;
-      min-height: 20px;
-      line-height: 1.4;
-      font-weight: 600;
-    }
-
-    .login-container p {
-      margin-top: 20px;
-      font-size: 14px;
-      color: #f1f1f1;
-      text-align: center;
-    }
-
-    .login-container a {
-      color: #00c6ff;
-      font-weight: 500;
-      text-decoration: none;
-    }
-
-    .login-container a:hover {
-      text-decoration: underline;
-    }
-
-    @keyframes fadeInUp {
-      from {
-        opacity: 0;
-        transform: translateY(30px);
+    @media (max-width:420px){
+      body{
+        padding:10px;
       }
-      to {
-        opacity: 1;
-        transform: translateY(0);
+
+      .shop-name{
+        font-size:32px;
+      }
+
+      .shop-sub{
+        font-size:15px;
+      }
+
+      .brand-side,
+      .form-side{
+        padding:18px;
+      }
+
+      .login-shell{
+        border-radius:20px;
+      }
+
+      .input-group input,
+      .login-button{
+        height:50px;
       }
     }
 
-    @media (max-width: 480px) {
-      body {
-        align-items: flex-start;
-        padding-top: 55px;
-        overflow-y: auto;
-      }
-
-      .login-container {
-        padding: 30px 22px;
-        border-radius: 16px;
-      }
-
-      .login-container h2 {
-        font-size: 22px;
+    @media (prefers-reduced-motion: reduce){
+      *,
+      *::before,
+      *::after{
+        animation:none !important;
+        transition:none !important;
       }
     }
   </style>
 </head>
+
 <body>
-  <div class="shape"></div>
-  <div class="shape"></div>
-  <div class="shape"></div>
+  <span class="spark"></span>
+  <span class="spark"></span>
+  <span class="spark"></span>
+  <span class="spark"></span>
+  <span class="spark"></span>
 
-  <div class="login-container">
-    <h2>Login to Billing Software</h2>
+  <main class="login-shell">
+    <section class="brand-side">
+      <div class="brand-content">
+        <div class="led-board">
+          <div class="shop-name">
+            <span class="v">V</span><span class="white">AJRA</span>
+          </div>
+          <div class="shop-sub">LIGHTS AND ELECTRICALS</div>
+        </div>
 
-    <form id="loginForm" autocomplete="off">
-      <div class="input-group">
-        <label for="full_name">Full Name</label>
-        <input
-          type="text"
-          id="full_name"
-          name="full_name"
-          class="uppercase-input"
-          placeholder="Enter full name"
-          required
-          autofocus
-        />
+        <h1 class="tagline">
+          Fast billing, stock control, and reports for your <span>daily counter work.</span>
+        </h1>
+
+        <div class="features">
+          <div class="feature"><b>✓</b><span>Secure login with approval checking</span></div>
+          <div class="feature"><b>₹</b><span>Sales, purchase, stock and credit ready</span></div>
+          <div class="feature"><b>⚡</b><span>Optimized for quick shop billing</span></div>
+        </div>
       </div>
 
-      <div class="input-group">
-        <label for="password">Password</label>
-        <input
-          type="password"
-          id="password"
-          name="password"
-          placeholder="Enter password"
-          required
-        />
+      <div class="footer-note">
+        <span class="live-dot"></span>
+        <span>VAJRA ERP login system is ready</span>
       </div>
+    </section>
 
-      <button type="submit" id="loginBtn">Login</button>
-      <p id="error-message"></p>
-    </form>
+    <section class="form-side">
+      <div class="login-card">
+        <div class="mini-title">⚡ Staff Login</div>
+        <h2>Welcome back</h2>
+        <p class="help">Enter your approved staff name and password to open the dashboard.</p>
 
-    <p>Don't have an account? <a href="signup.html">Sign up here</a></p>
-  </div>
+        <form id="loginForm" autocomplete="off">
+          <div class="input-group">
+            <label for="full_name">Full Name</label>
+            <div class="field-wrap">
+              <input
+                type="text"
+                id="full_name"
+                name="full_name"
+                class="uppercase-input"
+                placeholder="ENTER FULL NAME"
+                required
+                autofocus
+              />
+              <span class="icon">👤</span>
+            </div>
+          </div>
+
+          <div class="input-group">
+            <label for="password">Password</label>
+            <div class="field-wrap">
+              <input
+                type="password"
+                id="password"
+                name="password"
+                placeholder="Enter password"
+                required
+              />
+              <button type="button" class="eye-btn" id="togglePassword" aria-label="Show password">👁</button>
+            </div>
+          </div>
+
+          <button type="submit" id="loginBtn" class="login-button">Login to Dashboard</button>
+          <p id="error-message"></p>
+        </form>
+
+        <p class="signup-line">Don't have an account? <a href="signup.html">Sign up here</a></p>
+
+        <div class="bottom-strip">
+          Tip: Use the exact staff full name saved in user profiles.
+        </div>
+      </div>
+    </section>
+  </main>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabaseClient.js"></script>
@@ -279,6 +654,7 @@
     const passwordInput = document.getElementById("password");
     const errorEl = document.getElementById("error-message");
     const loginBtn = document.getElementById("loginBtn");
+    const togglePasswordBtn = document.getElementById("togglePassword");
 
     if (!loginClient) {
       errorEl.textContent = "Supabase client not found. Please check supabaseClient.js";
@@ -344,6 +720,21 @@
 
     forceUppercase(fullNameInput);
 
+    togglePasswordBtn.addEventListener("click", () => {
+      const isPassword = passwordInput.type === "password";
+      passwordInput.type = isPassword ? "text" : "password";
+      togglePasswordBtn.textContent = isPassword ? "🙈" : "👁";
+      togglePasswordBtn.setAttribute("aria-label", isPassword ? "Hide password" : "Show password");
+      passwordInput.focus();
+    });
+
+    fullNameInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        passwordInput.focus();
+      }
+    });
+
     window.addEventListener("load", async () => {
       fullNameInput.focus();
       await clearExpiredSessionOnly();
@@ -372,7 +763,7 @@
       try {
         isLoggingIn = true;
         loginBtn.disabled = true;
-        loginBtn.textContent = "Logging in...";
+        loginBtn.textContent = "Checking login...";
 
         // IMPORTANT FIX:
         // Old expired JWT can affect the first user_profiles query.
@@ -416,6 +807,8 @@
           showError("Login failed: Email not found for this user.");
           return;
         }
+
+        loginBtn.textContent = "Opening dashboard...";
 
         // STEP 2: Login using found email + password
         const { data, error } = await loginClient.auth.signInWithPassword({
@@ -480,7 +873,7 @@
       } finally {
         isLoggingIn = false;
         loginBtn.disabled = false;
-        loginBtn.textContent = "Login";
+        loginBtn.textContent = "Login to Dashboard";
       }
     });
   </script>

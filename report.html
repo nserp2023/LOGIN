@@ -926,6 +926,12 @@
 
                 <td>
                     ${
+                        (type === "sales" || type === "sales_pack")
+                        ? `<button ${s.status === "CANCELLED" ? 'disabled title="Cancelled bill"' : ''} onclick="event.stopPropagation(); openEWayBill(${s.id})">🚚 E-Way Bill</button>`
+                        : ""
+                    }
+
+                    ${
                         type === "quotation"
                         ? `<button ${s.status === "CANCELLED" ? 'disabled title="Cancelled quotation"' : ''} onclick="event.stopPropagation(); printQuotationSimple(${s.id})">📄 Simple Quote</button>`
                         : ""
@@ -1073,6 +1079,23 @@
 
         html += "</table></div>";
         container.innerHTML = html;
+    }
+
+
+    function openEWayBill(id){
+        const row = findReportRow(id);
+        if(row && row.status === "CANCELLED"){
+            alert("Cancelled bill cannot be used for E-Way Bill.");
+            return;
+        }
+
+        const type = document.getElementById("report_type").value;
+        if(type === "quotation" || type === "sales_order"){
+            alert("E-Way Bill is available only for Sales / Sales + Packing bills.");
+            return;
+        }
+
+        window.open(`eway_bill.html?id=${id}&type=${type}`, "_blank");
     }
 
     function printDoc(id){

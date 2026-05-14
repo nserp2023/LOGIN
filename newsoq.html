@@ -128,6 +128,45 @@
             color: #ffffff !important;
         }
 
+        /* ===== CUSTOMER REMARK HIGHLIGHT ===== */
+        .form-control.customer-remark-field {
+            background: #fdf2f8 !important;
+            border: 2px solid #db2777 !important;
+            color: #831843 !important;
+            font-weight: 900 !important;
+            box-shadow: 0 0 0 3px rgba(219, 39, 119, 0.20) !important;
+        }
+
+        .customer-remark-label {
+            color: #fbcfe8 !important;
+            text-shadow: 0 0 10px rgba(219, 39, 119, 0.65);
+        }
+
+        .autocomplete-row.customer-has-remark td {
+            background: #fdf2f8 !important;
+            color: #831843 !important;
+            font-weight: 900 !important;
+            border-color: #db2777 !important;
+        }
+
+        .autocomplete-row.customer-has-remark.selected td,
+        .autocomplete-row.customer-has-remark:hover td {
+            background: #db2777 !important;
+            color: #ffffff !important;
+        }
+
+        .customer-remark-badge {
+            display: inline-block;
+            padding: 2px 7px;
+            margin-left: 6px;
+            border-radius: 999px;
+            background: #db2777;
+            color: #ffffff;
+            font-size: 10px;
+            font-weight: 900;
+            letter-spacing: .4px;
+        }
+
         #payment_type:disabled {
             background: #fef3c7;
             color: #92400e;
@@ -850,6 +889,20 @@
             font-weight: 900 !important;
         }
 
+        .autocomplete-table tr.autocomplete-row.customer-has-remark > td {
+            background: #fdf2f8 !important;
+            color: #831843 !important;
+            font-weight: 900 !important;
+            border-color: #db2777 !important;
+        }
+
+        .autocomplete-table tr.autocomplete-row.customer-has-remark.selected > td,
+        .autocomplete-table tr.autocomplete-row.customer-has-remark:hover > td {
+            background: #db2777 !important;
+            color: #ffffff !important;
+            font-weight: 900 !important;
+        }
+
         .gst-badge {
             display: inline-block;
             padding: 2px 7px;
@@ -937,6 +990,11 @@
             <label>GST No</label>
             <input type="text" id="cust_gst" class="form-control w-md nav-input" tabindex="6" autocomplete="off" placeholder="GST Number">
             <div id="gst_suggestions" class="autocomplete-list"></div>
+        </div>
+
+        <div class="form-group" id="customer_remark_group">
+            <label>Customer Remark</label>
+            <input type="text" id="cust_remark" class="form-control w-xl" readonly tabindex="-1" placeholder="Saved customer remark">
         </div>
 
 
@@ -1209,6 +1267,7 @@
                 customer_name: getInputValue('cust_name'),
                 customer_address: getInputValue('cust_address'),
                 customer_gst: getInputValue('cust_gst'),
+                customer_remark: getInputValue('cust_remark'),
                 salesman: getInputValue('salesman'),
                 department_filter: getInputValue('department_filter'),
                 quotation_remark: getInputValue('quotation_remark')
@@ -1332,7 +1391,9 @@
             setInputValue('cust_name', h.customer_name || '');
             setInputValue('cust_address', h.customer_address || '');
             setInputValue('cust_gst', h.customer_gst || '');
+            setInputValue('cust_remark', h.customer_remark || '');
             updateGstCustomerHighlight();
+            updateCustomerRemarkHighlight();
             setInputValue('salesman', h.salesman || '');
             setInputValue('department_filter', h.department_filter || '');
             setInputValue('quotation_remark', h.quotation_remark || '');
@@ -2562,6 +2623,31 @@ const stockSelect = 'item_code,item_name,barcode,price1,price2,price3,landing,ba
         });
     }
 
+    function hasCustomerRemark(value){
+        return String(value || "").trim().length > 0;
+    }
+
+    function updateCustomerRemarkHighlight(){
+        const remarkInput = document.getElementById('cust_remark');
+        if(!remarkInput) return;
+
+        const hasRemark = hasCustomerRemark(remarkInput.value);
+        remarkInput.classList.toggle('customer-remark-field', hasRemark);
+        remarkInput.title = hasRemark ? remarkInput.value : '';
+
+        const label = remarkInput.closest('.form-group')?.querySelector('label');
+        if(label){
+            label.classList.toggle('customer-remark-label', hasRemark);
+        }
+    }
+
+    function setSelectedCustomerRemark(value){
+        const remarkInput = document.getElementById('cust_remark');
+        if(!remarkInput) return;
+        remarkInput.value = String(value || '').trim().toUpperCase();
+        updateCustomerRemarkHighlight();
+    }
+
     function renderCustomerSuggestions(input, list, data){
         if(!list) return;
 
@@ -2575,15 +2661,20 @@ const stockSelect = 'item_code,item_name,barcode,price1,price2,price3,landing,ba
 <th>Name</th>
 <th>Address</th>
 <th>GST</th>
+<th>Remark</th>
 </tr>
 ${data.map((c, idx) => {
     const hasGst = hasCustomerGst(c.gst_number);
+    const hasRemark = hasCustomerRemark(c.customer_remark);
+    const rowClass = `${hasGst ? 'customer-has-gst' : ''} ${hasRemark ? 'customer-has-remark' : ''}`.trim();
+    const rowTitle = hasRemark ? `CUSTOMER REMARK: ${c.customer_remark}` : (hasGst ? 'GST CUSTOMER' : '');
     return `
-<tr class="autocomplete-row ${hasGst ? 'customer-has-gst' : ''}" data-idx="${idx}" title="${hasGst ? 'GST CUSTOMER' : ''}">
+<tr class="autocomplete-row ${rowClass}" data-idx="${idx}" title="${escapeHtml(rowTitle)}">
 <td>${escapeHtml(c.mobile || '')}</td>
 <td>${escapeHtml(c.name || '')}</td>
 <td>${escapeHtml(c.address || '')}</td>
 <td>${escapeHtml(c.gst_number || '')}${hasGst ? '<span class="gst-badge">GST</span>' : ''}</td>
+<td>${escapeHtml(c.customer_remark || '')}${hasRemark ? '<span class="customer-remark-badge">REMARK</span>' : ''}</td>
 </tr>
 `;
 }).join("")}
@@ -2697,6 +2788,7 @@ ${data.map((c, idx) => {
                 clearSelectedCustomerFlag();
                 // Mobile changed means old selected customer's GST/status should not stay marked.
                 document.getElementById('cust_gst').value = '';
+                setSelectedCustomerRemark('');
                 updateGstCustomerHighlight();
             }
 
@@ -2789,6 +2881,7 @@ ${data.map((c, idx) => {
         document.getElementById('cust_name').value = c.name || '';
         document.getElementById('cust_address').value = c.address || '';
         document.getElementById('cust_gst').value = normalizeGstNumber(c.gst_number || gstInput?.value || '');
+        setSelectedCustomerRemark(c.customer_remark || '');
 
         selectedCustomerFromDropdown = true;
         updateGstCustomerHighlight();
@@ -2796,7 +2889,8 @@ ${data.map((c, idx) => {
         lastHistoryKey = '';
 
         const name = c.name || 'GST customer';
-        showStockWarning(`${name} details fetched from saved customers.`, document.getElementById('cust_name'), 'GST CUSTOMER FOUND');
+        const remarkText = hasCustomerRemark(c.customer_remark) ? `\n\nCUSTOMER REMARK:\n${c.customer_remark}` : '';
+        showStockWarning(`${name} details fetched from saved customers.${remarkText}`, document.getElementById('cust_name'), hasCustomerRemark(c.customer_remark) ? 'CUSTOMER REMARK FOUND' : 'GST CUSTOMER FOUND');
     }
 
     async function fetchCustomerByGst(gstNo, showNewMessage = true){
@@ -2902,6 +2996,7 @@ ${data.map((c, idx) => {
         document.getElementById('cust_name').value = c.name || '';
         document.getElementById('cust_address').value = c.address || '';
         document.getElementById('cust_gst').value = c.gst_number || '';
+        setSelectedCustomerRemark(c.customer_remark || '');
         updateGstCustomerHighlight();
         hideCustomerSuggestions();
         lastHistoryKey = "";

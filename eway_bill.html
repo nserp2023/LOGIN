@@ -13,35 +13,22 @@
         body{margin:0;font-family:Arial,sans-serif;background:#111827;color:#f9fafb;padding:14px}
         .wrap{max-width:1180px;margin:auto}
         .top{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
-        h2{margin:0;color:#fde68a;font-size:24px}
+        h2{margin:0;color:#fde68a;font-size:24px} h3{margin:0 0 12px;color:#fde68a}
         .card{background:#1f2937;border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:14px;margin-bottom:12px;box-shadow:0 14px 35px rgba(0,0,0,.25)}
         .grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
         label{font-size:12px;font-weight:800;color:#cbd5e1;display:block;margin-bottom:4px}
         input,select,textarea{width:100%;padding:10px;border-radius:10px;border:1px solid #475569;background:#0f172a;color:white;font-size:14px;text-transform:uppercase}
         textarea{text-transform:none;min-height:70px;resize:vertical}
-        .full{grid-column:1/-1}
-        .two{grid-column:span 2}
+        .full{grid-column:1/-1}.two{grid-column:span 2}
         button{border:0;border-radius:12px;padding:10px 13px;font-weight:900;cursor:pointer;background:#facc15;color:#261900;margin:2px}
-        button.secondary{background:#38bdf8;color:#062532}
-        button.danger{background:#ef4444;color:white}
-        button.good{background:#22c55e;color:#052e1a}
+        button.secondary{background:#38bdf8;color:#062532}.danger{background:#ef4444;color:white}.good{background:#22c55e;color:#052e1a}.purple{background:#c084fc;color:#2e1065}
+        button:disabled{opacity:.55;cursor:not-allowed}
         table{width:100%;border-collapse:collapse;margin-top:8px;background:#0f172a;border-radius:12px;overflow:hidden}
         th,td{border:1px solid rgba(255,255,255,.12);padding:8px;text-align:left;font-size:13px;vertical-align:top}
-        th{background:#020617;color:#fde68a}
-        .note{font-size:12px;color:#cbd5e1;line-height:1.45}
-        .totalBox{font-size:18px;font-weight:900;color:#bbf7d0}
-        .printArea{background:white;color:#111827;border-radius:12px;padding:18px;display:none}
-        .printArea table{background:white;color:#111827}
-        .printArea th{background:#e5e7eb;color:#111827}
-        .printArea th,.printArea td{border:1px solid #111827}
+        th{background:#020617;color:#fde68a}.note{font-size:12px;color:#cbd5e1;line-height:1.45}.ok{color:#86efac;font-weight:900}.bad{color:#fca5a5;font-weight:900}.totalBox{font-size:18px;font-weight:900;color:#bbf7d0}
+        .printArea{background:white;color:#111827;border-radius:12px;padding:18px;display:none}.printArea table{background:white;color:#111827}.printArea th{background:#e5e7eb;color:#111827}.printArea th,.printArea td{border:1px solid #111827}
         @media(max-width:800px){.grid{grid-template-columns:1fr}.two{grid-column:1}.top{align-items:stretch}.top button{width:100%}body{padding:8px}}
-        @media print{
-            body{background:white;color:#111827;padding:0}
-            .noPrint{display:none!important}
-            .wrap{max-width:none;margin:0}
-            .card{box-shadow:none;border:0;margin:0;padding:0}
-            .printArea{display:block!important;border-radius:0;padding:10mm}
-        }
+        @media print{body{background:white;color:#111827;padding:0}.noPrint{display:none!important}.wrap{max-width:none;margin:0}.card{box-shadow:none;border:0;margin:0;padding:0}.printArea{display:block!important;border-radius:0;padding:10mm}}
     </style>
 </head>
 <body>
@@ -49,7 +36,8 @@
     <div class="top noPrint">
         <h2>🚚 E-Way Bill Helper</h2>
         <div>
-            <button onclick="downloadJson()">⬇ Generate JSON</button>
+            <button class="purple" onclick="sendToBackend()">🚚 Generate JSON Server</button>
+            <button onclick="downloadJson()">⬇ Download JSON</button>
             <button class="secondary" onclick="buildPrint(); window.print();">🖨 Print</button>
             <button class="good" onclick="copyJson()">📋 Copy JSON</button>
             <button class="danger" onclick="window.close()">Close</button>
@@ -57,8 +45,11 @@
     </div>
 
     <div class="card noPrint">
-        <div class="note">
-            This page prepares e-Way Bill details from your sales bill. It does not directly generate e-Way Bill number unless you connect official GST/NIC API later. Use the generated JSON/details for portal/API entry.
+        <div class="grid">
+            <div class="two"><label>Backend API URL</label><input id="backendUrl" value="http://localhost:3000" style="text-transform:none"></div>
+            <div><label>Backend Status</label><button class="secondary" onclick="checkBackend()">Check</button></div>
+            <div><label>Status</label><div id="backendStatus" class="note">Not checked</div></div>
+            <div class="full note">This page loads your sales bill from Supabase and sends the JSON to your backend. Your e-Way credentials must stay in the backend <b>.env</b>, not inside this HTML.</div>
         </div>
     </div>
 
@@ -72,7 +63,7 @@
             <div><label>Invoice No</label><input id="docNo"></div>
             <div><label>Invoice Date</label><input id="docDate" type="date"></div>
             <div><label>Bill Amount</label><input id="totalValue" readonly></div>
-            <div><label>GSTIN</label><input id="toGstin"></div>
+            <div><label>Customer GSTIN</label><input id="toGstin" placeholder="URP IF NO GST"></div>
             <div class="two"><label>Customer Name</label><input id="toTrdName"></div>
             <div class="two"><label>Mobile</label><input id="customerMobile"></div>
             <div class="full"><label>Customer Address</label><textarea id="toAddr1"></textarea></div>
@@ -98,16 +89,13 @@
 
     <div class="card noPrint">
         <h3>Items</h3>
-        <table>
-            <thead><tr><th>Sl</th><th>Item</th><th>HSN</th><th>Qty</th><th>Taxable</th><th>GST%</th><th>Total</th></tr></thead>
-            <tbody id="itemBody"><tr><td colspan="7">Loading...</td></tr></tbody>
-        </table>
+        <table><thead><tr><th>Sl</th><th>Item</th><th>HSN</th><th>Qty</th><th>Taxable</th><th>GST%</th><th>Total</th></tr></thead><tbody id="itemBody"><tr><td colspan="7">Loading...</td></tr></tbody></table>
         <div class="totalBox" id="grandTotal"></div>
     </div>
 
     <div class="card noPrint">
         <h3>Generated JSON</h3>
-        <textarea id="jsonBox" style="min-height:220px;font-family:Consolas,monospace;text-transform:none" readonly></textarea>
+        <textarea id="jsonBox" style="min-height:240px;font-family:Consolas,monospace;text-transform:none" readonly></textarea>
     </div>
 
     <div id="printArea" class="printArea"></div>
@@ -122,13 +110,12 @@ function qs(name){ return new URLSearchParams(location.search).get(name); }
 function num(v){ return Number(v || 0); }
 function money(v){ return Number(v || 0).toFixed(2); }
 function clean(v){ return String(v || '').trim(); }
-function escapeHTML(v){ return String(v || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function escapeHTML(v){ return String(v || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
+function apiBase(){ return clean(document.getElementById('backendUrl').value).replace(/\/$/, ''); }
 
 function getConfig(){
     const type = qs('type') || 'sales';
-    if(type === 'sales_pack'){
-        return { type, table:'sales_packing_details', itemTable:'sales_packing_item_details', idField:'packing_id', noField:'packing_number', dateField:'packing_date', amountField:'packing_amount', label:'Sales + Packing' };
-    }
+    if(type === 'sales_pack') return { type, table:'sales_packing_details', itemTable:'sales_packing_item_details', idField:'packing_id', noField:'packing_number', dateField:'packing_date', amountField:'packing_amount', label:'Sales + Packing' };
     return { type:'sales', table:'sales_details', itemTable:'sales_item_details', idField:'sales_id', noField:'sales_number', dateField:'bill_date', amountField:'invoice_amount', label:'Sales' };
 }
 
@@ -137,30 +124,24 @@ async function loadData(){
         const ok = await requirePageAccess('sales');
         if(!ok) return;
     }
-
     const id = qs('id');
-    if(!id){ alert('Missing bill id'); return; }
+    if(!id){ alert('Missing bill id. Open like: eway_bill.html?id=123&type=sales'); return; }
     const cfg = getConfig();
-
     const { data: bill, error: billErr } = await sb.from(cfg.table).select('*').eq('id', id).maybeSingle();
     if(billErr || !bill){ alert('Bill load failed: ' + (billErr?.message || 'Not found')); return; }
     if(bill.status === 'CANCELLED'){ alert('Cancelled bill cannot be used for E-Way Bill.'); return; }
-
     const { data: items, error: itemErr } = await sb.from(cfg.itemTable).select('*').eq(cfg.idField, id).order('id', {ascending:true});
     if(itemErr){ alert('Items load failed: ' + itemErr.message); return; }
-
     billRow = bill;
     billItems = items || [];
-
     const invoiceNo = `${bill.series_code || ''}${bill.series_code ? '-' : ''}${bill[cfg.noField] || ''}`;
     document.getElementById('docNo').value = invoiceNo;
     document.getElementById('docDate').value = bill[cfg.dateField] || new Date().toISOString().split('T')[0];
     document.getElementById('totalValue').value = money(bill[cfg.amountField]);
-    document.getElementById('toGstin').value = bill.gst_number || '';
+    document.getElementById('toGstin').value = bill.gst_number || 'URP';
     document.getElementById('toTrdName').value = bill.customer_name || '';
     document.getElementById('customerMobile').value = bill.customer_mobile || '';
     document.getElementById('toAddr1').value = bill.address || '';
-
     guessPlacePinFromAddress(bill.address || '');
     renderItems();
     generateJson();
@@ -190,24 +171,11 @@ function itemTotal(i){
 
 function renderItems(){
     const body = document.getElementById('itemBody');
-    if(!billItems.length){
-        body.innerHTML = '<tr><td colspan="7">No item rows found.</td></tr>';
-        return;
-    }
+    if(!billItems.length){ body.innerHTML = '<tr><td colspan="7">No item rows found.</td></tr>'; return; }
     let total = 0;
     body.innerHTML = billItems.map((i, idx) => {
-        const taxable = itemTaxable(i);
-        const rowTotal = itemTotal(i);
-        total += rowTotal;
-        return `<tr>
-            <td>${idx+1}</td>
-            <td>${escapeHTML(i.item_name || '')}<br><small>${escapeHTML(i.item_code || '')}</small></td>
-            <td>${escapeHTML(i.hsn_code || i.hsn || '')}</td>
-            <td>${num(i.quantity || i.qty)}</td>
-            <td>₹${money(taxable)}</td>
-            <td>${money(i.gst_percent)}</td>
-            <td>₹${money(rowTotal)}</td>
-        </tr>`;
+        const taxable = itemTaxable(i), rowTotal = itemTotal(i); total += rowTotal;
+        return `<tr><td>${idx+1}</td><td>${escapeHTML(i.item_name || '')}<br><small>${escapeHTML(i.item_code || '')}</small></td><td>${escapeHTML(i.hsn_code || i.hsn || '')}</td><td>${num(i.quantity || i.qty)}</td><td>₹${money(taxable)}</td><td>${money(i.gst_percent)}</td><td>₹${money(rowTotal)}</td></tr>`;
     }).join('');
     document.getElementById('grandTotal').innerText = 'Items Total: ₹' + money(total);
 }
@@ -217,18 +185,22 @@ function getItemList(){
         const qty = num(i.quantity || i.qty);
         const gst = num(i.gst_percent);
         const taxable = itemTaxable(i);
-        const gstAmt = taxable * gst / 100;
         return {
+            item_name: clean(i.item_name),
             productName: clean(i.item_name),
             productDesc: clean(i.item_name),
+            hsn_code: clean(i.hsn_code || i.hsn),
             hsnCode: clean(i.hsn_code || i.hsn),
             quantity: qty,
             qtyUnit: 'NOS',
+            unit: 'NOS',
+            taxable: Number(taxable.toFixed(2)),
             taxableAmount: Number(taxable.toFixed(2)),
-            sgstRate: Number((gst / 2).toFixed(2)),
-            cgstRate: Number((gst / 2).toFixed(2)),
-            igstRate: 0,
-            cessRate: 0,
+            gst_percent: gst,
+            sgst_rate: Number((gst / 2).toFixed(2)),
+            cgst_rate: Number((gst / 2).toFixed(2)),
+            igst_rate: 0,
+            cess_rate: 0,
             cessNonAdvol: 0
         };
     });
@@ -239,49 +211,66 @@ function buildPayload(){
     const cgst = billItems.reduce((s,i) => s + (itemTaxable(i) * num(i.gst_percent) / 100 / 2), 0);
     const sgst = cgst;
     const total = num(document.getElementById('totalValue').value) || (taxable + cgst + sgst);
-
     return {
         supplyType: document.getElementById('supplyType').value,
         subSupplyType: document.getElementById('subSupplyType').value,
         subSupplyDesc: '',
         docType: document.getElementById('docType').value,
         docNo: clean(document.getElementById('docNo').value),
+        invoiceNumber: clean(document.getElementById('docNo').value),
         docDate: clean(document.getElementById('docDate').value),
+        invoiceDate: clean(document.getElementById('docDate').value),
         transactionType: Number(document.getElementById('transactionType').value),
-        fromGstin: '',
-        fromTrdName: 'VAJRA LIGHTS AND ELECTRICALS',
-        fromAddr1: '',
-        fromAddr2: '',
-        fromPlace: '',
-        fromPincode: 0,
-        fromStateCode: 32,
-        actualFromStateCode: 32,
+        fromName: 'VAJRA LIGHTS AND ELECTRICALS',
         toGstin: clean(document.getElementById('toGstin').value) || 'URP',
+        customerGST: clean(document.getElementById('toGstin').value) || 'URP',
         toTrdName: clean(document.getElementById('toTrdName').value),
+        customerName: clean(document.getElementById('toTrdName').value),
         toAddr1: clean(document.getElementById('toAddr1').value),
-        toAddr2: '',
+        customerAddress: clean(document.getElementById('toAddr1').value),
         toPlace: clean(document.getElementById('toPlace').value),
+        customerPlace: clean(document.getElementById('toPlace').value),
         toPincode: Number(document.getElementById('toPincode').value || 0),
+        customerPincode: Number(document.getElementById('toPincode').value || 0),
         toStateCode: Number(document.getElementById('toStateCode').value || 32),
+        customerStateCode: Number(document.getElementById('toStateCode').value || 32),
         actualToStateCode: Number(document.getElementById('toStateCode').value || 32),
         totalValue: Number(taxable.toFixed(2)),
+        taxableAmount: Number(taxable.toFixed(2)),
         cgstValue: Number(cgst.toFixed(2)),
+        cgstAmount: Number(cgst.toFixed(2)),
         sgstValue: Number(sgst.toFixed(2)),
-        igstValue: 0,
-        cessValue: 0,
-        cessNonAdvolValue: 0,
-        otherValue: 0,
+        sgstAmount: Number(sgst.toFixed(2)),
+        igstValue: 0, igstAmount: 0, cessValue: 0, cessAmount: 0, cessNonAdvolValue: 0, otherValue: 0,
         totInvValue: Number(total.toFixed(2)),
+        totalInvoiceAmount: Number(total.toFixed(2)),
         transMode: document.getElementById('transMode').value,
+        transportMode: document.getElementById('transMode').value,
         transDistance: String(document.getElementById('distance').value || '0'),
+        distance: Number(document.getElementById('distance').value || 0),
         transporterName: clean(document.getElementById('transporterName').value),
         transporterId: clean(document.getElementById('transporterId').value),
         transDocNo: clean(document.getElementById('transDocNo').value),
+        transportDocNo: clean(document.getElementById('transDocNo').value),
         transDocDate: clean(document.getElementById('transDocDate').value),
         vehicleNo: clean(document.getElementById('vehicleNo').value),
+        vehicleNumber: clean(document.getElementById('vehicleNo').value),
         vehicleType: document.getElementById('vehicleType').value,
+        items: getItemList(),
         itemList: getItemList()
     };
+}
+
+function validatePayload(p){
+    if(!p.docNo) return 'Invoice number missing.';
+    if(!p.docDate) return 'Invoice date missing.';
+    if(!p.toTrdName) return 'Customer name missing.';
+    if(!p.toAddr1) return 'Customer address missing.';
+    if(!p.toPlace) return 'Customer place missing.';
+    if(!p.toPincode) return 'Customer pincode missing.';
+    if(!p.itemList.length) return 'No items found.';
+    if(p.transMode === '1' && !p.vehicleNo && !p.transporterId) return 'For Road, enter Vehicle Number or Transporter ID.';
+    return '';
 }
 
 function generateJson(){
@@ -291,23 +280,53 @@ function generateJson(){
     return payload;
 }
 
+async function checkBackend(){
+    const box = document.getElementById('backendStatus');
+    box.innerHTML = 'Checking...';
+    try{
+        const res = await fetch(apiBase() + '/eway-login-check');
+        const data = await res.json();
+        if(data.success) box.innerHTML = '<span class="ok">✅ Connected: ' + escapeHTML(data.username || '') + '</span>';
+        else box.innerHTML = '<span class="bad">❌ ' + escapeHTML(data.message || 'Backend error') + '</span>';
+    }catch(e){
+        box.innerHTML = '<span class="bad">❌ Backend not reachable. Start server.js first.</span>';
+    }
+}
+
+async function sendToBackend(){
+    const payload = generateJson();
+    const issue = validatePayload(payload);
+    if(issue && !confirm(issue + '\n\nContinue anyway?')) return;
+    const btns = document.querySelectorAll('button');
+    btns.forEach(b => b.disabled = true);
+    try{
+        const res = await fetch(apiBase() + '/generate-eway-json', {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if(!res.ok || !data.success) throw new Error(data.message || 'Server failed');
+        document.getElementById('jsonBox').value = JSON.stringify(data.jsonData || payload, null, 2);
+        alert('✅ E-Way JSON generated on server. File: ' + (data.fileName || 'created'));
+    }catch(e){
+        alert('Server JSON generation failed: ' + e.message + '\n\nCheck server.js is running and CORS is enabled.');
+    }finally{
+        btns.forEach(b => b.disabled = false);
+    }
+}
+
 async function copyJson(){
     generateJson();
-    try{
-        await navigator.clipboard.writeText(document.getElementById('jsonBox').value);
-        alert('✅ E-Way Bill JSON copied.');
-    }catch(e){ alert('Copy failed. Please select and copy manually.'); }
+    try{ await navigator.clipboard.writeText(document.getElementById('jsonBox').value); alert('✅ E-Way Bill JSON copied.'); }
+    catch(e){ alert('Copy failed. Please select and copy manually.'); }
 }
 
 function downloadText(filename, text){
     const blob = new Blob([text], {type:'application/json'});
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+    a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
@@ -316,31 +335,22 @@ function downloadJson(){
     const docNo = clean(document.getElementById('docNo').value) || 'eway_bill';
     downloadText('eway_' + docNo.replace(/\W+/g,'_') + '.json', JSON.stringify(payload, null, 2));
 }
-window.downloadJson = downloadJson;
 
 function buildPrint(){
     const p = buildPayload();
     const rows = billItems.map((i, idx) => `<tr><td>${idx+1}</td><td>${escapeHTML(i.item_name || '')}</td><td>${escapeHTML(i.hsn_code || '')}</td><td>${num(i.quantity || i.qty)}</td><td>${money(itemTaxable(i))}</td><td>${money(i.gst_percent)}</td><td>${money(itemTotal(i))}</td></tr>`).join('');
-    document.getElementById('printArea').innerHTML = `
-        <h2 style="text-align:center;margin:0 0 6px">E-Way Bill Details</h2>
-        <h3 style="text-align:center;margin:0 0 16px">VAJRA LIGHTS AND ELECTRICALS</h3>
-        <table><tr><th>Invoice No</th><td>${escapeHTML(p.docNo)}</td><th>Date</th><td>${escapeHTML(p.docDate)}</td></tr>
-        <tr><th>Customer</th><td>${escapeHTML(p.toTrdName)}</td><th>GSTIN</th><td>${escapeHTML(p.toGstin)}</td></tr>
-        <tr><th>Address</th><td colspan="3">${escapeHTML(p.toAddr1)}</td></tr>
-        <tr><th>Place</th><td>${escapeHTML(p.toPlace)}</td><th>PIN / State</th><td>${p.toPincode} / ${p.toStateCode}</td></tr>
-        <tr><th>Transport</th><td>${escapeHTML(p.transporterName)}</td><th>Vehicle</th><td>${escapeHTML(p.vehicleNo)}</td></tr>
-        <tr><th>Distance</th><td>${escapeHTML(p.transDistance)} KM</td><th>Total</th><td>₹${money(p.totInvValue)}</td></tr></table>
-        <h3>Item Details</h3>
-        <table><thead><tr><th>Sl</th><th>Item</th><th>HSN</th><th>Qty</th><th>Taxable</th><th>GST%</th><th>Total</th></tr></thead><tbody>${rows}</tbody></table>
-        <p style="font-size:12px;margin-top:14px">Prepared from billing software. Verify all details on official e-Way Bill portal before final generation.</p>
-    `;
+    document.getElementById('printArea').innerHTML = `<h2 style="text-align:center;margin:0 0 6px">E-Way Bill Details</h2><h3 style="text-align:center;margin:0 0 16px">VAJRA LIGHTS AND ELECTRICALS</h3><table><tr><th>Invoice No</th><td>${escapeHTML(p.docNo)}</td><th>Date</th><td>${escapeHTML(p.docDate)}</td></tr><tr><th>Customer</th><td>${escapeHTML(p.toTrdName)}</td><th>GSTIN</th><td>${escapeHTML(p.toGstin)}</td></tr><tr><th>Address</th><td colspan="3">${escapeHTML(p.toAddr1)}</td></tr><tr><th>Place</th><td>${escapeHTML(p.toPlace)}</td><th>PIN / State</th><td>${p.toPincode} / ${p.toStateCode}</td></tr><tr><th>Transport</th><td>${escapeHTML(p.transporterName)}</td><th>Vehicle</th><td>${escapeHTML(p.vehicleNo)}</td></tr><tr><th>Distance</th><td>${escapeHTML(p.transDistance)} KM</td><th>Total</th><td>₹${money(p.totInvValue)}</td></tr></table><h3>Item Details</h3><table><thead><tr><th>Sl</th><th>Item</th><th>HSN</th><th>Qty</th><th>Taxable</th><th>GST%</th><th>Total</th></tr></thead><tbody>${rows}</tbody></table><p style="font-size:12px;margin-top:14px">Prepared from billing software. Verify all details on official e-Way Bill portal before final generation.</p>`;
 }
 
-['docType','supplyType','subSupplyType','transactionType','docNo','docDate','toGstin','toTrdName','toAddr1','toPlace','toStateCode','toPincode','distance','transMode','vehicleType','vehicleNo','transporterId','transporterName','transDocNo','transDocDate'].forEach(id => {
+['backendUrl','docType','supplyType','subSupplyType','transactionType','docNo','docDate','toGstin','toTrdName','toAddr1','toPlace','toStateCode','toPincode','distance','transMode','vehicleType','vehicleNo','transporterId','transporterName','transDocNo','transDocDate'].forEach(id => {
     document.addEventListener('input', e => { if(e.target && e.target.id === id) generateJson(); });
     document.addEventListener('change', e => { if(e.target && e.target.id === id) generateJson(); });
 });
 
+window.downloadJson = downloadJson;
+window.copyJson = copyJson;
+window.sendToBackend = sendToBackend;
+window.checkBackend = checkBackend;
 document.addEventListener('DOMContentLoaded', loadData);
 </script>
 </body>

@@ -994,7 +994,7 @@
 
         <div class="form-group" id="customer_remark_group">
             <label>Customer Remark</label>
-            <input type="text" id="cust_remark" class="form-control w-xl" readonly tabindex="-1" placeholder="Saved customer remark">
+            <input type="text" id="cust_remark" class="form-control w-xl nav-input" tabindex="7" placeholder="TYPE / EDIT CUSTOMER REMARK">
         </div>
 
 
@@ -2986,6 +2986,7 @@ ${data.map((c, idx) => {
     });
 
     document.getElementById('cust_gst')?.addEventListener('input', updateGstCustomerHighlight);
+    document.getElementById('cust_remark')?.addEventListener('input', updateCustomerRemarkHighlight);
     ['cust_mobile', 'cust_name'].forEach(id => {
         document.getElementById(id)?.addEventListener('change', updateGstCustomerHighlight);
     });
@@ -4229,6 +4230,7 @@ function calcTotal() {
                 name: document.getElementById('cust_name').value,
                 addr: document.getElementById('cust_address').value,
                 gst: document.getElementById('cust_gst').value,
+                remark: document.getElementById('cust_remark')?.value || '',
                 total: parseFloat(
                     (document.getElementById('display_grand_total').innerText || '₹0').replace('₹', '')
                 ) || 0
@@ -4333,7 +4335,8 @@ function calcTotal() {
                         .update({
                             name: head.name || " ",
                             address: head.addr || "",
-                            gst_number: head.gst || ""
+                            gst_number: head.gst || "",
+                            customer_remark: head.remark || ""
                         })
                         .eq('customer_id', existC.customer_id);
                 } else {
@@ -4343,7 +4346,8 @@ function calcTotal() {
                             mobile: head.mob,
                             name: head.name || " ",
                             address: head.addr || "",
-                            gst_number: head.gst || ""
+                            gst_number: head.gst || "",
+                            customer_remark: head.remark || ""
                         }]);
                     if (cErr) throw cErr;
                 }

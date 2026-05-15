@@ -4152,7 +4152,7 @@ function calcTotal() {
                 continue;
             }
 
-            if (docType !== "sales_order") {
+            if (docType !== "sales_order" && docType !== "quotation") {
                 const valid = isValidStockItem(code);
                 if (!valid) {
                     throw new Error(`Item "${code}" not found in stock. Cannot save.`);

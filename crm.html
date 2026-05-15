@@ -738,15 +738,15 @@
       <div class="topbar-left">
         <div class="logo">🏬</div>
         <div class="title-wrap">
-          <h1>VAJRA CRM PRO</h1>
-          <p>Electrical • Switches • Chimney • Hob • Fans • Lights • Plumbing • Sanitary • Interior Decor • Interlock</p>
+          <h1>VAJRA CRM REPORT</h1>
+          <p>Complaint report • Follow-up • Service tracking • WhatsApp sharing</p>
         </div>
       </div>
 
       <div class="topbar-actions">
         <button class="btn btn-light" id="backBtn">⬅ Back</button>
         <button class="btn btn-purple" id="closedToggleBtn">👁 View Solved / Closed</button>
-        <button class="btn btn-primary" id="newCustomerBtn">＋ New Customer</button>
+        <button class="btn btn-primary" id="newCustomerBtn">＋ New Complaint</button>
       </div>
     </div>
 
@@ -778,95 +778,7 @@
     </div>
 
     <div class="layout">
-      <!-- TOP CREATE FORM -->
-      <div class="stack create-stack">
-        <section class="panel panel-create">
-          <div class="panel-header">
-            <div>
-              <h2 id="formTitle">Create CRM Customer</h2>
-              <p id="formSubtitle">Fast entry only. Old details and solution history are shown in the profile section below.</p>
-            </div>
-            <div class="badge" id="modeBadge">CREATE MODE</div>
-          </div>
-
-          <div class="panel-body">
-            <div id="statusBox" class="status"></div>
-
-            <form id="customerForm" novalidate>
-              <div class="form-grid">
-                <div class="field full">
-                  <label for="customerName">Customer Name</label>
-                  <input type="text" id="customerName" required placeholder="ENTER CUSTOMER NAME">
-                </div>
-
-                <div class="field">
-                  <label for="customerMobile">Mobile Number</label>
-                  <input type="tel" id="customerMobile" required placeholder="ENTER MOBILE NUMBER">
-                </div>
-
-                <div class="field">
-                  <label for="salesman">Salesman</label>
-                  <input type="text" id="salesman" placeholder="ENTER SALESMAN NAME">
-                </div>
-
-                <div class="field full">
-                  <label for="customerAddress">Address</label>
-                  <textarea id="customerAddress" placeholder="ENTER ADDRESS"></textarea>
-                </div>
-
-                <div class="field">
-                  <label for="priority">Priority</label>
-                  <select id="priority">
-                    <option value="LOW">LOW</option>
-                    <option value="MEDIUM">MEDIUM</option>
-                    <option value="HIGH">HIGH</option>
-                  </select>
-                </div>
-
-                <div class="field">
-                  <label for="nextFollowupDate">Next Follow-up Date</label>
-                  <input type="date" id="nextFollowupDate" style="text-transform:none;">
-                </div>
-
-                <div class="field">
-                  <label for="crmType">CRM Type</label>
-                  <select id="crmType">
-                    <option value="LEAD">LEAD</option>
-                    <option value="ENQUIRY">ENQUIRY</option>
-                    <option value="COMPLAINT">COMPLAINT</option>
-                    <option value="SERVICE">SERVICE</option>
-                    <option value="FOLLOW-UP">FOLLOW-UP</option>
-                  </select>
-                </div>
-
-                <div class="field full">
-                  <label for="complaintTitle">Complaint / Enquiry Title</label>
-                  <input type="text" id="complaintTitle" placeholder="EXAMPLE: FAN NOT WORKING / CUSTOMER ASKED FOR CHIMNEY DEMO">
-                </div>
-
-                <div class="field">
-                  <label for="complaintOpenDate">Complaint Open Date</label>
-                  <input type="date" id="complaintOpenDate" style="text-transform:none;">
-                </div>
-
-                <div class="field">
-                  <label for="assignedTo">Assigned To</label>
-                  <input type="text" id="assignedTo" placeholder="STAFF NAME / TECHNICIAN">
-                </div>
-
-              </div>
-
-              <div class="form-actions">
-                <button type="submit" class="btn btn-success" id="saveBtn">Save CRM Customer</button>
-                <button type="button" class="btn btn-light" id="resetBtn">Reset</button>
-              </div>
-            </form>
-          </div>
-        </section>
-
-      </div>
-
-      <!-- BOTTOM CRM LIST -->
+      <!-- CRM REPORT LIST -->
       <section class="panel panel-list crm-list-panel">
         <div class="panel-header">
           <div>
@@ -1022,15 +934,13 @@
       bindEnterJump();
       bindBottomTableScroll();
       await loadCustomers();
-      resetForm();
     });
 
     function bindEvents() {
-      form.addEventListener("submit", handleSubmit);
-      resetBtn.addEventListener("click", resetForm);
+      if (form) form.addEventListener("submit", handleSubmit);
+      if (resetBtn) resetBtn.addEventListener("click", resetForm);
       newCustomerBtn.addEventListener("click", () => {
-        resetForm();
-        customerName.focus();
+        window.location.href = "crm_register.html";
       });
 
       closedToggleBtn.addEventListener("click", toggleClosedComplaints);
@@ -1064,6 +974,7 @@
     }
 
     function bindEnterJump() {
+      if (!form) return;
       const fields = Array.from(form.querySelectorAll("input, select, textarea, button"))
         .filter(el => !el.disabled && el.type !== "hidden" && el.offsetParent !== null);
 
@@ -1239,6 +1150,7 @@
     }
 
     function resetForm() {
+      if (!form) return;
       editingId = null;
       form.reset();
       crmType.value = "LEAD";
@@ -1531,29 +1443,7 @@
     }
 
     async function editCustomer(id) {
-      const row = customers.find(x => Number(x.id) === Number(id));
-      if (!row) {
-        showStatus("CUSTOMER NOT FOUND.", "error");
-        return;
-      }
-
-      editingId = row.id;
-      customerName.value = normalize(row.name);
-      customerMobile.value = normalize(row.mobile);
-      salesman.value = normalize(row.salesman);
-      customerAddress.value = normalize(row.address);
-      priority.value = normalize(row.priority || "LOW");
-      nextFollowupDate.value = row.next_followup_date || "";
-      const parsed = parseNotes(row.notes);
-      const meta = parsed.meta;
-      crmType.value = normalize(meta.entry_type || "LEAD");
-      complaintTitle.value = normalize(meta.complaint_title);
-      complaintOpenDate.value = meta.complaint_open_date || "";
-      assignedTo.value = normalize(meta.assigned_to);
-
-      setMode("edit");
-      showStatus(`EDITING CRM CUSTOMER: ${normalize(row.name)}`, "info");
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      window.location.href = `crm_register.html?id=${encodeURIComponent(id)}`;
     }
 
     async function deleteCustomer(id, name) {

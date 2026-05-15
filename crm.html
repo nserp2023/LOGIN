@@ -473,7 +473,7 @@
     #crmCustomerTable th:nth-child(8), #crmCustomerTable td:nth-child(8){width:105px}
     #crmCustomerTable th:nth-child(9), #crmCustomerTable td:nth-child(9){width:125px}
     #crmCustomerTable th:nth-child(10), #crmCustomerTable td:nth-child(10){width:260px}
-    #crmCustomerTable th:nth-child(11), #crmCustomerTable td:nth-child(11){width:185px}
+    #crmCustomerTable th:nth-child(11), #crmCustomerTable td:nth-child(11){width:245px}
 
     tbody tr:hover{
       background:#f8fafc;
@@ -521,6 +521,7 @@
     .mini-delete{background:#fee2e2;color:#b91c1c}
     .mini-solve{background:#dcfce7;color:#166534}
     .mini-progress{background:#fef3c7;color:#92400e}
+    .mini-whatsapp{background:#dcfce7;color:#166534}
 
     .status-open{background:#fee2e2;color:#b91c1c}
     .status-progress{background:#fef3c7;color:#92400e}
@@ -1394,6 +1395,7 @@
             <td>
               <div class="table-actions">
                 <button class="mini-btn mini-view" onclick="openProfile(${c.id})">View</button>
+                <button class="mini-btn mini-whatsapp" onclick="shareComplaintWhatsApp(${c.id})">WhatsApp</button>
                 <button class="mini-btn mini-edit" onclick="editCustomer(${c.id})">Edit</button>
                 ${["SOLVED","CLOSED"].includes(normalize(meta.complaint_status))
                   ? `<button class="mini-btn mini-progress" onclick="reopenComplaint(${c.id})">Reopen</button>`
@@ -1676,6 +1678,7 @@
                   ? `<button class="mini-btn mini-progress" onclick="reopenComplaint(${row.id})">Reopen Complaint</button>`
                   : `<button class="mini-btn mini-solve" onclick="solveComplaint(${row.id})">Mark as Solved</button>`}
                 ${normalize(meta.complaint_status) !== "CLOSED" ? `<button class="mini-btn mini-view" onclick="closeComplaint(${row.id})">Close Complaint</button>` : ""}
+                <button class="mini-btn mini-whatsapp" onclick="shareComplaintWhatsApp(${row.id})">Share WhatsApp</button>
                 <button class="mini-btn mini-edit" onclick="editCustomer(${row.id})">Edit Profile</button>
               </div>
             </div>
@@ -1836,6 +1839,48 @@
       profilePanel.innerHTML = `<div class="profile-empty">Complaint closed. Use “View Closed Complaints” to see closed old details.</div>`;
     }
 
+    function formatWhatsAppLine(label, value) {
+      const clean = normalize(value || "-");
+      return `${label} ${clean || "-"}`;
+    }
+
+    function buildComplaintWhatsAppMessage(row) {
+      const meta = getMeta(row);
+      const visibleNotes = getVisibleNotes(row);
+      const complaintAge = daysBetween(meta.complaint_open_date || row.created_at?.slice?.(0, 10));
+      const customerNameText = normalize(row.name || "");
+
+      return `🏬 *VAJRA LIGHTS & ELECTRICALS*\n🛠️ *CRM COMPLAINT / SERVICE DETAILS*\n\n${formatWhatsAppLine("👤 Customer:", row.name)}\n${formatWhatsAppLine("📱 Mobile:", row.mobile)}\n${formatWhatsAppLine("🏠 Address:", row.address)}\n${formatWhatsAppLine("👨‍💼 Salesman:", row.salesman)}\n\n${formatWhatsAppLine("📋 Type:", meta.entry_type || "LEAD")}\n${formatWhatsAppLine("⚠️ Status:", meta.complaint_status || "OPEN")}\n${formatWhatsAppLine("🔥 Priority:", row.priority || "LOW")}\n${formatWhatsAppLine("👨‍🔧 Assigned To:", meta.assigned_to)}\n\n${formatWhatsAppLine("📝 Complaint:", meta.complaint_title || visibleNotes)}\n${formatWhatsAppLine("📅 Open Date:", meta.complaint_open_date)}\n${formatWhatsAppLine("⏱️ Complaint Age:", complaintAge === null ? "-" : complaintAge + " DAY(S)")}\n${formatWhatsAppLine("📆 Next Follow-up:", row.next_followup_date)}\n${formatWhatsAppLine("✅ Solved Date:", meta.complaint_solved_date)}\n\n${formatWhatsAppLine("🧾 Customer Note:", visibleNotes)}\n${formatWhatsAppLine("✅ Solution / Action:", meta.solution_notes || "NOT UPDATED")}\n\nPlease check and update.\n\n- VAJRA CRM`;
+    }
+
+    function getWhatsappNumber(row) {
+      let phone = String(row?.mobile || "").replace(/\D/g, "");
+      if (phone.length === 10) phone = "91" + phone;
+      return phone;
+    }
+
+    function shareComplaintWhatsApp(id) {
+      const row = customers.find(x => Number(x.id) === Number(id));
+      if (!row) {
+        showStatus("CUSTOMER NOT FOUND FOR WHATSAPP SHARE.", "error");
+        return;
+      }
+
+      const message = buildComplaintWhatsAppMessage(row);
+      const phone = getWhatsappNumber(row);
+      const encoded = encodeURIComponent(message);
+
+      let url = "";
+      if (phone && phone.length >= 10) {
+        url = `https://wa.me/${phone}?text=${encoded}`;
+      } else {
+        url = `https://wa.me/?text=${encoded}`;
+      }
+
+      window.open(url, "crm_whatsapp_share");
+    }
+
+
     async function reopenComplaint(id) {
       const row = customers.find(x => Number(x.id) === Number(id));
       if (!row) return;
@@ -1914,6 +1959,7 @@
     window.solveComplaint = solveComplaint;
     window.reopenComplaint = reopenComplaint;
     window.closeComplaint = closeComplaint;
+    window.shareComplaintWhatsApp = shareComplaintWhatsApp;
   </script>
 </body>
 </html>

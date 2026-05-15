@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+  <link rel="manifest" href="site.webmanifest">
+  <title>CRM REGISTER - VAJRA</title>
+  <script src="common-ui.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabaseClient.js"></script>
+  <script src="page_permissions.js"></script>
+  <style>
+    :root{
+      --primary:#2563eb;
+      --primary-dark:#1d4ed8;
+      --success:#059669;
+      --success-dark:#047857;
+      --danger:#dc2626;
+      --danger-dark:#b91c1c;
+      --warning:#d97706;
+      --warning-dark:#b45309;
+      --purple:#7c3aed;
+      --panel:rgba(255,255,255,.96);
+      --text:#0f172a;
+      --muted:#64748b;
+      --border:#cbd5e1;
+      --shadow:0 14px 30px rgba(0,0,0,.14);
+      --radius:18px;
+      --bg-soft:#f8fafc;
+    }
+
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0}
+    body{
+      font-family:'Segoe UI',Roboto,Arial,sans-serif;
+      color:var(--text);
+      background:
+        linear-gradient(rgba(15,23,42,.72), rgba(15,23,42,.72)),
+        url("background.jpg") center/cover fixed no-repeat;
+      min-height:100vh;
+      padding-bottom:64px;
+    }
+
+    .page{
+      max-width:1720px;
+      margin:0 auto;
+      padding:16px;
+    }
+
+    .topbar{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:14px;
+      flex-wrap:wrap;
+      padding:18px;
+      border-radius:24px;
+      background:rgba(15,23,42,.88);
+      color:#fff;
+      box-shadow:var(--shadow);
+      backdrop-filter:blur(8px);
+    }
+
+    .topbar-left{
+      display:flex;
+      align-items:center;
+      gap:14px;
+      min-width:0;
+    }
+
+    .logo{
+      width:54px;
+      height:54px;
+      border-radius:16px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:27px;
+      background:linear-gradient(135deg,var(--primary),#60a5fa);
+      flex-shrink:0;
+    }
+
+    .title-wrap h1{
+      margin:0;
+      font-size:28px;
+      line-height:1.1;
+    }
+
+    .title-wrap p{
+      margin:6px 0 0;
+      color:#cbd5e1;
+      font-size:13px;
+      line-height:1.45;
+    }
+
+    .topbar-actions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    .btn{
+      border:none;
+      border-radius:12px;
+      padding:11px 16px;
+      min-height:44px;
+      font-size:14px;
+      font-weight:800;
+      cursor:pointer;
+      transition:.18s ease;
+    }
+    .btn:hover{transform:translateY(-1px)}
+    .btn:active{transform:scale(.98)}
+    .btn-primary{background:var(--primary);color:#fff}
+    .btn-primary:hover{background:var(--primary-dark)}
+    .btn-success{background:var(--success);color:#fff}
+    .btn-success:hover{background:var(--success-dark)}
+    .btn-light{background:#e2e8f0;color:#0f172a}
+    .btn-danger{background:var(--danger);color:#fff}
+    .btn-danger:hover{background:var(--danger-dark)}
+    .btn-warning{background:var(--warning);color:#fff}
+    .btn-warning:hover{background:var(--warning-dark)}
+
+    .stats{
+      margin-top:16px;
+      display:grid;
+      grid-template-columns:repeat(6,1fr);
+      gap:14px;
+    }
+
+    .stat{
+      background:var(--panel);
+      border-radius:18px;
+      box-shadow:var(--shadow);
+      padding:16px;
+      text-align:center;
+    }
+
+    .stat .label{
+      font-size:12px;
+      color:var(--muted);
+      text-transform:uppercase;
+      letter-spacing:.5px;
+      font-weight:800;
+    }
+
+    .stat .value{
+      margin-top:8px;
+      font-size:28px;
+      font-weight:900;
+    }
+
+    .layout{
+      margin-top:16px;
+      display:grid;
+      grid-template-columns:1fr;
+      gap:16px;
+      align-items:start;
+    }
+
+    .stack{
+      display:grid;
+      gap:16px;
+    }
+
+    .create-stack{width:100%;}
+    .crm-list-panel{width:100%;}
+    .profile-panel-wrap{width:100%;}
+
+    .panel{
+      background:var(--panel);
+      border-radius:22px;
+      box-shadow:var(--shadow);
+      overflow:hidden;
+    }
+
+    .panel-create{
+      border-top:7px solid #2563eb;
+      background:linear-gradient(135deg,#eff6ff,#ffffff 68%);
+    }
+
+    .panel-list{
+      border-top:7px solid #059669;
+      background:linear-gradient(135deg,#ecfdf5,#ffffff 68%);
+    }
+
+    .panel-profile{
+      border-top:7px solid #7c3aed;
+      background:linear-gradient(135deg,#f5f3ff,#ffffff 68%);
+    }
+
+    .panel-create .panel-header{background:linear-gradient(135deg,#dbeafe,#ffffff)}
+    .panel-list .panel-header{background:linear-gradient(135deg,#d1fae5,#ffffff)}
+    .panel-profile .panel-header{background:linear-gradient(135deg,#ede9fe,#ffffff)}
+
+    .crm-list-panel{
+      overflow:visible;
+    }
+
+    .crm-list-panel > .panel-header{
+      background:rgba(255,255,255,.98);
+      border-radius:22px 22px 0 0;
+    }
+
+    .panel-header{
+      padding:18px;
+      border-bottom:1px solid #e2e8f0;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    .panel-header h2{
+      margin:0;
+      font-size:20px;
+    }
+
+    .panel-header p{
+      margin:5px 0 0;
+      color:var(--muted);
+      font-size:13px;
+    }
+
+    .panel-body{
+      padding:18px;
+    }
+
+    .status{
+      display:none;
+      margin-bottom:14px;
+      padding:12px 14px;
+      border-radius:12px;
+      font-size:14px;
+      font-weight:700;
+      white-space:pre-line;
+    }
+    .status.success{display:block;background:#dcfce7;color:#166534}
+    .status.error{display:block;background:#fee2e2;color:#991b1b}
+    .status.info{display:block;background:#dbeafe;color:#1e40af}
+
+    .form-grid{
+      display:grid;
+      grid-template-columns:repeat(4, minmax(180px, 1fr));
+      gap:14px;
+    }
+
+    .field{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+    }
+
+    .field.full{grid-column:1/-1}
+
+    .field label{
+      font-size:13px;
+      font-weight:800;
+      color:#334155;
+    }
+
+    .field input,
+    .field select,
+    .field textarea{
+      width:100%;
+      min-height:46px;
+      padding:12px 14px;
+      border:1px solid var(--border);
+      border-radius:12px;
+      background:#fff;
+      font-size:14px;
+      outline:none;
+      transition:.15s ease;
+      font-family:inherit;
+      text-transform:uppercase;
+    }
+
+    .field textarea{
+      min-height:110px;
+      resize:vertical;
+    }
+
+    .field input:focus,
+    .field select:focus,
+    .field textarea:focus{
+      border-color:var(--primary);
+      box-shadow:0 0 0 3px rgba(37,99,235,.14);
+    }
+
+    .helper{
+      font-size:12px;
+      color:var(--muted);
+      line-height:1.45;
+    }
+
+    .checkbox-grid{
+      display:grid;
+      grid-template-columns:repeat(5, minmax(160px, 1fr));
+      gap:10px;
+      margin-top:4px;
+    }
+
+    .check-item{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      background:#f8fafc;
+      border:1px solid #e2e8f0;
+      border-radius:12px;
+      padding:10px 12px;
+      min-height:44px;
+    }
+
+    .check-item input{
+      width:auto;
+      min-height:auto;
+      margin:0;
+      transform:scale(1.08);
+    }
+
+    .form-actions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:16px;
+    }
+
+    .quick-filters{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-bottom:14px;
+    }
+
+    .chip{
+      padding:10px 12px;
+      border-radius:999px;
+      border:1px solid #cbd5e1;
+      background:#fff;
+      font-size:12px;
+      font-weight:800;
+      cursor:pointer;
+    }
+
+    .chip.active{
+      background:#dbeafe;
+      color:#1d4ed8;
+      border-color:#93c5fd;
+    }
+
+    .toolbar{
+      display:grid;
+      grid-template-columns:1.5fr 1fr .8fr 1fr 1fr;
+      gap:12px;
+      margin-bottom:14px;
+    }
+
+    .toolbar input,
+    .toolbar select{
+      width:100%;
+      min-height:46px;
+      padding:12px 14px;
+      border:1px solid var(--border);
+      border-radius:12px;
+      background:#fff;
+      font-size:14px;
+      outline:none;
+      text-transform:uppercase;
+    }
+
+    .toolbar input:focus,
+    .toolbar select:focus{
+      border-color:var(--primary);
+      box-shadow:0 0 0 3px rgba(37,99,235,.14);
+    }
+
+    .table-wrap{
+      max-height:72vh;
+      overflow:auto;
+      border:1px solid #e2e8f0;
+      border-radius:16px;
+      background:#fff;
+      scroll-behavior:smooth;
+      width:100%;
+    }
+
+    .bottom-x-scroll{
+      position:fixed;
+      left:12px;
+      right:12px;
+      bottom:10px;
+      z-index:50;
+      height:38px;
+      overflow-x:auto;
+      overflow-y:hidden;
+      border:1px solid rgba(148,163,184,.75);
+      border-radius:999px;
+      background:rgba(15,23,42,.88);
+      box-shadow:0 12px 26px rgba(0,0,0,.24);
+      backdrop-filter:blur(8px);
+    }
+
+    .bottom-x-scroll-inner{
+      height:1px;
+    }
+
+    .bottom-x-scroll::before{
+      content:"↔  SIDE SCROLL CRM LIST";
+      position:sticky;
+      left:16px;
+      top:8px;
+      color:#e2e8f0;
+      font-size:11px;
+      font-weight:900;
+      letter-spacing:.5px;
+      pointer-events:none;
+    }
+
+    .bottom-x-scroll::-webkit-scrollbar{height:16px}
+    .bottom-x-scroll::-webkit-scrollbar-track{background:rgba(226,232,240,.22);border-radius:999px}
+    .bottom-x-scroll::-webkit-scrollbar-thumb{background:#93c5fd;border-radius:999px;border:3px solid rgba(15,23,42,.88)}
+    .table-wrap::-webkit-scrollbar{height:14px;width:14px}
+    .table-wrap::-webkit-scrollbar-thumb{background:#94a3b8;border-radius:999px;border:3px solid #fff}
+    .table-wrap::-webkit-scrollbar-track{background:#f1f5f9;border-radius:999px}
+
+    table{
+      width:100%;
+      min-width:min(1120px, calc(100vw - 32px));
+      border-collapse:collapse;
+      table-layout:fixed;
+    }
+
+    th, td{
+      padding:12px 10px;
+      border-bottom:1px solid #e2e8f0;
+      text-align:left;
+      vertical-align:top;
+      font-size:14px;
+      overflow-wrap:anywhere;
+      word-break:break-word;
+    }
+
+    thead th{
+      position:sticky;
+      top:0;
+      z-index:35;
+      background:#eff6ff;
+      color:#1e3a8a;
+      font-size:12px;
+      font-weight:900;
+      text-transform:uppercase;
+      letter-spacing:.4px;
+    }
+
+
+
+    #crmCustomerTable th:nth-child(1), #crmCustomerTable td:nth-child(1){width:62px}
+    #crmCustomerTable th:nth-child(2), #crmCustomerTable td:nth-child(2){width:170px}
+    #crmCustomerTable th:nth-child(3), #crmCustomerTable td:nth-child(3){width:125px}
+    #crmCustomerTable th:nth-child(4), #crmCustomerTable td:nth-child(4){width:130px}
+    #crmCustomerTable th:nth-child(5), #crmCustomerTable td:nth-child(5){width:210px}
+    #crmCustomerTable th:nth-child(6), #crmCustomerTable td:nth-child(6){width:105px}
+    #crmCustomerTable th:nth-child(7), #crmCustomerTable td:nth-child(7){width:120px}
+    #crmCustomerTable th:nth-child(8), #crmCustomerTable td:nth-child(8){width:105px}
+    #crmCustomerTable th:nth-child(9), #crmCustomerTable td:nth-child(9){width:125px}
+    #crmCustomerTable th:nth-child(10), #crmCustomerTable td:nth-child(10){width:260px}
+    #crmCustomerTable th:nth-child(11), #crmCustomerTable td:nth-child(11){width:245px}
+
+    tbody tr:hover{
+      background:#f8fafc;
+    }
+
+    tbody tr.selected{
+      background:#eff6ff;
+    }
+
+    .badge{
+      display:inline-block;
+      padding:5px 10px;
+      border-radius:999px;
+      font-size:11px;
+      font-weight:800;
+      background:#dbeafe;
+      color:#1d4ed8;
+      margin:2px;
+    }
+
+    .priority-high{background:#fee2e2;color:#b91c1c}
+    .priority-medium{background:#fef3c7;color:#92400e}
+    .priority-low{background:#dcfce7;color:#166534}
+    .badge-purple{background:#ede9fe;color:#6d28d9}
+    .badge-soft{background:#e0f2fe;color:#0369a1}
+
+    .table-actions{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+
+    .mini-btn{
+      border:none;
+      border-radius:10px;
+      padding:8px 10px;
+      min-height:36px;
+      font-size:12px;
+      font-weight:800;
+      cursor:pointer;
+    }
+
+    .mini-view{background:#ede9fe;color:#6d28d9}
+    .mini-edit{background:#dbeafe;color:#1d4ed8}
+    .mini-delete{background:#fee2e2;color:#b91c1c}
+    .mini-solve{background:#dcfce7;color:#166534}
+    .mini-progress{background:#fef3c7;color:#92400e}
+    .mini-whatsapp{background:#dcfce7;color:#166534}
+
+    .status-open{background:#fee2e2;color:#b91c1c}
+    .status-progress{background:#fef3c7;color:#92400e}
+    .status-solved{background:#dcfce7;color:#166534}
+    .status-closed{background:#e0f2fe;color:#0369a1}
+
+    .timeline{display:grid;gap:10px}
+    .timeline-item{border:1px solid #e2e8f0;border-radius:12px;padding:12px;background:#fff}
+    .timeline-item .line1{font-size:13px;font-weight:900}
+    .timeline-item .line2{margin-top:6px;font-size:12px;color:var(--muted);line-height:1.45}
+
+    .empty{
+      text-align:center;
+      color:var(--muted);
+      padding:28px 10px;
+      font-weight:700;
+    }
+
+    .followup-list{
+      display:grid;
+      gap:12px;
+    }
+
+    .followup-card{
+      border:1px solid #e2e8f0;
+      border-radius:14px;
+      padding:12px;
+      background:#fff;
+    }
+
+    .followup-head{
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    .followup-name{
+      font-weight:900;
+      font-size:15px;
+    }
+
+    .followup-meta{
+      color:var(--muted);
+      font-size:12px;
+      margin-top:4px;
+    }
+
+    .followup-note{
+      margin-top:10px;
+      line-height:1.5;
+      font-size:13px;
+    }
+
+    .profile-empty{
+      text-align:center;
+      color:var(--muted);
+      padding:42px 10px;
+      font-weight:700;
+    }
+
+    .profile-card{
+      display:grid;
+      gap:14px;
+    }
+
+    .profile-top{
+      padding:16px;
+      border-radius:16px;
+      background:linear-gradient(135deg,#eff6ff,#f8fafc);
+      border:1px solid #dbeafe;
+    }
+
+    .profile-name{
+      font-size:22px;
+      font-weight:900;
+      line-height:1.2;
+    }
+
+    .profile-meta{
+      margin-top:8px;
+      display:grid;
+      gap:6px;
+      font-size:13px;
+      color:#334155;
+    }
+
+    .sub-panel{
+      border:1px solid #e2e8f0;
+      border-radius:16px;
+      overflow:hidden;
+      background:#fff;
+    }
+
+    .sub-head{
+      padding:12px 14px;
+      font-size:13px;
+      font-weight:900;
+      color:#1e3a8a;
+      background:#eff6ff;
+      border-bottom:1px solid #dbeafe;
+    }
+
+    .sub-body{
+      padding:14px;
+    }
+
+    .metric-grid{
+      display:grid;
+      grid-template-columns:repeat(2,1fr);
+      gap:10px;
+    }
+
+    .metric{
+      border:1px solid #e2e8f0;
+      border-radius:12px;
+      padding:12px;
+      background:#f8fafc;
+    }
+
+    .metric .m-label{
+      font-size:11px;
+      color:var(--muted);
+      font-weight:800;
+      text-transform:uppercase;
+    }
+
+    .metric .m-value{
+      margin-top:6px;
+      font-size:20px;
+      font-weight:900;
+    }
+
+    .simple-list{
+      display:grid;
+      gap:10px;
+    }
+
+    .simple-item{
+      border:1px solid #e2e8f0;
+      border-radius:12px;
+      padding:10px 12px;
+      background:#fff;
+    }
+
+    .simple-item .line1{
+      font-size:13px;
+      font-weight:800;
+    }
+
+    .simple-item .line2{
+      margin-top:4px;
+      font-size:12px;
+      color:var(--muted);
+    }
+
+    .note-box{
+      white-space:pre-line;
+      line-height:1.55;
+      font-size:13px;
+    }
+
+    .btn-purple{background:var(--purple);color:#fff}.btn-purple:hover{background:#6d28d9}
+    .closed-toggle-wrap{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px;padding:12px 14px;border:1px solid #dbeafe;border-radius:16px;background:linear-gradient(135deg,#eff6ff,#f8fafc)}
+    .closed-toggle-title{font-weight:900;color:#1e3a8a;font-size:14px}.closed-toggle-sub{margin-top:4px;color:#64748b;font-size:12px;line-height:1.4}
+    .detail-card{display:grid;gap:8px;min-width:260px}.detail-title{font-weight:900;font-size:14px;color:#0f172a;line-height:1.3}.detail-text{color:#475569;font-size:12px;line-height:1.45;white-space:normal}.detail-mini-grid{display:flex;flex-wrap:wrap;gap:6px}
+    .age-pill{display:inline-block;padding:5px 9px;border-radius:999px;font-size:11px;font-weight:900;background:#f1f5f9;color:#334155;margin:2px}.age-danger{background:#fee2e2;color:#991b1b}.age-warning{background:#fef3c7;color:#92400e}.age-ok{background:#dcfce7;color:#166534}.closed-row{opacity:.82;background:#f8fafc}
+    .old-detail-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.old-detail-box{border:1px solid #e2e8f0;border-radius:14px;padding:12px;background:#f8fafc}.old-detail-box .k{font-size:11px;color:#64748b;font-weight:900;text-transform:uppercase;letter-spacing:.3px}.old-detail-box .v{margin-top:6px;font-size:14px;font-weight:800;color:#0f172a;line-height:1.35;word-break:break-word}
+
+    @media (max-width:1500px){
+      .form-grid{grid-template-columns:repeat(3, minmax(180px, 1fr))}
+      .checkbox-grid{grid-template-columns:repeat(3, minmax(160px, 1fr))}
+    }
+
+    @media (max-width:1100px){
+      .stats{grid-template-columns:repeat(3,1fr)}
+      .form-grid{grid-template-columns:1fr 1fr}
+      .checkbox-grid{grid-template-columns:repeat(2,1fr)}
+      .toolbar{grid-template-columns:1fr 1fr}
+    }
+
+    @media (max-width:768px){
+      .page{padding:12px}
+      .topbar{padding:16px}
+      .title-wrap h1{font-size:21px}
+      .stats{grid-template-columns:1fr}
+      .form-grid{grid-template-columns:1fr}
+      .checkbox-grid{grid-template-columns:1fr}
+      .toolbar{grid-template-columns:1fr}
+      .topbar-actions{width:100%}
+      .topbar-actions .btn{flex:1}
+      table{min-width:1080px}
+    }
+
+    @media (max-width:900px){
+      thead th{top:0}
+      table{min-width:980px}
+      th,td{font-size:13px;padding:10px 8px}
+    }
+
+    @media (max-width:480px){
+      .panel-header,.panel-body{padding:14px}
+      .btn{width:100%}
+      .form-actions .btn{width:100%}
+      .metric-grid{grid-template-columns:1fr}
+      .old-detail-grid{grid-template-columns:1fr}
+    }
+  
+    .register-wrap{max-width:1120px;margin:16px auto 0;}
+    .panel-create{overflow:visible;}
+  </style>
+</head>
+<body>
+  <div class="page register-wrap">
+    <div class="topbar">
+      <div class="topbar-left">
+        <div class="logo">📝</div>
+        <div class="title-wrap">
+          <h1>CRM REGISTER</h1>
+          <p>Create new complaint / enquiry / service follow-up</p>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-light" id="backBtn">⬅ CRM Report</button>
+      </div>
+    </div>
+
+    <div class="layout">
+      <!-- CRM REGISTER FORM -->
+
+      <div class="stack create-stack">
+        <section class="panel panel-create">
+          <div class="panel-header">
+            <div>
+              <h2 id="formTitle">Register CRM Complaint</h2>
+              <p id="formSubtitle">Fast entry only. Old details and solution history are shown in the profile section below.</p>
+            </div>
+            <div class="badge" id="modeBadge">CREATE MODE</div>
+          </div>
+
+          <div class="panel-body">
+            <div id="statusBox" class="status"></div>
+
+            <form id="customerForm" novalidate>
+              <div class="form-grid">
+                <div class="field full">
+                  <label for="customerName">Customer Name</label>
+                  <input type="text" id="customerName" required placeholder="ENTER CUSTOMER NAME">
+                </div>
+
+                <div class="field">
+                  <label for="customerMobile">Mobile Number</label>
+                  <input type="tel" id="customerMobile" required placeholder="ENTER MOBILE NUMBER">
+                </div>
+
+                <div class="field">
+                  <label for="salesman">Salesman</label>
+                  <input type="text" id="salesman" placeholder="ENTER SALESMAN NAME">
+                </div>
+
+                <div class="field full">
+                  <label for="customerAddress">Address</label>
+                  <textarea id="customerAddress" placeholder="ENTER ADDRESS"></textarea>
+                </div>
+
+                <div class="field">
+                  <label for="priority">Priority</label>
+                  <select id="priority">
+                    <option value="LOW">LOW</option>
+                    <option value="MEDIUM">MEDIUM</option>
+                    <option value="HIGH">HIGH</option>
+                  </select>
+                </div>
+
+                <div class="field">
+                  <label for="nextFollowupDate">Next Follow-up Date</label>
+                  <input type="date" id="nextFollowupDate" style="text-transform:none;">
+                </div>
+
+                <div class="field">
+                  <label for="crmType">CRM Type</label>
+                  <select id="crmType">
+                    <option value="LEAD">LEAD</option>
+                    <option value="ENQUIRY">ENQUIRY</option>
+                    <option value="COMPLAINT">COMPLAINT</option>
+                    <option value="SERVICE">SERVICE</option>
+                    <option value="FOLLOW-UP">FOLLOW-UP</option>
+                  </select>
+                </div>
+
+                <div class="field full">
+                  <label for="complaintTitle">Complaint / Enquiry Title</label>
+                  <input type="text" id="complaintTitle" placeholder="EXAMPLE: FAN NOT WORKING / CUSTOMER ASKED FOR CHIMNEY DEMO">
+                </div>
+
+                <div class="field">
+                  <label for="complaintOpenDate">Complaint Open Date</label>
+                  <input type="date" id="complaintOpenDate" style="text-transform:none;">
+                </div>
+
+                <div class="field">
+                  <label for="assignedTo">Assigned To</label>
+                  <input type="text" id="assignedTo" placeholder="STAFF NAME / TECHNICIAN">
+                </div>
+
+              </div>
+
+              <div class="form-actions">
+                <button type="submit" class="btn btn-success" id="saveBtn">Save CRM Complaint</button>
+                <button type="button" class="btn btn-light" id="resetBtn">Reset</button>
+              </div>
+            </form>
+          </div>
+        </section>
+
+      </div>
+
+      
+    </div>
+  </div>
+
+  <script>
+    const sb = window.sbcc;
+    document.addEventListener("DOMContentLoaded", async () => {
+      const ok = await requirePageAccess("crm");
+      if (!ok) return;
+    });
+
+    const TABLE_NAME = "crm_customers";
+    let editingId = null;
+    let editingRow = null;
+
+    const form = document.getElementById("customerForm");
+    const statusBox = document.getElementById("statusBox");
+    const saveBtn = document.getElementById("saveBtn");
+    const resetBtn = document.getElementById("resetBtn");
+    const backBtn = document.getElementById("backBtn");
+
+    const customerName = document.getElementById("customerName");
+    const customerMobile = document.getElementById("customerMobile");
+    const salesman = document.getElementById("salesman");
+    const customerAddress = document.getElementById("customerAddress");
+    const priority = document.getElementById("priority");
+    const nextFollowupDate = document.getElementById("nextFollowupDate");
+    const crmType = document.getElementById("crmType");
+    const complaintTitle = document.getElementById("complaintTitle");
+    const complaintOpenDate = document.getElementById("complaintOpenDate");
+    const assignedTo = document.getElementById("assignedTo");
+    const formTitle = document.getElementById("formTitle");
+    const formSubtitle = document.getElementById("formSubtitle");
+    const modeBadge = document.getElementById("modeBadge");
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      enableUppercase();
+      bindEvents();
+      bindEnterJump();
+      resetForm(false);
+      const params = new URLSearchParams(window.location.search);
+      const id = params.get("id");
+      if (id) await loadForEdit(id);
+    });
+
+    function bindEvents() {
+      form.addEventListener("submit", handleSubmit);
+      resetBtn.addEventListener("click", () => resetForm(true));
+      backBtn.addEventListener("click", () => window.location.href = "crm.html");
+    }
+
+    function bindEnterJump() {
+      const fields = Array.from(form.querySelectorAll("input, select, textarea, button"))
+        .filter(el => !el.disabled && el.type !== "hidden" && el.offsetParent !== null);
+      fields.forEach((el, index) => {
+        el.addEventListener("keydown", (e) => {
+          if (e.key !== "Enter") return;
+          if (el.tagName === "TEXTAREA" && !e.ctrlKey) return;
+          e.preventDefault();
+          const next = fields[index + (e.shiftKey ? -1 : 1)];
+          if (next) {
+            next.focus();
+            if (typeof next.select === "function" && ["INPUT", "TEXTAREA"].includes(next.tagName)) setTimeout(() => next.select(), 0);
+          } else if (!e.shiftKey) saveBtn.focus();
+        });
+      });
+    }
+
+    function enableUppercase() {
+      document.querySelectorAll("input[type='text'], input[type='tel'], textarea").forEach(el => {
+        el.setAttribute("autocapitalize", "characters");
+        el.addEventListener("input", () => {
+          const start = el.selectionStart;
+          const end = el.selectionEnd;
+          el.value = String(el.value || "").toUpperCase();
+          try { el.setSelectionRange(start, end); } catch (_) {}
+        });
+      });
+    }
+
+    function normalize(v) { return String(v || "").trim().toUpperCase(); }
+    function todayStr() { return new Date().toISOString().split("T")[0]; }
+
+    function defaultMeta() {
+      return {
+        entry_type: "COMPLAINT",
+        complaint_status: "OPEN",
+        complaint_title: "",
+        complaint_open_date: "",
+        complaint_solved_date: "",
+        solution_notes: "",
+        assigned_to: "",
+        last_contact_date: ""
+      };
+    }
+
+    function parseNotes(raw) {
+      const text = String(raw || "");
+      const marker = "[[CRM_META_V1]]";
+      const idx = text.indexOf(marker);
+      if (idx === -1) return { visible: text.trim(), meta: defaultMeta() };
+      const visible = text.slice(0, idx).trim();
+      const metaText = text.slice(idx + marker.length).trim();
+      try { return { visible, meta: { ...defaultMeta(), ...(JSON.parse(metaText) || {}) } }; }
+      catch (_) { return { visible: text.trim(), meta: defaultMeta() }; }
+    }
+
+    function buildNotes(visible, meta) {
+      const cleanMeta = { ...defaultMeta(), ...(meta || {}) };
+      return `${String(visible || "").trim()}
+
+[[CRM_META_V1]]${JSON.stringify(cleanMeta)}`.trim();
+    }
+
+    function showStatus(message, type="success") {
+      statusBox.className = `status ${type}`;
+      statusBox.textContent = message;
+    }
+    function hideStatus() { statusBox.className = "status"; statusBox.textContent = ""; }
+
+    function setMode(mode) {
+      const isEdit = mode === "edit";
+      formTitle.textContent = isEdit ? "Edit CRM Complaint" : "Register CRM Complaint";
+      formSubtitle.textContent = isEdit ? "Update complaint / follow-up details" : "Create a new complaint, enquiry, service or follow-up entry";
+      saveBtn.textContent = isEdit ? "Update CRM Complaint" : "Save CRM Complaint";
+      modeBadge.textContent = isEdit ? "EDIT MODE" : "CREATE MODE";
+      modeBadge.style.background = isEdit ? "#fef3c7" : "#dbeafe";
+      modeBadge.style.color = isEdit ? "#92400e" : "#1d4ed8";
+    }
+
+    function resetForm(clearUrl=true) {
+      if (clearUrl && editingId) window.location.href = "crm_register.html";
+      editingId = null;
+      editingRow = null;
+      form.reset();
+      crmType.value = "COMPLAINT";
+      complaintOpenDate.value = todayStr();
+      priority.value = "LOW";
+      setMode("create");
+      hideStatus();
+      setTimeout(() => customerName.focus(), 50);
+    }
+
+    async function loadForEdit(id) {
+      const { data, error } = await sb.from(TABLE_NAME).select("*").eq("id", id).single();
+      if (error || !data) {
+        showStatus(error?.message || "CRM RECORD NOT FOUND.", "error");
+        return;
+      }
+      editingId = data.id;
+      editingRow = data;
+      const parsed = parseNotes(data.notes);
+      const meta = parsed.meta;
+      customerName.value = normalize(data.name);
+      customerMobile.value = normalize(data.mobile);
+      salesman.value = normalize(data.salesman);
+      customerAddress.value = normalize(data.address);
+      priority.value = normalize(data.priority || "LOW");
+      nextFollowupDate.value = data.next_followup_date || "";
+      crmType.value = normalize(meta.entry_type || "COMPLAINT");
+      complaintTitle.value = normalize(meta.complaint_title || parsed.visible || "");
+      complaintOpenDate.value = meta.complaint_open_date || todayStr();
+      assignedTo.value = normalize(meta.assigned_to || "");
+      setMode("edit");
+      showStatus(`EDITING CRM RECORD: ${normalize(data.name)}`, "info");
+    }
+
+    async function handleSubmit(e) {
+      e.preventDefault();
+      hideStatus();
+      const existingParsed = editingRow ? parseNotes(editingRow.notes) : { visible: "", meta: defaultMeta() };
+      const existingMeta = existingParsed.meta || defaultMeta();
+      const complaintText = normalize(complaintTitle.value);
+      const payload = {
+        name: normalize(customerName.value),
+        mobile: normalize(customerMobile.value),
+        salesman: normalize(salesman.value),
+        address: normalize(customerAddress.value),
+        priority: normalize(priority.value || "LOW"),
+        next_followup_date: nextFollowupDate.value || null,
+        notes: buildNotes(existingParsed.visible || complaintText, {
+          ...existingMeta,
+          entry_type: normalize(crmType.value || "COMPLAINT"),
+          complaint_status: editingId ? normalize(existingMeta.complaint_status || "OPEN") : "OPEN",
+          complaint_title: complaintText,
+          complaint_open_date: complaintOpenDate.value || existingMeta.complaint_open_date || todayStr(),
+          assigned_to: normalize(assignedTo.value),
+          last_contact_date: existingMeta.last_contact_date || "",
+          complaint_solved_date: existingMeta.complaint_solved_date || "",
+          solution_notes: existingMeta.solution_notes || ""
+        })
+      };
+      if (!payload.name || !payload.mobile) { showStatus("NAME AND MOBILE ARE REQUIRED.", "error"); return; }
+      if (!complaintText) { showStatus("COMPLAINT / ENQUIRY TITLE IS REQUIRED.", "error"); return; }
+      saveBtn.disabled = true;
+      saveBtn.textContent = editingId ? "Updating..." : "Saving...";
+      try {
+        let result;
+        if (editingId) result = await sb.from(TABLE_NAME).update(payload).eq("id", editingId);
+        else result = await sb.from(TABLE_NAME).insert([payload]);
+        if (result.error) throw result.error;
+        showStatus(editingId ? "CRM COMPLAINT UPDATED SUCCESSFULLY." : "CRM COMPLAINT SAVED SUCCESSFULLY.", "success");
+        setTimeout(() => window.location.href = "crm.html", 500);
+      } catch (error) {
+        showStatus(error.message || "SAVE FAILED.", "error");
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = editingId ? "Update CRM Complaint" : "Save CRM Complaint";
+      }
+    }
+  </script>
+</body>
+</html>

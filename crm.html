@@ -46,7 +46,7 @@
         linear-gradient(rgba(15,23,42,.72), rgba(15,23,42,.72)),
         url("background.jpg") center/cover fixed no-repeat;
       min-height:100vh;
-      padding-bottom:64px;
+      padding-bottom:16px;
     }
 
     .page{
@@ -393,41 +393,6 @@
       width:100%;
     }
 
-    .bottom-x-scroll{
-      position:fixed;
-      left:12px;
-      right:12px;
-      bottom:10px;
-      z-index:50;
-      height:38px;
-      overflow-x:auto;
-      overflow-y:hidden;
-      border:1px solid rgba(148,163,184,.75);
-      border-radius:999px;
-      background:rgba(15,23,42,.88);
-      box-shadow:0 12px 26px rgba(0,0,0,.24);
-      backdrop-filter:blur(8px);
-    }
-
-    .bottom-x-scroll-inner{
-      height:1px;
-    }
-
-    .bottom-x-scroll::before{
-      content:"↔  SIDE SCROLL CRM LIST";
-      position:sticky;
-      left:16px;
-      top:8px;
-      color:#e2e8f0;
-      font-size:11px;
-      font-weight:900;
-      letter-spacing:.5px;
-      pointer-events:none;
-    }
-
-    .bottom-x-scroll::-webkit-scrollbar{height:16px}
-    .bottom-x-scroll::-webkit-scrollbar-track{background:rgba(226,232,240,.22);border-radius:999px}
-    .bottom-x-scroll::-webkit-scrollbar-thumb{background:#93c5fd;border-radius:999px;border:3px solid rgba(15,23,42,.88)}
     .table-wrap::-webkit-scrollbar{height:14px;width:14px}
     .table-wrap::-webkit-scrollbar-thumb{background:#94a3b8;border-radius:999px;border:3px solid #fff}
     .table-wrap::-webkit-scrollbar-track{background:#f1f5f9;border-radius:999px}
@@ -864,10 +829,6 @@
     </div>
   </div>
 
-  <div class="bottom-x-scroll" id="bottomXScroll" aria-label="CRM table horizontal scroll">
-    <div class="bottom-x-scroll-inner" id="bottomXScrollInner"></div>
-  </div>
-
   <script>
     
   const sb = window.sbcc; // supabase client from supabaseClient.js
@@ -931,7 +892,6 @@
       enableUppercase();
       bindEvents();
       bindEnterJump();
-      bindBottomTableScroll();
       await loadCustomers();
     });
 
@@ -1088,7 +1048,6 @@
       document.querySelectorAll(".chip").forEach(c => c.classList.toggle("active", c.dataset.quick === quickFilter));
       updateClosedButtons();
       renderCustomers();
-      syncBottomTableScroll();
       if (followupList) renderFollowups();
     }
 
@@ -1184,7 +1143,6 @@
       customers = data || [];
       updateStats();
       renderCustomers();
-      syncBottomTableScroll();
       if (followupList) renderFollowups();
 
       if (selectedCustomerId) {
@@ -1262,7 +1220,6 @@
 
       if (!filtered.length) {
         customerTableBody.innerHTML = `<tr><td colspan="11" class="empty">No CRM customers found</td></tr>`;
-        setTimeout(syncBottomTableScroll, 50);
         return;
       }
 
@@ -1318,7 +1275,6 @@
           </tr>
         `;
       }).join("");
-      setTimeout(syncBottomTableScroll, 50);
     }
 
     function renderFollowups() {
@@ -1780,10 +1736,18 @@
     function buildComplaintWhatsAppMessage(row) {
       const meta = getMeta(row);
       const visibleNotes = getVisibleNotes(row);
-      const complaintAge = daysBetween(meta.complaint_open_date || row.created_at?.slice?.(0, 10));
-      const customerNameText = normalize(row.name || "");
 
-      return `🏬 *VAJRA LIGHTS & ELECTRICALS*\n🛠️ *CRM COMPLAINT / SERVICE DETAILS*\n\n${formatWhatsAppLine("👤 Customer:", row.name)}\n${formatWhatsAppLine("📱 Mobile:", row.mobile)}\n${formatWhatsAppLine("🏠 Address:", row.address)}\n${formatWhatsAppLine("👨‍💼 Salesman:", row.salesman)}\n\n${formatWhatsAppLine("📋 Type:", meta.entry_type || "LEAD")}\n${formatWhatsAppLine("⚠️ Status:", meta.complaint_status || "OPEN")}\n${formatWhatsAppLine("🔥 Priority:", row.priority || "LOW")}\n${formatWhatsAppLine("👨‍🔧 Assigned To:", meta.assigned_to)}\n\n${formatWhatsAppLine("📝 Complaint:", meta.complaint_title || visibleNotes)}\n${formatWhatsAppLine("📅 Open Date:", meta.complaint_open_date)}\n${formatWhatsAppLine("⏱️ Complaint Age:", complaintAge === null ? "-" : complaintAge + " DAY(S)")}\n${formatWhatsAppLine("📆 Next Follow-up:", row.next_followup_date)}\n${formatWhatsAppLine("✅ Solved Date:", meta.complaint_solved_date)}\n\n${formatWhatsAppLine("🧾 Customer Note:", visibleNotes)}\n${formatWhatsAppLine("✅ Solution / Action:", meta.solution_notes || "NOT UPDATED")}\n\nPlease check and update.\n\n- VAJRA CRM`;
+      return `🏬 *VAJRA LIGHTS & ELECTRICALS*
+🛠️ *COMPLAINT DETAILS*
+
+${formatWhatsAppLine("👤 Customer:", row.name)}
+${formatWhatsAppLine("📱 Mobile:", row.mobile)}
+${formatWhatsAppLine("🏠 Address:", row.address)}
+
+${formatWhatsAppLine("📝 Complaint:", meta.complaint_title || visibleNotes)}
+${formatWhatsAppLine("🧾 Customer Note:", visibleNotes)}
+
+- AFTER SOLVING THIS COMPLAINT, PLEASE INFORM US. THANKS! 🙏`;
     }
 
     function getWhatsappNumber(row) {
@@ -1834,43 +1798,6 @@
       showStatus("COMPLAINT REOPENED SUCCESSFULLY.", "success");
       await loadCustomers();
       await openProfile(id);
-    }
-
-    function bindBottomTableScroll() {
-      const tableWrap = document.getElementById("crmTableWrap");
-      const bottomScroll = document.getElementById("bottomXScroll");
-      if (!tableWrap || !bottomScroll) return;
-
-      let syncing = false;
-
-      tableWrap.addEventListener("scroll", () => {
-        if (syncing) return;
-        syncing = true;
-        bottomScroll.scrollLeft = tableWrap.scrollLeft;
-        syncing = false;
-      });
-
-      bottomScroll.addEventListener("scroll", () => {
-        if (syncing) return;
-        syncing = true;
-        tableWrap.scrollLeft = bottomScroll.scrollLeft;
-        syncing = false;
-      });
-
-      window.addEventListener("resize", syncBottomTableScroll);
-      setTimeout(syncBottomTableScroll, 300);
-    }
-
-    function syncBottomTableScroll() {
-      const tableWrap = document.getElementById("crmTableWrap");
-      const bottomScroll = document.getElementById("bottomXScroll");
-      const bottomInner = document.getElementById("bottomXScrollInner");
-      if (!tableWrap || !bottomScroll || !bottomInner) return;
-
-      const tableWidth = Math.max(tableWrap.scrollWidth, tableWrap.clientWidth);
-      bottomInner.style.width = tableWidth + "px";
-      bottomScroll.scrollLeft = tableWrap.scrollLeft;
-      bottomScroll.style.display = tableWrap.scrollWidth > tableWrap.clientWidth + 10 ? "block" : "none";
     }
 
     function escapeHtml(value) {

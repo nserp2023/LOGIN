@@ -734,6 +734,7 @@
 </head>
 <body>
   <div class="page">
+    <div id="statusBox" class="status"></div>
     <div class="topbar">
       <div class="topbar-left">
         <div class="logo">🏬</div>
@@ -745,7 +746,7 @@
 
       <div class="topbar-actions">
         <button class="btn btn-light" id="backBtn">⬅ Back</button>
-        <button class="btn btn-purple" id="closedToggleBtn">👁 View Solved / Closed</button>
+        <button class="btn btn-purple" id="closedToggleBtn">👁 View Solved</button>
         <button class="btn btn-primary" id="newCustomerBtn">＋ New Complaint</button>
       </div>
     </div>
@@ -772,7 +773,7 @@
         <div class="value" id="openComplaintsCount">0</div>
       </div>
       <div class="stat">
-        <div class="label">Solved / Closed</div>
+        <div class="label">Solved</div>
         <div class="value" id="solvedComplaintsCount">0</div>
       </div>
     </div>
@@ -783,7 +784,7 @@
         <div class="panel-header">
           <div>
             <h2>CRM Customer List</h2>
-            <p>Active complaints are shown by default. Solved and closed complaints are hidden by default. Use the button to check completed old work.</p>
+            <p>Active complaints are shown by default. Solved complaints are hidden by default. Use the button to check completed old work.</p>
           </div>
         </div>
 
@@ -791,9 +792,9 @@
           <div class="closed-toggle-wrap">
             <div>
               <div class="closed-toggle-title" id="closedModeTitle">Active CRM View</div>
-              <div class="closed-toggle-sub" id="closedModeSub">Solved and closed complaints are hidden. Use the button to check old completed complaint details whenever needed.</div>
+              <div class="closed-toggle-sub" id="closedModeSub">Solved complaints are hidden. Use the button to check old completed complaint details whenever needed.</div>
             </div>
-            <button class="btn btn-purple" id="closedToggleBtn2">👁 View Solved / Closed</button>
+            <button class="btn btn-purple" id="closedToggleBtn2">👁 View Solved</button>
           </div>
 
           <div class="quick-filters">
@@ -803,8 +804,7 @@
             <button class="chip" data-quick="OVERDUE">OVERDUE</button>
             <button class="chip" data-quick="OPENCOMPLAINT">OPEN COMPLAINT</button>
             <button class="chip" data-quick="SOLVED">SOLVED</button>
-            <button class="chip" data-quick="CLOSED">CLOSED</button>
-          </div>
+                      </div>
 
           <div class="toolbar">
             <input type="text" id="searchInput" placeholder="SEARCH NAME OR MOBILE...">
@@ -820,8 +820,7 @@
               <option value="OPEN">OPEN</option>
               <option value="IN PROGRESS">IN PROGRESS</option>
               <option value="SOLVED">SOLVED</option>
-              <option value="CLOSED">CLOSED</option>
-            </select>
+                          </select>
             <input type="text" id="addressFilter" placeholder="SEARCH ADDRESS...">
           </div>
 
@@ -1094,11 +1093,11 @@
     }
 
     function updateClosedButtons() {
-      const text = showClosedComplaints ? "🙈 Hide Solved / Closed" : "👁 View Solved / Closed";
+      const text = showClosedComplaints ? "🙈 Hide Solved" : "👁 View Solved";
       closedToggleBtn.textContent = text;
       closedToggleBtn2.textContent = text;
-      if (closedModeTitle) closedModeTitle.textContent = showClosedComplaints ? "Solved / Closed View" : "Active CRM View";
-      if (closedModeSub) closedModeSub.textContent = showClosedComplaints ? "Showing solved and closed complaint history only. Click hide to return to active CRM work." : "Solved and closed complaints are hidden. Use the button to check old completed complaint details whenever needed.";
+      if (closedModeTitle) closedModeTitle.textContent = showClosedComplaints ? "Solved View" : "Active CRM View";
+      if (closedModeSub) closedModeSub.textContent = showClosedComplaints ? "Showing solved and closed complaint history only. Click hide to return to active CRM work." : "Solved complaints are hidden. Use the button to check old completed complaint details whenever needed.";
     }
 
     function statusClass(status) {
@@ -1311,8 +1310,8 @@
                 <button class="mini-btn mini-edit" onclick="editCustomer(${c.id})">Edit</button>
                 ${["SOLVED","CLOSED"].includes(normalize(meta.complaint_status))
                   ? `<button class="mini-btn mini-progress" onclick="reopenComplaint(${c.id})">Reopen</button>`
-                  : `<button class="mini-btn mini-solve" onclick="solveComplaint(${c.id})">Solve</button>`}
-                ${normalize(meta.complaint_status) !== "CLOSED" ? `<button class="mini-btn mini-view" onclick="closeComplaint(${c.id})">Close</button>` : ""}
+                  : `<button class="mini-btn mini-progress" onclick="followupComplaint(${c.id})">Follow Up</button>
+                     <button class="mini-btn mini-solve" onclick="solveComplaint(${c.id})">Solved</button>`}
                 <button class="mini-btn mini-delete" onclick="deleteCustomer(${c.id}, '${escapeJs(normalize(c.name))}')">Delete</button>
               </div>
             </td>
@@ -1371,7 +1370,8 @@
               <button class="mini-btn mini-view" onclick="openProfile(${c.id})">Open</button>
               ${["SOLVED","CLOSED"].includes(normalize(meta.complaint_status))
                 ? `<button class="mini-btn mini-progress" onclick="reopenComplaint(${c.id})">Reopen</button>`
-                : `<button class="mini-btn mini-solve" onclick="solveComplaint(${c.id})">Solve</button>`}
+                : `<button class="mini-btn mini-progress" onclick="followupComplaint(${c.id})">Follow Up</button>
+                   <button class="mini-btn mini-solve" onclick="solveComplaint(${c.id})">Solved</button>`}
             </div>
           </div>
         `;
@@ -1566,8 +1566,8 @@
               <div class="table-actions" style="margin-top:12px;">
                 ${["SOLVED","CLOSED"].includes(normalize(meta.complaint_status))
                   ? `<button class="mini-btn mini-progress" onclick="reopenComplaint(${row.id})">Reopen Complaint</button>`
-                  : `<button class="mini-btn mini-solve" onclick="solveComplaint(${row.id})">Mark as Solved</button>`}
-                ${normalize(meta.complaint_status) !== "CLOSED" ? `<button class="mini-btn mini-view" onclick="closeComplaint(${row.id})">Close Complaint</button>` : ""}
+                  : `<button class="mini-btn mini-progress" onclick="followupComplaint(${row.id})">Add Follow Up</button>
+                     <button class="mini-btn mini-solve" onclick="solveComplaint(${row.id})">Mark as Solved</button>`}
                 <button class="mini-btn mini-whatsapp" onclick="shareComplaintWhatsApp(${row.id})">Share WhatsApp</button>
                 <button class="mini-btn mini-edit" onclick="editCustomer(${row.id})">Edit Profile</button>
               </div>
@@ -1686,19 +1686,75 @@
     }
 
 
+    async function followupComplaint(id) {
+      const row = customers.find(x => Number(x.id) === Number(id));
+      if (!row) return;
+
+      const parsed = parseNotes(row.notes);
+      const meta = { ...defaultMeta(), ...(parsed.meta || {}) };
+
+      const remark = prompt("ENTER FOLLOW-UP REMARK", meta.solution_notes || "");
+      if (remark === null) return;
+
+      const nextDate = prompt("ENTER NEXT FOLLOW-UP DATE (YYYY-MM-DD)", row.next_followup_date || todayStr());
+      if (nextDate === null) return;
+
+      const cleanNextDate = String(nextDate || "").trim();
+
+      if (cleanNextDate && !/^\d{4}-\d{2}-\d{2}$/.test(cleanNextDate)) {
+        showStatus("PLEASE ENTER DATE IN YYYY-MM-DD FORMAT.", "error");
+        return;
+      }
+
+      const updatedMeta = {
+        ...meta,
+        complaint_status: "IN PROGRESS",
+        solution_notes: normalize(remark || "FOLLOW-UP UPDATED"),
+        last_contact_date: todayStr()
+      };
+
+      const { error } = await sb
+        .from(TABLE_NAME)
+        .update({
+          notes: buildNotes(parsed.visible, updatedMeta),
+          next_followup_date: cleanNextDate || null
+        })
+        .eq("id", id);
+
+      if (error) {
+        showStatus(error.message || "FOLLOW-UP UPDATE FAILED.", "error");
+        return;
+      }
+
+      showStatus("FOLLOW-UP UPDATED SUCCESSFULLY.", "success");
+      await loadCustomers();
+      await openProfile(id);
+    }
+
     async function solveComplaint(id) {
       const row = customers.find(x => Number(x.id) === Number(id));
       if (!row) return;
 
       const parsed = parseNotes(row.notes);
-      const meta = { ...parsed.meta, complaint_status: "SOLVED", complaint_solved_date: todayStr(), last_contact_date: todayStr() };
+      const meta = {
+        ...defaultMeta(),
+        ...(parsed.meta || {}),
+        complaint_status: "SOLVED",
+        complaint_solved_date: todayStr(),
+        last_contact_date: todayStr()
+      };
+
       const solutionText = prompt("ENTER SOLUTION / ACTION TAKEN", meta.solution_notes || "ISSUE SOLVED");
       if (solutionText === null) return;
+
       meta.solution_notes = normalize(solutionText || "ISSUE SOLVED");
 
       const { error } = await sb
         .from(TABLE_NAME)
-        .update({ notes: buildNotes(parsed.visible, meta), next_followup_date: null })
+        .update({
+          notes: buildNotes(parsed.visible, meta),
+          next_followup_date: null
+        })
         .eq("id", id);
 
       if (error) {
@@ -1707,26 +1763,13 @@
       }
 
       showStatus("COMPLAINT MARKED AS SOLVED SUCCESSFULLY.", "success");
-      await loadCustomers();
-      await openProfile(id);
-    }
-
-    async function closeComplaint(id) {
-      const row = customers.find(x => Number(x.id) === Number(id));
-      if (!row) return;
-      const ok = confirm("CLOSE THIS COMPLAINT? CLOSED COMPLAINTS WILL BE HIDDEN FROM ACTIVE VIEW.");
-      if (!ok) return;
-      const parsed = parseNotes(row.notes);
-      const meta = { ...parsed.meta, complaint_status: "CLOSED", complaint_solved_date: parsed.meta.complaint_solved_date || todayStr(), last_contact_date: todayStr() };
-      if (!meta.solution_notes) meta.solution_notes = "COMPLAINT CLOSED";
-      const { error } = await sb.from(TABLE_NAME).update({ notes: buildNotes(parsed.visible, meta), next_followup_date: null }).eq("id", id);
-      if (error) { showStatus(error.message || "FAILED TO CLOSE COMPLAINT.", "error"); return; }
-      showStatus("COMPLAINT CLOSED AND HIDDEN FROM ACTIVE VIEW.", "success");
-      showClosedComplaints = false; quickFilter = "ALL"; statusFilter.value = "";
+      showClosedComplaints = false;
+      quickFilter = "ALL";
+      statusFilter.value = "";
       document.querySelectorAll(".chip").forEach(c => c.classList.toggle("active", c.dataset.quick === quickFilter));
       updateClosedButtons();
       await loadCustomers();
-      profilePanel.innerHTML = `<div class="profile-empty">Complaint closed. Use “View Closed Complaints” to see closed old details.</div>`;
+      profilePanel.innerHTML = `<div class="profile-empty">Complaint solved. Use “View Solved” to see completed complaint details.</div>`;
     }
 
     function formatWhatsAppLine(label, value) {
@@ -1847,8 +1890,8 @@
     window.deleteCustomer = deleteCustomer;
     window.openProfile = openProfile;
     window.solveComplaint = solveComplaint;
+    window.followupComplaint = followupComplaint;
     window.reopenComplaint = reopenComplaint;
-    window.closeComplaint = closeComplaint;
     window.shareComplaintWhatsApp = shareComplaintWhatsApp;
   </script>
 </body>

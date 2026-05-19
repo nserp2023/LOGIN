@@ -668,19 +668,28 @@ function focusPendingPopupQty(){ closePendingPopup(); if(pendingPopupReturnFocus
 document.addEventListener("keydown", e => { if(e.key === "Escape") closePendingPopup(); });
 
 function collectRows(){
-  const rows = [], used = new Set();
+  const rows = [];
   document.querySelectorAll("#items .item-row").forEach(row => {
     const item_code = clean(row.querySelector(".item-code").value) || null;
     const item_name = clean(row.querySelector(".item-name").value) || item_code || "";
     const quantity = num(row.querySelector(".qty").value);
     const priceRaw = row.querySelector(".price").value;
     const remark = clean(row.querySelector(".remark").value);
+
     if(!item_name && !item_code) return;
-    const key = (item_code || item_name).toUpperCase();
-    if(used.has(key)) throw new Error("Duplicate item: " + item_name);
-    used.add(key);
-    if(quantity <= 0) throw new Error("Quantity must be greater than 0 for " + item_name);
-    rows.push({item_code, item_name, is_new_item: !row.dataset.code, quantity, price: priceRaw === "" ? null : num(priceRaw), remark});
+
+    if(quantity <= 0){
+      throw new Error("Quantity must be greater than 0 for " + item_name);
+    }
+
+    rows.push({
+      item_code,
+      item_name,
+      is_new_item: !row.dataset.code,
+      quantity,
+      price: priceRaw === "" ? null : num(priceRaw),
+      remark
+    });
   });
   return rows;
 }

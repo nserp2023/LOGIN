@@ -2,23 +2,24 @@
 <html>
 <head>
     <link rel="icon" href="favicon.ico" type="image/x-icon">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+    <link rel="manifest" href="site.webmanifest">
 
-<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+    <title>Purchase Details</title>
 
-<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
-
-<link rel="manifest" href="site.webmanifest">
-<title>Purchase Details</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabaseClient.js"></script>
-<script src="page_permissions.js"></script>
-<script src="common-ui.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabaseClient.js"></script>
+    <script src="page_permissions.js"></script>
+    <script src="common-ui.js"></script>
 
 <style>
 body {
-    font-family: Arial;
+    font-family: Arial, sans-serif;
     padding: 20px;
+    background: #f3f4f6;
+    color: #111827;
 }
 
 .invoice-container {
@@ -27,6 +28,33 @@ body {
     margin: auto;
     padding: 15mm;
     border: 1px solid #000;
+    background: #fff;
+    box-sizing: border-box;
+}
+
+.header-center {
+    text-align: center;
+    font-weight: bold;
+}
+
+.header-center h2 {
+    margin: 0 0 6px;
+    font-size: 22px;
+}
+
+.header-center .sub {
+    font-size: 12px;
+    line-height: 1.5;
+    font-weight: normal;
+}
+
+.report-title {
+    display: inline-block;
+    margin-top: 8px;
+    padding: 5px 18px;
+    border: 1px solid #000;
+    font-size: 14px;
+    letter-spacing: 0.5px;
 }
 
 table {
@@ -36,100 +64,180 @@ table {
 
 th, td {
     border: 1px solid #000;
-    padding: 5px;
+    padding: 6px;
     font-size: 12px;
+    vertical-align: top;
 }
 
-.header-center {
+th {
+    background: #f1f1f1;
     text-align: center;
-    font-weight: bold;
 }
 
 .right-align {
     text-align: right;
 }
 
+.center {
+    text-align: center;
+}
+
+.info-table td {
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.no-print {
+    max-width: 210mm;
+    margin: 0 auto 12px;
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.no-print button {
+    border: none;
+    border-radius: 6px;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-weight: bold;
+    background: #111827;
+    color: #fff;
+}
+
+.warning-box {
+    display: none;
+    margin: 12px 0;
+    padding: 10px;
+    border: 1px solid #b91c1c;
+    background: #fee2e2;
+    color: #7f1d1d;
+    font-weight: bold;
+    font-size: 13px;
+}
+
+.empty-row td {
+    text-align: center;
+    font-weight: bold;
+    color: #7f1d1d;
+}
+
 @media print {
     body {
         margin: 0;
         padding: 0;
+        background: #fff;
+    }
+
+    .invoice-container {
+        width: 100%;
+        min-height: auto;
+        margin: 0;
+        padding: 10mm;
+        border: none;
     }
 
     .no-print {
-        display: none;
+        display: none !important;
+    }
+
+    th, td {
+        font-size: 11px;
+        padding: 5px;
     }
 }
 </style>
 </head>
+
 <body>
+
+<div class="no-print">
+    <button onclick="window.location.href='purchasereport.html'">← Back</button>
+    <button onclick="window.print()">🖨 Print</button>
+</div>
 
 <div class="invoice-container">
 
     <div class="header-center">
         <h2>VAJRA LIGHTS AND ELECTRICALS</h2>
-        KATHAKONAM KATTACAD (HO: S N TRADERS KATTACADA)<br>
-        Email: vajralightsandelectricals.sha@gmail.com<br>
-        Phone: 8608608063, 9495160771<br>
-        GSTIN: 32APBPM5593H1ZT
+        <div class="sub">
+            KATHAKONAM KATTACAD (HO: S N TRADERS KATTACADA)<br>
+            Email: vajralightsandelectricals.sha@gmail.com<br>
+            Phone: 8606808063, 9495160771<br>
+            GSTIN: 32APBPM5593H1ZT
+        </div>
         <hr>
-        <b>PURCHASE BILL</b>
+        <div class="report-title">PURCHASE BILL DETAILS</div>
     </div>
 
     <br>
 
-    <table>
+    <table class="info-table">
         <tr>
-            <td><b>Supplier:</b> <span id="supplier_name"></span></td>
+            <td style="width:60%;">
+                <b>Supplier:</b> <span id="supplier_name"></span><br>
+                <b>GST No:</b> <span id="supplier_gst"></span><br>
+                <b>Address:</b> <span id="supplier_address"></span>
+            </td>
             <td class="right-align">
+                <b>Invoice No:</b> <span id="invoice_no"></span><br>
                 <b>Purchase No:</b> <span id="purchase_no"></span><br>
                 <b>Date:</b> <span id="purchase_date"></span>
             </td>
         </tr>
     </table>
 
+    <div class="warning-box" id="warningBox"></div>
+
     <br>
 
     <table>
         <thead>
             <tr>
-                <th>No</th>
-                <th>HSN</th>
-                <th>Code</th>
+                <th style="width:45px;">No</th>
+                <th style="width:90px;">HSN</th>
+                <th style="width:120px;">Code</th>
                 <th>Description</th>
-                <th>Qty</th>
-                <th>Price</th>
-                <th>GST%</th>
-                <th>Amount</th>
+                <th style="width:80px;">Qty</th>
             </tr>
         </thead>
         <tbody id="items_body"></tbody>
     </table>
 
-    <br>
-
-    <div class="right-align">
-        <b>Total: ₹ <span id="grand_total"></span></b>
-    </div>
-
 </div>
 
 <script>
-    const sb = window.sbcc; // supabase client from supabaseClient.js
-  document.addEventListener("DOMContentLoaded", async () => {
-  const ok = await requirePageAccess("purchase");
-  if (!ok) return;
-  });
-
+const sb = window.sbcc;
 const urlParams = new URLSearchParams(window.location.search);
 const purchaseId = urlParams.get('id');
 
-document.addEventListener("DOMContentLoaded", loadDetails);
+document.addEventListener("DOMContentLoaded", async () => {
+    const ok = await requirePageAccess("purchase");
+    if (!ok) return;
+
+    await loadDetails();
+});
+
+function safeText(v) {
+    return v === null || v === undefined ? '' : String(v);
+}
+
+function showWarning(msg) {
+    const box = document.getElementById("warningBox");
+    box.style.display = "block";
+    box.innerHTML = "⚠ " + msg;
+}
+
+function pickDate(header) {
+    return header.bill_date || header.purchase_date || header.invoice_date || '';
+}
 
 async function loadDetails() {
+    if (!purchaseId) {
+        showWarning("Purchase ID missing. Cannot load bill details.");
+        return;
+    }
 
-    if (!purchaseId) return;
-
-    // Fetch Header
     const { data: header, error: headerError } = await sb
         .from('purchase_details')
         .select('*')
@@ -137,55 +245,65 @@ async function loadDetails() {
         .single();
 
     if (headerError) {
-        alert(headerError.message);
+        showWarning(headerError.message);
         return;
     }
 
-    // Fetch Items
     const { data: items, error: itemsError } = await sb
         .from('purchase_item_details')
         .select('*')
-        .eq('purchase_id', purchaseId);
+        .eq('purchase_id', purchaseId)
+        .order('id', { ascending: true });
 
     if (itemsError) {
-        alert(itemsError.message);
+        showWarning(itemsError.message);
         return;
     }
 
-    // Fill Header
-    document.getElementById("supplier_name").innerText = header.supplier_name || '';
-    document.getElementById("purchase_no").innerText = header.purchase_number || '';
-    document.getElementById("purchase_date").innerText = header.purchase_date || '';
+    document.getElementById("supplier_name").innerText = safeText(header.supplier_name);
+    document.getElementById("supplier_gst").innerText = safeText(header.supplier_gst || header.gst_number);
+    document.getElementById("supplier_address").innerText = safeText(header.supplier_address || header.address);
+    document.getElementById("invoice_no").innerText = safeText(header.invoice_number || header.purchase_number);
+    document.getElementById("purchase_no").innerText = safeText(header.purchase_number);
+    document.getElementById("purchase_date").innerText = safeText(pickDate(header));
 
-    let total = 0;
-    let count = 1;
     const body = document.getElementById("items_body");
     body.innerHTML = "";
 
-    items.forEach(i => {
+    if (!items || !items.length) {
+        showWarning("No item found in this purchase bill. Please check this bill.");
+        body.innerHTML = `
+            <tr class="empty-row">
+                <td colspan="5">No items found in this purchase bill</td>
+            </tr>`;
+        return;
+    }
 
-        const amount = parseFloat(i.purchase_price || 0);
-        total += amount;
+    let count = 1;
+    let invalidCount = 0;
+
+    items.forEach(i => {
+        const qty = parseFloat(i.quantity || 0);
+        if (!i.item_code || !i.item_name || qty <= 0) invalidCount++;
 
         body.innerHTML += `
         <tr>
-            <td>${count++}</td>
-            <td>${i.hsn_code || ''}</td>
-            <td>${i.item_code || ''}</td>
-            <td>${i.item_name || ''}</td>
-            <td>${i.quantity || 0}</td>
-            <td>${parseFloat(i.price || 0).toFixed(2)}</td>
-            <td>${i.gst_percent || 0}%</td>
-            <td>${amount.toFixed(2)}</td>
+            <td class="center">${count++}</td>
+            <td>${safeText(i.hsn_code)}</td>
+            <td>${safeText(i.item_code)}</td>
+            <td>${safeText(i.item_name)}</td>
+            <td class="center">${qty || 0}</td>
         </tr>`;
     });
 
-    document.getElementById("grand_total").innerText = total.toFixed(2);
+    if (invalidCount > 0) {
+        showWarning(`${invalidCount} item row(s) have missing item details or zero quantity. Please verify this purchase bill.`);
+    }
 
     if (urlParams.get('print') === 'true') {
         setTimeout(() => {
             window.print();
-        }, 300);
+        }, 400);
     }
 }
 </script>

@@ -547,7 +547,7 @@
         <div class="brand-mark">V</div>
         <div>
           <h1>VAJRA Stock Correction Ultra Pro</h1>
-          <p>Excel style full filtered list • inline editing • min/max reorder levels • save only edited items</p>
+          <p>Fast paged editing • inline correction • min/max reorder levels • save only edited items</p>
         </div>
       </div>
       <div class="top-actions">
@@ -582,8 +582,6 @@
       </div>
     </div>
 
-    <div class="sql-note">Before using Min Qty / Max Qty, run this once in Supabase SQL: <code>alter table public.stock_items add column if not exists minimum_qty numeric default 0, add column if not exists maximum_qty numeric default 0;</code></div>
-
     <section class="panel">
       <div class="panel-head">
         <div>
@@ -593,7 +591,7 @@
         <div class="chips">
           <button class="btn primary" onclick="toggleTopSection()">Show / Hide Filters</button>
           <div class="chip">Editable master grid</div>
-          <div class="chip">All filtered rows loaded</div>
+          <div class="chip">Fast 100-row pages</div>
           <div class="chip">Only edited rows save</div>
           <div class="chip">Qty hidden for safety</div>
           <div class="chip">Reorder levels ready</div>
@@ -705,14 +703,15 @@
             </tr>
           </thead>
           <tbody id="gridBody">
-            <tr><td colspan="24" class="center muted" style="padding:26px;">Loading stock items...</td></tr>
+            <tr><td colspan="24" class="center muted" style="padding:26px;">Type in any search box to load matched stock items...</td></tr>
           </tbody>
         </table>
       </div>
 
       <div class="footer-bar">
         <div class="pager">
-          <span class="chip">Excel Mode: All filtered rows loaded in one page</span>
+          <span class="chip">Search Mode: no products load until you search</span>
+          <span class="chip">Single Page: all matched rows load together</span>
           <span class="chip" id="visibleSummary">Visible Rows: 0</span>
         </div>
         <div class="pager">
@@ -749,6 +748,8 @@
 
     const state = {
       page: 1,
+      totalRows: 0,
+      autoSearchTimer: null,
       sortBy: 'created_at',
       ascending: false,
       loading: false,
@@ -937,58 +938,96 @@
       }
     }
 
+
+    function hasSearchFilters() {
+      const f = getActiveFilters();
+      return Boolean(
+        f.qSearch || f.item_code || f.item_name || f.hsn_code || f.barcode ||
+        f.department || f.missing || f.min_gst !== '' || f.max_gst !== ''
+      );
+    }
+
+    function buildFilteredQuery() {
+      const f = getActiveFilters();
+      let query = sb.from('stock_items').select('*').order(state.sortBy, { ascending: state.ascending, nullsFirst: false });
+
+      if (f.item_code) query = query.ilike('item_code', `%${f.item_code}%`);
+      if (f.item_name) query = query.ilike('item_name', `%${f.item_name}%`);
+      if (f.hsn_code) query = query.ilike('hsn_code', `%${f.hsn_code}%`);
+      if (f.barcode) query = query.ilike('barcode', `%${f.barcode}%`);
+      if (f.department && f.department !== '__NO_DEPARTMENT__') query = query.eq('department', f.department);
+      if (f.department === '__NO_DEPARTMENT__') query = query.or('department.is.null,department.eq.');
+      if (f.min_gst !== '') query = query.gte('gst_percent', Number(f.min_gst));
+      if (f.max_gst !== '') query = query.lte('gst_percent', Number(f.max_gst));
+
+      if (f.qSearch) {
+        const s = f.qSearch.replaceAll(',', ' ').trim();
+        query = query.or([
+          `item_code.ilike.%${s}%`,
+          `item_name.ilike.%${s}%`,
+          `barcode.ilike.%${s}%`,
+          `hsn_code.ilike.%${s}%`
+        ].join(','));
+      }
+
+      return applyMissingFilter(query, f.missing);
+    }
+
+    function showEmptySearchMessage() {
+      state.rows = [];
+      state.totalRows = 0;
+      state.originalMap = new Map();
+      state.rowErrorMap.clear();
+      document.getElementById('gridBody').innerHTML = '<tr><td colspan="24" class="center muted" style="padding:26px;">Type item code, item name, barcode, HSN, department, or choose a missing-value filter to load matched items.</td></tr>';
+      setStatus('SEARCH');
+      updateStats();
+    }
+
     async function loadRows() {
       await ensureSupabase();
       if (state.saveInProgress) return;
+
+      renderFilterChips();
+      updateSortIndicators();
+
+      if (!hasSearchFilters()) {
+        showEmptySearchMessage();
+        return;
+      }
+
       state.loading = true;
       setStatus('LOADING');
-      showOverlay('Loading stock items', 'Fetching all filtered stock master rows...');
+      showOverlay('Loading matched items', 'Fetching all matching rows into one editable page...');
       try {
-        renderFilterChips();
-        updateSortIndicators();
-        const f = getActiveFilters();
-        let query = sb.from('stock_items').select('*').order(state.sortBy, { ascending: state.ascending, nullsFirst: false });
-
-        if (f.item_code) query = query.ilike('item_code', `%${f.item_code}%`);
-        if (f.item_name) query = query.ilike('item_name', `%${f.item_name}%`);
-        if (f.hsn_code) query = query.ilike('hsn_code', `%${f.hsn_code}%`);
-        if (f.barcode) query = query.ilike('barcode', `%${f.barcode}%`);
-        if (f.department && f.department !== '__NO_DEPARTMENT__') query = query.eq('department', f.department);
-        if (f.department === '__NO_DEPARTMENT__') query = query.or('department.is.null,department.eq.');
-        if (f.min_gst !== '') query = query.gte('gst_percent', Number(f.min_gst));
-        if (f.max_gst !== '') query = query.lte('gst_percent', Number(f.max_gst));
-
-        // broad quick search across a few likely fields
-        if (f.qSearch) {
-          const s = f.qSearch.replaceAll(',', ' ').trim();
-          query = query.or([
-            `item_code.ilike.%${s}%`,
-            `item_name.ilike.%${s}%`,
-            `barcode.ilike.%${s}%`,
-            `hsn_code.ilike.%${s}%`
-          ].join(','));
-        }
-
-        query = applyMissingFilter(query, f.missing);
-
         const allRows = [];
         const chunkSize = 1000;
         let from = 0;
+
         while (true) {
-          const { data, error } = await query.range(from, from + chunkSize - 1);
+          document.getElementById('overlayText').textContent = `Loaded ${allRows.length} row(s)...`;
+          const { data, error } = await buildFilteredQuery().range(from, from + chunkSize - 1);
           if (error) throw error;
           const rows = Array.isArray(data) ? data : [];
           allRows.push(...rows);
           if (rows.length < chunkSize) break;
           from += chunkSize;
+          await new Promise(resolve => setTimeout(resolve, 0));
         }
 
         state.rows = allRows;
+        state.totalRows = allRows.length;
         state.lastFetchCount = state.rows.length;
         state.originalMap = new Map(state.rows.map(r => [r.id, deepClone(r)]));
+
+        document.getElementById('overlayText').textContent = `Rendering ${state.rows.length} matched row(s)...`;
+        await new Promise(resolve => setTimeout(resolve, 0));
         renderRows();
         updateStats();
         setStatus('READY');
+
+        if (state.rows.length >= 10000) {
+          toast(`${state.rows.length} rows loaded in one page. Browser may feel heavy while editing.`, 'info', 6000);
+        }
       } catch (err) {
         console.error(err);
         setStatus('ERROR');
@@ -1511,17 +1550,24 @@
     }
 
     function goPage(page) {
-      if (page < 1) return;
-      if (state.dirtyMap.size) {
-        const ok = confirm('You have unsaved changes. Page change may hide those rows. Continue?');
-        if (!ok) return;
-      }
-      state.page = page;
-      loadRows();
+      toast('Pagination removed. All matched rows are shown in one page.', 'info');
+    }
+
+    function changePageSize(value) {
+      toast('Rows per page removed. Search results load in one page.', 'info');
+    }
+
+    function scheduleSearch(delay = 450) {
+      clearTimeout(state.autoSearchTimer);
+      state.autoSearchTimer = setTimeout(() => applyFilters(true), delay);
     }
 
     function applyFilters(resetPage = true) {
-      if (resetPage) state.page = 1;
+      if (state.dirtyMap.size) {
+        const ok = confirm('You have unsaved changes. Search again without saving?');
+        if (!ok) return;
+      }
+      state.page = 1;
       loadRows();
     }
 
@@ -1534,7 +1580,7 @@
       });
       state.page = 1;
       renderFilterChips();
-      loadRows();
+      showEmptySearchMessage();
     }
 
     function exportVisibleCsv() {
@@ -1551,7 +1597,7 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `stock_correction_filtered_rows.csv`;
+      a.download = `stock_correction_matched_rows.csv`;
       a.click();
       URL.revokeObjectURL(url);
       toast('Filtered rows exported to CSV', 'success');
@@ -1563,7 +1609,8 @@
     }
 
     function reloadPageData() {
-      loadRows();
+      if (hasSearchFilters()) loadRows();
+      else showEmptySearchMessage();
     }
 
     function bindTopEvents() {
@@ -1571,13 +1618,16 @@
         const el = document.getElementById(id);
         el?.addEventListener('input', () => {
           el.value = upperValue(el.value);
+          scheduleSearch(450);
         });
         el?.addEventListener('keydown', (e) => {
           if (e.key === 'Enter') applyFilters(true);
         });
       });
       ['fMinGst','fMaxGst'].forEach(id => {
-        document.getElementById(id)?.addEventListener('keydown', (e) => {
+        const el = document.getElementById(id);
+        el?.addEventListener('input', () => scheduleSearch(550));
+        el?.addEventListener('keydown', (e) => {
           if (e.key === 'Enter') applyFilters(true);
         });
       });
@@ -1600,12 +1650,7 @@
       bindTopEvents();
       updateSortIndicators();
       renderFilterChips();
-      updateStats();
-      try {
-        await loadRows();
-      } catch (err) {
-        console.error(err);
-      }
+      showEmptySearchMessage();
     }
 
     init();

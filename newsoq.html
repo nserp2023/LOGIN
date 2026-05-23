@@ -2061,6 +2061,8 @@
 
         if (!paymentTypeEl || !paidAmountEl) return;
 
+        updateAdvanceCreditOptionVisibility();
+
         if (docType === "sales_order" || isSalesOrderConversionMode) {
             paymentTypeEl.value = isSalesOrderConversionMode ? "ADVANCE CREDIT" : "CREDIT";
             paymentTypeEl.disabled = true;
@@ -2071,6 +2073,30 @@
             paymentTypeEl.disabled = false;
             paidAmountEl.readOnly = false;
             paidAmountEl.placeholder = "0.00";
+        }
+
+        updateAdvanceCreditOptionVisibility();
+    }
+
+
+    function updateAdvanceCreditOptionVisibility() {
+        const paymentTypeEl = document.getElementById("payment_type");
+        if (!paymentTypeEl) return;
+
+        const docType = getCurrentDocType();
+        const advanceOption = paymentTypeEl.querySelector('option[value="ADVANCE CREDIT"]');
+        const allowAdvanceCredit = !!isSalesOrderConversionMode;
+
+        if (advanceOption) {
+            advanceOption.hidden = !allowAdvanceCredit;
+            advanceOption.disabled = !allowAdvanceCredit;
+        }
+
+        // ADVANCE CREDIT must be used only for Sales Order conversion bills.
+        // For direct Sales / Bill / Sales Order entry, force a safe normal value.
+        if (!allowAdvanceCredit && String(paymentTypeEl.value || "").toUpperCase() === "ADVANCE CREDIT") {
+            paymentTypeEl.value = docType === "sales_order" ? "CREDIT" : "CASH";
+            paymentTypeEl.dataset.justChangedToCredit = paymentTypeEl.value === "CREDIT" ? "1" : "0";
         }
     }
 
@@ -2094,6 +2120,8 @@
         if (!paymentTypeGroup || !paidAmountGroup || !balanceBox || !paymentTypeEl || !paidAmountEl || !balanceText) {
             return;
         }
+
+        updateAdvanceCreditOptionVisibility();
 
         const total = getCurrentRoundedGrandTotal();
         const showPayment = ["sales", "sales_pack", "sales_order"].includes(docType);
@@ -2175,6 +2203,13 @@
                     e.target.value = isSalesOrderConversionMode ? "ADVANCE CREDIT" : "CREDIT";
                     e.target.dataset.justChangedToCredit = "0";
                     syncPaymentUI(true);
+                    return;
+                }
+
+                if (String(e.target.value || "").toUpperCase() === "ADVANCE CREDIT") {
+                    e.target.value = "CASH";
+                    e.target.dataset.justChangedToCredit = "0";
+                    syncPaymentUI(false);
                     return;
                 }
 
@@ -4255,6 +4290,15 @@ function calcTotal() {
                     paymentTypeEl.value = paymentType;
                     paymentTypeEl.disabled = true;
                     paymentTypeEl.dataset.justChangedToCredit = "0";
+                }
+            }
+
+            if (!isSalesOrderConversionMode && paymentType === "ADVANCE CREDIT") {
+                paymentType = docType === "sales_order" ? "CREDIT" : "CASH";
+                const paymentTypeEl = document.getElementById("payment_type");
+                if (paymentTypeEl) {
+                    paymentTypeEl.value = paymentType;
+                    paymentTypeEl.dataset.justChangedToCredit = paymentType === "CREDIT" ? "1" : "0";
                 }
             }
 

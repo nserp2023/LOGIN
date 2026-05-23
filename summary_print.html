@@ -336,7 +336,7 @@
 
       <div class="ctrl">
         <label>&nbsp;</label>
-        <button onclick="window.print()">Print</button>
+        <button type="button" onclick="printWithOptionalShiftClose()">Print</button>
       </div>
     </div>
 
@@ -350,6 +350,9 @@
       : null);
 
     const $ = (id) => document.getElementById(id);
+
+    let lastLoadedSummary = null;
+    let printCloseInProgress = false;
 
     // Smart A4 page fit uses real rendered height, not fixed row counts.
 
@@ -760,6 +763,150 @@
       };
     }
 
+    function todayISODate(){
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+
+    function getSelectedDate(){
+      return $('closingDate')?.value || todayISODate();
+    }
+
+    function parseCurrencyValue(value){
+      return Number(String(value || '0').replace(/[₹,\s]/g, '')) || 0;
+    }
+
+    function shiftDayRange(dateStr){
+      const d = dateStr ? new Date(dateStr + 'T00:00:00') : new Date();
+      return {
+        start: new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0).toISOString(),
+        end: new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999).toISOString()
+      };
+    }
+
+    async function getCurrentShiftExpectedCash(dateStr, liveTodayBalance){
+      const range = shiftDayRange(dateStr);
+      const { data, error } = await sb
+        .from('daily_cash_closing')
+        .select('*')
+        .gte('closing_time', range.start)
+        .lte('closing_time', range.end)
+        .order('shift_no', { ascending: true })
+        .order('closing_time', { ascending: true });
+
+      if(error) throw new Error('Could not read shift closing records: ' + error.message);
+
+      const shifts = Array.isArray(data) ? data : [];
+      if(!shifts.length){
+        return { shiftNo: 1, expectedCash: liveTodayBalance, shifts };
+      }
+
+      const lastShift = shifts[shifts.length - 1];
+      const lastShiftNo = Number(lastShift.shift_no || shifts.length || 1);
+      const previousExpected = Number(lastShift.system_expected_cash || 0);
+      const previousRemaining = Number(lastShift.remaining_cash ?? (previousExpected - Number(lastShift.closing_amount || 0)));
+      const newCashFlowAfterLastShift = liveTodayBalance - previousExpected;
+
+      return {
+        shiftNo: lastShiftNo + 1,
+        expectedCash: previousRemaining + newCashFlowAfterLastShift,
+        shifts
+      };
+    }
+
+    async function saveShiftClosingBeforePrint(dateStr, liveTodayBalance){
+      if(!sb) throw new Error('Supabase client not found. Please check supabaseClient.js');
+
+      const userRes = await sb.auth.getUser();
+      const user = userRes?.data?.user;
+      if(!user) throw new Error('User not found. Please login again.');
+
+      const shiftInfo = await getCurrentShiftExpectedCash(dateStr, liveTodayBalance);
+      const expectedCash = Number(shiftInfo.expectedCash || 0);
+      const shiftNo = Number(shiftInfo.shiftNo || 1);
+
+      const amountText = prompt(
+        `Enter current shift closing cash amount\nExpected cash: ${fmtCurrency(expectedCash)}`,
+        String(Math.round(expectedCash))
+      );
+      if(amountText === null) return { closed: false, cancelled: true };
+
+      const amount = Number(String(amountText).replace(/,/g, '').trim());
+      if(!Number.isFinite(amount) || amount < 0){
+        alert('Please enter a valid cash amount.');
+        return { closed: false, cancelled: true };
+      }
+
+      const defaultStaff = localStorage.getItem('username') || 'Staff';
+      const staffName = prompt('Enter staff name', defaultStaff) || defaultStaff;
+      const notes = prompt('Enter note if needed (difference / timing / remarks)', 'Closed from Summary Print') || 'Closed from Summary Print';
+      const remainingCash = expectedCash - amount;
+
+      const payload = {
+        user_id: user.id,
+        shift_no: shiftNo,
+        staff_name: staffName,
+        closing_amount: amount,
+        system_expected_cash: expectedCash,
+        remaining_cash: remainingCash,
+        notes: notes
+      };
+
+      const { error } = await sb.from('daily_cash_closing').insert([payload]).select().maybeSingle();
+      if(error) throw new Error('Could not save shift closing: ' + error.message);
+
+      alert(`Shift ${shiftNo} closed successfully. Remaining cash: ${fmtCurrency(remainingCash)}`);
+      return { closed: true, cancelled: false };
+    }
+
+    async function ensureSummaryLoadedForPrint(){
+      const dateStr = getSelectedDate();
+      if(!lastLoadedSummary || lastLoadedSummary.dateStr !== dateStr){
+        await loadClosingData();
+      }
+      return lastLoadedSummary;
+    }
+
+    async function printWithOptionalShiftClose(){
+      if(printCloseInProgress) return;
+      printCloseInProgress = true;
+
+      try{
+        const summary = await ensureSummaryLoadedForPrint();
+        if(!summary) throw new Error('Please load the summary first.');
+
+        const dateStr = summary.dateStr || getSelectedDate();
+        const isToday = dateStr === todayISODate();
+
+        if(!isToday){
+          window.print();
+          return;
+        }
+
+        const needClose = confirm('Do you want to close this shift before printing?\n\nOK = Close shift and print\nCancel = Print only');
+
+        if(needClose){
+          setStatus('Closing shift before print...');
+          const result = await saveShiftClosingBeforePrint(dateStr, Number(summary.balanceAmount || 0));
+          if(result.cancelled){
+            setStatus('Print cancelled. Shift closing was not saved.');
+            return;
+          }
+          setStatus('Shift closed. Printing...');
+        }else{
+          setStatus('Printing without shift closing...');
+        }
+
+        setTimeout(() => window.print(), 150);
+      }catch(err){
+        console.error(err);
+        alert(err.message || 'Could not print / close shift.');
+        setStatus(err.message || 'Could not print / close shift.', true);
+      }finally{
+        printCloseInProgress = false;
+      }
+    }
+
     async function loadClosingData(){
       try{
         if(!sb) throw new Error('Supabase client not found. Please check supabaseClient.js');
@@ -816,6 +963,16 @@
           balance: fmtCurrency((sales.cashSalesTotal + cash.receiptsTotal) - (sr.total + cash.paymentsTotal))
         };
 
+        lastLoadedSummary = {
+          dateStr,
+          cashSalesTotal: Number(sales.cashSalesTotal || 0),
+          receiptsTotal: Number(cash.receiptsTotal || 0),
+          salesReturnTotal: Number(sr.total || 0),
+          paymentsTotal: Number(cash.paymentsTotal || 0),
+          balanceAmount: (Number(sales.cashSalesTotal || 0) + Number(cash.receiptsTotal || 0)) - (Number(sr.total || 0) + Number(cash.paymentsTotal || 0)),
+          totals
+        };
+
         renderPages(receiptRows, paymentRows, creditRows, advanceCreditRows, totals);
         setStatus('Loaded successfully.');
       }catch(err){
@@ -843,6 +1000,16 @@
         returnPaymentTotal: '0',
         returnAmount: '0',
         balance: '0'
+      };
+
+      lastLoadedSummary = {
+        dateStr: `${yyyy}-${mm}-${dd}`,
+        cashSalesTotal: 0,
+        receiptsTotal: 0,
+        salesReturnTotal: 0,
+        paymentsTotal: 0,
+        balanceAmount: 0,
+        totals: emptyTotals
       };
 
       renderPages([], [], [], [], emptyTotals);

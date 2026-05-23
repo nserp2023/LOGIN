@@ -2186,6 +2186,12 @@
         const paidAmount = getMoneyValue(paidAmountEl.value);
         const balanceAmount = Math.max(0, total - paidAmount);
         balanceText.innerText = "₹" + balanceAmount.toFixed(2);
+
+        // Hide Credit Paid / Paid Amount and Balance box for CASH bills.
+        // Show them only for CREDIT, ADVANCE CREDIT, and SALES ORDER advance flow.
+        const showPaidAndBalance = showPayment && paymentType !== "CASH";
+        paidAmountGroup.style.display = showPaidAndBalance ? "" : "none";
+        balanceBox.style.display = showPaidAndBalance ? "" : "none";
     }
 
     function bindPaymentEvents() {

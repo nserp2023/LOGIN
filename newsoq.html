@@ -955,6 +955,7 @@
     <select id="payment_type" class="form-control w-sm">
         <option value="CASH">CASH</option>
         <option value="CREDIT">CREDIT</option>
+        <option value="ADVANCE CREDIT">ADVANCE CREDIT</option>
     </select>
 </div>
 
@@ -2010,17 +2011,25 @@
         return document.getElementById("doc_type")?.value || "sales";
     }
 
-    function getSalesOrderConversionPaidAmount(totalAmount = getCurrentRoundedGrandTotal()) {
+    function getSalesOrderConversionReceiptAmount(totalAmount = getCurrentRoundedGrandTotal()) {
         /*
-          FINAL CONFIRMED FLOW:
-          Sales Order conversion to Sales/Bill must always be CREDIT.
-          paid_amount = advance already received in Sales Order.
-          balance_amount = current bill total - advance.
-          No new cash_transactions receipt is created during conversion.
+          NEW ADVANCE CREDIT FLOW:
+          Sales Order conversion to Sales/Bill must use payment_type = ADVANCE CREDIT.
+          receipt amount = current converted bill total - advance already received in Sales Order.
+          This amount is saved to cash_transactions so Payment / Receipt and Dashboard can track it separately.
         */
         const total = parseFloat(totalAmount || 0) || 0;
         const advance = parseFloat(salesOrderAdvancePaid || 0) || 0;
-        return Math.max(0, Math.min(total, advance));
+        return Math.max(0, total - advance);
+    }
+
+    function getSalesOrderConversionBalanceAmount(totalAmount = getCurrentRoundedGrandTotal(), receiptAmount = null) {
+        const total = parseFloat(totalAmount || 0) || 0;
+        const advance = Math.max(0, parseFloat(salesOrderAdvancePaid || 0) || 0);
+        const receipt = receiptAmount === null
+            ? getSalesOrderConversionReceiptAmount(total)
+            : Math.max(0, parseFloat(receiptAmount || 0) || 0);
+        return Math.max(0, total - advance - receipt);
     }
 
     function applySalesOrderConversionPaidAmount(totalAmount = getCurrentRoundedGrandTotal()) {
@@ -2030,18 +2039,18 @@
         const paidAmountEl = document.getElementById("paid_amount");
 
         if (paymentTypeEl) {
-            paymentTypeEl.value = "CREDIT";
+            paymentTypeEl.value = "ADVANCE CREDIT";
             paymentTypeEl.disabled = true;
             paymentTypeEl.dataset.justChangedToCredit = "0";
         }
 
         if (paidAmountEl) {
-            const advanceAdjusted = getSalesOrderConversionPaidAmount(totalAmount);
-            paidAmountEl.value = advanceAdjusted.toFixed(2);
+            const receiptAmount = getSalesOrderConversionReceiptAmount(totalAmount);
+            paidAmountEl.value = receiptAmount.toFixed(2);
             paidAmountEl.readOnly = true;
             paidAmountEl.disabled = false;
-            paidAmountEl.placeholder = "Sales Order Advance";
-            paidAmountEl.title = `Sales order advance adjusted into this credit bill (Advance: ₹${(parseFloat(salesOrderAdvancePaid || 0) || 0).toFixed(2)})`;
+            paidAmountEl.placeholder = "Bill Total - Advance";
+            paidAmountEl.title = `Advance credit receipt amount. Bill Total - Sales Order Advance = ₹${receiptAmount.toFixed(2)} (Advance: ₹${(parseFloat(salesOrderAdvancePaid || 0) || 0).toFixed(2)})`;
         }
     }
 
@@ -2053,11 +2062,11 @@
         if (!paymentTypeEl || !paidAmountEl) return;
 
         if (docType === "sales_order" || isSalesOrderConversionMode) {
-            paymentTypeEl.value = "CREDIT";
+            paymentTypeEl.value = isSalesOrderConversionMode ? "ADVANCE CREDIT" : "CREDIT";
             paymentTypeEl.disabled = true;
             paymentTypeEl.dataset.justChangedToCredit = "0";
             paidAmountEl.disabled = false;
-            paidAmountEl.placeholder = isSalesOrderConversionMode ? "Sales Order Advance" : "Advance Amount";
+            paidAmountEl.placeholder = isSalesOrderConversionMode ? "Bill Total - Advance" : "Advance Amount";
         } else {
             paymentTypeEl.disabled = false;
             paidAmountEl.readOnly = false;
@@ -2107,7 +2116,7 @@
 
         if (paidLabel) {
             paidLabel.textContent = isSalesOrderConversionMode
-                ? "Advance Adjusted"
+                ? "Receipt After Advance"
                 : (docType === "sales_order" ? "Advance" : "Credit Paid");
         }
 
@@ -2126,9 +2135,9 @@
             paidAmountEl.placeholder = "0.00";
         }
 
-        const paymentType = (docType === "sales_order" || isSalesOrderConversionMode)
+        const paymentType = docType === "sales_order"
             ? "CREDIT"
-            : String(paymentTypeEl.value || "CASH").toUpperCase();
+            : (isSalesOrderConversionMode ? "ADVANCE CREDIT" : String(paymentTypeEl.value || "CASH").toUpperCase());
 
         if (paymentType === "CASH") {
             paidAmountEl.value = total.toFixed(2);
@@ -2163,7 +2172,7 @@
         if (paymentTypeEl && !paymentTypeEl.dataset.boundCreditFix) {
             paymentTypeEl.addEventListener("change", (e) => {
                 if (getCurrentDocType() === "sales_order" || isSalesOrderConversionMode) {
-                    e.target.value = "CREDIT";
+                    e.target.value = isSalesOrderConversionMode ? "ADVANCE CREDIT" : "CREDIT";
                     e.target.dataset.justChangedToCredit = "0";
                     syncPaymentUI(true);
                     return;
@@ -2225,19 +2234,23 @@
         paidAmount,
         paymentType
     }) {
-        const isCredit = String(paymentType || "").toUpperCase() === "CREDIT";
+        const payType = String(paymentType || "").toUpperCase();
+        const isCredit = payType === "CREDIT" || payType === "ADVANCE CREDIT";
         const amount = parseFloat(paidAmount || 0) || 0;
         if (!isCredit || amount <= 0 || !headerId) return;
 
         const refType =
             docType === "sales_order" ? "sales_order_advance" :
+            payType === "ADVANCE CREDIT" ? "sales_order_conversion_receipt" :
             docType === "sales_pack" ? "sales_pack_credit" :
             "sales_credit";
 
         const remarks =
             docType === "sales_order"
                 ? `Advance for Sales Order ${billNo}`
-                : `Credit paid for ${docType === "sales_pack" ? "Sales + Packing" : "Sales"} Bill ${billNo}`;
+                : payType === "ADVANCE CREDIT"
+                    ? `Advance Credit receipt for converted Sales Order Bill ${billNo}`
+                    : `Credit paid for ${docType === "sales_pack" ? "Sales + Packing" : "Sales"} Bill ${billNo}`;
 
         const safeBillNo = String(billNo || "0").replace(/[^A-Z0-9_-]/gi, "");
         const voucherNo = `AUTO-${refType}-${headerId}-${safeBillNo}`;
@@ -2262,12 +2275,10 @@
                 party_name: customerName || "CUSTOMER",
                 amount: amount,
                 remarks: remarks,
-                // Sales order advance must wait for approval in Payment / Receipt page.
+                // Auto receipts are kept approved so Dashboard can count them immediately.
                 approval_status: "approved",
                 approved_by: "AUTO",
                 approved_at: new Date().toISOString(),
-                approved_by: docType === "sales_order" ? null : "AUTO",
-                approved_at: docType === "sales_order" ? null : new Date().toISOString(),
                 reference_type: refType,
                 reference_id: headerId
             }]);
@@ -4238,10 +4249,10 @@ function calcTotal() {
 
             let paymentType = String(document.getElementById("payment_type")?.value || "CASH").toUpperCase();
             if (docType === "sales_order" || isSalesOrderConversionMode) {
-                paymentType = "CREDIT";
+                paymentType = isSalesOrderConversionMode ? "ADVANCE CREDIT" : "CREDIT";
                 const paymentTypeEl = document.getElementById("payment_type");
                 if (paymentTypeEl) {
-                    paymentTypeEl.value = "CREDIT";
+                    paymentTypeEl.value = paymentType;
                     paymentTypeEl.disabled = true;
                     paymentTypeEl.dataset.justChangedToCredit = "0";
                 }
@@ -4258,8 +4269,8 @@ function calcTotal() {
             let paidAmount = parseFloat(document.getElementById("paid_amount")?.value) || 0;
 
             if (isSalesOrderConversionMode) {
-                // paid_amount = advance already received; balance_amount = current bill total - advance
-                paidAmount = Math.max(0, Math.min(roundedTotal, parseFloat(salesOrderAdvancePaid || 0) || 0));
+                // ADVANCE CREDIT: receipt amount = current converted bill total - sales order advance.
+                paidAmount = getSalesOrderConversionReceiptAmount(roundedTotal);
                 const paidAmountEl = document.getElementById("paid_amount");
                 if (paidAmountEl) paidAmountEl.value = paidAmount.toFixed(2);
             } else {
@@ -4270,7 +4281,9 @@ function calcTotal() {
                 paidAmount = roundedTotal;
             }
 
-            const balanceAmount = Math.max(0, roundedTotal - paidAmount);
+            const balanceAmount = isSalesOrderConversionMode
+                ? getSalesOrderConversionBalanceAmount(roundedTotal, paidAmount)
+                : Math.max(0, roundedTotal - paidAmount);
 
             const hasCustomerDetails = !!((head.mob || "").trim() || (head.name || "").trim());
 
@@ -4281,8 +4294,8 @@ function calcTotal() {
                 head.gst = "";
             }
 
-            if (["sales", "sales_pack"].includes(docType) && paymentType === "CREDIT" && !((head.mob || "").trim() || (head.name || "").trim())) {
-                throw new Error("Customer Name or Mobile is required for CREDIT bills.");
+            if (["sales", "sales_pack"].includes(docType) && ["CREDIT", "ADVANCE CREDIT"].includes(paymentType) && !((head.mob || "").trim() || (head.name || "").trim())) {
+                throw new Error("Customer Name or Mobile is required for CREDIT / ADVANCE CREDIT bills.");
             }
 
             if (docType === "sales_order" && paymentType === "CREDIT" && !((head.mob || "").trim() || (head.name || "").trim())) {
@@ -4527,15 +4540,11 @@ function calcTotal() {
             if (["sales", "sales_pack", "sales_order"].includes(docType)) {
                 const headerId = saleId;
                 const billNoForTxn = editingId ? document.getElementById("bill_number").value : nextBillNo;
-                const isCredit = String(paymentType || "").toUpperCase() === "CREDIT";
+                const payTypeForTxn = String(paymentType || "").toUpperCase();
+                const isCredit = payTypeForTxn === "CREDIT" || payTypeForTxn === "ADVANCE CREDIT";
                 const paidNum = parseFloat(paidAmount || 0) || 0;
 
-                if (isCredit && paidNum > 0 && !isSalesOrderConversionMode) {
-                    /*
-                      Do not create another receipt during Sales Order conversion.
-                      The advance was already collected and stored when the Sales Order was made.
-                      Converted bill only carries paid_amount = advance and balance_amount = bill total - advance.
-                    */
+                if (isCredit && paidNum > 0) {
                     await upsertCreditPaymentTransaction({
                         docType,
                         headerId,
@@ -4715,13 +4724,13 @@ function calcTotal() {
         const paymentTypeEl = document.getElementById("payment_type");
         const paidAmountEl = document.getElementById("paid_amount");
         if (paymentTypeEl) {
-            paymentTypeEl.value = "CREDIT";
+            paymentTypeEl.value = "ADVANCE CREDIT";
             paymentTypeEl.disabled = true;
             paymentTypeEl.dataset.justChangedToCredit = "0";
         }
         if (paidAmountEl) {
             paidAmountEl.disabled = false;
-            paidAmountEl.placeholder = "Advance / Paid Amount";
+            paidAmountEl.placeholder = "Bill Total - Advance";
         }
         syncPaymentUI(true);
 
@@ -4792,7 +4801,7 @@ function calcTotal() {
         calcTotal();
         applySalesOrderConversionPaidAmount();
         syncPaymentUI(true);
-        alert(`Sales Order loaded. Advance paid: ₹${salesOrderAdvancePaid.toFixed(2)}. Paid Amount is auto-set as Current Bill Total - Advance.`);
+        alert(`Sales Order loaded. Advance paid: ₹${salesOrderAdvancePaid.toFixed(2)}. Payment Type is ADVANCE CREDIT and receipt amount is Current Bill Total - Advance.`);
     }
 
 

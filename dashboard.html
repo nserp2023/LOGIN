@@ -557,6 +557,7 @@
     .summary-card.balance-card::before { background: linear-gradient(90deg, #2563eb, #60a5fa); }
     .summary-card.cash-sales-card::before { background: linear-gradient(90deg, #0ea5e9, #38bdf8); }
     .summary-card.credit-sales-card::before { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+    .summary-card.advance-credit-sales-card::before { background: linear-gradient(90deg, #7c3aed, #06b6d4); }
     .summary-card.receipt-card::before { background: linear-gradient(90deg, #10b981, #34d399); }
     .summary-card.return-card::before { background: linear-gradient(90deg, #fb7185, #ef4444); }
     .summary-card.payment-card::before { background: linear-gradient(90deg, #f43f5e, #e11d48); }
@@ -1220,6 +1221,10 @@
                 <div class="hero-tag-value" id="todayCreditSalesHero">₹ 0.00</div>
               </div>
               <div class="hero-tag">
+                <div class="hero-tag-label">Advance Credit</div>
+                <div class="hero-tag-value" id="todayAdvanceCreditSalesHero">₹ 0.00</div>
+              </div>
+              <div class="hero-tag">
                 <div class="hero-tag-label">Pending</div>
                 <div class="hero-tag-value" id="pendingApprovalsHero">0</div>
               </div>
@@ -1282,7 +1287,13 @@
         <div class="summary-card credit-sales-card">
           <div class="summary-title">Credit Sales</div>
           <div class="summary-value" id="todayCreditSales">₹ 0.00</div>
-          <div class="summary-note">Shown separately in a different color and excluded from today's balance.</div>
+          <div class="summary-note">Normal credit bills only. Excluded from today's cash balance.</div>
+        </div>
+
+        <div class="summary-card advance-credit-sales-card">
+          <div class="summary-title">Advance Credit</div>
+          <div class="summary-value" id="todayAdvanceCreditSales">₹ 0.00</div>
+          <div class="summary-note">Sales order converted bills only. Balance collection comes through Approved Receipt.</div>
         </div>
 
         <div class="summary-card receipt-card">
@@ -1450,7 +1461,7 @@
       }
 
       if (welcomeEl) {
-        welcomeEl.innerText = `Role: ${role}. This dashboard is now optimized for approval-aware cash control and separate credit sales tracking.`;
+        welcomeEl.innerText = `Role: ${role}. This dashboard is now optimized for approval-aware cash control and CASH / CREDIT / ADVANCE CREDIT tracking.`;
       }
 
       const formattedRole = role.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
@@ -1687,6 +1698,25 @@
       return 0;
     }
 
+    function normalizePaymentType(value){
+      return String(value || "CASH")
+        .trim()
+        .toUpperCase()
+        .replace(/[\s_\-]+/g, " ");
+    }
+
+    function isAdvanceCreditPaymentType(value){
+      return normalizePaymentType(value) === "ADVANCE CREDIT";
+    }
+
+    function isCreditPaymentType(value){
+      return normalizePaymentType(value) === "CREDIT";
+    }
+
+    function isCashPaymentType(value){
+      return normalizePaymentType(value) === "CASH";
+    }
+
     function isSalesOrderAdvanceCashTxn(row){
       const text = `${row?.voucher_no || ""} ${row?.reference_type || ""} ${row?.remarks || ""}`.toLowerCase().replace(/[\s\-_]+/g, "");
       return text.includes("salesorderadvance") || text.includes("advanceforsalesorder");
@@ -1717,14 +1747,21 @@
 
       let today_cash_sales = 0;
       let today_credit_sales = 0;
+      let today_advance_credit_sales = 0;
 
       salesRows.forEach(row => {
         if(isCancelledRow(row)) return;
 
-        const paymentType = String(row.payment_type || "CASH").trim().toUpperCase();
+        const paymentType = normalizePaymentType(row.payment_type);
         const amount = moneyFromRow(row, ["payable", "invoice_amount", "total_amount"]);
-        if(paymentType === "CREDIT") today_credit_sales += amount;
-        else today_cash_sales += amount;
+
+        if(isAdvanceCreditPaymentType(paymentType)){
+          today_advance_credit_sales += amount;
+        }else if(isCreditPaymentType(paymentType)){
+          today_credit_sales += amount;
+        }else{
+          today_cash_sales += amount;
+        }
       });
 
       const salesIds = new Set(salesRows.map(r => String(r.id || "")));
@@ -1733,7 +1770,17 @@
 
         const linkedSalesId = String(row.sales_id || "");
         if(linkedSalesId && salesIds.has(linkedSalesId)) return;
-        today_cash_sales += moneyFromRow(row, ["packing_amount", "payable", "invoice_amount", "total_amount"]);
+
+        const paymentType = normalizePaymentType(row.payment_type);
+        const amount = moneyFromRow(row, ["packing_amount", "payable", "invoice_amount", "total_amount"]);
+
+        if(isAdvanceCreditPaymentType(paymentType)){
+          today_advance_credit_sales += amount;
+        }else if(isCreditPaymentType(paymentType)){
+          today_credit_sales += amount;
+        }else{
+          today_cash_sales += amount;
+        }
       });
 
       let today_receipt = 0;
@@ -1743,6 +1790,9 @@
         const txnType = String(row.txn_type || "").trim().toLowerCase();
         const status = String(row.approval_status || "").trim().toLowerCase();
         const amount = Number(row.amount || 0) || 0;
+
+        // ADVANCE CREDIT converted-bill balance amount is saved as a normal approved receipt.
+        // So it affects Today's Balance through today_receipt, not by adding the bill total into cash sales.
         if(txnType === "receipt" && status === "approved") today_receipt += amount;
         if(txnType === "payment" && status === "approved") today_payment += amount;
         if(status === "pending" && (txnType === "payment" || isSalesOrderAdvanceCashTxn(row))) pending_payments += 1;
@@ -1762,6 +1812,7 @@
       return {
         today_cash_sales,
         today_credit_sales,
+        today_advance_credit_sales,
         today_receipt,
         today_sales_return,
         today_payment,
@@ -1776,6 +1827,7 @@
         const row = await getDirectDashboardSummary();
         const todaySales = Number(row.today_cash_sales || 0);
         const todayCreditSales = Number(row.today_credit_sales || 0);
+        const todayAdvanceCreditSales = Number(row.today_advance_credit_sales || 0);
         const todayReceipt = Number(row.today_receipt || 0);
         const todaySalesReturn = Number(row.today_sales_return || 0);
         const todayPayment = Number(row.today_payment || 0);
@@ -1787,6 +1839,8 @@
         setText("todaySalesHero", formatCurrency(todaySales));
         setText("todayCreditSales", formatCurrency(todayCreditSales));
         setText("todayCreditSalesHero", formatCurrency(todayCreditSales));
+        setText("todayAdvanceCreditSales", formatCurrency(todayAdvanceCreditSales));
+        setText("todayAdvanceCreditSalesHero", formatCurrency(todayAdvanceCreditSales));
         setText("todayReceipt", formatCurrency(todayReceipt));
         setText("todaySalesReturn", formatCurrency(todaySalesReturn));
         setText("todayPayment", formatCurrency(todayPayment));
@@ -1802,7 +1856,7 @@
         setText("cashToClose", formatCurrency(todayBalance));
         setText("systemExpectedCash", formatCurrency(todayBalance));
         updateBalanceToCollect();
-        updateV2HealthStatus(todayBalance, todayCreditSales, pendingPayments + pendingReturns);
+        updateV2HealthStatus(todayBalance, todayCreditSales + todayAdvanceCreditSales, pendingPayments + pendingReturns);
       } catch (err) {
         console.error("loadTodayDashboardSummary error:", err);
         alert("Unexpected error while loading dashboard.");

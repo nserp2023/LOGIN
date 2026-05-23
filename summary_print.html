@@ -236,6 +236,10 @@
       letter-spacing:.05em;
     }
 
+    .advance-credit-title{
+      background:#f2f2f2;
+    }
+
     .credit-table th,
     .credit-table td{
       border-right:1.5px solid var(--line);
@@ -402,8 +406,16 @@
       return s === 'approved' || s === 'accepted';
     }
 
+    function getPaymentType(row){
+      return String(row?.payment_type || 'CASH').trim().toUpperCase();
+    }
+
     function isCreditSale(row){
-      return norm(row.payment_type).includes('credit');
+      return getPaymentType(row) === 'CREDIT';
+    }
+
+    function isAdvanceCreditSale(row){
+      return getPaymentType(row) === 'ADVANCE CREDIT';
     }
 
     function billNo(row){
@@ -525,10 +537,10 @@
       `;
     }
 
-    function buildCreditSection(creditRows, titleSuffix = ''){
+    function buildCreditSection(creditRows, titleSuffix = '', titleText = 'CREDIT - SALES REGISTER', extraTitleClass = ''){
       return `
         <div class="credit-box">
-          <div class="credit-title">CREDIT - SALES REGISTER${titleSuffix}</div>
+          <div class="credit-title ${extraTitleClass}">${safeCell(titleText)}${titleSuffix}</div>
           <table class="credit-table">
             <colgroup>
               <col style="width:18%">
@@ -563,7 +575,7 @@
       `;
     }
 
-    function renderPages(receiptRows, paymentRows, creditRows, totals){
+    function renderPages(receiptRows, paymentRows, creditRows, advanceCreditRows, totals){
       const pagesContainer = $('pagesContainer');
       if(!pagesContainer) return;
       pagesContainer.innerHTML = '';
@@ -640,8 +652,39 @@
         }
       }
 
-      // If there are no credit rows and the empty credit table alone wastes space, keep it only on the last page.
-      // This keeps the print format consistent while still using full A4 height for real data rows.
+      // Put advance credit register after normal credit register.
+      const advanceWrapper = document.createElement('div');
+      advanceWrapper.innerHTML = buildCreditSection([], '', 'ADVANCE CREDIT - SALES ORDER CONVERTED BILLS', 'advance-credit-title');
+      page.appendChild(advanceWrapper.firstElementChild);
+
+      if(!pageFits(page)){
+        const lastAdvanceBox = page.querySelector('.credit-box:last-child');
+        if(lastAdvanceBox) lastAdvanceBox.remove();
+
+        page = createPage();
+        page.innerHTML = createContinuationHeader(totals, 'ADVANCE CREDIT - SALES ORDER CONVERTED BILLS') +
+          buildCreditSection([], '', 'ADVANCE CREDIT - SALES ORDER CONVERTED BILLS', 'advance-credit-title');
+      }
+
+      let advanceBody = Array.from(page.querySelectorAll('.credit-table tbody')).pop();
+
+      for(let i = 0; i < advanceCreditRows.length; i++){
+        const rowHtml = buildCreditRows([advanceCreditRows[i]]);
+        advanceBody.insertAdjacentHTML('beforeend', rowHtml);
+
+        if(!pageFits(page)){
+          removeLastIfExists(advanceBody);
+
+          page = createPage();
+          page.innerHTML = createContinuationHeader(totals, 'ADVANCE CREDIT - SALES ORDER CONVERTED BILLS') +
+            buildCreditSection([], ' (CONTINUED)', 'ADVANCE CREDIT - SALES ORDER CONVERTED BILLS', 'advance-credit-title');
+          advanceBody = Array.from(page.querySelectorAll('.credit-table tbody')).pop();
+          advanceBody.insertAdjacentHTML('beforeend', rowHtml);
+        }
+      }
+
+      // Empty registers are intentionally kept so the printed closing sheet always shows all three bill types:
+      // Cash / Credit / Advance Credit.
     }
 
     async function fetchSales(dateStr){
@@ -662,11 +705,15 @@
       );
 
       const creditSales = activeRows.filter(isCreditSale);
-      const cashSales = activeRows.filter(r => !isCreditSale(r));
+      const advanceCreditSales = activeRows.filter(isAdvanceCreditSale);
+      const cashSales = activeRows.filter(r => !isCreditSale(r) && !isAdvanceCreditSale(r));
 
       return {
         creditSales,
-        cashSalesTotal: cashSales.reduce((a, b) => a + num(b.invoice_amount), 0)
+        advanceCreditSales,
+        cashSalesTotal: cashSales.reduce((a, b) => a + num(b.invoice_amount), 0),
+        creditSalesTotal: creditSales.reduce((a, b) => a + num(b.invoice_amount), 0),
+        advanceCreditSalesTotal: advanceCreditSales.reduce((a, b) => a + num(b.invoice_amount), 0)
       };
     }
 
@@ -680,7 +727,9 @@
       if(error) throw error;
 
       const rows = Array.isArray(data) ? data : [];
-      const receipts = rows.filter(r => norm(r.txn_type) === 'receipt');
+      const receipts = rows.filter(r =>
+        norm(r.txn_type) === 'receipt' && isApprovedStatus(r.approval_status)
+      );
       const payments = rows.filter(r =>
         norm(r.txn_type) === 'payment' && isApprovedStatus(r.approval_status)
       );
@@ -749,17 +798,25 @@
           fmtCurrency(r.invoice_amount || 0)
         ]);
 
+        const advanceCreditRows = sales.advanceCreditSales.map(r => [
+          billNo(r),
+          r.customer_name || '',
+          r.customer_mobile || '',
+          fmtCurrency(r.invoice_amount || 0)
+        ]);
+
         const totals = {
           metaDate: fmtDate(dateStr),
           generatedAt: fmtDateTime(new Date()),
           saleReceiptTotal: fmtCurrency(sales.cashSalesTotal + cash.receiptsTotal),
           cashSalesTotal: fmtCurrency(sales.cashSalesTotal),
+          advanceCreditTotal: fmtCurrency(sales.advanceCreditSalesTotal),
           returnPaymentTotal: fmtCurrency(sr.total + cash.paymentsTotal),
           returnAmount: fmtCurrency(sr.total),
           balance: fmtCurrency((sales.cashSalesTotal + cash.receiptsTotal) - (sr.total + cash.paymentsTotal))
         };
 
-        renderPages(receiptRows, paymentRows, creditRows, totals);
+        renderPages(receiptRows, paymentRows, creditRows, advanceCreditRows, totals);
         setStatus('Loaded successfully.');
       }catch(err){
         console.error(err);
@@ -782,12 +839,13 @@
         generatedAt: fmtDateTime(new Date()),
         saleReceiptTotal: '0',
         cashSalesTotal: '0',
+        advanceCreditTotal: '0',
         returnPaymentTotal: '0',
         returnAmount: '0',
         balance: '0'
       };
 
-      renderPages([], [], [], emptyTotals);
+      renderPages([], [], [], [], emptyTotals);
     })();
   </script>
 </body>

@@ -602,11 +602,11 @@
         <div class="field"><label>GST number</label><input id="gstNumber" class="readonly" readonly /></div>
         <div class="field"><label>Supplier name</label><input id="supplierName" class="readonly" readonly /></div>
         <div class="field"><label>Supplier address</label><input id="supplierAddress" class="readonly" readonly /></div>
-        <div class="field"><label>Original invoice no</label><input id="invoiceNumber" class="readonly" readonly /></div>
-        <div class="field"><label>Original invoice date</label><input id="invoiceDate" class="readonly" readonly /></div>
-        <div class="field"><label>Return amount</label><input id="invoiceAmount" class="readonly" readonly /></div>
+        <div class="field"><label id="invoiceNumberLabel">Original invoice no</label><input id="invoiceNumber" class="readonly" readonly /></div>
+        <div class="field"><label id="invoiceDateLabel">Original invoice date</label><input id="invoiceDate" class="readonly" readonly /></div>
+        <div class="field"><label id="invoiceAmountLabel">Return amount</label><input id="invoiceAmount" class="readonly" readonly placeholder="0.00" /></div>
         <div class="field"><label>Round off</label><input id="roundOff" class="readonly" readonly /></div>
-        <div class="field"><label>Payable</label><input id="payable" class="readonly" readonly /></div>
+        <div class="field"><label id="payableLabel">Payable</label><input id="payable" class="readonly" readonly /></div>
       </div>
       <div class="status" id="returnStatus"></div>
     </div>
@@ -785,6 +785,7 @@
         byId("stickyNote").textContent = "With bill: search purchase → load items → return qty → save.";
         makeSupplierFieldsReadonly(true);
         makeCreditAmountEditable(false);
+        setCreditNoteLabels(false);
       } else if(currentMode === "without_bill") {
         byId("pageSubTitle").textContent = "Create purchase return without old purchase bill. Add items manually and save.";
         byId("modeInfoBadge").textContent = "WITHOUT PURCHASE BILL";
@@ -804,6 +805,7 @@
         byId("stickyNote").textContent = "Without bill: add items manually → enter return qty → save. Purchase ID will be blank.";
         makeSupplierFieldsReadonly(false);
         makeCreditAmountEditable(false);
+        setCreditNoteLabels(false);
       } else {
         byId("pageSubTitle").textContent = "Supplier discount / credit note entry without item stock movement.";
         byId("modeInfoBadge").textContent = "DISCOUNT CREDIT NOTE";
@@ -818,6 +820,8 @@
         byId("stickyNote").textContent = "Discount Credit Note: enter supplier → credit note no/date → amount → save. No stock movement.";
         makeSupplierFieldsReadonly(false);
         makeCreditAmountEditable(true);
+        setCreditNoteLabels(true);
+        byId("invoiceAmount").placeholder = "TYPE DISCOUNT CREDIT NOTE AMOUNT";
       }
 
       syncStickySaveState();
@@ -836,17 +840,28 @@
     }
 
     function makeCreditAmountEditable(editable){
-      const ids = ["invoiceAmount", "payable"];
-      ids.forEach(id => {
-        const el = byId(id);
-        el.readOnly = !editable;
-        el.classList.toggle("readonly", !editable);
-        el.classList.toggle("manual-field", editable);
-        el.inputMode = editable ? "decimal" : "";
-        el.classList.toggle("decimal-input", editable);
-      });
+      const amountEl = byId("invoiceAmount");
+      amountEl.readOnly = !editable;
+      amountEl.classList.toggle("readonly", !editable);
+      amountEl.classList.toggle("manual-field", editable);
+      amountEl.inputMode = editable ? "decimal" : "";
+      amountEl.classList.toggle("decimal-input", editable);
+
+      // Payable and round off are calculated/display fields.
+      byId("payable").readOnly = true;
+      byId("payable").classList.add("readonly");
+      byId("payable").classList.remove("manual-field");
       byId("roundOff").readOnly = true;
       byId("roundOff").classList.add("readonly");
+      byId("roundOff").classList.remove("manual-field");
+    }
+
+    function setCreditNoteLabels(isCreditNote){
+      byId("invoiceNumberLabel").textContent = isCreditNote ? "Credit note no" : "Original invoice no";
+      byId("invoiceDateLabel").textContent = isCreditNote ? "Credit note date" : "Original invoice date";
+      byId("invoiceAmountLabel").textContent = isCreditNote ? "Discount credit note amount" : "Return amount";
+      byId("payableLabel").textContent = isCreditNote ? "Credit note payable" : "Payable";
+      byId("invoiceAmount").placeholder = isCreditNote ? "TYPE AMOUNT GIVEN BY SUPPLIER" : "0.00";
     }
 
     function hideDropdown(){
@@ -1481,7 +1496,7 @@
     }
 
     async function searchSupplierForHeader(anchor){
-      if(getMode() !== "without_bill") return;
+      if(getMode() !== "without_bill" && getMode() !== "discount_credit_note") return;
 
       const q = String(anchor.value || "").trim();
       if(q.length < 2){
@@ -2307,7 +2322,7 @@
         searchSupplierForHeader(e.target);
       });
       byId(id).addEventListener("focus", (e) => {
-        if(getMode() === "without_bill" && String(e.target.value || "").trim()) searchSupplierForHeader(e.target);
+        if((getMode() === "without_bill" || getMode() === "discount_credit_note") && String(e.target.value || "").trim()) searchSupplierForHeader(e.target);
       });
     });
 

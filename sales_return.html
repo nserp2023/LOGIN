@@ -366,6 +366,43 @@
 }
 
 
+
+    .settlement-card {
+        min-width: 230px;
+        padding: 7px 12px;
+        border-radius: 8px;
+        background: rgba(15, 23, 42, 0.92);
+        border: 1px solid rgba(148, 163, 184, 0.45);
+        color: #e5e7eb;
+        font-size: 12px;
+        line-height: 1.35;
+    }
+
+    .settlement-card strong {
+        color: #ffffff;
+    }
+
+    .settlement-card.cash {
+        border-color: rgba(34, 197, 94, 0.75);
+        box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.15);
+    }
+
+    .settlement-card.credit {
+        border-color: rgba(251, 191, 36, 0.85);
+        box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.14);
+    }
+
+    .credit-warning {
+        color: #fde68a;
+        font-weight: 700;
+    }
+
+    .cash-warning {
+        color: #bbf7d0;
+        font-weight: 700;
+    }
+
+
     @media print {
         .footer-section, button, .col-act, .manual-only {
             display: none !important;
@@ -410,6 +447,19 @@
                 <option value="WITH_BILL">WITH BILL</option>
                 <option value="WITHOUT_BILL">WITHOUT BILL / BILL NOT KNOWN</option>
             </select>
+        </div>
+
+        <div class="form-group">
+            <label>Settlement</label>
+            <select id="settlement_mode" class="form-control w-md" onchange="updateSettlementUI()">
+                <option value="CASH">CASH REFUND</option>
+                <option value="CREDIT">CREDIT ADJUSTMENT</option>
+            </select>
+        </div>
+
+        <div id="settlement_info" class="settlement-card cash">
+            <strong>Cash Refund</strong><br>
+            Amount will be treated as cash returned to customer.
         </div>
 
         <div class="form-group with-bill-only">
@@ -483,6 +533,11 @@
             <label>Original Sales ID</label>
             <input id="sale_ref" class="form-control w-md" readonly>
         </div>
+
+        <div class="form-group">
+            <label>Original Payment</label>
+            <input id="original_payment_type" class="form-control w-sm" readonly>
+        </div>
     </div>
 
     <div class="items-container">
@@ -527,6 +582,71 @@ let stockLoaded = false;
 const modeEl = () => document.getElementById("return_mode");
 const isManualMode = () => modeEl().value === "WITHOUT_BILL";
 
+const settlementEl = () => document.getElementById("settlement_mode");
+const getSettlementMode = () => (settlementEl()?.value || "CASH").toUpperCase();
+
+function updateSettlementUI() {
+    const mode = getSettlementMode();
+    const info = document.getElementById("settlement_info");
+    if (!info) return;
+
+    info.classList.toggle("cash", mode === "CASH");
+    info.classList.toggle("credit", mode === "CREDIT");
+
+    if (mode === "CREDIT") {
+        info.innerHTML = `<strong>Credit Adjustment</strong><br><span class="credit-warning">No cash payout.</span> Customer outstanding will be reduced.`;
+    } else {
+        info.innerHTML = `<strong>Cash Refund</strong><br><span class="cash-warning">Cash payout.</span> Use only when you actually give cash back.`;
+    }
+}
+
+function setSettlementFromOriginalPayment(paymentType) {
+    const pay = String(paymentType || "").trim().toUpperCase();
+    const el = settlementEl();
+    if (!el) return;
+
+    if (pay === "CREDIT") {
+        el.value = "CREDIT";
+    } else if (pay === "CASH") {
+        el.value = "CASH";
+    }
+    updateSettlementUI();
+}
+
+async function insertSalesReturnHead(payload) {
+    // New columns are used when available. If the database is not yet altered,
+    // this fallback keeps the old sales return page working without save failure.
+    const { data, error } = await sb
+        .from("sales_return_details")
+        .insert([payload])
+        .select()
+        .single();
+
+    if (!error) return { data, error: null };
+
+    const msg = String(error.message || "");
+    const isMissingColumn =
+        msg.includes("column") &&
+        (msg.includes("return_payment_type") ||
+         msg.includes("settlement_mode") ||
+         msg.includes("cash_refund_amount") ||
+         msg.includes("credit_adjustment_amount"));
+
+    if (!isMissingColumn) return { data: null, error };
+
+    const safePayload = { ...payload };
+    delete safePayload.return_payment_type;
+    delete safePayload.settlement_mode;
+    delete safePayload.cash_refund_amount;
+    delete safePayload.credit_adjustment_amount;
+
+    return await sb
+        .from("sales_return_details")
+        .insert([safePayload])
+        .select()
+        .single();
+}
+
 window.onload = async () => {
     await loadSeries();
     await loadStockMaster();
@@ -539,6 +659,7 @@ window.onload = async () => {
         if (e.key === "Enter") loadBillFromDropdown();
     });
     document.getElementById("return_mode").addEventListener("change", handleModeChange);
+    document.getElementById("settlement_mode").addEventListener("change", updateSettlementUI);
 
     handleModeChange();
 };
@@ -755,6 +876,8 @@ function handleModeChange() {
         document.getElementById(id).readOnly = !manual;
     });
     document.getElementById("sale_ref").readOnly = true;
+    document.getElementById("original_payment_type").value = manual ? "MANUAL" : "";
+    if (manual) updateSettlementUI();
 
     if (manual) {
         document.getElementById("bill_date").value = new Date().toISOString().split("T")[0];
@@ -768,6 +891,7 @@ function clearHeaderFields() {
     document.getElementById("cust_gst").value = "";
     document.getElementById("bill_date").value = "";
     document.getElementById("sale_ref").value = "";
+    document.getElementById("original_payment_type").value = "";
 }
 
 async function handleMobileSearch() {
@@ -855,6 +979,8 @@ async function loadBill(saleId) {
     document.getElementById("cust_gst").value = sale.gst_number || "";
     document.getElementById("bill_date").value = sale.bill_date ? String(sale.bill_date).split("T")[0] : "";
     document.getElementById("sale_ref").value = sale.id || "";
+    document.getElementById("original_payment_type").value = String(sale.payment_type || "").toUpperCase();
+    setSettlementFromOriginalPayment(sale.payment_type);
 
     const { data: items, error: itemError } = await sb
         .from("sales_item_details")
@@ -1305,6 +1431,8 @@ async function saveReturn() {
     }
 
     const totalReturn = parseFloat(document.getElementById("return_total").innerText.replace("₹", "")) || 0;
+    const settlementMode = getSettlementMode();
+
     if (totalReturn <= 0) {
         alert("No return quantity entered");
         return;
@@ -1351,18 +1479,24 @@ async function saveReturn() {
     try {
         const returnDateValue = new Date().toISOString().split("T")[0];
 
-        const { data: retHead, error } = await sb
-            .from("sales_return_details")
-            .insert([{
-                original_sales_id: manual ? null : currentSaleId,
-                return_date: returnDateValue,
-                customer_name: (document.getElementById("cust_name").value || "").trim() || null,
-                customer_mobile: (document.getElementById("cust_mobile").value || "").trim() || null,
-                gst_number: (document.getElementById("cust_gst").value || "").trim() || null,
-                total_return_amount: totalReturn
-            }])
-            .select()
-            .single();
+        const returnPayload = {
+            original_sales_id: manual ? null : currentSaleId,
+            return_date: returnDateValue,
+            customer_name: (document.getElementById("cust_name").value || "").trim() || null,
+            customer_mobile: (document.getElementById("cust_mobile").value || "").trim() || null,
+            gst_number: (document.getElementById("cust_gst").value || "").trim() || null,
+            total_return_amount: totalReturn,
+
+            // Add these columns in Supabase for proper cash/credit return reports:
+            // return_payment_type text, settlement_mode text,
+            // cash_refund_amount numeric, credit_adjustment_amount numeric
+            return_payment_type: settlementMode,
+            settlement_mode: settlementMode,
+            cash_refund_amount: settlementMode === "CASH" ? totalReturn : 0,
+            credit_adjustment_amount: settlementMode === "CREDIT" ? totalReturn : 0
+        };
+
+        const { data: retHead, error } = await insertSalesReturnHead(returnPayload);
 
         if (error) throw error;
 
@@ -1410,7 +1544,9 @@ async function saveReturn() {
             if (stockErr) throw stockErr;
         }
 
-        alert("Return Saved Successfully!");
+        alert(settlementMode === "CREDIT"
+            ? "Credit Return Saved Successfully! No cash payout. Customer outstanding can be adjusted."
+            : "Cash Return Saved Successfully!");
         location.reload();
 
     } catch (e) {

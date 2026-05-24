@@ -533,6 +533,7 @@
             <div class="half">
               <div class="band">RETURN &amp; PAYMENT TOTAL : <span>${safeCell(totals.returnPaymentTotal)}</span></div>
               <div class="subband">CASH RETURN AMOUNT : <span>${safeCell(totals.returnAmount)}</span></div>
+              <div class="subband">CREDIT RETURN ADJ : <span>${safeCell(totals.creditReturnAdjustment || '0')}</span></div>
 
               <table class="blank-table">
                 <colgroup>
@@ -567,7 +568,7 @@
     function buildCreditSection(
       creditRows,
       titleSuffix = '',
-      titleText = 'CREDIT - SALES',
+      titleText = 'CREDIT - SALES REGISTER',
       extraTitleClass = '',
       firstHeader = 'BILL NO',
       amountHeader = 'BILL AMOUNT'
@@ -657,106 +658,64 @@
         }
       }
 
-      // Put credit register after cash-flow details. If it does not fit, move it to a fresh page.
-      const creditWrapper = document.createElement('div');
-      creditWrapper.innerHTML = buildCreditSection([]);
-      page.appendChild(creditWrapper.firstElementChild);
+      function appendRegisterIfRows(rows, heading, titleText, extraTitleClass = '', firstHeader = 'BILL NO', amountHeader = 'BILL AMOUNT'){
+        if(!Array.isArray(rows) || rows.length === 0) return;
 
-      if(!pageFits(page)){
-        const lastCreditBox = page.querySelector('.credit-box:last-child');
-        if(lastCreditBox) lastCreditBox.remove();
-
-        page = createPage();
-        page.innerHTML = createContinuationHeader(totals, 'CREDIT - SALES REGISTER') + buildCreditSection([]);
-      }
-
-      let creditBody = page.querySelector('.credit-table tbody');
-
-      for(let i = 0; i < creditRows.length; i++){
-        const rowHtml = buildCreditRows([creditRows[i]]);
-        creditBody.insertAdjacentHTML('beforeend', rowHtml);
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = buildCreditSection([], '', titleText, extraTitleClass, firstHeader, amountHeader);
+        page.appendChild(wrapper.firstElementChild);
 
         if(!pageFits(page)){
-          removeLastIfExists(creditBody);
+          const lastBox = page.querySelector('.credit-box:last-child');
+          if(lastBox) lastBox.remove();
 
           page = createPage();
-          page.innerHTML = createContinuationHeader(totals, 'CREDIT - SALES REGISTER') + buildCreditSection([], ' (CONTINUED)');
-          creditBody = page.querySelector('.credit-table tbody');
-          creditBody.insertAdjacentHTML('beforeend', rowHtml);
+          page.innerHTML = createContinuationHeader(totals, heading) +
+            buildCreditSection([], '', titleText, extraTitleClass, firstHeader, amountHeader);
+        }
+
+        let tbody = Array.from(page.querySelectorAll('.credit-table tbody')).pop();
+
+        for(let i = 0; i < rows.length; i++){
+          const rowHtml = buildCreditRows([rows[i]]);
+          tbody.insertAdjacentHTML('beforeend', rowHtml);
+
+          if(!pageFits(page)){
+            removeLastIfExists(tbody);
+
+            page = createPage();
+            page.innerHTML = createContinuationHeader(totals, heading) +
+              buildCreditSection([], ' (CONTINUED)', titleText, extraTitleClass, firstHeader, amountHeader);
+            tbody = Array.from(page.querySelectorAll('.credit-table tbody')).pop();
+            tbody.insertAdjacentHTML('beforeend', rowHtml);
+          }
         }
       }
 
-      // Put advance credit register after normal credit register.
-      const advanceWrapper = document.createElement('div');
-      advanceWrapper.innerHTML = buildCreditSection([], '', 'ADVANCE CREDIT - SALES ORDER CONVERTED BILLS', 'advance-credit-title');
-      page.appendChild(advanceWrapper.firstElementChild);
+      // Show these register boxes only when rows exist.
+      appendRegisterIfRows(
+        creditRows,
+        'CREDIT - SALES REGISTER',
+        'CREDIT - SALES REGISTER'
+      );
 
-      if(!pageFits(page)){
-        const lastAdvanceBox = page.querySelector('.credit-box:last-child');
-        if(lastAdvanceBox) lastAdvanceBox.remove();
+      appendRegisterIfRows(
+        advanceCreditRows,
+        'ADVANCE CREDIT - SALES ORDER CONVERTED BILLS',
+        'ADVANCE CREDIT - SALES ORDER CONVERTED BILLS',
+        'advance-credit-title'
+      );
 
-        page = createPage();
-        page.innerHTML = createContinuationHeader(totals, 'ADVANCE CREDIT - SALES ORDER CONVERTED BILLS') +
-          buildCreditSection([], '', 'ADVANCE CREDIT - SALES ORDER CONVERTED BILLS', 'advance-credit-title');
-      }
-
-      let advanceBody = Array.from(page.querySelectorAll('.credit-table tbody')).pop();
-
-      for(let i = 0; i < advanceCreditRows.length; i++){
-        const rowHtml = buildCreditRows([advanceCreditRows[i]]);
-        advanceBody.insertAdjacentHTML('beforeend', rowHtml);
-
-        if(!pageFits(page)){
-          removeLastIfExists(advanceBody);
-
-          page = createPage();
-          page.innerHTML = createContinuationHeader(totals, 'ADVANCE CREDIT - SALES ORDER CONVERTED BILLS') +
-            buildCreditSection([], ' (CONTINUED)', 'ADVANCE CREDIT - SALES ORDER CONVERTED BILLS', 'advance-credit-title');
-          advanceBody = Array.from(page.querySelectorAll('.credit-table tbody')).pop();
-          advanceBody.insertAdjacentHTML('beforeend', rowHtml);
-        }
-      }
-
-      // Put credit return adjustment register after advance credit register.
-      const creditReturnWrapper = document.createElement('div');
-      creditReturnWrapper.innerHTML = buildCreditSection(
-        [],
-        '',
-        'CREDIT RETURN',
+      appendRegisterIfRows(
+        creditReturnRows,
+        'CREDIT RETURN ADJUSTMENTS',
+        'CREDIT RETURN ADJUSTMENTS',
         'advance-credit-title',
         'RETURN ID',
         'ADJUSTMENT'
       );
-      page.appendChild(creditReturnWrapper.firstElementChild);
 
-      if(!pageFits(page)){
-        const lastCreditReturnBox = page.querySelector('.credit-box:last-child');
-        if(lastCreditReturnBox) lastCreditReturnBox.remove();
-
-        page = createPage();
-        page.innerHTML = createContinuationHeader(totals, 'CREDIT RETURN ADJUSTMENTS') +
-          buildCreditSection([], '', 'CREDIT RETURN ADJUSTMENTS', 'advance-credit-title', 'RETURN ID', 'ADJUSTMENT');
-      }
-
-      let creditReturnBody = Array.from(page.querySelectorAll('.credit-table tbody')).pop();
-
-      for(let i = 0; i < creditReturnRows.length; i++){
-        const rowHtml = buildCreditRows([creditReturnRows[i]]);
-        creditReturnBody.insertAdjacentHTML('beforeend', rowHtml);
-
-        if(!pageFits(page)){
-          removeLastIfExists(creditReturnBody);
-
-          page = createPage();
-          page.innerHTML = createContinuationHeader(totals, 'CREDIT RETURN ADJUSTMENTS') +
-            buildCreditSection([], ' (CONTINUED)', 'CREDIT RETURN ADJUSTMENTS', 'advance-credit-title', 'RETURN ID', 'ADJUSTMENT');
-          creditReturnBody = Array.from(page.querySelectorAll('.credit-table tbody')).pop();
-          creditReturnBody.insertAdjacentHTML('beforeend', rowHtml);
-        }
-      }
-
-      // Empty registers are intentionally kept so the printed closing sheet always shows all three bill types:
-      // Cash / Credit / Advance Credit.
+      // Empty registers are hidden to keep the print clean.
     }
 
     async function fetchSales(dateStr){

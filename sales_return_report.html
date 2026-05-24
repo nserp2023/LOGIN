@@ -126,17 +126,29 @@ body{
     margin-top:4px;
 }
 .table-wrap{
-    overflow:auto;
+    width:100%;
+    overflow-x:auto;
+    overflow-y:visible;
+    -webkit-overflow-scrolling:touch;
 }
 table{
     width:100%;
+    min-width:1280px;
     border-collapse:collapse;
+    table-layout:auto;
 }
 th,td{
     padding:10px 8px;
     border-bottom:1px solid #e2e8f0;
     text-align:left;
     white-space:nowrap;
+    vertical-align:middle;
+}
+th:last-child,
+td.action-cell{
+    width:210px;
+    min-width:210px;
+    max-width:230px;
 }
 th{
     background:#e2e8f0;
@@ -149,14 +161,33 @@ th{
 tr:hover{
     background:#f8fafc;
 }
+.action-cell{
+    white-space:normal;
+}
+.action-buttons{
+    display:flex;
+    align-items:center;
+    justify-content:flex-start;
+    gap:6px;
+    flex-wrap:wrap;
+    max-width:220px;
+}
 .action-btn{
     border:none;
-    border-radius:6px;
-    padding:7px 10px;
+    border-radius:7px;
+    padding:7px 9px;
     cursor:pointer;
-    font-size:12px;
-    font-weight:700;
-    margin-right:6px;
+    font-size:11px;
+    line-height:1;
+    font-weight:800;
+    margin:0;
+    min-width:58px;
+    max-width:86px;
+    height:30px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
 }
 .edit-btn{ background:#2563eb; color:#fff; }
 .print-btn{ background:#059669; color:#fff; }
@@ -243,9 +274,17 @@ tr:hover{
 
 @media (max-width:768px){
     body{ padding:8px; }
+    .container{ border-radius:10px; }
     .header h2{ font-size:18px; }
+    .top-actions{ width:100%; }
+    .top-actions .btn{ flex:1; padding:9px 10px; }
+    .summary .card{ min-width:150px; flex:1; }
+    table{ min-width:1180px; }
     th,td{ font-size:12px; padding:8px 6px; }
-    .action-btn{ display:block; margin-bottom:6px; width:100%; }
+    th:last-child,
+    td.action-cell{ width:170px; min-width:170px; max-width:180px; }
+    .action-buttons{ max-width:170px; gap:5px; }
+    .action-btn{ min-width:50px; max-width:75px; height:28px; padding:6px 7px; font-size:10px; }
 }
 </style>
 </head>
@@ -321,7 +360,7 @@ tr:hover{
     </div>
 
     <div class="table-wrap">
-        <table>
+        <table class="report-table">
             <thead>
                 <tr>
                     <th>#</th>
@@ -508,20 +547,22 @@ async function loadReport(){
                     : `<span class="pending-badge">PENDING</span>`
                 }
             </td>
-            <td onclick="event.stopPropagation()">
-                <button class="action-btn edit-btn ${accepted ? "disabled-btn" : ""}"
-                        onclick="${accepted ? "" : `modifyReturn(${r.id})`}"
-                        ${accepted ? "disabled" : ""}>
-                    Modify
-                </button>
+            <td class="action-cell" onclick="event.stopPropagation()">
+                <div class="action-buttons">
+                    <button class="action-btn edit-btn ${accepted ? "disabled-btn" : ""}"
+                            onclick="${accepted ? "" : `modifyReturn(${r.id})`}"
+                            ${accepted ? "disabled" : ""}>
+                        Modify
+                    </button>
 
-                ${
-                    accepted
-                    ? `<button class="action-btn accept-btn disabled-btn" disabled>Accepted</button>`
-                    : `<button class="action-btn accept-btn" onclick="acceptReturn(${r.id})">Accept</button>`
-                }
+                    ${
+                        accepted
+                        ? `<button class="action-btn accept-btn disabled-btn" disabled>Accepted</button>`
+                        : `<button class="action-btn accept-btn" onclick="acceptReturn(${r.id})">Accept</button>`
+                    }
 
-                <button class="action-btn print-btn" onclick="printReturn(${r.id})">Print</button>
+                    <button class="action-btn print-btn" onclick="printReturn(${r.id})">Print</button>
+                </div>
             </td>
         `;
         tbody.appendChild(tr);

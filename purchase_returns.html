@@ -527,7 +527,7 @@
       <div class="panel-head">
         <div class="panel-title">
           <h2>Return Mode</h2>
-          <small>Use without bill mode for old/manual purchases, damaged stock, or supplier return without software purchase bill.</small>
+          <small>Use with bill for item return, without bill for manual stock return, or discount credit note for supplier discount without stock movement.</small>
         </div>
       </div>
       <div class="row">
@@ -536,6 +536,7 @@
           <select id="returnMode">
             <option value="with_bill">WITH PURCHASE BILL</option>
             <option value="without_bill">WITHOUT PURCHASE BILL</option>
+            <option value="discount_credit_note">DISCOUNT CREDIT NOTE</option>
           </select>
         </div>
         <div class="field">
@@ -728,6 +729,10 @@
       return byId("returnMode").value || "with_bill";
     }
 
+    function isDiscountCreditNoteMode(){
+      return getMode() === "discount_credit_note";
+    }
+
     function syncStickySaveState(){
       byId("saveBtnSticky").disabled = byId("saveBtn").disabled;
     }
@@ -737,10 +742,10 @@
       if(enabled) panel.classList.remove("items-disabled");
       else panel.classList.add("items-disabled");
 
-      byId("reloadBtn").disabled = !enabled || getMode() === "without_bill";
-      byId("reloadBtnSticky").disabled = !enabled || getMode() === "without_bill";
-      byId("fullReturnBtn").disabled = !enabled || getMode() === "without_bill";
-      byId("fullReturnBtnSticky").disabled = !enabled || getMode() === "without_bill";
+      byId("reloadBtn").disabled = !enabled || getMode() !== "with_bill";
+      byId("reloadBtnSticky").disabled = !enabled || getMode() !== "with_bill";
+      byId("fullReturnBtn").disabled = !enabled || getMode() !== "with_bill";
+      byId("fullReturnBtnSticky").disabled = !enabled || getMode() !== "with_bill";
 
       if(!enabled) byId("saveBtn").disabled = true;
       syncStickySaveState();
@@ -767,6 +772,7 @@
         byId("modeInfoBadge").className = "badge good";
         byId("modeChip").textContent = "With purchase bill mode";
         byId("loadPanel").classList.remove("hide");
+        byId("itemsPanel").classList.remove("hide");
         byId("returnHelpText").textContent = "Original purchase details are auto-filled after loading. Only entered return quantities will be saved.";
         byId("itemsHelpText").textContent = "Return qty cannot be more than original purchase qty.";
         byId("addManualRowBtn").classList.add("hide");
@@ -778,12 +784,14 @@
         byId("reloadBtnSticky").classList.remove("hide");
         byId("stickyNote").textContent = "With bill: search purchase → load items → return qty → save.";
         makeSupplierFieldsReadonly(true);
-      } else {
+        makeCreditAmountEditable(false);
+      } else if(currentMode === "without_bill") {
         byId("pageSubTitle").textContent = "Create purchase return without old purchase bill. Add items manually and save.";
         byId("modeInfoBadge").textContent = "WITHOUT PURCHASE BILL";
         byId("modeInfoBadge").className = "badge warn";
         byId("modeChip").textContent = "Manual return without bill";
         byId("loadPanel").classList.add("hide");
+        byId("itemsPanel").classList.remove("hide");
         byId("returnHelpText").textContent = "Enter supplier details manually. Add items from stock search or type manually.";
         byId("itemsHelpText").textContent = "Manual purchase return. Enter item, return qty, price, GST and save.";
         byId("addManualRowBtn").classList.remove("hide");
@@ -795,6 +803,21 @@
         byId("reloadBtnSticky").classList.add("hide");
         byId("stickyNote").textContent = "Without bill: add items manually → enter return qty → save. Purchase ID will be blank.";
         makeSupplierFieldsReadonly(false);
+        makeCreditAmountEditable(false);
+      } else {
+        byId("pageSubTitle").textContent = "Supplier discount / credit note entry without item stock movement.";
+        byId("modeInfoBadge").textContent = "DISCOUNT CREDIT NOTE";
+        byId("modeInfoBadge").className = "badge warn";
+        byId("modeChip").textContent = "Discount credit note - no stock movement";
+        byId("loadPanel").classList.add("hide");
+        byId("itemsPanel").classList.add("hide");
+        byId("returnHelpText").textContent = "Enter supplier details, credit note number/date, and credit note amount. No stock item will be saved.";
+        byId("addManualRowBtnSticky").classList.add("hide");
+        byId("fullReturnBtnSticky").classList.add("hide");
+        byId("reloadBtnSticky").classList.add("hide");
+        byId("stickyNote").textContent = "Discount Credit Note: enter supplier → credit note no/date → amount → save. No stock movement.";
+        makeSupplierFieldsReadonly(false);
+        makeCreditAmountEditable(true);
       }
 
       syncStickySaveState();
@@ -810,6 +833,20 @@
       });
       byId("purchaseNumber").readOnly = true;
       byId("purchaseNumber").classList.add("readonly");
+    }
+
+    function makeCreditAmountEditable(editable){
+      const ids = ["invoiceAmount", "payable"];
+      ids.forEach(id => {
+        const el = byId(id);
+        el.readOnly = !editable;
+        el.classList.toggle("readonly", !editable);
+        el.classList.toggle("manual-field", editable);
+        el.inputMode = editable ? "decimal" : "";
+        el.classList.toggle("decimal-input", editable);
+      });
+      byId("roundOff").readOnly = true;
+      byId("roundOff").classList.add("readonly");
     }
 
     function hideDropdown(){
@@ -985,7 +1022,7 @@
         byId("purchaseNumber").value = loadedPurchase?.purchase_number || "";
         byId("returnStatus").innerHTML = `<span class="warn">Load original purchase invoice first.</span>`;
         setItemsEnabled(!!loadedPurchase);
-      } else {
+      } else if(currentMode === "without_bill") {
         loadedPurchase = null;
         loadedItems = [];
         byId("loadedChip").textContent = "Manual return";
@@ -999,6 +1036,16 @@
         await ensureStockLoaded();
         await ensureSupplierLoaded();
         addManualRow();
+      } else {
+        loadedPurchase = null;
+        loadedItems = [];
+        byId("loadedChip").textContent = "Discount credit note";
+        byId("purchaseNumber").value = "DISCOUNT CREDIT NOTE";
+        byId("items").innerHTML = "";
+        byId("roundOff").value = fmt2(0);
+        byId("returnStatus").innerHTML = `<span class="ok">Discount credit note mode active. Enter supplier details and credit amount.</span>`;
+        setItemsEnabled(true);
+        await ensureSupplierLoaded();
       }
       maybeEnableSave();
     }
@@ -1686,6 +1733,12 @@
     }
 
     function updateSummaryFromItems(){
+      if(isDiscountCreditNoteMode()){
+        const amount = num(byId("invoiceAmount").value);
+        byId("roundOff").value = fmt2(0);
+        byId("payable").value = fmt2(amount);
+        return;
+      }
       const items = collectItems();
       const payable = items.reduce((sum, it) => sum + it.total_gst, 0);
       const rounded = Math.round(payable);
@@ -1702,8 +1755,10 @@
       const items = collectItems();
       const hasHeader = mode === "with_bill" ? !!loadedPurchase : true;
       const hasDate = !!byId("returnDate").value;
-      const hasManualSupplier = mode === "without_bill" ? !!byId("supplierName").value.trim() : true;
-      byId("saveBtn").disabled = !(hasHeader && hasDate && hasManualSupplier && items.length > 0);
+      const hasManualSupplier = (mode === "without_bill" || mode === "discount_credit_note") ? !!byId("supplierName").value.trim() : true;
+      const hasCreditAmount = mode === "discount_credit_note" ? num(byId("invoiceAmount").value) > 0 : true;
+      const hasItems = mode === "discount_credit_note" ? true : items.length > 0;
+      byId("saveBtn").disabled = !(hasHeader && hasDate && hasManualSupplier && hasCreditAmount && hasItems);
       syncStickySaveState();
     }
 
@@ -1735,8 +1790,10 @@
         return;
       }
 
-      const manualMode = !header.purchase_id || String(header.purchase_number || "").toUpperCase() === "WITHOUT BILL";
-      byId("returnMode").value = manualMode ? "without_bill" : "with_bill";
+      const purchaseNoForMode = String(header.purchase_number || "").toUpperCase();
+      const creditNoteMode = purchaseNoForMode === "DISCOUNT CREDIT NOTE" || purchaseNoForMode === "DISCOUNT_CREDIT_NOTE" || purchaseNoForMode.includes("CREDIT NOTE");
+      const manualMode = !creditNoteMode && (!header.purchase_id || purchaseNoForMode === "WITHOUT BILL");
+      byId("returnMode").value = creditNoteMode ? "discount_credit_note" : (manualMode ? "without_bill" : "with_bill");
       updateModeUi();
 
       byId("purchaseReturnNumber").value = header.purchase_return_number || "";
@@ -1751,7 +1808,14 @@
       byId("roundOff").value = fmt2(header.round_off || 0);
       byId("payable").value = fmt2(header.payable || 0);
 
-      if(manualMode){
+      if(creditNoteMode){
+        loadedPurchase = null;
+        loadedItems = [];
+        byId("items").innerHTML = "";
+        setItemsEnabled(true);
+        await ensureSupplierLoaded();
+        byId("returnStatus").innerHTML = `<span class="ok">Discount credit note loaded. No stock items attached.</span>`;
+      } else if(manualMode){
         loadedPurchase = null;
         loadedItems = [];
         byId("items").innerHTML = "";
@@ -1803,7 +1867,7 @@
 
     function printPurchaseReturnAudit(){
       const items = collectItems();
-      if(!items.length){
+      if(!items.length && !isDiscountCreditNoteMode()){
         alert("Enter at least one return item before printing.");
         return;
       }
@@ -1898,7 +1962,7 @@
           <td style="width:25%"><div class="lbl">Purchase Return No</div><div class="val">${escPrint(prNo)}</div></td>
           <td style="width:25%"><div class="lbl">Return Date</div><div class="val">${escPrint(retDate)}</div></td>
           <td style="width:25%"><div class="lbl">Original Purchase No</div><div class="val">${escPrint(purNo)}</div></td>
-          <td style="width:25%"><div class="lbl">Return Mode</div><div class="val">${getMode() === "without_bill" ? "WITHOUT PURCHASE BILL" : "WITH PURCHASE BILL"}</div></td>
+          <td style="width:25%"><div class="lbl">Return Mode</div><div class="val">${getMode() === "discount_credit_note" ? "DISCOUNT CREDIT NOTE" : (getMode() === "without_bill" ? "WITHOUT PURCHASE BILL" : "WITH PURCHASE BILL")}</div></td>
         </tr>
         <tr>
           <td colspan="2"><div class="lbl">Supplier Name</div><div class="val">${escPrint(supName)}</div></td>
@@ -1974,6 +2038,12 @@
     }
 
     function validateReturnBeforeSave(returnItems, mode){
+      if(mode === "discount_credit_note"){
+        if(!byId("supplierName").value.trim()) return "Enter supplier name for discount credit note.";
+        if(num(byId("invoiceAmount").value) <= 0) return "Enter discount credit note amount above zero.";
+        return "";
+      }
+
       if(!returnItems.length){
         return "Enter at least one return quantity.";
       }
@@ -2043,10 +2113,14 @@
         return;
       }
 
-      if(mode === "without_bill" && !byId("supplierName").value.trim()){
-        status.innerHTML = `<span class="err">Enter supplier name for without bill purchase return.</span>`;
+      if((mode === "without_bill" || mode === "discount_credit_note") && !byId("supplierName").value.trim()){
+        status.innerHTML = `<span class="err">Enter supplier name.</span>`;
         byId("supplierName").focus();
         return;
+      }
+
+      if(mode === "discount_credit_note"){
+        updateSummaryFromItems();
       }
 
       const returnItems = collectItems();
@@ -2064,7 +2138,7 @@
         purchase_return_number: byId("purchaseReturnNumber").value.trim(),
         return_date: byId("returnDate").value,
         purchase_id: mode === "with_bill" ? loadedPurchase.id : null,
-        purchase_number: mode === "with_bill" ? loadedPurchase.purchase_number : "WITHOUT BILL",
+        purchase_number: mode === "with_bill" ? loadedPurchase.purchase_number : (mode === "discount_credit_note" ? "DISCOUNT CREDIT NOTE" : "WITHOUT BILL"),
         gst_number: mode === "with_bill" ? (loadedPurchase.gst_number || "") : byId("gstNumber").value.trim(),
         supplier_name: mode === "with_bill" ? (loadedPurchase.supplier_name || "") : byId("supplierName").value.trim(),
         address: mode === "with_bill" ? (loadedPurchase.address || "") : byId("supplierAddress").value.trim(),
@@ -2078,7 +2152,7 @@
       const buildItemPayload = (purchaseReturnId) => returnItems.map(it => ({
         purchase_return_id: purchaseReturnId,
         purchase_id: mode === "with_bill" ? loadedPurchase.id : null,
-        purchase_number: mode === "with_bill" ? loadedPurchase.purchase_number : "WITHOUT BILL",
+        purchase_number: mode === "with_bill" ? loadedPurchase.purchase_number : (mode === "discount_credit_note" ? "DISCOUNT CREDIT NOTE" : "WITHOUT BILL"),
         hsn_code: it.hsn_code,
         item_code: it.item_code,
         barcode: it.barcode,
@@ -2133,11 +2207,13 @@
             return;
           }
 
-          const insertRes = await insertReturnItemsWithFallback(buildItemPayload(purchaseReturnId), status);
-          if(insertRes.error){
-            await restoreOldReturnItems(oldItemsForRollback, status);
-            status.innerHTML = `<span class="err">New item insert failed. Old items were restored if possible. Error: ${insertRes.error.message}</span>`;
-            return;
+          if(mode !== "discount_credit_note"){
+            const insertRes = await insertReturnItemsWithFallback(buildItemPayload(purchaseReturnId), status);
+            if(insertRes.error){
+              await restoreOldReturnItems(oldItemsForRollback, status);
+              status.innerHTML = `<span class="err">New item insert failed. Old items were restored if possible. Error: ${insertRes.error.message}</span>`;
+              return;
+            }
           }
         } else {
           let headerError = null;
@@ -2171,11 +2247,13 @@
           }
 
           purchaseReturnId = prHead.id;
-          const insertRes = await insertReturnItemsWithFallback(buildItemPayload(purchaseReturnId), status);
-          if(insertRes.error){
-            await sb.from("purchase_return_details").delete().eq("id", purchaseReturnId);
-            status.innerHTML = `<span class="err">Item save failed. Header was removed if possible. Error: ${insertRes.error.message}</span>`;
-            return;
+          if(mode !== "discount_credit_note"){
+            const insertRes = await insertReturnItemsWithFallback(buildItemPayload(purchaseReturnId), status);
+            if(insertRes.error){
+              await sb.from("purchase_return_details").delete().eq("id", purchaseReturnId);
+              status.innerHTML = `<span class="err">Item save failed. Header was removed if possible. Error: ${insertRes.error.message}</span>`;
+              return;
+            }
           }
         }
 
@@ -2218,9 +2296,9 @@
     });
 
     byId("returnMode").addEventListener("change", () => applyModeChange(true));
-    ["gstNumber", "supplierName", "supplierAddress", "invoiceNumber", "invoiceDate", "returnDate"].forEach(id => {
-      byId(id).addEventListener("input", maybeEnableSave);
-      byId(id).addEventListener("change", maybeEnableSave);
+    ["gstNumber", "supplierName", "supplierAddress", "invoiceNumber", "invoiceDate", "returnDate", "invoiceAmount"].forEach(id => {
+      byId(id).addEventListener("input", () => { updateSummaryFromItems(); maybeEnableSave(); });
+      byId(id).addEventListener("change", () => { updateSummaryFromItems(); maybeEnableSave(); });
     });
 
     ["gstNumber", "supplierName"].forEach(id => {

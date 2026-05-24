@@ -287,6 +287,15 @@ tr:hover{
             <input type="text" id="search_bill" class="form-control" placeholder="Bill no">
         </div>
 
+        <div class="form-group">
+            <label>Return Type</label>
+            <select id="search_return_type" class="form-control">
+                <option value="ALL">ALL</option>
+                <option value="CASH">CASH REFUND</option>
+                <option value="CREDIT">CREDIT ADJUSTMENT</option>
+            </select>
+        </div>
+
         <div class="form-group" style="align-self:end;">
             <button class="btn btn-blue" onclick="loadReport()">Search</button>
         </div>
@@ -301,6 +310,14 @@ tr:hover{
             <div class="label">Total Return Amount</div>
             <div class="value" id="total_returns_amount">₹0.00</div>
         </div>
+        <div class="card">
+            <div class="label">Cash Refund</div>
+            <div class="value money-cash" id="total_cash_refund">₹0.00</div>
+        </div>
+        <div class="card">
+            <div class="label">Credit Adjustment</div>
+            <div class="value money-credit" id="total_credit_adjustment">₹0.00</div>
+        </div>
     </div>
 
     <div class="table-wrap">
@@ -313,7 +330,10 @@ tr:hover{
                     <th>Customer Name</th>
                     <th>Mobile</th>
                     <th>Original Bill No</th>
+                    <th>Return Type</th>
                     <th>Return Amount</th>
+                    <th>Cash Refund</th>
+                    <th>Credit Adjustment</th>
                     <th>Status</th>
                     <th>Actions</th>
                 </tr>
@@ -343,34 +363,58 @@ function setDefaultDates(){
     document.getElementById("to_date").value = today.toISOString().split("T")[0];
 }
 
+
+function normalizeReturnType(value){
+    const v = String(value || "CASH").trim().toUpperCase().replace(/[\s_\-]+/g, " ");
+    if(v.includes("CREDIT")) return "CREDIT";
+    return "CASH";
+}
+
+function getReturnType(row){
+    return normalizeReturnType(row.return_payment_type || row.settlement_mode || row.payment_type || "CASH");
+}
+
+function getCashRefundAmount(row){
+    const type = getReturnType(row);
+    const total = parseFloat(row.total_return_amount || row.payable || row.total_amount || 0) || 0;
+    const stored = parseFloat(row.cash_refund_amount || 0) || 0;
+    if(type !== "CASH") return 0;
+    return stored || total;
+}
+
+function getCreditAdjustmentAmount(row){
+    const type = getReturnType(row);
+    const total = parseFloat(row.total_return_amount || row.payable || row.total_amount || 0) || 0;
+    const stored = parseFloat(row.credit_adjustment_amount || 0) || 0;
+    if(type !== "CREDIT") return 0;
+    return stored || total;
+}
+
+function returnTypeBadge(type){
+    return type === "CREDIT"
+        ? `<span class="credit-badge">CREDIT ADJUSTMENT</span>`
+        : `<span class="cash-badge">CASH REFUND</span>`;
+}
+
 async function loadReport(){
     const tbody = document.getElementById("report_body");
-    tbody.innerHTML = `<tr><td colspan="9">Loading...</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="12">Loading...</td></tr>`;
 
     const fromDate = document.getElementById("from_date").value;
     const toDate = document.getElementById("to_date").value;
     const mobile = document.getElementById("search_mobile").value.trim().toLowerCase();
     const name = document.getElementById("search_name").value.trim().toLowerCase();
     const billNo = document.getElementById("search_bill").value.trim().toLowerCase();
+    const returnTypeFilter = document.getElementById("search_return_type").value;
 
     let { data: returns, error } = await sb
         .from("sales_return_details")
-        .select(`
-            id,
-            original_sales_id,
-            return_date,
-            total_return_amount,
-            customer_name,
-            customer_mobile,
-            is_accepted,
-            accepted_at,
-            accepted_by
-        `)
+        .select("*")
         .order("id", { ascending:false });
 
     if(error){
         console.error(error);
-        tbody.innerHTML = `<tr><td colspan="9">Error loading report</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="12">Error loading report</td></tr>`;
         return;
     }
 
@@ -408,6 +452,7 @@ async function loadReport(){
         if(mobile && !customerMobile.includes(mobile)) return false;
         if(name && !customerName.includes(name)) return false;
         if(billNo && !billText.includes(billNo)) return false;
+        if(returnTypeFilter !== "ALL" && getReturnType(r) !== returnTypeFilter) return false;
 
         return true;
     });
@@ -415,15 +460,23 @@ async function loadReport(){
     tbody.innerHTML = "";
 
     let totalAmount = 0;
+    let totalCashRefund = 0;
+    let totalCreditAdjustment = 0;
 
     if(!filtered.length){
-        tbody.innerHTML = `<tr><td colspan="9">No sales return records found</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="12">No sales return records found</td></tr>`;
     }
 
     filtered.forEach((r, index) => {
         const sale = salesMap[r.original_sales_id] || {};
-        const amt = parseFloat(r.total_return_amount || 0);
+        const amt = parseFloat(r.total_return_amount || r.payable || r.total_amount || 0) || 0;
+        const returnType = getReturnType(r);
+        const cashRefund = getCashRefundAmount(r);
+        const creditAdjustment = getCreditAdjustmentAmount(r);
+
         totalAmount += amt;
+        totalCashRefund += cashRefund;
+        totalCreditAdjustment += creditAdjustment;
 
         const accepted = !!r.is_accepted;
         const customerName = sale.customer_name || r.customer_name || "";
@@ -445,7 +498,10 @@ async function loadReport(){
             <td onclick="toggleReturnDetails(${r.id})">${customerName}</td>
             <td onclick="toggleReturnDetails(${r.id})">${customerMobile}</td>
             <td onclick="toggleReturnDetails(${r.id})">${billText}</td>
+            <td onclick="toggleReturnDetails(${r.id})">${returnTypeBadge(returnType)}</td>
             <td onclick="toggleReturnDetails(${r.id})">₹${amt.toFixed(2)}</td>
+            <td onclick="toggleReturnDetails(${r.id})" class="money-cash">₹${cashRefund.toFixed(2)}</td>
+            <td onclick="toggleReturnDetails(${r.id})" class="money-credit">₹${creditAdjustment.toFixed(2)}</td>
             <td onclick="toggleReturnDetails(${r.id})">
                 ${accepted
                     ? `<span class="accepted-badge">ACCEPTED</span>`
@@ -474,7 +530,7 @@ async function loadReport(){
         detailsTr.className = "details-row";
         detailsTr.id = `details_${r.id}`;
         detailsTr.innerHTML = `
-            <td colspan="9">
+            <td colspan="12">
                 <div class="details-box">
                     <div class="details-title">Sales Return Items - Return ID ${r.id}</div>
                     <div id="details_content_${r.id}" class="loading-text">Click the row to load items...</div>
@@ -486,6 +542,8 @@ async function loadReport(){
 
     document.getElementById("total_returns_count").innerText = filtered.length;
     document.getElementById("total_returns_amount").innerText = "₹" + totalAmount.toFixed(2);
+    document.getElementById("total_cash_refund").innerText = "₹" + totalCashRefund.toFixed(2);
+    document.getElementById("total_credit_adjustment").innerText = "₹" + totalCreditAdjustment.toFixed(2);
 }
 
 async function toggleReturnDetails(returnId){
@@ -534,7 +592,7 @@ async function toggleReturnDetails(returnId){
 
     const { data: returnHead } = await sb
         .from("sales_return_details")
-        .select("original_sales_id")
+        .select("*")
         .eq("id", returnId)
         .maybeSingle();
 
@@ -550,7 +608,16 @@ async function toggleReturnDetails(returnId){
         });
     }
 
+    const returnType = getReturnType(returnHead || {});
+    const cashRefund = getCashRefundAmount(returnHead || {});
+    const creditAdjustment = getCreditAdjustmentAmount(returnHead || {});
+
     let html = `
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;align-items:center;">
+            ${returnTypeBadge(returnType)}
+            <strong class="money-cash">Cash Refund: ₹${cashRefund.toFixed(2)}</strong>
+            <strong class="money-credit">Credit Adjustment: ₹${creditAdjustment.toFixed(2)}</strong>
+        </div>
         <div class="details-table-wrap">
             <table class="details-table">
                 <thead>
@@ -610,7 +677,7 @@ function modifyReturn(id){
 }
 
 async function acceptReturn(id){
-    const ok = confirm("Accept this sales return? After accepting, it will be counted in dashboard balance.");
+    const ok = confirm("Accept this sales return? CASH REFUND will reduce dashboard cash. CREDIT ADJUSTMENT will only reduce customer outstanding and will not reduce cash.");
     if(!ok) return;
 
     const acceptedBy = localStorage.getItem("staff_name") || localStorage.getItem("username") || "System";

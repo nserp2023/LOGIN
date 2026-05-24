@@ -409,6 +409,30 @@
       return s === 'approved' || s === 'accepted';
     }
 
+    function normalizeReturnType(value){
+      const v = String(value || 'CASH').trim().toUpperCase().replace(/[\s_\-]+/g, ' ');
+      if(v.includes('CREDIT')) return 'CREDIT';
+      return 'CASH';
+    }
+
+    function getReturnType(row){
+      return normalizeReturnType(row?.return_payment_type || row?.settlement_mode || row?.payment_type || 'CASH');
+    }
+
+    function getCashRefundAmount(row){
+      const total = num(row?.total_return_amount || row?.payable || row?.total_amount || 0);
+      const stored = num(row?.cash_refund_amount || 0);
+      if(getReturnType(row) !== 'CASH') return 0;
+      return stored || total;
+    }
+
+    function getCreditAdjustmentAmount(row){
+      const total = num(row?.total_return_amount || row?.payable || row?.total_amount || 0);
+      const stored = num(row?.credit_adjustment_amount || 0);
+      if(getReturnType(row) !== 'CREDIT') return 0;
+      return stored || total;
+    }
+
     function getPaymentType(row){
       return String(row?.payment_type || 'CASH').trim().toUpperCase();
     }
@@ -508,7 +532,7 @@
 
             <div class="half">
               <div class="band">RETURN &amp; PAYMENT TOTAL : <span>${safeCell(totals.returnPaymentTotal)}</span></div>
-              <div class="subband">RETURN AMOUNT : <span>${safeCell(totals.returnAmount)}</span></div>
+              <div class="subband">CASH RETURN AMOUNT : <span>${safeCell(totals.returnAmount)}</span></div>
 
               <table class="blank-table">
                 <colgroup>
@@ -540,7 +564,14 @@
       `;
     }
 
-    function buildCreditSection(creditRows, titleSuffix = '', titleText = 'CREDIT - SALES REGISTER', extraTitleClass = ''){
+    function buildCreditSection(
+      creditRows,
+      titleSuffix = '',
+      titleText = 'CREDIT - SALES',
+      extraTitleClass = '',
+      firstHeader = 'BILL NO',
+      amountHeader = 'BILL AMOUNT'
+    ){
       return `
         <div class="credit-box">
           <div class="credit-title ${extraTitleClass}">${safeCell(titleText)}${titleSuffix}</div>
@@ -553,10 +584,10 @@
             </colgroup>
             <thead>
               <tr>
-                <th>BILL NO</th>
+                <th>${safeCell(firstHeader)}</th>
                 <th>CUSTOMER NAME</th>
                 <th>MOBILE</th>
-                <th>BILL AMOUNT</th>
+                <th>${safeCell(amountHeader)}</th>
               </tr>
             </thead>
             <tbody>${buildCreditRows(creditRows)}</tbody>
@@ -578,7 +609,7 @@
       `;
     }
 
-    function renderPages(receiptRows, paymentRows, creditRows, advanceCreditRows, totals){
+    function renderPages(receiptRows, paymentRows, creditRows, advanceCreditRows, creditReturnRows, totals){
       const pagesContainer = $('pagesContainer');
       if(!pagesContainer) return;
       pagesContainer.innerHTML = '';
@@ -686,6 +717,44 @@
         }
       }
 
+      // Put credit return adjustment register after advance credit register.
+      const creditReturnWrapper = document.createElement('div');
+      creditReturnWrapper.innerHTML = buildCreditSection(
+        [],
+        '',
+        'CREDIT RETURN',
+        'advance-credit-title',
+        'RETURN ID',
+        'ADJUSTMENT'
+      );
+      page.appendChild(creditReturnWrapper.firstElementChild);
+
+      if(!pageFits(page)){
+        const lastCreditReturnBox = page.querySelector('.credit-box:last-child');
+        if(lastCreditReturnBox) lastCreditReturnBox.remove();
+
+        page = createPage();
+        page.innerHTML = createContinuationHeader(totals, 'CREDIT RETURN ADJUSTMENTS') +
+          buildCreditSection([], '', 'CREDIT RETURN ADJUSTMENTS', 'advance-credit-title', 'RETURN ID', 'ADJUSTMENT');
+      }
+
+      let creditReturnBody = Array.from(page.querySelectorAll('.credit-table tbody')).pop();
+
+      for(let i = 0; i < creditReturnRows.length; i++){
+        const rowHtml = buildCreditRows([creditReturnRows[i]]);
+        creditReturnBody.insertAdjacentHTML('beforeend', rowHtml);
+
+        if(!pageFits(page)){
+          removeLastIfExists(creditReturnBody);
+
+          page = createPage();
+          page.innerHTML = createContinuationHeader(totals, 'CREDIT RETURN ADJUSTMENTS') +
+            buildCreditSection([], ' (CONTINUED)', 'CREDIT RETURN ADJUSTMENTS', 'advance-credit-title', 'RETURN ID', 'ADJUSTMENT');
+          creditReturnBody = Array.from(page.querySelectorAll('.credit-table tbody')).pop();
+          creditReturnBody.insertAdjacentHTML('beforeend', rowHtml);
+        }
+      }
+
       // Empty registers are intentionally kept so the printed closing sheet always shows all three bill types:
       // Cash / Credit / Advance Credit.
     }
@@ -748,7 +817,7 @@
     async function fetchSalesReturns(dateStr){
       const { data, error } = await sb
         .from('sales_return_details')
-        .select('id,total_return_amount,approval_status,is_accepted')
+        .select('id,total_return_amount,approval_status,is_accepted,return_payment_type,settlement_mode,cash_refund_amount,credit_adjustment_amount,customer_name,customer_mobile')
         .eq('return_date', dateStr);
 
       if(error) throw error;
@@ -758,8 +827,13 @@
         isApprovedStatus(r.approval_status) || r.is_accepted === true
       );
 
+      const cashRows = approved.filter(r => getReturnType(r) === 'CASH');
+      const creditRows = approved.filter(r => getReturnType(r) === 'CREDIT');
+
       return {
-        total: approved.reduce((a, b) => a + num(b.total_return_amount), 0)
+        cashTotal: cashRows.reduce((a, b) => a + getCashRefundAmount(b), 0),
+        creditAdjustmentTotal: creditRows.reduce((a, b) => a + getCreditAdjustmentAmount(b), 0),
+        creditRows
       };
     }
 
@@ -952,28 +1026,37 @@
           fmtCurrency(r.invoice_amount || 0)
         ]);
 
+        const creditReturnRows = (sr.creditRows || []).map(r => [
+          'SR-' + (r.id || ''),
+          r.customer_name || '',
+          r.customer_mobile || '',
+          fmtCurrency(getCreditAdjustmentAmount(r))
+        ]);
+
         const totals = {
           metaDate: fmtDate(dateStr),
           generatedAt: fmtDateTime(new Date()),
           saleReceiptTotal: fmtCurrency(sales.cashSalesTotal + cash.receiptsTotal),
           cashSalesTotal: fmtCurrency(sales.cashSalesTotal),
           advanceCreditTotal: fmtCurrency(sales.advanceCreditSalesTotal),
-          returnPaymentTotal: fmtCurrency(sr.total + cash.paymentsTotal),
-          returnAmount: fmtCurrency(sr.total),
-          balance: fmtCurrency((sales.cashSalesTotal + cash.receiptsTotal) - (sr.total + cash.paymentsTotal))
+          returnPaymentTotal: fmtCurrency(sr.cashTotal + cash.paymentsTotal),
+          returnAmount: fmtCurrency(sr.cashTotal),
+          creditReturnAdjustment: fmtCurrency(sr.creditAdjustmentTotal),
+          balance: fmtCurrency((sales.cashSalesTotal + cash.receiptsTotal) - (sr.cashTotal + cash.paymentsTotal))
         };
 
         lastLoadedSummary = {
           dateStr,
           cashSalesTotal: Number(sales.cashSalesTotal || 0),
           receiptsTotal: Number(cash.receiptsTotal || 0),
-          salesReturnTotal: Number(sr.total || 0),
+          salesReturnTotal: Number(sr.cashTotal || 0),
+          creditReturnAdjustmentTotal: Number(sr.creditAdjustmentTotal || 0),
           paymentsTotal: Number(cash.paymentsTotal || 0),
-          balanceAmount: (Number(sales.cashSalesTotal || 0) + Number(cash.receiptsTotal || 0)) - (Number(sr.total || 0) + Number(cash.paymentsTotal || 0)),
+          balanceAmount: (Number(sales.cashSalesTotal || 0) + Number(cash.receiptsTotal || 0)) - (Number(sr.cashTotal || 0) + Number(cash.paymentsTotal || 0)),
           totals
         };
 
-        renderPages(receiptRows, paymentRows, creditRows, advanceCreditRows, totals);
+        renderPages(receiptRows, paymentRows, creditRows, advanceCreditRows, creditReturnRows, totals);
         setStatus('Loaded successfully.');
       }catch(err){
         console.error(err);
@@ -999,6 +1082,7 @@
         advanceCreditTotal: '0',
         returnPaymentTotal: '0',
         returnAmount: '0',
+        creditReturnAdjustment: '0',
         balance: '0'
       };
 
@@ -1012,7 +1096,7 @@
         totals: emptyTotals
       };
 
-      renderPages([], [], [], [], emptyTotals);
+      renderPages([], [], [], [], [], emptyTotals);
     })();
   </script>
 </body>

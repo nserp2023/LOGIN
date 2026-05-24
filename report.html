@@ -268,6 +268,9 @@
     <label>Mobile:</label>
     <input type="text" id="mobile_filter" placeholder="Search mobile">
 
+    <label>GST No:</label>
+    <input type="text" id="gst_filter" placeholder="Search GST number">
+
     <label>Salesman:</label>
     <input type="text" id="salesman_filter" placeholder="Search salesman">
 
@@ -283,6 +286,7 @@
             <th>Date</th>
             <th>Customer</th>
             <th>Mobile</th>
+            <th>GST No</th>
             <th>Salesman</th>
             <th>Created By</th>
             <th>Total</th>
@@ -812,6 +816,7 @@
         const series = document.getElementById('series_filter').value;
         const customer = document.getElementById('customer_filter').value.trim();
         const mobile = document.getElementById('mobile_filter').value.trim();
+        const gst = document.getElementById('gst_filter').value.trim();
         const salesmanFilter = document.getElementById('salesman_filter').value.trim();
         const createdByFilter = document.getElementById('created_by_filter').value.trim();
 
@@ -831,6 +836,7 @@
         if(series) query = query.eq('series_code', series);
         if(customer) query = query.ilike('customer_name', `%${customer}%`);
         if(mobile) query = query.ilike('customer_mobile', `%${mobile}%`);
+        if(gst) query = query.ilike('gst_number', `%${gst}%`);
 
         const { data, error } = await query;
 
@@ -903,6 +909,7 @@
                 <td>${s[cfg.dateField] || ''}</td>
                 <td title="${(s.issueReasons || []).join(', ')}">${s.customer_name || ''}${s.hasMissingItem ? `<div style="font-size:11px;color:#ffd6df;margin-top:4px;">${(s.issueReasons || []).join(', ')}</div>` : ''}</td>
                 <td>${s.customer_mobile || ''}</td>
+                <td>${s.gst_number || ''}</td>
                 <td>${s.salesman || ''}</td>
                 <td>${getCreatedByValue(s) || ''}</td>
                 <td>₹${amount.toFixed(2)}</td>
@@ -973,7 +980,7 @@
             </tr>
 
             <tr id="details-${s.id}" style="display:none;">
-                <td colspan="${type === 'quotation' ? 13 : 11}">
+                <td colspan="${type === 'quotation' ? 14 : 12}">
                     <div id="items-${s.id}">Loading...</div>
                 </td>
             </tr>
@@ -982,7 +989,7 @@
 
         body.innerHTML += `
         <tr class="total-row">
-            <td colspan="7">TOTAL ACTIVE BILLS ONLY</td>
+            <td colspan="8">TOTAL ACTIVE BILLS ONLY</td>
             <td>₹${totalSum.toFixed(2)}</td>
             ${type === "quotation" ? `<td></td><td></td>` : ''}
             <td colspan="3"></td>
@@ -1671,6 +1678,7 @@
 
         document.getElementById("customer_filter").addEventListener("input", debounce(loadReport, 400));
         document.getElementById("mobile_filter").addEventListener("input", debounce(loadReport, 400));
+        document.getElementById("gst_filter").addEventListener("input", debounce(loadReport, 400));
         document.getElementById("salesman_filter").addEventListener("input", debounce(loadReport, 400));
         document.getElementById("created_by_filter").addEventListener("input", debounce(loadReport, 400));
     });

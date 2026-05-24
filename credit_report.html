@@ -136,7 +136,7 @@
 
     .summary{
       display:grid;
-      grid-template-columns:repeat(4, minmax(180px,1fr));
+      grid-template-columns:repeat(5, minmax(170px,1fr));
       gap:12px;
       margin-bottom:14px;
     }
@@ -203,6 +203,7 @@
     .chip-settled{ background:rgba(34,197,94,.12); color:#86efac; border-color:rgba(34,197,94,.35); }
     .chip-partial{ background:rgba(59,130,246,.12); color:#93c5fd; border-color:rgba(59,130,246,.35); }
     .chip-credit{ background:rgba(245,158,11,.12); color:#fcd34d; border-color:rgba(245,158,11,.35); }
+    .chip-return{ background:rgba(239,68,68,.12); color:#fca5a5; border-color:rgba(239,68,68,.35); }
 
     .check-btn{
       min-width:88px;
@@ -265,7 +266,7 @@
     <div class="topbar">
       <div class="title-wrap">
         <h1>Credit Report</h1>
-        <p>Book verification ledger with credit sales, cash received, and running balance.</p>
+        <p>Book verification ledger with credit sales, cash received, credit return adjustments, and running balance.</p>
       </div>
       <div class="top-actions">
         <button class="btn btn-green" onclick="openSalesPage()">+ New Sales Bill</button>
@@ -341,6 +342,10 @@
       <div class="summary-box green">
         <div class="label">Cash Received</div>
         <div class="value" id="sum_paid">₹0.00</div>
+      </div>
+      <div class="summary-box">
+        <div class="label">Credit Adjustments</div>
+        <div class="value" id="sum_credit_return">₹0.00</div>
       </div>
       <div class="summary-box red">
         <div class="label">Outstanding</div>
@@ -666,16 +671,18 @@
         }
 
         let receiptRows = await loadReceiptRows({fromDate,toDate,mobile,name,bill,customerLookup});
+        let creditReturnRows = await loadCreditReturnRows({fromDate,toDate,mobile,name,bill,customerLookup});
 
         if (series) {
           receiptRows = receiptRows.filter(r => false);
+          creditReturnRows = creditReturnRows.filter(r => false);
         }
 
         const hasCustomerSearch = !!(mobile || name);
         effectiveAscending = hasCustomerSearch ? true : false;
         qs("sort_btn").textContent = effectiveAscending ? "Ascending" : "Descending";
 
-        const allRows = [...billRows, ...receiptRows].sort((a,b) => {
+        const allRows = [...billRows, ...receiptRows, ...creditReturnRows].sort((a,b) => {
           const ad = dateSortValue(a.date);
           const bd = dateSortValue(b.date);
           if (ad !== bd) return effectiveAscending ? ad - bd : bd - ad;
@@ -683,7 +690,7 @@
           return String(a.docNo || "").localeCompare(String(b.docNo || ""));
         });
 
-        renderRows(allRows, billRows, receiptRows);
+        renderRows(allRows, billRows, receiptRows, creditReturnRows);
       } catch (err) {
         console.error("Credit report load error:", err);
         body.innerHTML = `<tr><td colspan="9" class="empty">Error loading credit report.</td></tr>`;
@@ -806,6 +813,105 @@
         });
     }
 
+
+    function normalizeReturnType(value){
+      const v = String(value || "CASH").trim().toUpperCase().replace(/[\s_\-]+/g, " ");
+      return v.includes("CREDIT") ? "CREDIT" : "CASH";
+    }
+
+    function getCreditAdjustmentAmount(row){
+      const type = normalizeReturnType(row?.return_payment_type || row?.settlement_mode || row?.payment_type || "CASH");
+      if(type !== "CREDIT") return 0;
+
+      const stored = num(row?.credit_adjustment_amount);
+      if(stored > 0) return stored;
+
+      return num(row?.total_return_amount || row?.payable || row?.total_amount);
+    }
+
+    async function loadCreditReturnRows(filters){
+      const lookup = filters.customerLookup || { names:[], mobiles:[], customerMobileMap:{}, customerNameMap:{} };
+      const hasCustomerSearch = Boolean((filters.mobile || "").trim() || (filters.name || "").trim());
+
+      let returnQuery = sb
+        .from("sales_return_details")
+        .select("*");
+
+      if(filters.fromDate) returnQuery = returnQuery.gte("return_date", filters.fromDate);
+      if(filters.toDate) returnQuery = returnQuery.lte("return_date", filters.toDate);
+
+      const { data, error } = await returnQuery;
+      if(error){
+        console.warn("Credit return rows load warning:", error);
+        return [];
+      }
+
+      return (data || [])
+        .filter(r => {
+          const status = String(r.approval_status || "").trim().toLowerCase();
+          const accepted = r.is_accepted === true || status === "approved";
+          if(!accepted) return false;
+
+          if(normalizeReturnType(r.return_payment_type || r.settlement_mode || r.payment_type || "CASH") !== "CREDIT") return false;
+
+          const amount = getCreditAdjustmentAmount(r);
+          if(amount <= 0) return false;
+
+          const customerName = normalNameKey(r.customer_name);
+          const customerMobile = String(r.customer_mobile || "").replace(/\D/g, "").slice(-10);
+
+          if((filters.mobile || "").trim()){
+            const typedMobile = String(filters.mobile || "").replace(/\D/g, "").slice(-10);
+            if(typedMobile && !customerMobile.includes(typedMobile)) return false;
+          }
+
+          if((filters.name || "").trim()){
+            const typedName = normalNameKey(filters.name);
+            if(typedName && !customerName.includes(typedName)) return false;
+          }
+
+          if(hasCustomerSearch){
+            const mobileMatch = customerMobile && (lookup.mobiles || []).includes(customerMobile);
+            const nameMatch = (lookup.names || []).some(nameKey =>
+              nameKey && customerName && (customerName.includes(nameKey) || nameKey.includes(customerName))
+            );
+            if(!mobileMatch && !nameMatch && !customerName && !customerMobile) return false;
+          }
+
+          if((filters.bill || "").trim()){
+            const search = String(filters.bill || "").trim().toLowerCase();
+            const returnText = String(`${r.id || ""} ${r.original_sales_id || ""} ${r.remarks || ""}`).toLowerCase();
+            if(!returnText.includes(search)) return false;
+          }
+
+          return true;
+        })
+        .map(r => {
+          const customerMobile = String(r.customer_mobile || "").replace(/\D/g, "").slice(-10);
+          const amount = getCreditAdjustmentAmount(r);
+
+          return {
+            rowKind:"credit_return",
+            id:`credit_return_${r.id}`,
+            real_id:r.id,
+            is_checked:false,
+            date: normalizeDate(r.return_date),
+            docNo: `SR-${r.id}`,
+            mobile: customerMobile,
+            customer:r.customer_name || "",
+            billAmount:0,
+            cashReceived:0,
+            creditAdjustment:amount,
+            paidAmount:0,
+            receiptAmount:0,
+            advancePaid:0,
+            balanceAmount:0,
+            remarks:"Credit adjustment from sales return",
+            status:"CREDIT RETURN"
+          };
+        });
+    }
+
     function renderCheckButton(row){
       if(row.is_checked){
         return `<button type="button" class="check-btn checked" disabled>✓ CHECKED</button>`;
@@ -885,7 +991,7 @@
       }
     }
 
-    function renderRows(rows, billRows, receiptRows) {
+    function renderRows(rows, billRows, receiptRows, creditReturnRows = []) {
       const body = qs("report_body");
       const statusBox = qs("status_box");
 
@@ -894,13 +1000,15 @@
       const normalReceiptRows = receiptRows.filter(r => r.rowKind === "receipt");
       const totalAmount = billRows.reduce((s,r) => s + num(r.billAmount), 0);
       const totalCashReceived = receiptRows.reduce((s,r) => s + num(r.cashReceived || r.receiptAmount || r.advancePaid), 0);
-      const totalBalance = totalAmount - totalCashReceived;
+      const totalCreditAdjustment = creditReturnRows.reduce((s,r) => s + num(r.creditAdjustment), 0);
+      const totalBalance = totalAmount - totalCashReceived - totalCreditAdjustment;
 
       if (!rows.length) {
         body.innerHTML = `<tr><td colspan="9" class="empty">No credit records found.</td></tr>`;
         qs("sum_bills").textContent = "0";
         qs("sum_total").textContent = money(0);
         qs("sum_paid").textContent = money(0);
+        qs("sum_credit_return").textContent = money(0);
         qs("sum_balance").textContent = money(0);
         statusBox.textContent = "No records found.";
         return;
@@ -918,6 +1026,7 @@
       chronologicalRows.forEach(row => {
         if (row.rowKind === "bill") runningBalance += num(row.billAmount);
         if (row.rowKind === "advance" || row.rowKind === "receipt") runningBalance -= num(row.cashReceived || row.receiptAmount || row.advancePaid);
+        if (row.rowKind === "credit_return") runningBalance -= num(row.creditAdjustment);
         row.runningBalance = runningBalance;
       });
 
@@ -934,19 +1043,26 @@
       displayRows.forEach((row) => {
         const balanceClass = num(row.runningBalance) > 0 ? "chip-credit" : "chip-settled";
 
-        if (row.rowKind === "receipt" || row.rowKind === "advance") {
+        if (row.rowKind === "receipt" || row.rowKind === "advance" || row.rowKind === "credit_return") {
           const isAdvance = row.rowKind === "advance";
+          const isCreditReturn = row.rowKind === "credit_return";
+          const typeText = isCreditReturn ? "CREDIT RETURN" : (isAdvance ? "SALES ORDER ADVANCE" : "RECEIPT");
+          const chipClass = isCreditReturn ? "chip-return" : (isAdvance ? "chip-advance" : "chip-receipt");
+          const receivedText = isCreditReturn
+            ? "ADJ " + money(row.creditAdjustment)
+            : money(row.cashReceived || row.receiptAmount || row.advancePaid);
+
           html += `
-            <tr class="receipt-row">
+            <tr class="${isCreditReturn ? "receipt-row" : "receipt-row"}">
               <td>${escapeHtml(row.date || "")}</td>
               <td>${escapeHtml(row.docNo || "")}</td>
-              <td><span class="chip ${isAdvance ? "chip-advance" : "chip-receipt"}">${isAdvance ? "SALES ORDER ADVANCE" : "RECEIPT"}</span></td>
+              <td><span class="chip ${chipClass}">${typeText}</span></td>
               <td>${escapeHtml(row.mobile || "")}</td>
               <td>${escapeHtml(row.customer || "")}</td>
               <td class="right">-</td>
-              <td class="right">${money(row.cashReceived || row.receiptAmount || row.advancePaid)}</td>
+              <td class="right">${receivedText}</td>
               <td class="right">${money(row.runningBalance)}</td>
-              <td class="center">${renderCheckButton(row)}</td>
+              <td class="center">${isCreditReturn ? "-" : renderCheckButton(row)}</td>
             </tr>
           `;
           return;
@@ -979,10 +1095,11 @@
       qs("sum_bills").textContent = String(totalBills);
       qs("sum_total").textContent = money(totalAmount);
       qs("sum_paid").textContent = money(totalCashReceived);
+      qs("sum_credit_return").textContent = money(totalCreditAdjustment);
       qs("sum_balance").textContent = money(totalBalance);
 
       const filterText = (qs("mobile_filter").value || qs("name_filter").value) ? " Customer filter applied." : "";
-      statusBox.textContent = `${displayRows.length} ledger row(s) loaded. Bills: ${totalBills}, Cash received lines: ${receiptRows.length}, Balance: ${money(totalBalance)}.${filterText}${CAN_BOOK_CHECK ? " Book check enabled for SN." : " Book check is view-only for this user."}`;
+      statusBox.textContent = `${displayRows.length} ledger row(s) loaded. Bills: ${totalBills}, Cash received lines: ${receiptRows.length}, Credit return adjustments: ${creditReturnRows.length}, Balance: ${money(totalBalance)}.${filterText}${CAN_BOOK_CHECK ? " Book check enabled for SN." : " Book check is view-only for this user."}`;
     }
 
     async function toggleDetails(salesId) {

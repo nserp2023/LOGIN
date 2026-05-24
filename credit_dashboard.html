@@ -158,7 +158,7 @@
 
     .summary{
         display:grid;
-        grid-template-columns:repeat(5, 1fr);
+        grid-template-columns:repeat(6, 1fr);
         gap:12px;
         margin-bottom:14px;
     }
@@ -210,7 +210,7 @@
     table{
         width:100%;
         border-collapse:collapse;
-        min-width:1380px;
+        min-width:1480px;
         background:rgba(8,19,33,.9);
     }
 
@@ -401,6 +401,10 @@
             <div class="summary-value green" id="sumPaid">₹0.00</div>
         </div>
         <div class="summary-box">
+            <div class="summary-label">Credit Return Adj.</div>
+            <div class="summary-value blue" id="sumCreditReturn">₹0.00</div>
+        </div>
+        <div class="summary-box">
             <div class="summary-label">Outstanding</div>
             <div class="summary-value red" id="sumBalance">₹0.00</div>
         </div>
@@ -417,6 +421,7 @@
                     <th class="amount">Credit Bills</th>
                     <th class="amount">Credit Sales</th>
                     <th class="amount">Paid</th>
+                    <th class="amount">Credit Return</th>
                     <th class="amount">Outstanding</th>
                     <th>Level</th>
                     <th>Report</th>
@@ -425,7 +430,7 @@
                 </tr>
             </thead>
             <tbody id="dashboardBody">
-                <tr><td colspan="10" class="empty">Loading...</td></tr>
+                <tr><td colspan="11" class="empty">Loading...</td></tr>
             </tbody>
         </table>
     </div>
@@ -512,6 +517,34 @@ function balanceClass(balance){
     return "bal-low";
 }
 
+function normalizeReturnType(value){
+    const v = String(value || "CASH").trim().toUpperCase().replace(/[\s_\-]+/g, " ");
+    if (v.includes("CREDIT")) return "CREDIT";
+    return "CASH";
+}
+
+function isCreditReturn(row){
+    const type = normalizeReturnType(row.return_payment_type || row.settlement_mode || row.payment_type || "");
+    return type === "CREDIT";
+}
+
+function isAcceptedReturn(row){
+    const status = String(row.approval_status || "").trim().toLowerCase();
+    return row.is_accepted === true || status === "approved";
+}
+
+function getCreditReturnAmount(row){
+    const stored = Number(row.credit_adjustment_amount || 0) || 0;
+    const total = Number(row.total_return_amount || row.payable || row.total_amount || 0) || 0;
+    return stored || total;
+}
+
+function makeCustomerKey(mobile, name){
+    const cleanMobile = String(mobile || "").trim();
+    const cleanName = String(name || "").trim().toUpperCase();
+    return `${cleanMobile}|${cleanName}`;
+}
+
 function openSalesPage(){
     window.location.href = "mobsoq.html";
 }
@@ -574,7 +607,7 @@ Thank you.`;
 }
 
 async function loadDashboard(){
-    dashboardBody.innerHTML = `<tr><td colspan="10" class="empty">Loading...</td></tr>`;
+    dashboardBody.innerHTML = `<tr><td colspan="11" class="empty">Loading...</td></tr>`;
     statusBox.textContent = "Loading credit dashboard...";
 
     try{
@@ -601,7 +634,7 @@ async function loadDashboard(){
         rows.forEach(r => {
             const name = (r.customer_name || "").trim();
             const mobile = (r.customer_mobile || "").trim();
-            const key = `${mobile}|${name.toUpperCase()}`;
+            const key = makeCustomerKey(mobile, name);
 
             if (!grouped[key]){
                 grouped[key] = {
@@ -610,6 +643,7 @@ async function loadDashboard(){
                     bill_count: 0,
                     total_sales: 0,
                     total_paid: 0,
+                    total_credit_return: 0,
                     total_balance: 0
                 };
             }
@@ -619,6 +653,8 @@ async function loadDashboard(){
             grouped[key].total_paid += Number(r.paid_amount || 0);
             grouped[key].total_balance += Number(r.balance_amount || 0);
         });
+
+        await applyCreditReturnAdjustments(grouped, { from, to });
 
         let customers = Object.values(grouped);
 
@@ -640,18 +676,78 @@ async function loadDashboard(){
         renderDashboard(customers, rows);
     }catch(err){
         console.error(err);
-        dashboardBody.innerHTML = `<tr><td colspan="10" class="empty">Error loading dashboard</td></tr>`;
+        dashboardBody.innerHTML = `<tr><td colspan="11" class="empty">Error loading dashboard</td></tr>`;
         statusBox.textContent = "Error: " + (err.message || "Unable to load dashboard");
     }
 }
 
+
+async function applyCreditReturnAdjustments(grouped, { from, to } = {}){
+    let returnQuery = sb
+        .from("sales_return_details")
+        .select("*")
+        .order("return_date", { ascending: false });
+
+    if (from) returnQuery = returnQuery.gte("return_date", from);
+    if (to) returnQuery = returnQuery.lte("return_date", to);
+
+    const { data: returnRows, error: returnError } = await returnQuery;
+    if (returnError) {
+        console.warn("Credit return adjustment skipped:", returnError.message || returnError);
+        return;
+    }
+
+    const acceptedCreditReturns = (returnRows || []).filter(r => isAcceptedReturn(r) && isCreditReturn(r));
+    const salesIds = [...new Set(acceptedCreditReturns.map(r => r.original_sales_id).filter(Boolean))];
+
+    const salesMap = {};
+    if (salesIds.length){
+        const { data: salesData, error: salesError } = await sb
+            .from("sales_details")
+            .select("id, customer_name, customer_mobile")
+            .in("id", salesIds);
+
+        if (!salesError){
+            (salesData || []).forEach(s => {
+                salesMap[s.id] = s;
+            });
+        }
+    }
+
+    acceptedCreditReturns.forEach(r => {
+        const sale = salesMap[r.original_sales_id] || {};
+        const name = (sale.customer_name || r.customer_name || "").trim();
+        const mobile = (sale.customer_mobile || r.customer_mobile || "").trim();
+        const key = makeCustomerKey(mobile, name);
+        const amount = getCreditReturnAmount(r);
+
+        if (!amount) return;
+
+        if (!grouped[key]){
+            grouped[key] = {
+                name: name || "-",
+                mobile: mobile || "-",
+                bill_count: 0,
+                total_sales: 0,
+                total_paid: 0,
+                total_credit_return: 0,
+                total_balance: 0
+            };
+        }
+
+        grouped[key].total_credit_return += amount;
+        grouped[key].total_balance -= amount;
+    });
+}
+
 function renderDashboard(customers, billRows){
     if (!customers.length){
-        dashboardBody.innerHTML = `<tr><td colspan="10" class="empty">No pending credit customers found</td></tr>`;
+        dashboardBody.innerHTML = `<tr><td colspan="11" class="empty">No pending credit customers found</td></tr>`;
         document.getElementById("sumCustomers").textContent = "0";
         document.getElementById("sumBills").textContent = "0";
         document.getElementById("sumSales").textContent = money(0);
         document.getElementById("sumPaid").textContent = money(0);
+        document.getElementById("sumCreditReturn").textContent = money(0);
         document.getElementById("sumBalance").textContent = money(0);
         statusBox.textContent = "No pending records found.";
         return;
@@ -660,12 +756,14 @@ function renderDashboard(customers, billRows){
     let totalBills = 0;
     let totalSales = 0;
     let totalPaid = 0;
+    let totalCreditReturn = 0;
     let totalBalance = 0;
 
     const html = customers.map(c => {
         totalBills += c.bill_count;
         totalSales += c.total_sales;
         totalPaid += c.total_paid;
+        totalCreditReturn += c.total_credit_return || 0;
         totalBalance += c.total_balance;
 
         const safeCustomer = JSON.stringify(c).replace(/'/g, "&apos;");
@@ -677,6 +775,7 @@ function renderDashboard(customers, billRows){
                 <td class="amount">${c.bill_count}</td>
                 <td class="amount">${money(c.total_sales)}</td>
                 <td class="amount">${money(c.total_paid)}</td>
+                <td class="amount">${money(c.total_credit_return || 0)}</td>
                 <td class="amount ${balanceClass(c.total_balance)}">${money(c.total_balance)}</td>
                 <td>${riskChip(c.total_balance)}</td>
                 <td><button class="btn btn-ghost btn-sm" onclick='openCustomerReport(${safeCustomer})'>Report</button></td>
@@ -692,6 +791,7 @@ function renderDashboard(customers, billRows){
     document.getElementById("sumBills").textContent = totalBills;
     document.getElementById("sumSales").textContent = money(totalSales);
     document.getElementById("sumPaid").textContent = money(totalPaid);
+    document.getElementById("sumCreditReturn").textContent = money(totalCreditReturn);
     document.getElementById("sumBalance").textContent = money(totalBalance);
 
     statusBox.textContent = `${customers.length} pending customer(s) loaded.`;

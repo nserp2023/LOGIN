@@ -937,10 +937,12 @@
     window.addEventListener("scroll", hideDropdown, true);
 
     async function generatePurchaseReturnNumber(){
+      // Client-side fallback number. Save function also retries if Supabase reports duplicate.
       const d = new Date();
       const stamp = d.toISOString().slice(0,10).replace(/-/g, "");
-      const rand = Math.floor(Math.random() * 90000) + 10000;
-      return `PR-${stamp}-${rand}`;
+      const time = String(d.getHours()).padStart(2,"0") + String(d.getMinutes()).padStart(2,"0") + String(d.getSeconds()).padStart(2,"0");
+      const ms = String(d.getMilliseconds()).padStart(3,"0");
+      return `PR-${stamp}-${time}${ms}`;
     }
 
     function clearLoadedPurchase(){
@@ -1426,59 +1428,48 @@
 
 
     async function ensureSupplierLoaded(){
-      if(supplierLoaded) return;
-
-      let all = [];
-      const pageSize = 1000;
-      for(let from = 0; ; from += pageSize){
-        const to = from + pageSize - 1;
-        const { data, error } = await sb
-          .from("purchase_details")
-          .select("supplier_name,gst_number,address,created_at")
-          .order("created_at", { ascending: false })
-          .range(from, to);
-
-        if(error){
-          console.error(error);
-          byId("returnStatus").innerHTML = `<span class="err">Supplier list load failed: ${error.message}</span>`;
-          return;
-        }
-
-        all = all.concat(data || []);
-        if(!data || data.length < pageSize) break;
-      }
-
-      const map = new Map();
-      all.forEach(sup => {
-        const name = String(sup.supplier_name || "").trim();
-        const gst = String(sup.gst_number || "").trim();
-        const address = String(sup.address || "").trim();
-        if(!name && !gst) return;
-        const key = `${gst.toUpperCase()}|${name.toUpperCase()}`;
-        if(!map.has(key)) map.set(key, { supplier_name:name, gst_number:gst, address });
-        else if(address && !map.get(key).address) map.get(key).address = address;
-      });
-
-      supplierCache = Array.from(map.values()).sort((a,b) => (a.supplier_name || "").localeCompare(b.supplier_name || ""));
+      // No bulk load here. Supplier search is done on demand so this page stays fast even with many purchases.
       supplierLoaded = true;
+      return;
     }
 
     async function searchSupplierForHeader(anchor){
       if(getMode() !== "without_bill") return;
-      await ensureSupplierLoaded();
 
-      const q = String(anchor.value || "").trim().toUpperCase();
-      if(q.length < 1){
+      const q = String(anchor.value || "").trim();
+      if(q.length < 2){
         hideDropdown();
         return;
       }
 
-      const parts = q.split(/\s+/).filter(Boolean);
-      const result = supplierCache.filter(sup => {
-        const hay = `${sup.gst_number || ""} ${sup.supplier_name || ""} ${sup.address || ""}`.toUpperCase();
-        return parts.every(p => hay.includes(p));
-      }).slice(0, 50);
+      const uq = q.toUpperCase();
+      let query = sb
+        .from("purchase_details")
+        .select("supplier_name,gst_number,address,created_at")
+        .or(`supplier_name.ilike.%${q}%,gst_number.ilike.%${q}%,address.ilike.%${q}%`)
+        .order("created_at", { ascending:false })
+        .limit(40);
 
+      const { data, error } = await query;
+      if(error){
+        console.error(error);
+        byId("returnStatus").innerHTML = `<span class="err">Supplier search failed: ${error.message}</span>`;
+        return;
+      }
+
+      const map = new Map();
+      (data || []).forEach(sup => {
+        const name = String(sup.supplier_name || "").trim();
+        const gst = String(sup.gst_number || "").trim();
+        const address = String(sup.address || "").trim();
+        const hay = `${gst} ${name} ${address}`.toUpperCase();
+        if(!hay.includes(uq)) return;
+        if(!name && !gst) return;
+        const key = `${gst.toUpperCase()}|${name.toUpperCase()}`;
+        if(!map.has(key)) map.set(key, { supplier_name:name, gst_number:gst, address });
+      });
+
+      const result = Array.from(map.values()).slice(0, 30);
       if(!result.length){
         hideDropdown();
         return;
@@ -1497,58 +1488,58 @@
     }
 
     async function ensureStockLoaded(){
-      if(stockLoaded) return;
-      byId("saveStatus").textContent = "Loading live stock balance for manual return...";
+      // No bulk stock load. Manual item search queries stock_balance_view only for typed matches.
+      stockLoaded = true;
+      return;
+    }
 
-      let all = [];
-      const pageSize = 1000;
+    async function searchStockForRow(row, q, anchor){
+      q = String(q || "").trim();
+      if(getMode() !== "without_bill" || q.length < 2){
+        hideDropdown();
+        return;
+      }
 
-      for(let from = 0; ; from += pageSize){
-        const to = from + pageSize - 1;
+      const token = Date.now() + "_" + Math.random().toString(16).slice(2);
+      row.dataset.searchToken = token;
+
+      // small debounce for fast typing
+      clearTimeout(row._stockSearchTimer);
+      row._stockSearchTimer = setTimeout(async () => {
+        if(row.dataset.searchToken !== token) return;
+        const uq = q.toUpperCase();
+        const parts = uq.split(/\s+/).filter(Boolean);
+
         const { data, error } = await sb
           .from("stock_balance_view")
           .select("item_code,item_name,barcode,hsn_code,department,gst_percent,purchase_price,purchase_price_gst,landing,price1,price1_gst,balance")
-          .order("item_name", { ascending: true })
-          .range(from, to);
+          .or(`item_code.ilike.%${q}%,item_name.ilike.%${q}%,barcode.ilike.%${q}%`)
+          .order("item_name", { ascending:true })
+          .limit(60);
+
+        if(row.dataset.searchToken !== token) return;
 
         if(error){
           console.error(error);
-          byId("saveStatus").innerHTML = `<span class="err">Live stock balance load failed from stock_balance_view: ${error.message}</span>`;
+          byId("saveStatus").innerHTML = `<span class="err">Item search failed: ${error.message}</span>`;
           return;
         }
 
-        all = all.concat((data || []).map(it => ({
-          ...it,
-          balance_qty: Number(it.balance || 0)
-        })));
+        const result = (data || [])
+          .map(it => ({ ...it, balance_qty:Number(it.balance || 0) }))
+          .filter(it => {
+            const hay = `${it.item_code || ""} ${it.item_name || ""} ${it.barcode || ""}`.toUpperCase();
+            return parts.every(p => hay.includes(p));
+          })
+          .slice(0, 50);
 
-        if(!data || data.length < pageSize) break;
-      }
+        if(!result.length){
+          hideDropdown();
+          return;
+        }
 
-      stockCache = all;
-      stockLoaded = true;
-      byId("saveStatus").innerHTML = `<span class="ok">${stockCache.length} stock items loaded with live balance qty.</span>`;
-    }
-
-    function searchStockForRow(row, q, anchor){
-      q = String(q || "").trim().toUpperCase();
-      if(getMode() !== "without_bill" || q.length < 1){
-        hideDropdown();
-        return;
-      }
-
-      const parts = q.split(/\s+/).filter(Boolean);
-      const result = stockCache.filter(it => {
-        const hay = `${it.item_code || ""} ${it.item_name || ""} ${it.barcode || ""}`.toUpperCase();
-        return parts.every(p => hay.includes(p));
-      }).slice(0, 50);
-
-      if(!result.length){
-        hideDropdown();
-        return;
-      }
-
-      showDropdown(anchor, result, pick => fillStockIntoRow(row, pick), "item");
+        showDropdown(anchor, result, pick => fillStockIntoRow(row, pick), "item");
+      }, 180);
     }
 
     function fillStockIntoRow(row, it){
@@ -1964,9 +1955,6 @@
       <div class="footer-note"><span>Generated: ${escPrint(new Date().toLocaleString())}</span><span>Computer generated audit print</span></div>
     </div>
   </div>
-<script>
-  window.onload = function(){ setTimeout(function(){ window.print(); }, 250); };
-<\/script>
 </body>
 </html>`;
 
@@ -1978,6 +1966,72 @@
       w.document.open();
       w.document.write(printHtml);
       w.document.close();
+      w.onload = function(){
+        setTimeout(function(){
+          try { w.print(); } catch(e) {}
+        }, 300);
+      };
+    }
+
+    function validateReturnBeforeSave(returnItems, mode){
+      if(!returnItems.length){
+        return "Enter at least one return quantity.";
+      }
+
+      for(const it of returnItems){
+        if(!it.item_code && !it.item_name){
+          return "Item code or item name required.";
+        }
+        if(it.return_quantity <= 0){
+          return `Return qty must be above zero for ${it.item_code || it.item_name}.`;
+        }
+        if(mode === "with_bill" && it.return_quantity > it.original_quantity){
+          return `Return qty cannot be more than purchase qty for ${it.item_code || it.item_name}.`;
+        }
+      }
+
+      if(mode === "without_bill"){
+        const badRows = getItemRows().filter(row => {
+          const inputs = row.querySelectorAll("input");
+          const qty = num(inputs[7].value);
+          const stockQty = Number(row.dataset.stockQty || 0);
+          const code = String(inputs[2].value || inputs[4].value || "").trim();
+          return code && qty > 0 && stockQty >= 0 && qty > stockQty;
+        });
+        if(badRows.length){
+          const first = badRows[0].querySelectorAll("input");
+          first[7].focus();
+          return `Return qty is above current stock for ${first[2].value || first[4].value}. Reduce qty or correct stock first.`;
+        }
+      }
+
+      return "";
+    }
+
+    async function insertReturnItemsWithFallback(itemPayload, status){
+      const fullTry = await sb.from("purchase_return_item_details").insert(itemPayload);
+      if(!fullTry.error) return { error:null };
+
+      const msg = String(fullTry.error.message || "");
+      const missingColumn = /column .* does not exist|Could not find the .* column|schema cache/i.test(msg);
+      if(!missingColumn){
+        return { error:fullTry.error };
+      }
+
+      // Fallback for older databases that do not have optional columns.
+      const safePayload = itemPayload.map(({ original_quantity, balance_quantity, purchase_price_gst, landing, ...rest }) => rest);
+      status.innerHTML = `<span class="warn">Some optional item columns are not available in this database. Retrying with compatible columns...</span>`;
+      const retry = await sb.from("purchase_return_item_details").insert(safePayload);
+      return { error: retry.error || null };
+    }
+
+    async function restoreOldReturnItems(oldItems, status){
+      if(!oldItems || !oldItems.length) return;
+      const cleanOldItems = oldItems.map(({ id, created_at, updated_at, ...rest }) => rest);
+      const res = await insertReturnItemsWithFallback(cleanOldItems, status);
+      if(res.error){
+        console.error("Rollback failed", res.error);
+      }
     }
 
     async function savePurchaseReturn(){
@@ -1996,25 +2050,14 @@
       }
 
       const returnItems = collectItems();
-
-      if(!returnItems.length){
-        status.innerHTML = `<span class="err">Enter at least one return quantity.</span>`;
+      const validationError = validateReturnBeforeSave(returnItems, mode);
+      if(validationError){
+        status.innerHTML = `<span class="err">${validationError}</span>`;
         return;
       }
 
-      for(const it of returnItems){
-        if(mode === "with_bill" && it.return_quantity > it.original_quantity){
-          status.innerHTML = `<span class="err">Return qty cannot be more than purchase qty for ${it.item_code}</span>`;
-          return;
-        }
-        if(!it.item_code && !it.item_name){
-          status.innerHTML = `<span class="err">Item code or item name required.</span>`;
-          return;
-        }
-      }
-
       byId("saveBtn").disabled = true;
-      syncStickySaveState();
+      byId("saveBtnSticky").disabled = true;
       status.textContent = isEditMode ? "Updating purchase return..." : "Saving purchase return...";
 
       const headerPayload = {
@@ -2032,50 +2075,7 @@
         payable: num(byId("payable").value)
       };
 
-      let purchaseReturnId = editingReturnId;
-
-      if(isEditMode && editingReturnId){
-        const { error: updErr } = await sb
-          .from("purchase_return_details")
-          .update(headerPayload)
-          .eq("id", editingReturnId);
-
-        if(updErr){
-          status.innerHTML = `<span class="err">Header update failed: ${updErr.message}</span>`;
-          byId("saveBtn").disabled = false;
-          syncStickySaveState();
-          return;
-        }
-
-        const { error: delErr } = await sb
-          .from("purchase_return_item_details")
-          .delete()
-          .eq("purchase_return_id", editingReturnId);
-
-        if(delErr){
-          status.innerHTML = `<span class="err">Old item delete failed: ${delErr.message}</span>`;
-          byId("saveBtn").disabled = false;
-          syncStickySaveState();
-          return;
-        }
-      } else {
-        const { data: prHead, error: headErr } = await sb
-          .from("purchase_return_details")
-          .insert(headerPayload)
-          .select("id")
-          .single();
-
-        if(headErr){
-          status.innerHTML = `<span class="err">Header save failed: ${headErr.message}</span>`;
-          byId("saveBtn").disabled = false;
-          syncStickySaveState();
-          return;
-        }
-
-        purchaseReturnId = prHead.id;
-      }
-
-      const itemPayload = returnItems.map(it => ({
+      const buildItemPayload = (purchaseReturnId) => returnItems.map(it => ({
         purchase_return_id: purchaseReturnId,
         purchase_id: mode === "with_bill" ? loadedPurchase.id : null,
         purchase_number: mode === "with_bill" ? loadedPurchase.purchase_number : "WITHOUT BILL",
@@ -2097,25 +2097,100 @@
         total_gst: it.total_gst
       }));
 
-      const { error: itemErr } = await sb
-        .from("purchase_return_item_details")
-        .insert(itemPayload);
+      try{
+        let purchaseReturnId = editingReturnId;
+        let oldItemsForRollback = [];
 
-      if(itemErr){
-        status.innerHTML = `<span class="err">Item save failed: ${itemErr.message}</span>`;
-        byId("saveBtn").disabled = false;
-        syncStickySaveState();
-        return;
-      }
+        if(isEditMode && editingReturnId){
+          const { data: oldItems, error: oldErr } = await sb
+            .from("purchase_return_item_details")
+            .select("*")
+            .eq("purchase_return_id", editingReturnId);
 
-      status.innerHTML = `<span class="ok">${isEditMode ? "Purchase Return Updated Successfully." : "Purchase Return Saved Successfully."}</span>`;
+          if(oldErr){
+            status.innerHTML = `<span class="err">Could not read old items before update: ${oldErr.message}</span>`;
+            return;
+          }
+          oldItemsForRollback = oldItems || [];
 
-      if (isEditMode) {
-        setTimeout(() => {
-          window.location.href = "purchase_return_report.html";
-        }, 400);
-      } else {
-        await initPage();
+          const { error: updErr } = await sb
+            .from("purchase_return_details")
+            .update(headerPayload)
+            .eq("id", editingReturnId);
+
+          if(updErr){
+            status.innerHTML = `<span class="err">Header update failed: ${updErr.message}</span>`;
+            return;
+          }
+
+          const { error: delErr } = await sb
+            .from("purchase_return_item_details")
+            .delete()
+            .eq("purchase_return_id", editingReturnId);
+
+          if(delErr){
+            status.innerHTML = `<span class="err">Old item delete failed: ${delErr.message}</span>`;
+            return;
+          }
+
+          const insertRes = await insertReturnItemsWithFallback(buildItemPayload(purchaseReturnId), status);
+          if(insertRes.error){
+            await restoreOldReturnItems(oldItemsForRollback, status);
+            status.innerHTML = `<span class="err">New item insert failed. Old items were restored if possible. Error: ${insertRes.error.message}</span>`;
+            return;
+          }
+        } else {
+          let headerError = null;
+          let prHead = null;
+
+          for(let attempt = 0; attempt < 2; attempt++){
+            const { data, error } = await sb
+              .from("purchase_return_details")
+              .insert(headerPayload)
+              .select("id")
+              .single();
+
+            if(!error){
+              prHead = data;
+              headerError = null;
+              break;
+            }
+
+            headerError = error;
+            if(String(error.message || "").toLowerCase().includes("duplicate") && attempt === 0){
+              headerPayload.purchase_return_number = await generatePurchaseReturnNumber();
+              byId("purchaseReturnNumber").value = headerPayload.purchase_return_number;
+              continue;
+            }
+            break;
+          }
+
+          if(headerError || !prHead){
+            status.innerHTML = `<span class="err">Header save failed: ${headerError?.message || "Unknown error"}</span>`;
+            return;
+          }
+
+          purchaseReturnId = prHead.id;
+          const insertRes = await insertReturnItemsWithFallback(buildItemPayload(purchaseReturnId), status);
+          if(insertRes.error){
+            await sb.from("purchase_return_details").delete().eq("id", purchaseReturnId);
+            status.innerHTML = `<span class="err">Item save failed. Header was removed if possible. Error: ${insertRes.error.message}</span>`;
+            return;
+          }
+        }
+
+        status.innerHTML = `<span class="ok">${isEditMode ? "Purchase Return Updated Successfully." : "Purchase Return Saved Successfully."}</span>`;
+
+        if(isEditMode){
+          setTimeout(() => { window.location.href = "purchase_return_report.html"; }, 500);
+        } else {
+          await initPage();
+        }
+      } catch(err){
+        console.error(err);
+        status.innerHTML = `<span class="err">Unexpected save error: ${err.message || err}</span>`;
+      } finally {
+        maybeEnableSave();
       }
     }
 

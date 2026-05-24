@@ -562,6 +562,7 @@
     .summary-card.advance-credit-sales-card::before { background: linear-gradient(90deg, #7c3aed, #06b6d4); }
     .summary-card.receipt-card::before { background: linear-gradient(90deg, #10b981, #34d399); }
     .summary-card.return-card::before { background: linear-gradient(90deg, #fb7185, #ef4444); }
+    .summary-card.credit-return-card::before { background: linear-gradient(90deg, #f59e0b, #f97316); }
     .summary-card.payment-card::before { background: linear-gradient(90deg, #f43f5e, #e11d48); }
     .summary-card.pending-card::before { background: linear-gradient(90deg, #8b5cf6, #a78bfa); }
     .summary-card.close-card::before { background: linear-gradient(90deg, #14b8a6, #06b6d4); }
@@ -1332,7 +1333,7 @@
               <span>Pending Return</span>
               <strong id="pendingReturnsText">0</strong>
             </div>
-            <div class="status-chip">Only approved lines affect dashboard totals</div>
+            <div class="status-chip">Only approved CASH refunds affect cash total</div>
           </div>
 
           <div class="mini-panel">
@@ -1391,9 +1392,15 @@
         </div>
 
         <div class="summary-card return-card">
-          <div class="summary-title">Approved Sales Return</div>
+          <div class="summary-title">Approved Cash Return</div>
           <div class="summary-value" id="todaySalesReturn">₹ 0.00</div>
-          <div class="summary-note">Unapproved returns stay out of the dashboard calculation.</div>
+          <div class="summary-note">Only CASH REFUND returns reduce today\'s cash balance.</div>
+        </div>
+
+        <div class="summary-card credit-return-card">
+          <div class="summary-title">Credit Return Adjustment</div>
+          <div class="summary-value" id="todayCreditReturnAdjustment">₹ 0.00</div>
+          <div class="summary-note">Credit returns reduce customer outstanding, not cash balance.</div>
         </div>
 
         <div class="summary-card payment-card">
@@ -1805,6 +1812,25 @@
       return normalizePaymentType(value) === "CASH";
     }
 
+    function normalizeReturnPaymentType(row){
+      const raw = row?.return_payment_type ?? row?.settlement_mode ?? row?.payment_type ?? "CASH";
+      const normalized = String(raw || "CASH").trim().toUpperCase().replace(/[\s_\-]+/g, " ");
+      if(normalized.includes("CREDIT")) return "CREDIT";
+      return "CASH";
+    }
+
+    function getCashRefundAmount(row){
+      const cashRefund = Number(row?.cash_refund_amount || 0);
+      if(Number.isFinite(cashRefund) && cashRefund > 0) return cashRefund;
+      return moneyFromRow(row, ["total_return_amount", "payable", "total_amount"]);
+    }
+
+    function getCreditAdjustmentAmount(row){
+      const creditAdjustment = Number(row?.credit_adjustment_amount || 0);
+      if(Number.isFinite(creditAdjustment) && creditAdjustment > 0) return creditAdjustment;
+      return moneyFromRow(row, ["total_return_amount", "payable", "total_amount"]);
+    }
+
     function isSalesOrderAdvanceCashTxn(row){
       const text = `${row?.voucher_no || ""} ${row?.reference_type || ""} ${row?.remarks || ""}`.toLowerCase().replace(/[\s\-_]+/g, "");
       return text.includes("salesorderadvance") || text.includes("advanceforsalesorder");
@@ -1887,14 +1913,28 @@
       });
 
       let today_sales_return = 0;
+      let today_credit_return_adjustment = 0;
       let pending_returns = 0;
       returnRows.forEach(row => {
         if(isCancelledRow(row)) return;
 
         const status = String(row.approval_status || "").trim().toLowerCase();
         const accepted = row.is_accepted === true || status === "approved";
-        if(accepted) today_sales_return += moneyFromRow(row, ["total_return_amount", "payable", "total_amount"]);
-        else pending_returns += 1;
+
+        if(accepted){
+          const returnType = normalizeReturnPaymentType(row);
+
+          if(returnType === "CREDIT"){
+            // CREDIT ADJUSTMENT reduces customer outstanding only.
+            // It must not reduce today's cash balance.
+            today_credit_return_adjustment += getCreditAdjustmentAmount(row);
+          }else{
+            // CASH REFUND only is treated as cash going out.
+            today_sales_return += getCashRefundAmount(row);
+          }
+        }else{
+          pending_returns += 1;
+        }
       });
 
       return {
@@ -1903,6 +1943,7 @@
         today_advance_credit_sales,
         today_receipt,
         today_sales_return,
+        today_credit_return_adjustment,
         today_payment,
         pending_payments,
         pending_returns,
@@ -1918,6 +1959,7 @@
         const todayAdvanceCreditSales = Number(row.today_advance_credit_sales || 0);
         const todayReceipt = Number(row.today_receipt || 0);
         const todaySalesReturn = Number(row.today_sales_return || 0);
+        const todayCreditReturnAdjustment = Number(row.today_credit_return_adjustment || 0);
         const todayPayment = Number(row.today_payment || 0);
         const pendingPayments = Number(row.pending_payments || 0);
         const pendingReturns = Number(row.pending_returns || 0);
@@ -1931,6 +1973,7 @@
         setText("todayAdvanceCreditSalesHero", formatCurrency(todayAdvanceCreditSales));
         setText("todayReceipt", formatCurrency(todayReceipt));
         setText("todaySalesReturn", formatCurrency(todaySalesReturn));
+        setText("todayCreditReturnAdjustment", formatCurrency(todayCreditReturnAdjustment));
         setText("todayPayment", formatCurrency(todayPayment));
         setText("todayBalance", formatCurrency(todayBalance));
         setText("todayBalanceCard", formatCurrency(todayBalance));

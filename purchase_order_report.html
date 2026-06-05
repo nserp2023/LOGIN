@@ -947,8 +947,9 @@ function renderOrders(orders, items){
     const qty = (its||[]).reduce((a,it)=>a + Number(it.quantity||0),0);
     const received = (its||[]).reduce((a,it)=>a + Number(it.received_qty||0),0);
     const pending = (its||[]).reduce((a,it)=>a + Math.max(Number(it.quantity||0)-Number(it.received_qty||0),0),0);
-    return {order:o,items:its,value,qty,received,pending};
-  }).filter(r => r.pending > 0);
+    const cancelled = getOrderCancelled(o) || String(o.status||'').toUpperCase() === 'CANCELLED';
+    return {order:o,items:its,value,qty,received,pending,cancelled};
+  }).filter(r => r.pending > 0 && !r.cancelled);
 
   if(!rows.length){
     tbody.innerHTML = `<tr><td colspan="7" class="empty">No orders with pending items found</td></tr>`;

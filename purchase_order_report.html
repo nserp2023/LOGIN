@@ -948,7 +948,13 @@ function renderOrders(orders, items){
     const received = (its||[]).reduce((a,it)=>a + Number(it.received_qty||0),0);
     const pending = (its||[]).reduce((a,it)=>a + Math.max(Number(it.quantity||0)-Number(it.received_qty||0),0),0);
     return {order:o,items:its,value,qty,received,pending};
-  });
+  }).filter(r => r.pending > 0);
+
+  if(!rows.length){
+    tbody.innerHTML = `<tr><td colspan="7" class="empty">No orders with pending items found</td></tr>`;
+    document.getElementById('resultInfo').textContent = `0 order(s) shown`;
+    return;
+  }
 
   tbody.innerHTML = rows.map(r=>{
     const o = r.order;

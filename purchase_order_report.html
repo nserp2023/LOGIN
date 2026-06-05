@@ -81,6 +81,9 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .red{background:linear-gradient(135deg,#e11d48,#be123c)}
 .orange{background:linear-gradient(135deg,#f59e0b,#d97706)}
 .ghost{background:rgba(255,255,255,.08);border:1px solid var(--line)}
+/* View toggle active state */
+.viewActive{background:linear-gradient(135deg,#10b981,#059669);color:white;border:0}
+.viewGhost{background:rgba(255,255,255,.04);border:1px solid rgba(148,163,184,.12)}
 .filters{
   margin-top:14px;
   display:grid;
@@ -423,7 +426,13 @@ th:first-child{z-index:30;background:#102039}
       <b>📊 Item Details Report</b>
       <div class="hint">Excel view: scroll sideways and vertically</div>
     </div>
-    <button id="toggleTopBtn" class="toggleTopBtn" onclick="toggleTopSections()">⬇️ Show Top</button>
+    <div style="display:flex;gap:8px;align-items:center">
+      <div style="display:flex;gap:6px">
+        <button id="viewItemBtn" class="ghost" onclick="setViewMode('item')">Item Wise</button>
+        <button id="viewOrderBtn" class="ghost" onclick="setViewMode('order')">Order Wise</button>
+      </div>
+      <button id="toggleTopBtn" class="toggleTopBtn" onclick="toggleTopSections()">⬇️ Show Top</button>
+    </div>
   </div>
 
   <div id="topSections" class="topSections">
@@ -514,6 +523,23 @@ th:first-child{z-index:30;background:#102039}
           <tr><td colspan="13" class="empty">Loading...</td></tr>
         </tbody>
       </table>
+      <!-- Order-wise table (hidden by default) -->
+      <table id="orderTable" style="display:none;">
+        <thead>
+          <tr>
+            <th>PO No</th>
+            <th>Date</th>
+            <th>Supplier</th>
+            <th>Mobile</th>
+            <th class="right">Order Value</th>
+            <th>Status</th>
+            <th class="right">Action</th>
+          </tr>
+        </thead>
+        <tbody id="orderTbody">
+          <tr><td colspan="7" class="empty">Loading...</td></tr>
+        </tbody>
+      </table>
     </div>
   </div>
 
@@ -561,6 +587,9 @@ th:first-child{z-index:30;background:#102039}
 const sb = window.sbcc;
 
 let allRows = [];
+let allOrders = [];
+let allItems = [];
+let viewMode = 'item'; // 'item' or 'order'
 let receiveRow = null;
 let timer = null;
 let topSectionsOpen = false;
@@ -632,6 +661,7 @@ function badge(status){
 async function init(){
   document.getElementById("fromDate").value = monthStartISO();
   document.getElementById("toDate").value = todayISO();
+  updateViewButtons();
   await loadReport();
 }
 
@@ -734,8 +764,31 @@ async function loadReport(){
     }
 
     allRows = rows;
-    renderRows(rows);
-    renderStats(rows);
+    allOrders = orders || [];
+    allItems = items || [];
+    if(viewMode === 'item'){
+      renderRows(rows);
+      renderStats(rows);
+    }else{
+      renderOrders(allOrders, allItems);
+      // render stats for orders: show counts of orders and total value
+      const ordersSummary = allOrders.map(o=>{
+        const its = (allItems||[]).filter(i=>Number(i.purchase_order_id)===Number(o.id));
+        const value = (its||[]).reduce((a,it)=>a + (Number(it.quantity||0) * Number(it.price||0)),0);
+        return {order:o,items:its,value};
+      });
+      document.getElementById('resultInfo').textContent = `${ordersSummary.length} order(s) shown`;
+      // simple stats update
+      document.getElementById('stLines').textContent = ordersSummary.length;
+      const totQty = ordersSummary.reduce((a,s)=>a + s.items.reduce((aa,it)=>aa + Number(it.quantity||0),0),0);
+      const totReceived = ordersSummary.reduce((a,s)=>a + s.items.reduce((aa,it)=>aa + Number(it.received_qty||0),0),0);
+      const totPending = ordersSummary.reduce((a,s)=>a + s.items.reduce((aa,it)=>aa + Math.max(Number(it.quantity||0)-Number(it.received_qty||0),0),0),0);
+      const totValue = ordersSummary.reduce((a,s)=>a + s.value,0);
+      document.getElementById('stQty').textContent = num(totQty);
+      document.getElementById('stReceived').textContent = num(totReceived);
+      document.getElementById('stPending').textContent = num(totPending);
+      document.getElementById('stValue').textContent = money(totValue);
+    }
 
   }catch(err){
     console.error(err);
@@ -807,6 +860,90 @@ function renderStats(rows){
     const el = document.getElementById(id);
     if(el) el.textContent = val;
   });
+}
+
+function setViewMode(mode){
+  if(mode !== 'item' && mode !== 'order') return;
+  viewMode = mode;
+  updateViewButtons();
+
+  const itemTable = document.getElementById('tbody')?.closest('table');
+  const orderTable = document.getElementById('orderTable');
+  const titleEl = document.querySelector('.tabletitle');
+  const hintEl = document.querySelector('.tablehead .hint');
+
+  if(viewMode === 'item'){
+    if(itemTable) itemTable.style.display = '';
+    if(orderTable) orderTable.style.display = 'none';
+    if(titleEl) titleEl.textContent = 'Item Details Report';
+    if(hintEl) hintEl.textContent = 'Excel-like full screen report. First PO column is fixed; scroll right for all details.';
+    // render current rows
+    renderRows(allRows || []);
+    renderStats(allRows || []);
+  }else{
+    if(itemTable) itemTable.style.display = 'none';
+    if(orderTable) orderTable.style.display = '';
+    if(titleEl) titleEl.textContent = 'Order Details Report';
+    if(hintEl) hintEl.textContent = 'Order-level view: date, supplier, mobile, status and actions.';
+    renderOrders(allOrders || [], allItems || []);
+  }
+}
+
+function updateViewButtons(){
+  const bi = document.getElementById('viewItemBtn');
+  const bo = document.getElementById('viewOrderBtn');
+  if(!bi || !bo) return;
+  if(viewMode === 'item'){
+    bi.classList.add('viewActive'); bi.classList.remove('viewGhost');
+    bo.classList.remove('viewActive'); bo.classList.add('viewGhost');
+  }else{
+    bo.classList.add('viewActive'); bo.classList.remove('viewGhost');
+    bi.classList.remove('viewActive'); bi.classList.add('viewGhost');
+  }
+}
+
+function renderOrders(orders, items){
+  const tbody = document.getElementById('orderTbody');
+  if(!tbody) return;
+
+  if(!orders || !orders.length){
+    tbody.innerHTML = `<tr><td colspan="7" class="empty">No orders found</td></tr>`;
+    return;
+  }
+
+  const rows = (orders || []).map(o=>{
+    const its = (items||[]).filter(i=>Number(i.purchase_order_id)===Number(o.id));
+    const value = (its||[]).reduce((a,it)=>a + (Number(it.quantity||0) * Number(it.price||0)),0);
+    const qty = (its||[]).reduce((a,it)=>a + Number(it.quantity||0),0);
+    const received = (its||[]).reduce((a,it)=>a + Number(it.received_qty||0),0);
+    const pending = (its||[]).reduce((a,it)=>a + Math.max(Number(it.quantity||0)-Number(it.received_qty||0),0),0);
+    return {order:o,items:its,value,qty,received,pending};
+  });
+
+  tbody.innerHTML = rows.map(r=>{
+    const o = r.order;
+    const cancelled = getOrderCancelled(o) || String(o.status||'').toUpperCase()==='CANCELLED';
+    return `
+      <tr>
+        <td class="mono"><b>${safe(poNo(o))}</b></td>
+        <td>${fmtDate(o.order_date || o.purchase_order_date || o.created_at)}</td>
+        <td><b>${safe(o.supplier_name || '-')}</b></td>
+        <td><b>${safe(o.supplier_mobile || o.mobile || getMobileFromRemark(o.remark || o.remarks || ''))}</b></td>
+        <td class="right"><b>${money(r.value)}</b></td>
+        <td>${badge(String(o.status||'').toUpperCase() || (r.pending>0? 'OPEN':'CLOSED'))}</td>
+        <td class="right">
+          <div class="row-actions">
+            <button class="smallbtn green" onclick="sharePOWhatsApp(${o.id})" ${cancelled ? 'disabled' : ''}>🖼 WhatsApp</button>
+            <button class="smallbtn ghost" onclick="printPO(${o.id})">🖨 Print</button>
+            <button class="smallbtn green" onclick="window.open('purchase_order.html?open=${encodeURIComponent(o.id)}','_blank')" ${cancelled ? 'disabled' : ''}>📦 Material Received</button>
+            <button class="smallbtn red" onclick="cancelPO(${o.id})" ${cancelled ? 'disabled' : ''}>Cancel</button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  document.getElementById('resultInfo').textContent = `${rows.length} order(s) shown`;
 }
 
 function openReceiveModal(itemId){

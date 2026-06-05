@@ -658,6 +658,8 @@
 
     let activeIndex = -1;
     let dropdown;
+    let dropdownAnchor = null;
+    let isKeyboardNavigating = false;
     let stockData = [];
     let duplicateInvoiceFound = false;
 
@@ -912,6 +914,7 @@
     function showDropdown(anchorInput, items, onPick){
       hideDropdown();
 
+      dropdownAnchor = anchorInput;
       const rect = anchorInput.getBoundingClientRect();
       const isSupplierDropdown = items.length && items[0].gst_number !== undefined;
 
@@ -980,13 +983,17 @@
 
         if(e.key === "ArrowDown"){
           e.preventDefault();
+          isKeyboardNavigating = true;
           activeIndex = (activeIndex + 1) % opts.length;
           highlightOption();
+          setTimeout(() => { isKeyboardNavigating = false; }, 50);
         }
         else if(e.key === "ArrowUp"){
           e.preventDefault();
+          isKeyboardNavigating = true;
           activeIndex = (activeIndex - 1 + opts.length) % opts.length;
           highlightOption();
+          setTimeout(() => { isKeyboardNavigating = false; }, 50);
         }
         else if(e.key === "Enter"){
           e.preventDefault();
@@ -1009,7 +1016,7 @@
     }
 
     function hideDropdown(){
-      if(dropdown){ dropdown.remove(); dropdown=null; }
+      if(dropdown){ dropdown.remove(); dropdown=null; dropdownAnchor=null; }
     }
 
     document.addEventListener("click", e=>{
@@ -1018,7 +1025,8 @@
 
     window.addEventListener("resize", hideDropdown);
     window.addEventListener("scroll", (e) => {
-      if(dropdown && !dropdown.contains(e.target)) hideDropdown();
+      if(isKeyboardNavigating) return;
+      if(dropdown && dropdownAnchor !== document.activeElement) hideDropdown();
     }, true);
 
     function tip(input, msg){

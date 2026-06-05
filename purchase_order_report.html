@@ -252,6 +252,23 @@ tr:hover td{background:rgba(56,189,248,.045)}
   margin-bottom:12px;
 }
 
+.orderReceiveList{
+  display:grid;
+  gap:10px;
+  margin-top:14px;
+}
+.orderReceiveItem{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:8px;
+  padding:12px 14px;
+  border-radius:14px;
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(148,163,184,.16);
+}
+.orderReceiveItem .meta{display:grid;gap:4px;}
+.orderReceiveItem button{white-space:nowrap;}
 
 .mobileToggleBar{
   display:flex;
@@ -580,6 +597,19 @@ th:first-child{z-index:30;background:#102039}
         <button class="green" onclick="saveReceive()">📦 Save Received</button>
       </div>
     </div>
+  </div>
+</div>
+
+<div id="orderReceiveModal" class="modal">
+  <div class="modalbox">
+    <div class="modalhead">
+      <div>
+        <b>Order Material Receive</b>
+        <div class="hint">Select a pending item line from this order to receive.</div>
+      </div>
+      <button class="ghost" onclick="closeOrderReceiveModal()">✕</button>
+    </div>
+    <div class="modalbody" id="orderReceiveBody"></div>
   </div>
 </div>
 
@@ -935,7 +965,7 @@ function renderOrders(orders, items){
           <div class="row-actions">
             <button class="smallbtn green" onclick="sharePOWhatsApp(${o.id})" ${cancelled ? 'disabled' : ''}>🖼 WhatsApp</button>
             <button class="smallbtn ghost" onclick="printPO(${o.id})">🖨 Print</button>
-            <button class="smallbtn green" onclick="window.open('purchase_order.html?open=${encodeURIComponent(o.id)}','_blank')" ${cancelled ? 'disabled' : ''}>📦 Material Received</button>
+            <button class="smallbtn green" onclick="openOrderReceiveModal(${o.id})" ${cancelled ? 'disabled' : ''}>📦 Material Received</button>
             <button class="smallbtn red" onclick="cancelPO(${o.id})" ${cancelled ? 'disabled' : ''}>Cancel</button>
           </div>
         </td>
@@ -944,6 +974,47 @@ function renderOrders(orders, items){
   }).join('');
 
   document.getElementById('resultInfo').textContent = `${rows.length} order(s) shown`;
+}
+
+function openOrderReceiveModal(orderId){
+  const order = allOrders.find(o=>Number(o.id)===Number(orderId));
+  const items = allRows.filter(r=>Number(r.order_id)===Number(orderId));
+  if(!order) return alert('Order not found');
+  const pendingItems = items.filter(r=>Number(r.pending_qty) > 0 && !r.is_cancelled);
+  const body = document.getElementById('orderReceiveBody');
+  if(!body) return;
+
+  const supplierMobile = safe(order.supplier_mobile || order.mobile || getMobileFromRemark(order.remark || order.remarks || ''));
+  const statusText = safe(String(order.status || '').toUpperCase() || (pendingItems.length ? 'OPEN' : 'CLOSED'));
+  const orderDate = fmtDate(order.order_date || order.purchase_order_date || order.created_at);
+
+  body.innerHTML = `
+    <div class="notice">Select one pending item line from this order to mark material received.</div>
+    <div class="orderReceiveList">
+      <div class="orderReceiveItem">
+        <div class="meta"><strong>PO No:</strong> ${safe(poNo(order))}</div>
+        <div class="meta"><strong>Date:</strong> ${orderDate}</div>
+        <div class="meta"><strong>Supplier:</strong> ${safe(order.supplier_name || '-')}</div>
+        <div class="meta"><strong>Mobile:</strong> ${supplierMobile || '-'}</div>
+        <div class="meta"><strong>Status:</strong> ${statusText}</div>
+      </div>
+      ${pendingItems.length ? pendingItems.map(r => `
+        <div class="orderReceiveItem">
+          <div class="meta">
+            <strong>${safe(r.item_name || r.item_code || 'Pending item')}</strong>
+            <span>Qty: ${num(r.order_qty)} | Received: ${num(r.received_qty)} | Pending: ${num(r.pending_qty)}</span>
+          </div>
+          <button class="smallbtn green" onclick="closeOrderReceiveModal();openReceiveModal(${r.item_id})">Receive</button>
+        </div>
+      `).join('') : `<div class="orderReceiveItem"><div class="meta">No pending items available for receipt.</div></div>`}
+    </div>
+  `;
+
+  document.getElementById('orderReceiveModal').classList.add('show');
+}
+
+function closeOrderReceiveModal(){
+  document.getElementById('orderReceiveModal').classList.remove('show');
 }
 
 function openReceiveModal(itemId){

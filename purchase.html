@@ -429,8 +429,9 @@
       border-radius:12px;
       box-shadow:0 18px 30px rgba(0,0,0,.38);
       min-width:320px;
-      max-height:260px;
-      overflow:auto;
+      max-height:500px;
+      overflow-y:auto;
+      overflow-x:hidden;
       backdrop-filter:blur(10px);
     }
 
@@ -973,6 +974,7 @@
       highlightOption();
 
       anchorInput.onkeydown = (e) => {
+        if(!dropdown) return;
         const opts = dropdown.querySelectorAll(".opt");
         if(!opts.length) return;
 
@@ -991,6 +993,7 @@
           opts[activeIndex]?.click();
         }
         else if(e.key === "Escape"){
+          e.preventDefault();
           hideDropdown();
         }
       };
@@ -1010,7 +1013,7 @@
     }
 
     document.addEventListener("click", e=>{
-      if(dropdown && !dropdown.contains(e.target)) hideDropdown();
+      if(dropdown && !dropdown.contains(e.target) && !e.target.closest('.field')) hideDropdown();
     });
 
     window.addEventListener("resize", hideDropdown);

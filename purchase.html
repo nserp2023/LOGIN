@@ -1017,7 +1017,9 @@
     });
 
     window.addEventListener("resize", hideDropdown);
-    window.addEventListener("scroll", hideDropdown, true);
+    window.addEventListener("scroll", (e) => {
+      if(dropdown && !dropdown.contains(e.target)) hideDropdown();
+    }, true);
 
     function tip(input, msg){
       const t = document.createElement("div");

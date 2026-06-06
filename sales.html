@@ -1678,7 +1678,7 @@
         if (btn) btn.textContent = voiceDebugVisible ? 'Hide Voice Debug' : 'Show Voice Debug';
     }
 
-    function updateVoiceDebug({ raw, qty, cleaned, match, score, alts, candidates } = {}) {
+    function updateVoiceDebug({ raw, qty, cleaned, match, score, alts, candidates, confidence } = {}) {
         try {
             const wrap = document.getElementById('voice_debug_overlay');
             if (!wrap) return;
@@ -1690,11 +1690,13 @@
             const scoreEl = document.getElementById('voice_debug_score');
             const altsEl = document.getElementById('voice_debug_alts');
             const candEl = document.getElementById('voice_debug_candidates');
+            const confEl = document.getElementById('voice_debug_confidence');
             if (rawEl && typeof raw !== 'undefined') rawEl.textContent = `Heard: ${String(raw || '-').slice(0,120)}`;
             if (qtyEl && typeof qty !== 'undefined') qtyEl.textContent = `Qty: ${qty}`;
             if (cleanEl && typeof cleaned !== 'undefined') cleanEl.textContent = `Cleaned: ${String(cleaned || '-').slice(0,120)}`;
             if (matchEl && typeof match !== 'undefined') matchEl.textContent = `Match: ${match || '-'}`;
             if (scoreEl && typeof score !== 'undefined') scoreEl.textContent = `Score: ${typeof score === 'number' ? score.toFixed(1) : score || '-'}`;
+            if (confEl && typeof confidence !== 'undefined') confEl.textContent = `Confidence: ${typeof confidence === 'number' ? confidence.toFixed(1) + '%' : '-'}`;
             if (altsEl && typeof alts !== 'undefined') altsEl.textContent = `Alts: ${Array.isArray(alts) ? alts.slice(0,3).join(' | ') : (alts || '-')}`;
             if (candEl && typeof candidates !== 'undefined') {
                 if (Array.isArray(candidates) && candidates.length) {
@@ -1736,16 +1738,20 @@
 
             voiceBillingState.recognition.onresult = (event) => {
                 const last = event.results.length - 1;
-                // collect alternatives
+                // collect alternatives and confidence score
                 const alternatives = [];
+                let confidence = 0;
                 for (let i = 0; i < event.results[last].length; i++) {
                     const alt = event.results[last][i];
-                    if (alt && alt.transcript) alternatives.push(alt.transcript.trim());
+                    if (alt && alt.transcript) {
+                        alternatives.push(alt.transcript.trim());
+                        if (i === 0) confidence = (alt.confidence || 0) * 100; // first alternative's confidence
+                    }
                 }
                 const transcript = alternatives[0] || '';
                 voiceBillingState.lastTranscript = transcript;
-                // Update debug overlay with raw transcript and alternatives
-                updateVoiceDebug({ raw: transcript, alts: alternatives });
+                // Update debug overlay with raw transcript, confidence, and alternatives
+                updateVoiceDebug({ raw: transcript, alts: alternatives, confidence });
                 if (event.results[last].isFinal) {
                     showVoicePrompt(`Heard: ${transcript}`, 'info', 2200);
                     processVoiceCommand(transcript, alternatives);
@@ -1964,6 +1970,75 @@
         return result;
     }
 
+    // Levenshtein distance for fuzzy matching (handle speech recognition mishearings)
+    function levenshteinDistance(a, b) {
+        if (a.length === 0) return b.length;
+        if (b.length === 0) return a.length;
+        const matrix = [];
+        for (let i = 0; i <= b.length; i++) {
+            matrix[i] = [i];
+        }
+        for (let j = 0; j <= a.length; j++) {
+            matrix[0][j] = j;
+        }
+        for (let i = 1; i <= b.length; i++) {
+            for (let j = 1; j <= a.length; j++) {
+                if (b.charAt(i - 1) === a.charAt(j - 1)) {
+                    matrix[i][j] = matrix[i - 1][j - 1];
+                } else {
+                    matrix[i][j] = Math.min(
+                        matrix[i - 1][j - 1] + 1,
+                        matrix[i][j - 1] + 1,
+                        matrix[i - 1][j] + 1
+                    );
+                }
+            }
+        }
+        return matrix[b.length][a.length];
+    }
+
+    // Fuzzy search for items with phonetically similar terms
+    function searchStockWithFuzzy(query, field, maxDistance = 2) {
+        if (!query) return [];
+        const normalizedQuery = normalizeSearchText(query);
+        if (!normalizedQuery) return [];
+        const terms = normalizedQuery.split(' ').filter(Boolean);
+        const scored = getDepartmentFilteredStockData().map(item => {
+            const codeRaw = String(item.item_code || '');
+            const nameRaw = String(item.item_name || '');
+            const barcodeRaw = String(item.barcode || '');
+            const code = normalizeSearchText(codeRaw);
+            const name = normalizeSearchText(nameRaw);
+            const barcode = normalizeSearchText(barcodeRaw);
+            let searchablePrimary = field === 'item_code' ? code : name;
+            let searchableSecondary = field === 'item_code' ? name : code;
+            let score = 0;
+            // Try fuzzy matching on terms that don't have exact matches
+            for (const t of terms) {
+                if (searchablePrimary.includes(t)) {
+                    score += 40;
+                } else if (searchableSecondary.includes(t)) {
+                    score += 35;
+                } else {
+                    // Fuzzy: find the closest word in the item name
+                    const nameWords = searchablePrimary.split(' ');
+                    let closestDistance = Infinity;
+                    for (const word of nameWords) {
+                        const dist = levenshteinDistance(t, word);
+                        if (dist < closestDistance) closestDistance = dist;
+                    }
+                    if (closestDistance <= maxDistance) {
+                        score += Math.max(1, 20 - closestDistance * 5); // penalize by distance
+                    }
+                }
+            }
+            if (score === 0) return null;
+            return { item, score };
+        }).filter(Boolean);
+        scored.sort((a, b) => b.score - a.score);
+        return scored;
+    }
+
     function findVoiceItem(query) {
         if (!query) return null;
 
@@ -1985,6 +2060,20 @@
             return top.item;
         }
 
+        // If no exact match, try fuzzy matching for speech recognition mishearings
+        const fuzzyMatches = searchStockWithFuzzy(normalized, 'item_name', 2);
+        if (fuzzyMatches.length) {
+            const topCands = fuzzyMatches.slice(0,5).map(x => ({ score: x.score, name: x.item.item_name, code: x.item.item_code }));
+            if (fuzzyMatches[0].score >= 15) { // only auto-select if confidence is reasonable
+                try { updateVoiceDebug({ match: (fuzzyMatches[0].item.item_name || fuzzyMatches[0].item.item_code), score: fuzzyMatches[0].score, candidates: topCands }); } catch (e) {}
+                return fuzzyMatches[0].item;
+            } else {
+                // Show candidates even if no confident match
+                try { updateVoiceDebug({ candidates: topCands }); } catch (e) {}
+                return null;
+            }
+        }
+
         // fallback: try the original text if cleaning removed meaningful item numbers
         if (cleanedQuery && cleanedQuery !== queryToSearch) {
             const fallback = normalizeSearchText(queryToSearch);
@@ -1995,6 +2084,13 @@
                     const topCands = fb.slice(0,5).map(x => ({ score: x.score, name: x.item.item_name, code: x.item.item_code }));
                     try { updateVoiceDebug({ match: (top.item.item_name || top.item.item_code), score: top.score, candidates: topCands }); } catch (e) {}
                     return top.item;
+                }
+                // Try fuzzy if no exact match on fallback
+                const fbFuzzy = searchStockWithFuzzy(fallback, 'item_name', 2);
+                if (fbFuzzy.length && fbFuzzy[0].score >= 15) {
+                    const topCands = fbFuzzy.slice(0,5).map(x => ({ score: x.score, name: x.item.item_name, code: x.item.item_code }));
+                    try { updateVoiceDebug({ match: (fbFuzzy[0].item.item_name || fbFuzzy[0].item.item_code), score: fbFuzzy[0].score, candidates: topCands }); } catch (e) {}
+                    return fbFuzzy[0].item;
                 }
             }
         }
@@ -2014,7 +2110,12 @@
             }
         }
 
-        if (matches.length) return matches[0];
+        if (matches.length) {
+            // Show candidates even for legacy match
+            const topCands = matches.slice(0,5).map(x => ({ score: 50, name: x.item_name, code: x.item_code }));
+            try { updateVoiceDebug({ candidates: topCands }); } catch (e) {}
+            return matches[0];
+        }
 
         const exactCode = getDepartmentFilteredStockData().find(item => normalizeSearchText(item.item_code || '') === normalized || normalizeSearchText(item.barcode || '') === normalized);
         if (exactCode) return exactCode;
@@ -2046,12 +2147,17 @@
             if (tokens.every(token => code.includes(token))) score += 30;
             if (tokens.every(token => barcode.includes(token))) score += 35;
 
-            if (score > bestScore) {
+                if (score > bestScore) {
                 bestScore = score;
                 best = item;
             }
         });
 
+        // Always show top candidates, even if below threshold
+        if (best && bestScore > 0) {
+            const topCands = [{ score: bestScore, name: best.item_name, code: best.item_code }];
+            try { updateVoiceDebug({ candidates: topCands }); } catch (e) {}
+        }
         return bestScore >= 40 ? best : null;
     }
 

@@ -1766,20 +1766,20 @@
         let quantity = null;
         const lower = String(text || '').toLowerCase();
 
-        const explicitMatch = lower.match(/\b(?:qty|quantity|x|times|pcs?|pieces?|packets?|packet|nos?|no\.?|pieces?)\s*(?:of\s*)?(\d+(?:\.\d+)?)/);
+        const explicitMatch = lower.match(/\b(?:qty|quantity|x|times|pcs?|pieces?|packets?|packet|nos?|no\.?|pieces?|എണ്ണം|എന്ത്|എനിക്ക്)\s*(?:of\s*)?(\d+(?:\.\d+)?)/);
         if (explicitMatch) {
             quantity = parseFloat(explicitMatch[1]);
         }
 
         if (quantity === null) {
-            const numericMatch = lower.match(/(\d+(?:\.\d+)?)(?:\s*(?:pcs?|pieces?|qty|quantity|x|times|packets?|packet|nos?|no\.?))/);
+            const numericMatch = lower.match(/(\d+(?:\.\d+)?)(?:\s*(?:pcs?|pieces?|qty|quantity|x|times|packets?|packet|nos?|no\.?|എണ്ണം))/);
             if (numericMatch) {
                 quantity = parseFloat(numericMatch[1]);
             }
         }
 
         if (quantity === null) {
-            const words = lower.match(/\b(?:hundred|ninety|eighty|seventy|sixty|fifty|forty|thirty|twenty|nineteen|eighteen|seventeen|sixteen|fifteen|fourteen|thirteen|twelve|eleven|ten|nine|eight|seven|six|five|four|three|two|one|zero|dozen)\b/g);
+            const words = lower.match(/\b(?:hundred|ninety|eighty|seventy|sixty|fifty|forty|thirty|twenty|nineteen|eighteen|seventeen|sixteen|fifteen|fourteen|thirteen|twelve|eleven|ten|nine|eight|seven|six|five|four|three|two|one|zero|dozen|പൂജ്യം|ശൂന്യം|ഒന്ന്|ഒരു|രണ്ട്|രണ്ടു|മൂന്ന്|മൂന്നു|നാല്|അഞ്ച്|ആറ്|ഏഴ്|എട്ട്|ഒമ്പത്|പത്ത്|പതിനൊന്ന്|പന്ത്രണ്ട്|പതിന്മൂന്ന്|പതിനാല്|പതിനഞ്ച്|പതിനാറു|പതിനേഴു|പതിനെട്ട്|പത്തൊമ്പത്|ഇരുപത്|മുപ്പത്|നാല്‍പത്|നാല്പത്|അമ്പത്|അറുപത്|എഴുപത്|എൺപത്|എണ്‍പത്|തൊണ്ണൂറ്|നൂറ്)\b/g);
             if (words && words.length) {
                 let total = 0;
                 let lastValue = 0;
@@ -1798,16 +1798,31 @@
         }
 
         if (quantity === null) {
-            const firstToken = lower.trim().split(/\s+/)[0];
-            if (/^\d+(?:\.\d+)?$/.test(firstToken)) {
+            const tokens = lower.trim().split(/\s+/);
+            const firstToken = tokens[0];
+            const afterFirst = tokens.slice(1).join(' ');
+            const quantityIndicator = /\b(?:qty|quantity|x|times|pcs?|pieces?|packets?|packet|nos?|no\.?|kg|g|ltr|litre|kilogram|gram|liter|piece|unit)\b/;
+
+            if (/^\d+(?:\.\d+)?$/.test(firstToken) && (quantityIndicator.test(afterFirst) || afterFirst === '')) {
                 quantity = parseFloat(firstToken);
-            }
-            if (numberWords[firstToken] !== undefined) {
+            } else if (numberWords[firstToken] !== undefined && quantityIndicator.test(afterFirst)) {
                 quantity = numberWords[firstToken];
             }
         }
 
         return Number.isFinite(quantity) ? Math.max(quantity, 0) : null;
+    }
+
+    function cleanEnglishVoiceItemQuery(text) {
+        if (!text) return '';
+        let result = String(text).toLowerCase();
+        result = result.replace(/\b(add|put|include|sell|order|bill|please|take|give|want|need|for|of|with|qty|quantity|pieces?|pcs?|piece|packet|pack|nos?|no\.?|times?|each|every)\b/g, ' ');
+        result = result.replace(/\b(?:qty|quantity|x|times|pcs?|pieces?|packets?|packet|nos?|no\.?)\s*(?:of\s*)?(\d+(?:\.\d+)?)(?:\s*\w*)?/g, ' ');
+        result = result.replace(/\b(\d+(?:\.\d+)?)\s*(?:pcs?|pieces?|qty|quantity|x|times|packets?|packet|nos?|no\.?|kg|kgs?|g|grams?|gram|ltr|litre|litres?|liter|liters|bottle|bottles)\b/g, ' ');
+        result = result.replace(/\b(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|dozen)\b\s*(?:pcs?|pieces?|qty|quantity|x|times|packets?|packet|nos?|no\.?|kg|kgs?|g|grams?|gram|ltr|litre|litres?|liter|liters|bottle|bottles)\b/g, ' ');
+        result = result.replace(/\b(?:\d+(?:\.\d+)?|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|dozen)\s*(?:kg|kgs?|g|grams?|gram|ltr|litre|litres?|liter|liters|bottle|bottles)\b/g, ' ');
+        result = result.replace(/\s+/g, ' ').trim();
+        return result;
     }
 
     function getVoiceResponseMessage(type, itemName, qty) {
@@ -1823,11 +1838,51 @@
         return String(itemName || '');
     }
 
+    const malayalamItemAliases = {
+        'പായസം': 'payasam',
+        'സോപ്പ്': 'soap',
+        'ഷാംപൂ': 'shampoo',
+        'ടൂത്ത് പാസ്റ്റ്': 'toothpaste',
+        'വാഷിംഗ് പൗഡർ': 'washing powder',
+        'കപ്പ് ചായ': 'cup tea',
+        'ചക്കര പൊടി': 'sugar powder',
+        'രണ്ട് കൂടിയുള്ള ബീറ്റർ': 'mixer grinder'
+    };
+
+    function normalizeMalayalamText(value) {
+        return String(value || "")
+            .toLowerCase()
+            .replace(/[^a-z0-9\u0d00-\u0d7f]+/g, " ")
+            .replace(/\s+/g, " ")
+            .trim();
+    }
+
+    function escapeRegExp(value) {
+        return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    function translateMalayalamItemQuery(query) {
+        const normalized = normalizeMalayalamText(query);
+        if (!normalized) return null;
+
+        let translated = normalized;
+        const aliases = Object.entries(malayalamItemAliases).sort((a, b) => b[0].length - a[0].length);
+        for (const [alias, replacement] of aliases) {
+            const pattern = new RegExp(`\\b${escapeRegExp(alias)}\\b`, 'g');
+            translated = translated.replace(pattern, replacement);
+        }
+
+        if (translated !== normalized) {
+            return translated.replace(/\s+/g, ' ').trim();
+        }
+
+        return null;
+    }
+
     function normalizeVoiceItemText(text) {
         if (!text) return "";
         let result = text.toLowerCase();
         result = result.replace(/\b(add|put|include|sell|order|bill|please|take|give|want|need|for|of|with|qty|quantity|pieces?|pcs?|piece|packet|pack|nos?|no\.?|times?|times|each|every|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|dozen)\b/g, ' ');
-        result = result.replace(/\b\d+(?:\.\d+)?\b/g, ' ');
         result = result.replace(/[^a-z0-9\u0d00-\u0d7f\s]/g, ' ');
         result = result.replace(/\s+/g, ' ').trim();
         return result;
@@ -1835,10 +1890,39 @@
 
     function findVoiceItem(query) {
         if (!query) return null;
-        const normalized = normalizeSearchText(query);
+
+        let queryToSearch = query;
+        if (voiceBillingState.lang === 'ml-IN') {
+            const translated = translateMalayalamItemQuery(query);
+            if (translated) queryToSearch = translated;
+        }
+
+        const cleanedQuery = voiceBillingState.lang === 'en-IN' ? cleanEnglishVoiceItemQuery(queryToSearch) : queryToSearch;
+        const normalized = normalizeSearchText(cleanedQuery || queryToSearch);
         if (!normalized) return null;
 
         let matches = searchStock(normalized, 'item_name');
+        if (matches.length) return matches[0];
+
+        // fallback: try the original text if cleaning removed meaningful item numbers
+        if (cleanedQuery && cleanedQuery !== queryToSearch) {
+            const fallback = normalizeSearchText(queryToSearch);
+            if (fallback && fallback !== normalized) {
+                matches = searchStock(fallback, 'item_name');
+                if (matches.length) return matches[0];
+            }
+        }
+
+        // fallback: remove a leading spoken quantity token if query begins with one
+        const leadingRemoval = queryToSearch.replace(/^[\s]*(?:\d+(?:\.\d+)?|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|dozen)(?:\s+(?:kg|kgs?|g|grams?|gram|ltr|litre|litres?|liter|liters|pcs?|pieces?|packet|pack|bottle|bottles))?\s+/i, '').trim();
+        if (leadingRemoval && leadingRemoval !== queryToSearch) {
+            const leadingNormalized = normalizeSearchText(leadingRemoval);
+            if (leadingNormalized) {
+                matches = searchStock(leadingNormalized, 'item_name');
+                if (matches.length) return matches[0];
+            }
+        }
+
         if (matches.length) return matches[0];
 
         const exactCode = getDepartmentFilteredStockData().find(item => normalizeSearchText(item.item_code || '') === normalized || normalizeSearchText(item.barcode || '') === normalized);
@@ -2945,7 +3029,7 @@ const stockSelect = 'item_code,item_name,barcode,price1,price2,price3,landing,ba
     function normalizeSearchText(value) {
         return String(value || "")
             .toLowerCase()
-            .replace(/[^a-z0-9]+/g, " ")
+            .replace(/[^a-z0-9\u0d00-\u0d7f]+/g, " ")
             .replace(/\s+/g, " ")
             .trim();
     }

@@ -1154,6 +1154,7 @@
             <div id="voice_debug_cleaned" style="opacity:0.85;">Cleaned: -</div>
             <div id="voice_debug_match" style="opacity:0.85;">Match: -</div>
             <div id="voice_debug_score" style="opacity:0.75;">Score: -</div>
+            <div id="voice_debug_alts" style="opacity:0.75; font-size:12px; margin-top:6px;">Alts: -</div>
             <div id="voice_debug_stock_count" style="opacity:0.75; margin-top:6px; font-size:11px;">Stock: loading...</div>
         </div>
         <button class="btn" style="color: #64748b; background:transparent;" onclick="disableAutoBackupAndClearDraft('New bill - draft cleared'); location.reload();">Reset / New Bill</button>
@@ -1676,7 +1677,7 @@
         if (btn) btn.textContent = voiceDebugVisible ? 'Hide Voice Debug' : 'Show Voice Debug';
     }
 
-    function updateVoiceDebug({ raw, qty, cleaned, match, score } = {}) {
+    function updateVoiceDebug({ raw, qty, cleaned, match, score, alts } = {}) {
         try {
             const wrap = document.getElementById('voice_debug_overlay');
             if (!wrap) return;
@@ -1686,11 +1687,13 @@
             const cleanEl = document.getElementById('voice_debug_cleaned');
             const matchEl = document.getElementById('voice_debug_match');
             const scoreEl = document.getElementById('voice_debug_score');
+            const altsEl = document.getElementById('voice_debug_alts');
             if (rawEl && typeof raw !== 'undefined') rawEl.textContent = `Heard: ${String(raw || '-').slice(0,120)}`;
             if (qtyEl && typeof qty !== 'undefined') qtyEl.textContent = `Qty: ${qty}`;
             if (cleanEl && typeof cleaned !== 'undefined') cleanEl.textContent = `Cleaned: ${String(cleaned || '-').slice(0,120)}`;
             if (matchEl && typeof match !== 'undefined') matchEl.textContent = `Match: ${match || '-'}`;
             if (scoreEl && typeof score !== 'undefined') scoreEl.textContent = `Score: ${typeof score === 'number' ? score.toFixed(1) : score || '-'}`;
+            if (altsEl && typeof alts !== 'undefined') altsEl.textContent = `Alts: ${Array.isArray(alts) ? alts.slice(0,3).join(' | ') : (alts || '-')}`;
         } catch (e) { console.error(e); }
     }
 
@@ -1718,17 +1721,24 @@
             voiceBillingState.recognition.continuous = true;
             voiceBillingState.recognition.interimResults = true;
             voiceBillingState.recognition.lang = voiceBillingState.lang || 'en-IN';
-            voiceBillingState.recognition.maxAlternatives = 1;
+            // Allow multiple alternatives to improve matching for Malayalam and noisy input
+            voiceBillingState.recognition.maxAlternatives = 3;
 
             voiceBillingState.recognition.onresult = (event) => {
                 const last = event.results.length - 1;
-                const transcript = event.results[last][0].transcript.trim();
+                // collect alternatives
+                const alternatives = [];
+                for (let i = 0; i < event.results[last].length; i++) {
+                    const alt = event.results[last][i];
+                    if (alt && alt.transcript) alternatives.push(alt.transcript.trim());
+                }
+                const transcript = alternatives[0] || '';
                 voiceBillingState.lastTranscript = transcript;
-                // Update debug overlay with raw transcript immediately
-                updateVoiceDebug({ raw: transcript });
+                // Update debug overlay with raw transcript and alternatives
+                updateVoiceDebug({ raw: transcript, alts: alternatives });
                 if (event.results[last].isFinal) {
                     showVoicePrompt(`Heard: ${transcript}`, 'info', 2200);
-                    processVoiceCommand(transcript);
+                    processVoiceCommand(transcript, alternatives);
                 } else {
                     setVoiceStatus(`Listening: ${transcript}`);
                     showVoicePrompt(`Listening: ${transcript}`, 'info', 1200);
@@ -1751,6 +1761,7 @@
 
             voiceBillingState.recognition.onerror = (e) => {
                 setVoiceStatus(`VOICE ERROR: ${e.error}`, true);
+                try { updateVoiceDebug({ raw: `RECOGNITION ERROR: ${e.error || e.message || e}` }); } catch (u) {}
                 stopVoiceBilling();
             };
 
@@ -2087,7 +2098,7 @@
         speakBillingMessage(message, voiceBillingState.lang);
     }
 
-    function processVoiceCommand(rawText) {
+    function processVoiceCommand(rawText, alternatives = []) {
         if (!rawText) return;
         const qty = parseSpokenQuantity(rawText) || 1;
         const itemQuery = voiceBillingState.lang === 'en-IN'
@@ -2102,7 +2113,7 @@
             return;
         }
 
-        const item = findVoiceItem(itemQuery);
+        let item = findVoiceItem(itemQuery);
         updateVoiceDebug({ match: item ? (item.item_name || item.item_code) : null });
         if (!stockLoaded) {
             const msg = 'STOCK NOT LOADED - Check Supabase Auth / Network';
@@ -2111,6 +2122,22 @@
             showVoicePrompt(msg, 'error', 4000);
             // continue to allow fallback search attempt
         }
+
+        // If no match, try alternatives provided by SpeechRecognition
+        if (!item && Array.isArray(alternatives) && alternatives.length) {
+            for (const alt of alternatives.slice(0,3)) {
+                if (!alt) continue;
+                const altQuery = voiceBillingState.lang === 'en-IN' ? cleanEnglishVoiceItemQuery(alt) || alt : normalizeVoiceItemText(alt) || alt;
+                updateVoiceDebug({ cleaned: altQuery });
+                const altItem = findVoiceItem(altQuery);
+                if (altItem) {
+                    item = altItem;
+                    try { updateVoiceDebug({ match: item.item_name || item.item_code }); } catch (e) {}
+                    break;
+                }
+            }
+        }
+
         if (!item) {
             const msg = getVoiceResponseMessage('missing', rawText, '');
             setVoiceStatus(msg, true);

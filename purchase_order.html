@@ -654,7 +654,11 @@ function highlightOption(){
 function hideDropdown(){ if(dropdown){ dropdown.remove(); dropdown=null; } if(currentDropdownInput){ currentDropdownInput.onkeydown = null; currentDropdownInput = null; } }
 document.addEventListener("click", e => { if(dropdown && !dropdown.contains(e.target) && e.target !== currentDropdownInput) hideDropdown(); });
 window.addEventListener("resize", hideDropdown);
-window.addEventListener("scroll", hideDropdown, true);
+window.addEventListener("scroll", e => {
+  if(!dropdown) return;
+  if(dropdown.contains(e.target)) return;
+  hideDropdown();
+}, true);
 
 function showPendingPopup(itemName, oldPending, newPending, totalPending, focusEl){
   if(!oldPending || oldPending <= 0) return;

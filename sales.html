@@ -1660,7 +1660,7 @@
         const langSelect = document.getElementById('voice_billing_lang');
         if(!btn) return;
 
-        if (!isVoiceRecognitionSupported() || !isIPhoneSafari()) {
+        if (!isVoiceRecognitionSupported() || isIPhoneSafari()) {
             btn.style.display = 'none';
             if (langSelect) langSelect.style.display = 'none';
             return;
@@ -1692,6 +1692,20 @@
                     setVoiceStatus(`Listening: ${transcript}`);
                     showVoicePrompt(`Listening: ${transcript}`, 'info', 1200);
                 }
+            };
+
+            voiceBillingState.recognition.onstart = () => {
+                voiceBillingState.listening = true;
+                setVoiceStatus('LISTENING...');
+                showVoicePrompt('Voice started', 'success', 1200);
+            };
+
+            voiceBillingState.recognition.onaudiostart = () => {
+                setVoiceStatus('MIC ACTIVE');
+            };
+
+            voiceBillingState.recognition.onnomatch = () => {
+                setVoiceStatus('NO RECOGNITION', true);
             };
 
             voiceBillingState.recognition.onerror = (e) => {
@@ -1772,7 +1786,7 @@
         }
 
         if (quantity === null) {
-            const numericMatch = lower.match(/(\d+(?:\.\d+)?)(?:\s*(?:pcs?|pieces?|qty|quantity|x|times|packets?|packet|nos?|no\.?|എണ്ണം))/);
+            const numericMatch = lower.match(/(\d+(?:\.\d+)?)(?:\s*(?:pcs?|pieces?|qty|quantity|x|times|packets?|packet|nos?|no\.?|kg|kgs?|g|grams?|gram|ltr|litre|litres?|liter|liters|bottle|bottles|എണ്ണം))/);
             if (numericMatch) {
                 quantity = parseFloat(numericMatch[1]);
             }
@@ -1801,11 +1815,11 @@
             const tokens = lower.trim().split(/\s+/);
             const firstToken = tokens[0];
             const afterFirst = tokens.slice(1).join(' ');
-            const quantityIndicator = /\b(?:qty|quantity|x|times|pcs?|pieces?|packets?|packet|nos?|no\.?|kg|g|ltr|litre|kilogram|gram|liter|piece|unit)\b/;
+            const quantityIndicator = /\b(?:qty|quantity|x|times|pcs?|pieces?|packets?|packet|nos?|no\.?|kg|kgs?|g|grams?|gram|ltr|litre|kilogram|gram|liter|piece|unit)\b/;
 
-            if (/^\d+(?:\.\d+)?$/.test(firstToken) && (quantityIndicator.test(afterFirst) || afterFirst === '')) {
+            if (/^\d+(?:\.\d+)?$/.test(firstToken) && (quantityIndicator.test(afterFirst) || afterFirst === '' || tokens.length > 1)) {
                 quantity = parseFloat(firstToken);
-            } else if (numberWords[firstToken] !== undefined && quantityIndicator.test(afterFirst)) {
+            } else if (numberWords[firstToken] !== undefined && (quantityIndicator.test(afterFirst) || tokens.length > 1)) {
                 quantity = numberWords[firstToken];
             }
         }
@@ -1817,7 +1831,7 @@
         if (!text) return '';
         let result = String(text).toLowerCase();
         result = result.replace(/\b(add|put|include|sell|order|bill|please|take|give|want|need|for|of|with|qty|quantity|pieces?|pcs?|piece|packet|pack|nos?|no\.?|times?|each|every)\b/g, ' ');
-        result = result.replace(/\b(?:qty|quantity|x|times|pcs?|pieces?|packets?|packet|nos?|no\.?)\s*(?:of\s*)?(\d+(?:\.\d+)?)(?:\s*\w*)?/g, ' ');
+        result = result.replace(/\b(?:qty|quantity|x|times|pcs?|pieces?|packets?|packet|nos?|no\.?)\s*(?:of\s*)?(\d+(?:\.\d+)?)(?:\s*(?:kg|kgs?|g|grams?|gram|ltr|litre|litres?|liter|liters|bottle|bottles))?\b/g, ' ');
         result = result.replace(/\b(\d+(?:\.\d+)?)\s*(?:pcs?|pieces?|qty|quantity|x|times|packets?|packet|nos?|no\.?|kg|kgs?|g|grams?|gram|ltr|litre|litres?|liter|liters|bottle|bottles)\b/g, ' ');
         result = result.replace(/\b(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|dozen)\b\s*(?:pcs?|pieces?|qty|quantity|x|times|packets?|packet|nos?|no\.?|kg|kgs?|g|grams?|gram|ltr|litre|litres?|liter|liters|bottle|bottles)\b/g, ' ');
         result = result.replace(/\b(?:\d+(?:\.\d+)?|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|dozen)\s*(?:kg|kgs?|g|grams?|gram|ltr|litre|litres?|liter|liters|bottle|bottles)\b/g, ' ');
@@ -2023,7 +2037,9 @@
     function processVoiceCommand(rawText) {
         if (!rawText) return;
         const qty = parseSpokenQuantity(rawText) || 1;
-        const itemQuery = normalizeVoiceItemText(rawText) || rawText;
+        const itemQuery = voiceBillingState.lang === 'en-IN'
+            ? cleanEnglishVoiceItemQuery(rawText) || rawText
+            : normalizeVoiceItemText(rawText) || rawText;
 
         if (!itemQuery) {
             setVoiceStatus('PLEASE SAY ITEM NAME', true);

@@ -52,7 +52,7 @@
             <div class="field"><label for="txnDate">Date</label><input type="date" id="txnDate" /></div>
             <div class="field"><label for="voucherNo">Voucher Number</label><input type="text" id="voucherNo" readonly /></div>
             <div class="field"><label for="amount">Amount</label><input type="number" id="amount" step="0.01" min="0" placeholder="Enter amount" /></div>
-            <div class="field full"><label for="partyName" id="partyLabel">Paid To</label><input type="text" id="partyName" autocomplete="off" placeholder="Type name / mobile / voucher..." /><div id="partySuggestions" class="autocomplete-list"></div><div class="small">Receipt mode shows customer, party, pending credit bills and auto-allocation option.</div></div>
+            <div class="field full"><label for="partyName" id="partyLabel">Paid To</label><input type="text" id="partyName" autocomplete="off" placeholder="Type name / mobile / voucher..." /><div id="partySuggestions" class="autocomplete-list"></div><div class="small">Search shows customer, party, pending credit bills and auto-allocation options.</div></div>
             <div class="field full"><label for="remarks">Remarks</label><textarea id="remarks" placeholder="Optional remarks"></textarea></div>
             <div class="field full"><div id="allocationPreview" class="info-box"></div></div>
         </div>
@@ -196,7 +196,7 @@ async function showPartySuggestions(query){ const items=[]; const clean=query.tr
     const [partyRes,customerRes]=await Promise.allSettled(tasks);
     if(partyRes.status==='fulfilled'&&!partyRes.value.error){ (partyRes.value.data||[]).forEach(r=>{ if(r.party_name) items.push({kind:'party',party_name:r.party_name,label:r.party_name}); }); }
     if(customerRes.status==='fulfilled'&&!customerRes.value.error){ (customerRes.value.data||[]).forEach(r=>{ const label=`${r.name||''} ${r.mobile||''}`.trim(); if(label) items.push({kind:'customer',party_name:r.name||r.mobile||'',customer_name:r.name||'',customer_mobile:r.mobile||'',customer_address:r.address||'',label}); }); }
-    if(txnType.value==='receipt'){ (await fetchCustomerAutoAllocationOptions(clean)).forEach(x=>items.push(x)); (await fetchCustomerCreditBills(clean)).forEach(x=>items.push(x)); }
+    if(txnType.value==='receipt' || txnType.value==='payment'){ (await fetchCustomerAutoAllocationOptions(clean)).forEach(x=>items.push(x)); (await fetchCustomerCreditBills(clean)).forEach(x=>items.push(x)); }
     suggestionItems=dedupeSuggestionItems(items); renderSuggestions(suggestionItems,clean);
 }
 function dedupeSuggestionItems(items){ const seen=new Set(); return items.filter(item=>{ const key=[item.kind,item.sales_id||'',String(item.customer_mobile||'').toLowerCase(),String(item.customer_name||item.party_name||'').toLowerCase()].join('|'); if(seen.has(key)) return false; seen.add(key); return true; }); }

@@ -655,6 +655,7 @@ async function loadDashboard(){
         });
 
         await applyCreditReturnAdjustments(grouped, { from, to });
+        await applyCreditPaymentAdjustments(grouped, { from, to });
 
         let customers = Object.values(grouped);
 
@@ -736,6 +737,47 @@ async function applyCreditReturnAdjustments(grouped, { from, to } = {}){
         }
 
         grouped[key].total_credit_return += amount;
+        grouped[key].total_balance -= amount;
+    });
+}
+
+async function applyCreditPaymentAdjustments(grouped, { from, to } = {}){
+    let paymentQuery = sb
+        .from("cash_transactions")
+        .select("txn_date, txn_type, party_name, amount, approval_status, reference_type, remarks")
+        .eq("txn_type", "payment")
+        .eq("approval_status", "approved")
+        .in("reference_type", ["sales_credit", "customer_credit_auto"])
+        .order("txn_date", { ascending: false });
+
+    if (from) paymentQuery = paymentQuery.gte("txn_date", from);
+    if (to) paymentQuery = paymentQuery.lte("txn_date", to);
+
+    const { data: paymentRows, error: paymentError } = await paymentQuery;
+    if (paymentError){
+        console.warn("Credit payment adjustment skipped:", paymentError.message || paymentError);
+        return;
+    }
+
+    (paymentRows || []).forEach(r => {
+        const amount = Number(r.amount || 0) || 0;
+        if (!amount) return;
+
+        const party = String(r.party_name || "").trim();
+        const rawDigits = party.replace(/\D/g, "");
+        const mobile = rawDigits.slice(-10);
+        const hasLetters = /[A-Za-z]/.test(party);
+        const name = hasLetters ? party : "";
+                mobile: mobile || "-",
+                bill_count: 0,
+                total_sales: 0,
+                total_paid: 0,
+                total_credit_return: 0,
+                total_balance: 0
+            };
+        }
+
+        grouped[key].total_paid += amount;
         grouped[key].total_balance -= amount;
     });
 }

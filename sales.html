@@ -1146,12 +1146,14 @@
             <option value="ml-IN">Malayalam</option>
         </select>
         <div id="voice_billing_status" class="voice-status" style="display:none;">VOICE READY</div>
-        <div id="voice_debug_overlay" style="position:fixed; right:12px; bottom:84px; z-index:1200; background:rgba(0,0,0,0.75); color:#fff; padding:8px 10px; border-radius:8px; font-size:12px; display:none; max-width:320px; box-shadow:0 6px 18px rgba(0,0,0,0.4);">
+        <button id="voice_debug_toggle" class="btn" style="margin-left:8px; background:transparent; color:#94a3b8;" type="button" onclick="toggleVoiceDebug()">Toggle Voice Debug</button>
+        <div id="voice_debug_overlay" style="position:fixed; right:12px; bottom:84px; z-index:1200; background:rgba(0,0,0,0.75); color:#fff; padding:8px 10px; border-radius:8px; font-size:12px; display:none; max-width:420px; box-shadow:0 6px 18px rgba(0,0,0,0.4);">
             <div style="font-weight:700; margin-bottom:6px;">Voice Debug</div>
             <div id="voice_debug_raw" style="opacity:0.95;">Heard: -</div>
             <div id="voice_debug_qty" style="opacity:0.85;">Qty: -</div>
             <div id="voice_debug_cleaned" style="opacity:0.85;">Cleaned: -</div>
             <div id="voice_debug_match" style="opacity:0.85;">Match: -</div>
+            <div id="voice_debug_score" style="opacity:0.75;">Score: -</div>
             <div id="voice_debug_stock_count" style="opacity:0.75; margin-top:6px; font-size:11px;">Stock: loading...</div>
         </div>
         <button class="btn" style="color: #64748b; background:transparent;" onclick="disableAutoBackupAndClearDraft('New bill - draft cleared'); location.reload();">Reset / New Bill</button>
@@ -1664,19 +1666,31 @@
         }, duration);
     }
 
-    function updateVoiceDebug({ raw, qty, cleaned, match } = {}) {
+    let voiceDebugVisible = true;
+
+    function toggleVoiceDebug() {
+        voiceDebugVisible = !voiceDebugVisible;
+        const wrap = document.getElementById('voice_debug_overlay');
+        if (wrap) wrap.style.display = voiceDebugVisible ? '' : 'none';
+        const btn = document.getElementById('voice_debug_toggle');
+        if (btn) btn.textContent = voiceDebugVisible ? 'Hide Voice Debug' : 'Show Voice Debug';
+    }
+
+    function updateVoiceDebug({ raw, qty, cleaned, match, score } = {}) {
         try {
             const wrap = document.getElementById('voice_debug_overlay');
             if (!wrap) return;
-            wrap.style.display = '';
+            wrap.style.display = voiceDebugVisible ? '' : 'none';
             const rawEl = document.getElementById('voice_debug_raw');
             const qtyEl = document.getElementById('voice_debug_qty');
             const cleanEl = document.getElementById('voice_debug_cleaned');
             const matchEl = document.getElementById('voice_debug_match');
+            const scoreEl = document.getElementById('voice_debug_score');
             if (rawEl && typeof raw !== 'undefined') rawEl.textContent = `Heard: ${String(raw || '-').slice(0,120)}`;
             if (qtyEl && typeof qty !== 'undefined') qtyEl.textContent = `Qty: ${qty}`;
             if (cleanEl && typeof cleaned !== 'undefined') cleanEl.textContent = `Cleaned: ${String(cleaned || '-').slice(0,120)}`;
             if (matchEl && typeof match !== 'undefined') matchEl.textContent = `Match: ${match || '-'}`;
+            if (scoreEl && typeof score !== 'undefined') scoreEl.textContent = `Score: ${typeof score === 'number' ? score.toFixed(1) : score || '-'}`;
         } catch (e) { console.error(e); }
     }
 
@@ -1942,15 +1956,23 @@
         const normalized = normalizeSearchText(cleanedQuery || queryToSearch);
         if (!normalized) return null;
 
-        let matches = searchStock(normalized, 'item_name');
-        if (matches.length) return matches[0];
+        let scoredMatches = searchStockWithScore(normalized, 'item_name');
+        if (scoredMatches.length) {
+            const top = scoredMatches[0];
+            try { updateVoiceDebug({ match: (top.item.item_name || top.item.item_code), score: top.score }); } catch (e) {}
+            return top.item;
+        }
 
         // fallback: try the original text if cleaning removed meaningful item numbers
         if (cleanedQuery && cleanedQuery !== queryToSearch) {
             const fallback = normalizeSearchText(queryToSearch);
             if (fallback && fallback !== normalized) {
-                matches = searchStock(fallback, 'item_name');
-                if (matches.length) return matches[0];
+                const fb = searchStockWithScore(fallback, 'item_name');
+                if (fb.length) {
+                    const top = fb[0];
+                    try { updateVoiceDebug({ match: (top.item.item_name || top.item.item_code), score: top.score }); } catch (e) {}
+                    return top.item;
+                }
             }
         }
 
@@ -1959,8 +1981,12 @@
         if (leadingRemoval && leadingRemoval !== queryToSearch) {
             const leadingNormalized = normalizeSearchText(leadingRemoval);
             if (leadingNormalized) {
-                matches = searchStock(leadingNormalized, 'item_name');
-                if (matches.length) return matches[0];
+                const lr = searchStockWithScore(leadingNormalized, 'item_name');
+                if (lr.length) {
+                    const top = lr[0];
+                    try { updateVoiceDebug({ match: (top.item.item_name || top.item.item_code), score: top.score }); } catch (e) {}
+                    return top.item;
+                }
             }
         }
 
@@ -3047,6 +3073,7 @@ const stockSelect = 'item_code,item_name,barcode,price1,price2,price3,landing,ba
 
         if (error) {
             console.error("Error loading stock:", error);
+            try { updateVoiceDebug({ raw: `STOCK LOAD ERROR: ${error?.message || error}` }); } catch (e) {}
             alert(`Stock loading failed near row ${from + 1}. Please reload once.`);
             return;
         }
@@ -3176,6 +3203,63 @@ const stockSelect = 'item_code,item_name,barcode,price1,price2,price3,landing,ba
         });
 
         return scored.slice(0, 40).map(x => x.item);
+    }
+
+    // Returns array of {item, score} for richer debugging
+    function searchStockWithScore(query, field) {
+        if (!query) return [];
+
+        const normalizedQuery = normalizeSearchText(query);
+        if (!normalizedQuery) return [];
+
+        const terms = normalizedQuery.split(" ").filter(Boolean);
+
+        const scored = getDepartmentFilteredStockData().map(item => {
+            const codeRaw = String(item.item_code || "");
+            const nameRaw = String(item.item_name || "");
+            const barcodeRaw = String(item.barcode || "");
+
+            const code = normalizeSearchText(codeRaw);
+            const name = normalizeSearchText(nameRaw);
+            const barcode = normalizeSearchText(barcodeRaw);
+
+            let searchablePrimary = field === "item_code" ? code : name;
+            let searchableSecondary = field === "item_code" ? name : code;
+
+            const matched =
+                terms.every(t => searchablePrimary.includes(t)) ||
+                terms.every(t => searchableSecondary.includes(t)) ||
+                terms.every(t => (code + " " + name + " " + barcode).includes(t));
+
+            if (!matched) return null;
+
+            let score = 0;
+
+            if (searchablePrimary === normalizedQuery) score += 1000;
+            if (searchableSecondary === normalizedQuery) score += 900;
+            if (barcode === normalizedQuery) score += 850;
+
+            if (searchablePrimary.startsWith(normalizedQuery)) score += 700;
+            if (searchableSecondary.startsWith(normalizedQuery)) score += 650;
+            if (barcode.startsWith(normalizedQuery)) score += 600;
+
+            if (code.startsWith(normalizedQuery)) score += 600;
+            if (name.startsWith(normalizedQuery)) score += 550;
+
+            for (const t of terms) {
+                if (code.includes(t)) score += 40;
+                if (name.includes(t)) score += 40;
+                if (barcode.includes(t)) score += 35;
+            }
+
+            score -= Math.abs(name.length - normalizedQuery.length) * 0.1;
+
+            return { item, score };
+        }).filter(Boolean);
+
+        scored.sort((a, b) => b.score - a.score || String(a.item.item_name || "").localeCompare(String(b.item.item_name || "")));
+
+        return scored;
     }
 
 

@@ -768,6 +768,11 @@ async function applyCreditPaymentAdjustments(grouped, { from, to } = {}){
         const mobile = rawDigits.slice(-10);
         const hasLetters = /[A-Za-z]/.test(party);
         const name = hasLetters ? party : "";
+        const key = makeCustomerKey(mobile, name);
+
+        if (!grouped[key]){
+            grouped[key] = {
+                name: name || "-",
                 mobile: mobile || "-",
                 bill_count: 0,
                 total_sales: 0,

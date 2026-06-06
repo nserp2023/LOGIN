@@ -440,7 +440,7 @@
                 <label for="partyName" id="partyLabel">Paid To</label>
                 <input type="text" id="partyName" name="partyName" autocomplete="off" placeholder="Type name or mobile..." />
                 <div id="partySuggestions" class="autocomplete-list"></div>
-                <div class="small">Saved names appear automatically. In receipt mode, pending credit bills also appear.</div>
+                <div class="small">Saved names appear automatically. Pending credit bills also appear for payment and receipt.</div>
             </div>
 
             <div class="field full">
@@ -722,7 +722,7 @@
             });
         }
 
-        if(txnType.value === "receipt"){
+        if(txnType.value === "receipt" || txnType.value === "payment"){
             const autoCustomers = await fetchCustomerAutoAllocationOptions(cleanQuery);
             autoCustomers.forEach(row => items.push(row));
 

@@ -1141,6 +1141,10 @@
         <div id="draft_status_text" style="align-self:center;color:#22c55e;font-weight:800;font-size:12px;padding:8px 10px;border:1px solid rgba(34,197,94,.45);border-radius:6px;background:rgba(20,83,45,.35);">Auto Backup ON</div>
 
         <button id="voice_billing_btn" class="btn" style="color:white; background:#0f172a; display:none;" type="button" onclick="toggleVoiceBilling()">VOICE BILLING</button>
+        <select id="voice_billing_lang" class="form-control" style="width:180px; display:none; margin-left:8px;" onchange="updateVoiceLanguage()" title="Voice language">
+            <option value="en-IN">English</option>
+            <option value="ml-IN">Malayalam</option>
+        </select>
         <div id="voice_billing_status" class="voice-status" style="display:none;">VOICE READY</div>
         <button class="btn" style="color: #64748b; background:transparent;" onclick="disableAutoBackupAndClearDraft('New bill - draft cleared'); location.reload();">Reset / New Bill</button>
         <button id="btn_save" class="btn btn-save" onclick="saveAndPrint()" tabindex="100">PRINT & SAVE</button>
@@ -1594,8 +1598,33 @@
     const voiceBillingState = {
         recognition: null,
         listening: false,
-        lastTranscript: ""
+        lastTranscript: "",
+        lang: 'en-IN'
     };
+
+    function speakBillingMessage(message, lang = 'en-IN') {
+        if (!window.speechSynthesis) return;
+        try {
+            const utterance = new SpeechSynthesisUtterance(String(message));
+            utterance.lang = lang;
+            window.speechSynthesis.cancel();
+            window.speechSynthesis.speak(utterance);
+        } catch (_) {
+        }
+    }
+
+    function updateVoiceLanguage() {
+        const select = document.getElementById('voice_billing_lang');
+        if (!select) return;
+        voiceBillingState.lang = select.value || 'en-IN';
+        if (voiceBillingState.recognition) {
+            const wasListening = voiceBillingState.listening;
+            stopVoiceBilling();
+            initializeVoiceBilling();
+            if (wasListening) startVoiceBilling();
+        }
+        setVoiceStatus(voiceBillingState.lang === 'ml-IN' ? 'MALAYALAM MODE' : 'ENGLISH MODE');
+    }
 
     function isIPhoneSafari() {
         const ua = navigator.userAgent || "";
@@ -1628,14 +1657,20 @@
 
     function initializeVoiceBilling() {
         const btn = document.getElementById('voice_billing_btn');
+        const langSelect = document.getElementById('voice_billing_lang');
         if(!btn) return;
 
         if (!isVoiceRecognitionSupported() || !isIPhoneSafari()) {
             btn.style.display = 'none';
+            if (langSelect) langSelect.style.display = 'none';
             return;
         }
 
         btn.style.display = '';
+        if (langSelect) {
+            langSelect.style.display = 'inline-block';
+            langSelect.value = voiceBillingState.lang;
+        }
         setVoiceStatus('VOICE READY');
 
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -1643,7 +1678,7 @@
             voiceBillingState.recognition = new SpeechRecognition();
             voiceBillingState.recognition.continuous = true;
             voiceBillingState.recognition.interimResults = true;
-            voiceBillingState.recognition.lang = 'en-IN';
+            voiceBillingState.recognition.lang = voiceBillingState.lang || 'en-IN';
             voiceBillingState.recognition.maxAlternatives = 1;
 
             voiceBillingState.recognition.onresult = (event) => {
@@ -1721,7 +1756,11 @@
         const numberWords = {
             zero:0, one:1, two:2, three:3, four:4, five:5, six:6, seven:7, eight:8, nine:9, ten:10,
             eleven:11, twelve:12, thirteen:13, fourteen:14, fifteen:15, sixteen:16, seventeen:17, eighteen:18, nineteen:19, twenty:20,
-            thirty:30, forty:40, fifty:50, sixty:60, seventy:70, eighty:80, ninety:90, hundred:100, dozen:12
+            thirty:30, forty:40, fifty:50, sixty:60, seventy:70, eighty:80, ninety:90, hundred:100, dozen:12,
+            'പൂജ്യം':0, 'ശൂന്യം':0, 'ഒന്ന്':1, 'ഒരു':1, 'രണ്ട്':2, 'രണ്ടു':2, 'മൂന്ന്':3, 'മൂന്നു':3, 'നാല്':4, 'അഞ്ച്':5, 'ആറ്':6, 'ഏഴ്':7,
+            'എട്ട്':8, 'ഒമ്പത്':9, 'പത്ത്':10, 'പതിനൊന്ന്':11, 'പന്ത്രണ്ട്':12, 'പതിന്മൂന്ന്':13, 'പതിനാല്':14, 'പതിനഞ്ച്':15, 'പതിനാറു':16,
+            'പതിനേഴു':17, 'പതിനെട്ട്':18, 'പത്തൊമ്പത്':19, 'ഇരുപത്':20, 'മുപ്പത്':30, 'നാല്‍പത്':40, 'നാല്പത്':40, 'അമ്പത്':50, 'അറുപത്':60,
+            'എഴുപത്':70, 'എൺപത്':80, 'എണ്‍പത്':80, 'തൊണ്ണൂറ്':90, 'നൂറ്':100
         };
 
         let quantity = null;
@@ -1771,12 +1810,25 @@
         return Number.isFinite(quantity) ? Math.max(quantity, 0) : null;
     }
 
+    function getVoiceResponseMessage(type, itemName, qty) {
+        if (voiceBillingState.lang === 'ml-IN') {
+            if (type === 'added') return `കൂട്ടിയത് ${itemName} ${qty} എണ്ണം`;
+            if (type === 'updated') return `നവീകരിച്ചത് ${itemName} ${qty} എണ്ണം`;
+            if (type === 'missing') return `ഇനം കണ്ടെത്താനായില്ല ${itemName}`;
+        }
+
+        if (type === 'added') return `ADDED ${itemName} ×${qty}`;
+        if (type === 'updated') return `UPDATED ${itemName} ×${qty}`;
+        if (type === 'missing') return `ITEM NOT FOUND: ${itemName}`;
+        return String(itemName || '');
+    }
+
     function normalizeVoiceItemText(text) {
         if (!text) return "";
         let result = text.toLowerCase();
         result = result.replace(/\b(add|put|include|sell|order|bill|please|take|give|want|need|for|of|with|qty|quantity|pieces?|pcs?|piece|packet|pack|nos?|no\.?|times?|times|each|every|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|dozen)\b/g, ' ');
         result = result.replace(/\b\d+(?:\.\d+)?\b/g, ' ');
-        result = result.replace(/[^a-z0-9\s]/g, ' ');
+        result = result.replace(/[^a-z0-9\u0d00-\u0d7f\s]/g, ' ');
         result = result.replace(/\s+/g, ' ').trim();
         return result;
     }
@@ -1856,9 +1908,10 @@
         const existingRow = getExistingRowByCode(item.item_code);
         if (existingRow) {
             addVoiceToRow(existingRow, qty);
-            const message = `UPDATED ${item.item_name} ×${qty}`;
+            const message = getVoiceResponseMessage('updated', item.item_name, qty);
             setVoiceStatus(message);
             showVoicePrompt(message, 'success', 2800);
+            speakBillingMessage(message, voiceBillingState.lang);
             calcTotal();
             return;
         }
@@ -1877,9 +1930,10 @@
             maybeShowMinimumQtyWarning(row, { showWarning: true, once: true });
         }
         calcTotal();
-        const message = `ADDED ${item.item_name} ×${qty}`;
+        const message = getVoiceResponseMessage('added', item.item_name, qty);
         setVoiceStatus(message);
         showVoicePrompt(message, 'success', 2800);
+        speakBillingMessage(message, voiceBillingState.lang);
     }
 
     function processVoiceCommand(rawText) {
@@ -1894,9 +1948,10 @@
 
         const item = findVoiceItem(itemQuery);
         if (!item) {
-            const msg = `ITEM NOT FOUND: ${rawText}`;
+            const msg = getVoiceResponseMessage('missing', rawText, '');
             setVoiceStatus(msg, true);
             showVoicePrompt(msg, 'error', 3800);
+            speakBillingMessage(msg, voiceBillingState.lang);
             return;
         }
 

@@ -1885,7 +1885,7 @@
             const afterFirst = tokens.slice(1).join(' ');
             const quantityIndicator = /\b(?:qty|quantity|x|times|pcs?|pieces?|packets?|packet|nos?|no\.?|kg|kgs?|g|grams?|gram|ltr|litre|kilogram|gram|liter|piece|unit)\b/;
 
-            if (/^\d+(?:\.\d+)?$/.test(firstToken) && (quantityIndicator.test(afterFirst) || afterFirst === '' || tokens.length > 1)) {
+            if (/^\d+(?:\.\d+)?$/.test(firstToken) && (quantityIndicator.test(afterFirst) || afterFirst === '')) {
                 quantity = parseFloat(firstToken);
             } else if (numberWords[firstToken] !== undefined && (quantityIndicator.test(afterFirst) || tokens.length > 1)) {
                 quantity = numberWords[firstToken];
@@ -1898,11 +1898,11 @@
     function cleanEnglishVoiceItemQuery(text) {
         if (!text) return '';
         let result = String(text).toLowerCase();
-        result = result.replace(/\b(add|put|include|sell|order|bill|please|take|give|want|need|for|of|with|qty|quantity|pieces?|pcs?|piece|packet|pack|nos?|no\.?|times?|each|every)\b/g, ' ');
         result = result.replace(/\b(?:qty|quantity|x|times|pcs?|pieces?|packets?|packet|nos?|no\.?)\s*(?:of\s*)?(\d+(?:\.\d+)?)(?:\s*(?:kg|kgs?|g|grams?|gram|ltr|litre|litres?|liter|liters|bottle|bottles))?\b/g, ' ');
         result = result.replace(/\b(\d+(?:\.\d+)?)\s*(?:pcs?|pieces?|qty|quantity|x|times|packets?|packet|nos?|no\.?|kg|kgs?|g|grams?|gram|ltr|litre|litres?|liter|liters|bottle|bottles)\b/g, ' ');
         result = result.replace(/\b(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|dozen)\b\s*(?:pcs?|pieces?|qty|quantity|x|times|packets?|packet|nos?|no\.?|kg|kgs?|g|grams?|gram|ltr|litre|litres?|liter|liters|bottle|bottles)\b/g, ' ');
         result = result.replace(/\b(?:\d+(?:\.\d+)?|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|dozen)\s*(?:kg|kgs?|g|grams?|gram|ltr|litre|litres?|liter|liters|bottle|bottles)\b/g, ' ');
+        result = result.replace(/\b(add|put|include|sell|order|bill|please|take|give|want|need|for|of|with|qty|quantity|pieces?|pcs?|piece|packet|pack|nos?|no\.?|times?|each|every)\b/g, ' ');
         result = result.replace(/\s+/g, ' ').trim();
         return result;
     }
@@ -1974,6 +1974,8 @@
         const synonyms = {
             polly: 'poly',
             poli: 'poly',
+            koli: 'poly',
+            koi: 'poly',
             cab: 'cab',
             polycab: 'polycab',
             hathyra: 'athira',
@@ -1981,6 +1983,8 @@
             hattira: 'athira',
             athyra: 'athira',
             athira: 'athira',
+            thira: 'athira',
+            tira: 'athira',
             toll: 'toll',
             tol: 'toll',
             tula: 'toll',
@@ -1989,7 +1993,11 @@
             mol: 'module',
             modle: 'module',
             moduel: 'module',
-            module: 'module'
+            module: 'module',
+            kaila: 'kela',
+            kella: 'kela',
+            kela: 'kela',
+            chandra: 'chandra'
         };
         const normalized = normalizeSearchText(token);
         return synonyms[normalized] || normalized;
@@ -2010,6 +2018,14 @@
         const baseTermCount = normalizeSearchText(query).split(' ').filter(Boolean).length;
         if (baseTermCount <= 1) return 45;
         return Math.min(140, Math.max(60, baseTermCount * 25));
+    }
+
+    function isVoiceNumericTerm(term) {
+        return /\d/.test(String(term || ''));
+    }
+
+    function isVoiceProductTypeTerm(term) {
+        return /^(plate|box|coupler|socket|bend|tee|elbow|pipe|wire|cable|switch|module|metal|pgf)$/i.test(String(term || ''));
     }
 
     // Levenshtein distance for fuzzy matching (handle speech recognition mishearings)
@@ -2060,12 +2076,19 @@
             let score = 0;
             // Try fuzzy matching on terms that don't have exact matches
             for (const t of terms) {
+                const hasDigit = isVoiceNumericTerm(t);
+                const isProductType = isVoiceProductTypeTerm(t);
+
                 if (searchablePrimary.includes(t)) {
-                    score += 40;
+                    score += hasDigit ? 100 : (isProductType ? 70 : 40);
                 } else if (searchableSecondary.includes(t)) {
-                    score += 35;
+                    score += hasDigit ? 90 : (isProductType ? 60 : 35);
                 } else if (compactPrimary.includes(t) || compactSecondary.includes(t) || compactAll.includes(t)) {
-                    score += 34;
+                    score += hasDigit ? 90 : (isProductType ? 58 : 34);
+                } else if (hasDigit) {
+                    score -= 55;
+                } else if (isProductType) {
+                    score -= 35;
                 } else {
                     // Fuzzy: find the closest word in the item name
                     const nameWords = searchablePrimary.split(' ');
@@ -2079,7 +2102,7 @@
                     }
                 }
             }
-            if (score === 0) return null;
+            if (score <= 0) return null;
 
             if (terms.length > 1 && terms.some(t => compactPrimary.includes(t) || compactSecondary.includes(t))) {
                 score += 12;

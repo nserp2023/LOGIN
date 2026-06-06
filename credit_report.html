@@ -705,7 +705,7 @@
       let receiptQuery = sb
         .from("cash_transactions")
         .select("id, txn_date, voucher_no, txn_type, party_name, amount, remarks, approval_status, reference_type, is_checked")
-        .eq("txn_type", "receipt")
+        .in("txn_type", ["receipt", "payment"])
         .eq("approval_status", "approved");
 
       if (filters.fromDate) receiptQuery = receiptQuery.gte("txn_date", filters.fromDate);
@@ -787,13 +787,14 @@
             text.includes("order advance") ||
             text.includes("advance received") ||
             text.includes("advance paid");
+          const isPayment = String(r.txn_type || "").trim().toLowerCase() === "payment";
 
           const receiptMobile = getReceiptMobile(r, lookup.customerMobileMap || {});
           const fallbackName = receiptMobile && lookup.customerNameMap ? lookup.customerNameMap[receiptMobile] : "";
           const amount = num(r.amount);
 
           return {
-            rowKind: isSalesOrderAdvance ? "advance" : "receipt",
+            rowKind: isSalesOrderAdvance ? "advance" : (isPayment ? "payment" : "receipt"),
             id:`receipt_${r.id}`,
             real_id:r.id,
             is_checked: !!r.is_checked,
@@ -1043,10 +1044,10 @@
       displayRows.forEach((row) => {
         const balanceClass = num(row.runningBalance) > 0 ? "chip-credit" : "chip-settled";
 
-        if (row.rowKind === "receipt" || row.rowKind === "advance" || row.rowKind === "credit_return") {
+        if (row.rowKind === "receipt" || row.rowKind === "payment" || row.rowKind === "advance" || row.rowKind === "credit_return") {
           const isAdvance = row.rowKind === "advance";
           const isCreditReturn = row.rowKind === "credit_return";
-          const typeText = isCreditReturn ? "CREDIT RETURN" : (isAdvance ? "SALES ORDER ADVANCE" : "RECEIPT");
+          const typeText = isCreditReturn ? "CREDIT RETURN" : (isAdvance ? "SALES ORDER ADVANCE" : (row.rowKind === "payment" ? "PAYMENT" : "RECEIPT"));
           const chipClass = isCreditReturn ? "chip-return" : (isAdvance ? "chip-advance" : "chip-receipt");
           const receivedText = isCreditReturn
             ? "ADJ " + money(row.creditAdjustment)
@@ -1099,7 +1100,7 @@
       qs("sum_balance").textContent = money(totalBalance);
 
       const filterText = (qs("mobile_filter").value || qs("name_filter").value) ? " Customer filter applied." : "";
-      statusBox.textContent = `${displayRows.length} ledger row(s) loaded. Bills: ${totalBills}, Cash received lines: ${receiptRows.length}, Credit return adjustments: ${creditReturnRows.length}, Balance: ${money(totalBalance)}.${filterText}${CAN_BOOK_CHECK ? " Book check enabled for SN." : " Book check is view-only for this user."}`;
+      statusBox.textContent = `${displayRows.length} ledger row(s) loaded. Bills: ${totalBills}, Collection/payment lines: ${receiptRows.length}, Credit return adjustments: ${creditReturnRows.length}, Balance: ${money(totalBalance)}.${filterText}${CAN_BOOK_CHECK ? " Book check enabled for SN." : " Book check is view-only for this user."}`;
     }
 
     async function toggleDetails(salesId) {

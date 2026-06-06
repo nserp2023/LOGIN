@@ -1146,6 +1146,14 @@
             <option value="ml-IN">Malayalam</option>
         </select>
         <div id="voice_billing_status" class="voice-status" style="display:none;">VOICE READY</div>
+        <div id="voice_debug_overlay" style="position:fixed; right:12px; bottom:84px; z-index:1200; background:rgba(0,0,0,0.75); color:#fff; padding:8px 10px; border-radius:8px; font-size:12px; display:none; max-width:320px; box-shadow:0 6px 18px rgba(0,0,0,0.4);">
+            <div style="font-weight:700; margin-bottom:6px;">Voice Debug</div>
+            <div id="voice_debug_raw" style="opacity:0.95;">Heard: -</div>
+            <div id="voice_debug_qty" style="opacity:0.85;">Qty: -</div>
+            <div id="voice_debug_cleaned" style="opacity:0.85;">Cleaned: -</div>
+            <div id="voice_debug_match" style="opacity:0.85;">Match: -</div>
+            <div id="voice_debug_stock_count" style="opacity:0.75; margin-top:6px; font-size:11px;">Stock: loading...</div>
+        </div>
         <button class="btn" style="color: #64748b; background:transparent;" onclick="disableAutoBackupAndClearDraft('New bill - draft cleared'); location.reload();">Reset / New Bill</button>
         <button id="btn_save" class="btn btn-save" onclick="saveAndPrint()" tabindex="100">PRINT & SAVE</button>
     </div>
@@ -1238,6 +1246,7 @@
     let isSalesOrderConversionMode = false;
     let salesOrderAdvancePaid = 0;
 
+        
 
     // --- BELOW LANDING SECRET UNLOCK ---
     // Normal save blocks 0 price and below-landing sales.
@@ -1655,12 +1664,28 @@
         }, duration);
     }
 
+    function updateVoiceDebug({ raw, qty, cleaned, match } = {}) {
+        try {
+            const wrap = document.getElementById('voice_debug_overlay');
+            if (!wrap) return;
+            wrap.style.display = '';
+            const rawEl = document.getElementById('voice_debug_raw');
+            const qtyEl = document.getElementById('voice_debug_qty');
+            const cleanEl = document.getElementById('voice_debug_cleaned');
+            const matchEl = document.getElementById('voice_debug_match');
+            if (rawEl && typeof raw !== 'undefined') rawEl.textContent = `Heard: ${String(raw || '-').slice(0,120)}`;
+            if (qtyEl && typeof qty !== 'undefined') qtyEl.textContent = `Qty: ${qty}`;
+            if (cleanEl && typeof cleaned !== 'undefined') cleanEl.textContent = `Cleaned: ${String(cleaned || '-').slice(0,120)}`;
+            if (matchEl && typeof match !== 'undefined') matchEl.textContent = `Match: ${match || '-'}`;
+        } catch (e) { console.error(e); }
+    }
+
     function initializeVoiceBilling() {
         const btn = document.getElementById('voice_billing_btn');
         const langSelect = document.getElementById('voice_billing_lang');
         if(!btn) return;
 
-        if (!isVoiceRecognitionSupported() || isIPhoneSafari()) {
+        if (!isVoiceRecognitionSupported()) {
             btn.style.display = 'none';
             if (langSelect) langSelect.style.display = 'none';
             return;
@@ -1685,6 +1710,8 @@
                 const last = event.results.length - 1;
                 const transcript = event.results[last][0].transcript.trim();
                 voiceBillingState.lastTranscript = transcript;
+                // Update debug overlay with raw transcript immediately
+                updateVoiceDebug({ raw: transcript });
                 if (event.results[last].isFinal) {
                     showVoicePrompt(`Heard: ${transcript}`, 'info', 2200);
                     processVoiceCommand(transcript);
@@ -2041,12 +2068,23 @@
             ? cleanEnglishVoiceItemQuery(rawText) || rawText
             : normalizeVoiceItemText(rawText) || rawText;
 
+                // update debug overlay with parsed quantity and cleaned query
+                updateVoiceDebug({ cleaned: itemQuery, qty });
+
         if (!itemQuery) {
             setVoiceStatus('PLEASE SAY ITEM NAME', true);
             return;
         }
 
         const item = findVoiceItem(itemQuery);
+        updateVoiceDebug({ match: item ? (item.item_name || item.item_code) : null });
+        if (!stockLoaded) {
+            const msg = 'STOCK NOT LOADED - Check Supabase Auth / Network';
+            console.warn(msg);
+            setVoiceStatus(msg, true);
+            showVoicePrompt(msg, 'error', 4000);
+            // continue to allow fallback search attempt
+        }
         if (!item) {
             const msg = getVoiceResponseMessage('missing', rawText, '');
             setVoiceStatus(msg, true);
@@ -3041,6 +3079,11 @@ const stockSelect = 'item_code,item_name,barcode,price1,price2,price3,landing,ba
     stockLoaded = true;
 
     console.log("Total Stock Items Loaded:", stockData.length);
+    // Also reflect stock count in debug overlay when available
+    try {
+        const el = document.getElementById('voice_debug_stock_count');
+        if (el) el.textContent = `Stock: ${stockData.length} items`;
+    } catch (e) { }
 }
     function normalizeSearchText(value) {
         return String(value || "")

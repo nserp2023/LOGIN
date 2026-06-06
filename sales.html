@@ -1155,6 +1155,7 @@
             <div id="voice_debug_match" style="opacity:0.85;">Match: -</div>
             <div id="voice_debug_score" style="opacity:0.75;">Score: -</div>
             <div id="voice_debug_alts" style="opacity:0.75; font-size:12px; margin-top:6px;">Alts: -</div>
+            <div id="voice_debug_candidates" style="opacity:0.75; font-size:11px; margin-top:6px; max-height:180px; overflow-y:auto; font-family:monospace; white-space:pre-wrap; word-break:break-word; border-top:1px solid rgba(255,255,255,0.2); padding-top:6px;">Candidates: -</div>
             <div id="voice_debug_stock_count" style="opacity:0.75; margin-top:6px; font-size:11px;">Stock: loading...</div>
         </div>
         <button class="btn" style="color: #64748b; background:transparent;" onclick="disableAutoBackupAndClearDraft('New bill - draft cleared'); location.reload();">Reset / New Bill</button>
@@ -1677,7 +1678,7 @@
         if (btn) btn.textContent = voiceDebugVisible ? 'Hide Voice Debug' : 'Show Voice Debug';
     }
 
-    function updateVoiceDebug({ raw, qty, cleaned, match, score, alts } = {}) {
+    function updateVoiceDebug({ raw, qty, cleaned, match, score, alts, candidates } = {}) {
         try {
             const wrap = document.getElementById('voice_debug_overlay');
             if (!wrap) return;
@@ -1688,12 +1689,21 @@
             const matchEl = document.getElementById('voice_debug_match');
             const scoreEl = document.getElementById('voice_debug_score');
             const altsEl = document.getElementById('voice_debug_alts');
+            const candEl = document.getElementById('voice_debug_candidates');
             if (rawEl && typeof raw !== 'undefined') rawEl.textContent = `Heard: ${String(raw || '-').slice(0,120)}`;
             if (qtyEl && typeof qty !== 'undefined') qtyEl.textContent = `Qty: ${qty}`;
             if (cleanEl && typeof cleaned !== 'undefined') cleanEl.textContent = `Cleaned: ${String(cleaned || '-').slice(0,120)}`;
             if (matchEl && typeof match !== 'undefined') matchEl.textContent = `Match: ${match || '-'}`;
             if (scoreEl && typeof score !== 'undefined') scoreEl.textContent = `Score: ${typeof score === 'number' ? score.toFixed(1) : score || '-'}`;
             if (altsEl && typeof alts !== 'undefined') altsEl.textContent = `Alts: ${Array.isArray(alts) ? alts.slice(0,3).join(' | ') : (alts || '-')}`;
+            if (candEl && typeof candidates !== 'undefined') {
+                if (Array.isArray(candidates) && candidates.length) {
+                    const candText = candidates.map((c, i) => `${i+1}. [${c.score.toFixed(1)}] ${(c.name || c.code).slice(0,80)}`).join('\n');
+                    candEl.textContent = `Top Candidates:\n${candText}`;
+                } else {
+                    candEl.textContent = `Candidates: -`;
+                }
+            }
         } catch (e) { console.error(e); }
     }
 
@@ -1970,7 +1980,8 @@
         let scoredMatches = searchStockWithScore(normalized, 'item_name');
         if (scoredMatches.length) {
             const top = scoredMatches[0];
-            try { updateVoiceDebug({ match: (top.item.item_name || top.item.item_code), score: top.score }); } catch (e) {}
+            const topCands = scoredMatches.slice(0,5).map(x => ({ score: x.score, name: x.item.item_name, code: x.item.item_code }));
+            try { updateVoiceDebug({ match: (top.item.item_name || top.item.item_code), score: top.score, candidates: topCands }); } catch (e) {}
             return top.item;
         }
 
@@ -1981,7 +1992,8 @@
                 const fb = searchStockWithScore(fallback, 'item_name');
                 if (fb.length) {
                     const top = fb[0];
-                    try { updateVoiceDebug({ match: (top.item.item_name || top.item.item_code), score: top.score }); } catch (e) {}
+                    const topCands = fb.slice(0,5).map(x => ({ score: x.score, name: x.item.item_name, code: x.item.item_code }));
+                    try { updateVoiceDebug({ match: (top.item.item_name || top.item.item_code), score: top.score, candidates: topCands }); } catch (e) {}
                     return top.item;
                 }
             }
@@ -1995,7 +2007,8 @@
                 const lr = searchStockWithScore(leadingNormalized, 'item_name');
                 if (lr.length) {
                     const top = lr[0];
-                    try { updateVoiceDebug({ match: (top.item.item_name || top.item.item_code), score: top.score }); } catch (e) {}
+                    const topCands = lr.slice(0,5).map(x => ({ score: x.score, name: x.item.item_name, code: x.item.item_code }));
+                    try { updateVoiceDebug({ match: (top.item.item_name || top.item.item_code), score: top.score, candidates: topCands }); } catch (e) {}
                     return top.item;
                 }
             }

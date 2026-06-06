@@ -1970,6 +1970,48 @@
         return result;
     }
 
+    function normalizeVoiceSearchToken(token) {
+        const synonyms = {
+            polly: 'poly',
+            poli: 'poly',
+            cab: 'cab',
+            polycab: 'polycab',
+            hathyra: 'athira',
+            hathira: 'athira',
+            hattira: 'athira',
+            athyra: 'athira',
+            athira: 'athira',
+            toll: 'toll',
+            tol: 'toll',
+            tula: 'toll',
+            tulla: 'toll',
+            terra: 'toll',
+            mol: 'module',
+            modle: 'module',
+            moduel: 'module',
+            module: 'module'
+        };
+        const normalized = normalizeSearchText(token);
+        return synonyms[normalized] || normalized;
+    }
+
+    function getVoiceSearchTerms(query) {
+        const baseTerms = normalizeSearchText(query).split(' ').filter(Boolean).map(normalizeVoiceSearchToken).filter(Boolean);
+        const terms = [...baseTerms];
+
+        for (let i = 0; i < baseTerms.length - 1; i++) {
+            terms.push(baseTerms[i] + baseTerms[i + 1]);
+        }
+
+        return Array.from(new Set(terms));
+    }
+
+    function getVoiceFuzzyAutoSelectThreshold(query) {
+        const baseTermCount = normalizeSearchText(query).split(' ').filter(Boolean).length;
+        if (baseTermCount <= 1) return 45;
+        return Math.min(140, Math.max(60, baseTermCount * 25));
+    }
+
     // Levenshtein distance for fuzzy matching (handle speech recognition mishearings)
     function levenshteinDistance(a, b) {
         if (a.length === 0) return b.length;
@@ -2002,7 +2044,7 @@
         if (!query) return [];
         const normalizedQuery = normalizeSearchText(query);
         if (!normalizedQuery) return [];
-        const terms = normalizedQuery.split(' ').filter(Boolean);
+        const terms = getVoiceSearchTerms(normalizedQuery);
         const scored = getDepartmentFilteredStockData().map(item => {
             const codeRaw = String(item.item_code || '');
             const nameRaw = String(item.item_name || '');
@@ -2012,6 +2054,9 @@
             const barcode = normalizeSearchText(barcodeRaw);
             let searchablePrimary = field === 'item_code' ? code : name;
             let searchableSecondary = field === 'item_code' ? name : code;
+            const compactPrimary = searchablePrimary.replace(/\s+/g, '');
+            const compactSecondary = searchableSecondary.replace(/\s+/g, '');
+            const compactAll = (code + name + barcode).replace(/\s+/g, '');
             let score = 0;
             // Try fuzzy matching on terms that don't have exact matches
             for (const t of terms) {
@@ -2019,6 +2064,8 @@
                     score += 40;
                 } else if (searchableSecondary.includes(t)) {
                     score += 35;
+                } else if (compactPrimary.includes(t) || compactSecondary.includes(t) || compactAll.includes(t)) {
+                    score += 34;
                 } else {
                     // Fuzzy: find the closest word in the item name
                     const nameWords = searchablePrimary.split(' ');
@@ -2033,6 +2080,11 @@
                 }
             }
             if (score === 0) return null;
+
+            if (terms.length > 1 && terms.some(t => compactPrimary.includes(t) || compactSecondary.includes(t))) {
+                score += 12;
+            }
+
             return { item, score };
         }).filter(Boolean);
         scored.sort((a, b) => b.score - a.score);
@@ -2064,7 +2116,7 @@
         const fuzzyMatches = searchStockWithFuzzy(normalized, 'item_name', 2);
         if (fuzzyMatches.length) {
             const topCands = fuzzyMatches.slice(0,5).map(x => ({ score: x.score, name: x.item.item_name, code: x.item.item_code }));
-            if (fuzzyMatches[0].score >= 15) { // only auto-select if confidence is reasonable
+            if (fuzzyMatches[0].score >= getVoiceFuzzyAutoSelectThreshold(normalized)) {
                 try { updateVoiceDebug({ match: (fuzzyMatches[0].item.item_name || fuzzyMatches[0].item.item_code), score: fuzzyMatches[0].score, candidates: topCands }); } catch (e) {}
                 return fuzzyMatches[0].item;
             } else {
@@ -2087,7 +2139,7 @@
                 }
                 // Try fuzzy if no exact match on fallback
                 const fbFuzzy = searchStockWithFuzzy(fallback, 'item_name', 2);
-                if (fbFuzzy.length && fbFuzzy[0].score >= 15) {
+                if (fbFuzzy.length && fbFuzzy[0].score >= getVoiceFuzzyAutoSelectThreshold(fallback)) {
                     const topCands = fbFuzzy.slice(0,5).map(x => ({ score: x.score, name: x.item.item_name, code: x.item.item_code }));
                     try { updateVoiceDebug({ match: (fbFuzzy[0].item.item_name || fbFuzzy[0].item.item_code), score: fbFuzzy[0].score, candidates: topCands }); } catch (e) {}
                     return fbFuzzy[0].item;
@@ -2110,11 +2162,11 @@
             }
         }
 
-        if (matches.length) {
-            // Show candidates even for legacy match
-            const topCands = matches.slice(0,5).map(x => ({ score: 50, name: x.item_name, code: x.item_code }));
-            try { updateVoiceDebug({ candidates: topCands }); } catch (e) {}
-            return matches[0];
+        const legacyMatches = searchStock(normalized, 'item_name');
+        if (legacyMatches.length) {
+            const topCands = legacyMatches.slice(0,5).map(x => ({ score: 50, name: x.item_name, code: x.item_code }));
+            try { updateVoiceDebug({ match: (legacyMatches[0].item_name || legacyMatches[0].item_code), score: 50, candidates: topCands }); } catch (e) {}
+            return legacyMatches[0];
         }
 
         const exactCode = getDepartmentFilteredStockData().find(item => normalizeSearchText(item.item_code || '') === normalized || normalizeSearchText(item.barcode || '') === normalized);
@@ -2158,7 +2210,21 @@
             const topCands = [{ score: bestScore, name: best.item_name, code: best.item_code }];
             try { updateVoiceDebug({ candidates: topCands }); } catch (e) {}
         }
-        return bestScore >= 40 ? best : null;
+        if (bestScore >= 40) {
+            try { updateVoiceDebug({ match: (best.item_name || best.item_code), score: bestScore }); } catch (e) {}
+            return best;
+        }
+
+        const partialCandidates = searchStockWithFuzzy(normalized, 'item_name', 3).slice(0, 5);
+        if (partialCandidates.length) {
+            try {
+                updateVoiceDebug({
+                    candidates: partialCandidates.map(x => ({ score: x.score, name: x.item.item_name, code: x.item.item_code }))
+                });
+            } catch (e) {}
+        }
+
+        return null;
     }
 
     function getExistingRowByCode(code) {

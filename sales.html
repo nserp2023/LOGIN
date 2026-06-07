@@ -1263,6 +1263,7 @@
         <div id="draft_status_text" style="align-self:center;color:#22c55e;font-weight:800;font-size:12px;padding:8px 10px;border:1px solid rgba(34,197,94,.45);border-radius:6px;background:rgba(20,83,45,.35);">Auto Backup ON</div>
 
         <button id="voice_billing_btn" class="btn" style="color:white; background:#0f172a; display:none;" type="button" onclick="toggleVoiceBilling()">VOICE BILLING</button>
+        <button id="google_voice_btn" class="btn" style="color:white; background:#166534; display:none;" type="button" onclick="toggleGoogleVoiceBilling()">GOOGLE VOICE</button>
         <select id="voice_billing_lang" class="form-control" style="width:180px; display:none; margin-left:8px;" onchange="updateVoiceLanguage()" title="Voice language">
             <option value="en-IN">English</option>
             <option value="ml-IN">Malayalam</option>
@@ -1745,7 +1746,12 @@
         pendingSelection: false,
         pendingQty: 1,
         pendingCandidates: [],
-        lastCandidates: []
+        lastCandidates: [],
+        googleRecorder: null,
+        googleStream: null,
+        googleChunks: [],
+        googleRecording: false,
+        googleTimer: null
     };
 
     function speakBillingMessage(message, lang = 'en-IN') {
@@ -1929,23 +1935,32 @@
 
     function initializeVoiceBilling() {
         const btn = document.getElementById('voice_billing_btn');
+        const googleBtn = document.getElementById('google_voice_btn');
         const langSelect = document.getElementById('voice_billing_lang');
-        if(!btn) return;
+        if(!btn && !googleBtn) return;
 
         if (!isVoiceRecognitionSupported()) {
-            btn.style.display = 'none';
-            if (langSelect) langSelect.style.display = 'none';
-            return;
+            if (btn) btn.style.display = 'none';
+        } else {
+            if (btn) btn.style.display = '';
+            if (langSelect) {
+                langSelect.style.display = 'inline-block';
+                langSelect.value = voiceBillingState.lang;
+            }
         }
 
-        btn.style.display = '';
-        if (langSelect) {
-            langSelect.style.display = 'inline-block';
-            langSelect.value = voiceBillingState.lang;
+        if (googleBtn) {
+            const canRecord = !!(navigator.mediaDevices?.getUserMedia && window.MediaRecorder);
+            googleBtn.style.display = canRecord ? '' : 'none';
+            if (canRecord && langSelect) {
+                langSelect.style.display = 'inline-block';
+                langSelect.value = voiceBillingState.lang;
+            }
         }
         setVoiceStatus('VOICE READY');
 
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) return;
         try {
             voiceBillingState.recognition = new SpeechRecognition();
             voiceBillingState.recognition.continuous = true;
@@ -2049,6 +2064,151 @@
         voiceBillingState.listening = false;
         document.getElementById('voice_billing_btn').textContent = 'VOICE BILLING';
         setVoiceStatus('VOICE PAUSED');
+    }
+
+    function getGoogleSpeechEndpoint() {
+        return window.GOOGLE_SPEECH_API_URL || localStorage.getItem('GOOGLE_SPEECH_API_URL') || 'http://localhost:3000/api/google-speech';
+    }
+
+    function getGoogleRecorderMimeType() {
+        const types = [
+            'audio/webm;codecs=opus',
+            'audio/webm',
+            'audio/ogg;codecs=opus',
+            'audio/ogg'
+        ];
+
+        return types.find(type => window.MediaRecorder?.isTypeSupported?.(type)) || '';
+    }
+
+    function blobToBase64(blob) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(String(reader.result || '').split(',')[1] || '');
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    }
+
+    async function toggleGoogleVoiceBilling() {
+        if (voiceBillingState.googleRecording) {
+            stopGoogleVoiceRecording();
+            return;
+        }
+
+        await startGoogleVoiceRecording();
+    }
+
+    async function startGoogleVoiceRecording() {
+        const btn = document.getElementById('google_voice_btn');
+        if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
+            showVoicePrompt('Audio recording is not supported in this browser', 'error', 3500);
+            return;
+        }
+
+        try {
+            if (voiceBillingState.listening) stopVoiceBilling();
+
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const mimeType = getGoogleRecorderMimeType();
+            const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+
+            voiceBillingState.googleStream = stream;
+            voiceBillingState.googleRecorder = recorder;
+            voiceBillingState.googleChunks = [];
+            voiceBillingState.googleRecording = true;
+
+            recorder.ondataavailable = (event) => {
+                if (event.data && event.data.size > 0) {
+                    voiceBillingState.googleChunks.push(event.data);
+                }
+            };
+
+            recorder.onstop = sendGoogleVoiceRecording;
+            recorder.start();
+
+            if (btn) btn.textContent = 'STOP GOOGLE';
+            setVoiceStatus('GOOGLE LISTENING...');
+            showVoicePrompt('Google voice recording...', 'info', 2500);
+
+            clearTimeout(voiceBillingState.googleTimer);
+            voiceBillingState.googleTimer = setTimeout(stopGoogleVoiceRecording, 4500);
+        } catch (err) {
+            console.error(err);
+            voiceBillingState.googleRecording = false;
+            if (btn) btn.textContent = 'GOOGLE VOICE';
+            showVoicePrompt(`Mic error: ${err.message || err}`, 'error', 4500);
+        }
+    }
+
+    function stopGoogleVoiceRecording() {
+        clearTimeout(voiceBillingState.googleTimer);
+        const recorder = voiceBillingState.googleRecorder;
+        if (recorder && recorder.state !== 'inactive') {
+            recorder.stop();
+        }
+    }
+
+    async function sendGoogleVoiceRecording() {
+        const btn = document.getElementById('google_voice_btn');
+        const stream = voiceBillingState.googleStream;
+        const chunks = voiceBillingState.googleChunks || [];
+        const mimeType = voiceBillingState.googleRecorder?.mimeType || getGoogleRecorderMimeType();
+
+        voiceBillingState.googleRecording = false;
+        voiceBillingState.googleRecorder = null;
+        voiceBillingState.googleStream = null;
+        voiceBillingState.googleChunks = [];
+        if (stream) stream.getTracks().forEach(track => track.stop());
+        if (btn) btn.textContent = 'GOOGLE VOICE';
+
+        if (!chunks.length) {
+            showVoicePrompt('No voice captured', 'error', 3000);
+            return;
+        }
+
+        try {
+            setVoiceStatus('GOOGLE TRANSCRIBING...');
+            const blob = new Blob(chunks, { type: mimeType || 'audio/webm' });
+            const audioBase64 = await blobToBase64(blob);
+
+            const response = await fetch(getGoogleSpeechEndpoint(), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    audioBase64,
+                    mimeType: blob.type,
+                    languageCode: voiceBillingState.lang || 'en-IN'
+                })
+            });
+
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+
+            const alternatives = Array.isArray(data.alternatives)
+                ? data.alternatives.map(x => x.transcript).filter(Boolean)
+                : [];
+            const transcript = data.transcript || alternatives[0] || '';
+            const confidence = data.alternatives?.[0]?.confidence;
+
+            updateVoiceDebug({
+                raw: transcript,
+                alts: alternatives,
+                confidence: typeof confidence === 'number' ? confidence * 100 : undefined
+            });
+
+            if (!transcript) {
+                showVoicePrompt('Google did not hear an item', 'error', 3500);
+                setVoiceStatus('GOOGLE NO MATCH');
+                return;
+            }
+
+            processVoiceCommand(transcript, alternatives);
+        } catch (err) {
+            console.error(err);
+            setVoiceStatus('GOOGLE VOICE ERROR', true);
+            showVoicePrompt(`Google voice error: ${err.message || err}`, 'error', 5000);
+        }
     }
 
     function parseSpokenQuantity(text) {

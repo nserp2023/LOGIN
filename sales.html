@@ -1994,10 +1994,12 @@
             modle: 'module',
             moduel: 'module',
             module: 'module',
+            kl: 'kela',
             kaila: 'kela',
             kella: 'kela',
             kela: 'kela',
-            chandra: 'chandra'
+            chandra: 'chandra',
+            tm: '20mm'
         };
         const normalized = normalizeSearchText(token);
         return synonyms[normalized] || normalized;
@@ -2006,9 +2008,39 @@
     function getVoiceSearchTerms(query) {
         const baseTerms = normalizeSearchText(query).split(' ').filter(Boolean).map(normalizeVoiceSearchToken).filter(Boolean);
         const terms = [...baseTerms];
+        const spokenNumbers = {
+            one: '1',
+            two: '2',
+            three: '3',
+            four: '4',
+            five: '5',
+            six: '6',
+            seven: '7',
+            eight: '8',
+            nine: '9',
+            ten: '10',
+            twelve: '12',
+            fifteen: '15',
+            sixteen: '16',
+            twenty: '20',
+            twentyfive: '25',
+            thirtytwo: '32',
+            forty: '40',
+            fifty: '50',
+            sixtythree: '63'
+        };
 
         for (let i = 0; i < baseTerms.length - 1; i++) {
             terms.push(baseTerms[i] + baseTerms[i + 1]);
+
+            const joined = baseTerms[i] + baseTerms[i + 1];
+            if (spokenNumbers[joined]) {
+                terms.push(spokenNumbers[joined]);
+            }
+
+            if (baseTerms[i + 1] === 'mm' && spokenNumbers[baseTerms[i]]) {
+                terms.push(`${spokenNumbers[baseTerms[i]]}mm`);
+            }
         }
 
         return Array.from(new Set(terms));

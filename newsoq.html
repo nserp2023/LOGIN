@@ -1957,10 +1957,9 @@
 
     function getQuickPurchaseOrderQtyForRow(row){
         const maxQty = getMaximumQtyForRow(row);
-        const currentStock = getEffectiveAvailableStockForRow(row);
-        const typedQty = getQtyInputValue(row);
+        const remainingAfterSale = getRemainingStockAfterSale(row);
         if(maxQty <= 0) return 0;
-        return Math.max(0, maxQty - currentStock - typedQty);
+        return Math.max(0, maxQty - remainingAfterSale);
     }
 
     function closePurchaseOrderPrompt(answer){
@@ -2072,7 +2071,7 @@
             quantity: orderQty,
             received_qty: 0,
             price,
-            remark: `AUTO REORDER: MAX ${getMaximumQtyForRow(row)} - STOCK ${getEffectiveAvailableStockForRow(row)} - SALE QTY ${getQtyInputValue(row)}`,
+            remark: `AUTO REORDER: MAX ${getMaximumQtyForRow(row)} - REMAINING AFTER SALE ${getRemainingStockAfterSale(row)}`,
             status: "PENDING"
         };
 

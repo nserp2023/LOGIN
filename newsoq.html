@@ -4695,7 +4695,7 @@ function calcTotal() {
                 window.open(`print.html?type=${docType}&id=${saleId}`, "_blank");
             }
 
-            if (docType === "sales" && window.loadedQuotationId) {
+            if (["sales", "sales_pack"].includes(docType) && window.loadedQuotationId) {
                 await sb
                     .from("quotation_details")
                     .update({ converted: true })

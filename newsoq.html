@@ -509,6 +509,75 @@
             cursor: pointer;
         }
 
+        .po-confirm-overlay{
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(2, 6, 23, 0.36);
+            backdrop-filter: blur(5px);
+            z-index: 21000;
+            padding: 20px;
+        }
+
+        .po-confirm-overlay.show{
+            display: flex;
+        }
+
+        .po-confirm-box{
+            width: min(94vw, 520px);
+            border-radius: 16px;
+            border: 1px solid rgba(34, 197, 94, 0.45);
+            background: linear-gradient(135deg, rgba(6, 78, 59, 0.96), rgba(21, 94, 117, 0.96));
+            box-shadow: 0 24px 70px rgba(2, 44, 34, 0.45);
+            color: #ecfdf5;
+            padding: 22px 20px;
+            text-align: center;
+        }
+
+        .po-confirm-box h3{
+            margin: 0 0 10px;
+            color: #bbf7d0;
+            font-size: 23px;
+        }
+
+        .po-confirm-box p{
+            margin: 0;
+            color: #dcfce7;
+            line-height: 1.55;
+            white-space: pre-line;
+            font-size: 15px;
+        }
+
+        .po-confirm-actions{
+            margin-top: 18px;
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .po-confirm-btn{
+            border: none;
+            border-radius: 10px;
+            padding: 10px 22px;
+            font-weight: 900;
+            cursor: pointer;
+            min-width: 110px;
+        }
+
+        .po-confirm-btn.yes{
+            background: #22c55e;
+            color: #052e16;
+        }
+
+        .po-confirm-btn.no{
+            background: rgba(255,255,255,0.14);
+            color: #f8fafc;
+            border: 1px solid rgba(255,255,255,0.28);
+        }
+
 
         /* ===== NON-BLOCKING DRAFT RESTORE MESSAGE ===== */
         .draft-toast {
@@ -1170,6 +1239,17 @@
     </div>
 </div>
 
+<div id="po_confirm_overlay" class="po-confirm-overlay" tabindex="-1" aria-hidden="true">
+    <div class="po-confirm-box" role="alertdialog" aria-modal="true" aria-labelledby="po_confirm_title" aria-describedby="po_confirm_message">
+        <h3 id="po_confirm_title">MAKE PURCHASE ORDER?</h3>
+        <p id="po_confirm_message"></p>
+        <div class="po-confirm-actions">
+            <button type="button" class="po-confirm-btn no" id="po_confirm_no_btn">NO</button>
+            <button type="button" class="po-confirm-btn yes" id="po_confirm_yes_btn">YES, MAKE PO</button>
+        </div>
+    </div>
+</div>
+
 <script>
     // --- 1. SUPABASE CONNECTION ---
     const sb = window.sbcc; // supabase client from supabaseClient.js
@@ -1190,6 +1270,9 @@
     let canSeeLandingColumn = false;
     let isSalesOrderConversionMode = false;
     let salesOrderAdvancePaid = 0;
+    let purchaseOrderPromptOpen = false;
+    let purchaseOrderPromptResolver = null;
+    let purchaseOrderPromptReturnFocus = null;
 
 
     // --- BELOW LANDING SECRET UNLOCK ---
@@ -1870,6 +1953,172 @@
         const remaining = getRemainingStockAfterSale(row);
         if(maxQty <= 0) return 0;
         return Math.max(0, maxQty - remaining);
+    }
+
+    function getQuickPurchaseOrderQtyForRow(row){
+        const maxQty = getMaximumQtyForRow(row);
+        const currentStock = getEffectiveAvailableStockForRow(row);
+        const typedQty = getQtyInputValue(row);
+        if(maxQty <= 0) return 0;
+        return Math.max(0, maxQty - currentStock - typedQty);
+    }
+
+    function closePurchaseOrderPrompt(answer){
+        const overlay = document.getElementById('po_confirm_overlay');
+        if(overlay){
+            overlay.classList.remove('show');
+            overlay.setAttribute('aria-hidden', 'true');
+        }
+
+        purchaseOrderPromptOpen = false;
+        const resolver = purchaseOrderPromptResolver;
+        purchaseOrderPromptResolver = null;
+
+        if(typeof resolver === "function"){
+            resolver(!!answer);
+        }
+    }
+
+    function askPurchaseOrderPrompt(row, orderQty){
+        const overlay = document.getElementById('po_confirm_overlay');
+        const msg = document.getElementById('po_confirm_message');
+        if(!overlay || !msg) return Promise.resolve(false);
+
+        const code = (row.querySelector('.code-inp')?.value || '').trim();
+        const name = (row.querySelector('.name-inp')?.value || '').trim();
+        const minQty = getMinimumQtyForRow(row);
+        const maxQty = getMaximumQtyForRow(row);
+        const remaining = getRemainingStockAfterSale(row);
+
+        msg.textContent = [
+            `${name || code} stock will go below minimum qty.`,
+            `Balance after sale: ${remaining}`,
+            `Minimum qty: ${minQty}`,
+            `Maximum qty: ${maxQty}`,
+            `Purchase order qty: ${orderQty}`,
+            '',
+            'Do you want to make a purchase order for this item?'
+        ].join('\n');
+
+        purchaseOrderPromptOpen = true;
+        purchaseOrderPromptReturnFocus = row.querySelector('.qty-inp') || null;
+        overlay.classList.add('show');
+        overlay.setAttribute('aria-hidden', 'false');
+        hideAllItemDropdowns();
+
+        setTimeout(() => {
+            document.getElementById('po_confirm_yes_btn')?.focus();
+        }, 0);
+
+        return new Promise(resolve => {
+            purchaseOrderPromptResolver = resolve;
+        });
+    }
+
+    async function getNextQuickPONumber(){
+        try{
+            const { data, error } = await sb.rpc("generate_po_number");
+            if(error) throw error;
+            return data || "";
+        }catch(err){
+            console.warn("PO number generation failed:", err);
+            const stamp = new Date();
+            const ymd = stamp.toISOString().slice(0,10).replace(/-/g, "");
+            const hms = String(stamp.getHours()).padStart(2, "0") + String(stamp.getMinutes()).padStart(2, "0") + String(stamp.getSeconds()).padStart(2, "0");
+            return `AUTO-PO-${ymd}-${hms}`;
+        }
+    }
+
+    async function createQuickPurchaseOrderForRow(row, orderQty){
+        const rawItem = getRowRawItem(row) || {};
+        const itemCode = (row.querySelector('.code-inp')?.value || rawItem.item_code || "").trim();
+        const itemName = (row.querySelector('.name-inp')?.value || rawItem.item_name || "").trim();
+        if(!itemCode && !itemName) throw new Error("Item is required for purchase order.");
+        if(orderQty <= 0) throw new Error("Purchase order qty is 0 because maximum qty is not greater than minimum qty.");
+
+        const poNumber = await getNextQuickPONumber();
+        const today = new Date().toISOString().split("T")[0];
+        const {data: authData} = await sb.auth.getUser();
+        const createdBy = authData?.user?.email || "";
+        const docType = document.getElementById("doc_type")?.value === "sales_pack" ? "BILL" : "SALES";
+        const saleNo = `${document.getElementById("bill_series")?.value || ""}-${document.getElementById("bill_number")?.value || ""}`.replace(/^-|-$/g, "");
+        const remark = `AUTO PO FROM ${docType}${saleNo ? " " + saleNo : ""} - MINIMUM STOCK REORDER`;
+
+        const headerBase = {
+            po_number: poNumber,
+            order_date: today,
+            supplier_name: "AUTO REORDER",
+            supplier_gst: "",
+            supplier_mobile: "",
+            supplier_address: "",
+            remark,
+            status: "PENDING",
+            created_by: createdBy
+        };
+
+        let headerRes = await sb.from("purchase_order_details").insert([headerBase]).select().single();
+        if(headerRes.error && String(headerRes.error.message || "").includes("supplier_mobile")){
+            const { supplier_mobile, ...withoutMobile } = headerBase;
+            headerRes = await sb.from("purchase_order_details").insert([withoutMobile]).select().single();
+        }
+        if(headerRes.error) throw headerRes.error;
+
+        const price = parseFloat(rawItem.landing ?? rawItem.purchase_price_gst ?? rawItem.purchase_price ?? 0) || 0;
+        const itemPayload = {
+            purchase_order_id: headerRes.data.id,
+            item_code: itemCode,
+            item_name: itemName,
+            is_new_item: false,
+            quantity: orderQty,
+            received_qty: 0,
+            price,
+            remark: `AUTO REORDER: MAX ${getMaximumQtyForRow(row)} - STOCK ${getEffectiveAvailableStockForRow(row)} - SALE QTY ${getQtyInputValue(row)}`,
+            status: "PENDING"
+        };
+
+        const { error: itemErr } = await sb.from("purchase_order_item_details").insert([itemPayload]);
+        if(itemErr) throw itemErr;
+
+        return headerRes.data;
+    }
+
+    async function maybePromptQuickPurchaseOrder(row){
+        if(!row || !isMinimumQtyWarningMode()) return false;
+        const rawItem = getRowRawItem(row);
+        if(!rawItem) return false;
+
+        const code = (row.querySelector('.code-inp')?.value || '').trim();
+        const name = (row.querySelector('.name-inp')?.value || '').trim();
+        const qty = getQtyInputValue(row);
+        const minQty = getMinimumQtyForRow(row);
+        const maxQty = getMaximumQtyForRow(row);
+        const remaining = getRemainingStockAfterSale(row);
+        const orderQty = getQuickPurchaseOrderQtyForRow(row);
+
+        if((!code && !name) || qty <= 0 || minQty <= 0 || maxQty <= 0 || remaining >= minQty || orderQty <= 0){
+            return false;
+        }
+
+        const promptKey = `${code}|${name}|${qty}|${remaining}|${minQty}|${maxQty}|${orderQty}`;
+        if(row.dataset.quickPoPromptKey === promptKey || row.dataset.quickPoCreatedKey === promptKey){
+            return false;
+        }
+
+        row.dataset.quickPoPromptKey = promptKey;
+        const makePO = await askPurchaseOrderPrompt(row, orderQty);
+        if(!makePO) return true;
+
+        try{
+            const po = await createQuickPurchaseOrderForRow(row, orderQty);
+            row.dataset.quickPoCreatedKey = promptKey;
+            updateDraftStatus(`PO ${po.po_number || po.id} created`);
+            alert(`Purchase Order created successfully.\nPO No: ${po.po_number || po.id}\nItem: ${name || code}\nQty: ${orderQty}`);
+        }catch(err){
+            console.error("Quick purchase order failed:", err);
+            alert("Purchase Order could not be created: " + (err.message || err));
+        }
+
+        return true;
     }
 
     function maybeShowMinimumQtyWarning(row, opts = {}){
@@ -3896,11 +4145,20 @@ function calcTotal() {
         targetInput.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     }
 
-    document.getElementById('bill_body').addEventListener('keydown', function(e){
+    document.getElementById('bill_body').addEventListener('keydown', async function(e){
         if(stockWarningOpen && (e.key === 'Enter' || e.key === 'Escape' || e.key === 'NumpadEnter')){
             e.preventDefault();
             e.stopImmediatePropagation();
             closeStockWarning();
+            return;
+        }
+
+        if(purchaseOrderPromptOpen){
+            if(e.key === 'Escape'){
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                closePurchaseOrderPrompt(false);
+            }
             return;
         }
 
@@ -3954,14 +4212,22 @@ function calcTotal() {
             input.classList.contains('qty-inp')
         ){
             if(isSalesMode()){
-                const ok = validateSalesRowQty(row);
+                const ok = validateSalesRowQty(row, { showMinimumWarning: false });
                 if(!ok){
                     e.preventDefault();
                     e.stopImmediatePropagation();
                     return;
                 }
-            } else if(isMinimumQtyWarningMode()){
-                maybeShowMinimumQtyWarning(row, { showWarning: true, once: true });
+            }
+
+            if(isMinimumQtyWarningMode()){
+                e.preventDefault();
+                e.stopImmediatePropagation();
+
+                maybeShowMinimumQtyWarning(row, { showWarning: false, once: true });
+                await maybePromptQuickPurchaseOrder(row);
+                handleExcelNav(e);
+                return;
             }
         }
 
@@ -5404,6 +5670,9 @@ async function handleBarcodeValue(code) {
 }    
     const stockWarningOverlay = document.getElementById('stock_warning_overlay');
     const stockWarningOkBtn = document.getElementById('stock_warning_ok_btn');
+    const poConfirmOverlay = document.getElementById('po_confirm_overlay');
+    const poConfirmYesBtn = document.getElementById('po_confirm_yes_btn');
+    const poConfirmNoBtn = document.getElementById('po_confirm_no_btn');
 
     if(stockWarningOkBtn){
         stockWarningOkBtn.addEventListener('click', closeStockWarning);
@@ -5417,7 +5686,32 @@ async function handleBarcodeValue(code) {
         });
     }
 
+    if(poConfirmYesBtn){
+        poConfirmYesBtn.addEventListener('click', () => closePurchaseOrderPrompt(true));
+    }
+
+    if(poConfirmNoBtn){
+        poConfirmNoBtn.addEventListener('click', () => closePurchaseOrderPrompt(false));
+    }
+
+    if(poConfirmOverlay){
+        poConfirmOverlay.addEventListener('mousedown', (e) => {
+            if(e.target === poConfirmOverlay){
+                closePurchaseOrderPrompt(false);
+            }
+        });
+    }
+
     document.addEventListener('keydown', (e) => {
+        if(purchaseOrderPromptOpen){
+            if(e.key === 'Escape'){
+                e.preventDefault();
+                e.stopPropagation();
+                closePurchaseOrderPrompt(false);
+            }
+            return;
+        }
+
         if(!stockWarningOpen) return;
         if(e.key === 'Enter' || e.key === 'Escape' || e.key === 'NumpadEnter'){
             e.preventDefault();

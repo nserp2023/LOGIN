@@ -4953,11 +4953,14 @@ function calcTotal() {
 
             alert(`Bill #${nextBillNo} Saved Successfully!`);
 
+            const printDepartment = encodeURIComponent(document.getElementById("department_filter")?.value || "");
+            const printDepartmentQuery = printDepartment ? `&department=${printDepartment}` : "";
+
             if (docType === "sales_pack") {
-                window.open(`print.html?type=sales_pack&id=${packingId}`, "_blank");
+                window.open(`print.html?type=sales_pack&id=${packingId}${printDepartmentQuery}`, "_blank");
             }
             else {
-                window.open(`print.html?type=${docType}&id=${saleId}`, "_blank");
+                window.open(`print.html?type=${docType}&id=${saleId}${printDepartmentQuery}`, "_blank");
             }
 
             if (["sales", "sales_pack"].includes(docType) && window.loadedQuotationId) {

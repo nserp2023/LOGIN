@@ -2067,7 +2067,17 @@
     }
 
     function getGoogleSpeechEndpoint() {
-        return window.GOOGLE_SPEECH_API_URL || localStorage.getItem('GOOGLE_SPEECH_API_URL') || 'http://localhost:3000/api/google-speech';
+        const configuredUrl = window.GOOGLE_SPEECH_API_URL || localStorage.getItem('GOOGLE_SPEECH_API_URL');
+        if (configuredUrl) return configuredUrl;
+
+        if (window.location.protocol === 'http:' || window.location.protocol === 'https:') {
+            const apiOrigin = window.location.port === '3000'
+                ? window.location.origin
+                : `${window.location.protocol}//${window.location.hostname}:3000`;
+            return `${apiOrigin}/api/google-speech`;
+        }
+
+        return 'http://localhost:3000/api/google-speech';
     }
 
     function getGoogleRecorderMimeType() {

@@ -1744,10 +1744,13 @@
         pendingQty: 1,
         pendingCandidates: [],
         lastCandidates: [],
-        geminiRecorder: null,
+        geminiAudioContext: null,
+        geminiAudioProcessor: null,
+        geminiAudioSource: null,
         geminiStream: null,
         geminiChunks: [],
         geminiRecording: false,
+        geminiSampleRate: 44100,
         geminiTimer: null
     };
 
@@ -1925,7 +1928,7 @@
         const langSelect = document.getElementById('voice_billing_lang');
         if (!btn) return;
 
-        const canRecord = !!(navigator.mediaDevices?.getUserMedia && window.MediaRecorder);
+        const canRecord = !!(navigator.mediaDevices?.getUserMedia && getAudioContextClass());
         btn.style.display = canRecord ? '' : 'none';
         if (canRecord && langSelect) {
             langSelect.style.display = 'inline-block';
@@ -1940,24 +1943,61 @@
         if (configuredUrl) return configuredUrl;
 
         if (window.location.protocol === 'http:' || window.location.protocol === 'https:') {
-            const apiOrigin = window.location.port === '3000'
-                ? window.location.origin
-                : `${window.location.protocol}//${window.location.hostname}:3000`;
+            const isLocalHost = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+            const apiOrigin = isLocalHost && window.location.port && window.location.port !== '3000'
+                ? `${window.location.protocol}//${window.location.hostname}:3000`
+                : window.location.origin;
             return `${apiOrigin}/api/gemini-voice`;
         }
 
         return 'http://localhost:3000/api/gemini-voice';
     }
 
-    function getGeminiRecorderMimeType() {
-        const types = [
-            'audio/webm;codecs=opus',
-            'audio/webm',
-            'audio/ogg;codecs=opus',
-            'audio/ogg'
-        ];
+    function getAudioContextClass() {
+        return window.AudioContext || window.webkitAudioContext;
+    }
 
-        return types.find(type => window.MediaRecorder?.isTypeSupported?.(type)) || '';
+    function encodePcmWav(chunks, sampleRate) {
+        const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+        const samples = new Float32Array(totalLength);
+        let offset = 0;
+
+        chunks.forEach(chunk => {
+            samples.set(chunk, offset);
+            offset += chunk.length;
+        });
+
+        const buffer = new ArrayBuffer(44 + samples.length * 2);
+        const view = new DataView(buffer);
+
+        writeAscii(view, 0, 'RIFF');
+        view.setUint32(4, 36 + samples.length * 2, true);
+        writeAscii(view, 8, 'WAVE');
+        writeAscii(view, 12, 'fmt ');
+        view.setUint32(16, 16, true);
+        view.setUint16(20, 1, true);
+        view.setUint16(22, 1, true);
+        view.setUint32(24, sampleRate, true);
+        view.setUint32(28, sampleRate * 2, true);
+        view.setUint16(32, 2, true);
+        view.setUint16(34, 16, true);
+        writeAscii(view, 36, 'data');
+        view.setUint32(40, samples.length * 2, true);
+
+        let dataOffset = 44;
+        for (let i = 0; i < samples.length; i++) {
+            const sample = Math.max(-1, Math.min(1, samples[i]));
+            view.setInt16(dataOffset, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
+            dataOffset += 2;
+        }
+
+        return new Blob([buffer], { type: 'audio/wav' });
+    }
+
+    function writeAscii(view, offset, text) {
+        for (let i = 0; i < text.length; i++) {
+            view.setUint8(offset + i, text.charCodeAt(i));
+        }
     }
 
     function blobToBase64(blob) {
@@ -1980,29 +2020,37 @@
 
     async function startGeminiVoiceRecording() {
         const btn = document.getElementById('gemini_voice_btn');
-        if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
+        const AudioContextClass = getAudioContextClass();
+        if (!navigator.mediaDevices?.getUserMedia || !AudioContextClass) {
             showVoicePrompt('Audio recording is not supported in this browser', 'error', 3500);
             return;
         }
 
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            const mimeType = getGeminiRecorderMimeType();
-            const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+            const audioContext = new AudioContextClass();
+            if (audioContext.state === 'suspended') {
+                await audioContext.resume();
+            }
+            const source = audioContext.createMediaStreamSource(stream);
+            const processor = audioContext.createScriptProcessor(4096, 1, 1);
 
             voiceBillingState.geminiStream = stream;
-            voiceBillingState.geminiRecorder = recorder;
+            voiceBillingState.geminiAudioContext = audioContext;
+            voiceBillingState.geminiAudioSource = source;
+            voiceBillingState.geminiAudioProcessor = processor;
             voiceBillingState.geminiChunks = [];
             voiceBillingState.geminiRecording = true;
+            voiceBillingState.geminiSampleRate = audioContext.sampleRate || 44100;
 
-            recorder.ondataavailable = (event) => {
-                if (event.data && event.data.size > 0) {
-                    voiceBillingState.geminiChunks.push(event.data);
-                }
+            processor.onaudioprocess = (event) => {
+                if (!voiceBillingState.geminiRecording) return;
+                const input = event.inputBuffer.getChannelData(0);
+                voiceBillingState.geminiChunks.push(new Float32Array(input));
             };
 
-            recorder.onstop = sendGeminiVoiceRecording;
-            recorder.start();
+            source.connect(processor);
+            processor.connect(audioContext.destination);
 
             if (btn) btn.textContent = 'STOP GEMINI';
             setVoiceStatus('GEMINI LISTENING...');
@@ -2013,6 +2061,7 @@
         } catch (err) {
             console.error(err);
             voiceBillingState.geminiRecording = false;
+            cleanupGeminiAudio();
             if (btn) btn.textContent = 'GEMINI VOICE';
             showVoicePrompt(`Mic error: ${err.message || err}`, 'error', 4500);
         }
@@ -2020,23 +2069,36 @@
 
     function stopGeminiVoiceRecording() {
         clearTimeout(voiceBillingState.geminiTimer);
-        const recorder = voiceBillingState.geminiRecorder;
-        if (recorder && recorder.state !== 'inactive') {
-            recorder.stop();
-        }
+        if (!voiceBillingState.geminiRecording) return;
+        voiceBillingState.geminiRecording = false;
+        sendGeminiVoiceRecording();
+    }
+
+    function cleanupGeminiAudio() {
+        const processor = voiceBillingState.geminiAudioProcessor;
+        const source = voiceBillingState.geminiAudioSource;
+        const context = voiceBillingState.geminiAudioContext;
+        const stream = voiceBillingState.geminiStream;
+
+        try { if (processor) processor.disconnect(); } catch (_) {}
+        try { if (source) source.disconnect(); } catch (_) {}
+        try { if (context && context.state !== 'closed') context.close(); } catch (_) {}
+        if (stream) stream.getTracks().forEach(track => track.stop());
+
+        voiceBillingState.geminiAudioProcessor = null;
+        voiceBillingState.geminiAudioSource = null;
+        voiceBillingState.geminiAudioContext = null;
+        voiceBillingState.geminiStream = null;
     }
 
     async function sendGeminiVoiceRecording() {
         const btn = document.getElementById('gemini_voice_btn');
-        const stream = voiceBillingState.geminiStream;
         const chunks = voiceBillingState.geminiChunks || [];
-        const mimeType = voiceBillingState.geminiRecorder?.mimeType || getGeminiRecorderMimeType();
+        const sampleRate = voiceBillingState.geminiSampleRate || 44100;
 
         voiceBillingState.geminiRecording = false;
-        voiceBillingState.geminiRecorder = null;
-        voiceBillingState.geminiStream = null;
         voiceBillingState.geminiChunks = [];
-        if (stream) stream.getTracks().forEach(track => track.stop());
+        cleanupGeminiAudio();
         if (btn) btn.textContent = 'GEMINI VOICE';
 
         if (!chunks.length) {
@@ -2046,7 +2108,7 @@
 
         try {
             setVoiceStatus('GEMINI TRANSCRIBING...');
-            const blob = new Blob(chunks, { type: mimeType || 'audio/webm' });
+            const blob = encodePcmWav(chunks, sampleRate);
             const audioBase64 = await blobToBase64(blob);
 
             const response = await fetch(getGeminiVoiceEndpoint(), {
@@ -2080,6 +2142,7 @@
             processVoiceCommand(transcript, alternatives.length ? alternatives : [transcript]);
         } catch (err) {
             console.error(err);
+            updateVoiceDebug({ raw: `GEMINI ERROR: ${err.message || err}` });
             setVoiceStatus('GEMINI VOICE ERROR', true);
             showVoicePrompt(`Gemini voice error: ${err.message || err}`, 'error', 5000);
         }

@@ -165,7 +165,8 @@ app.post("/api/gemini-voice", async (req, res) => {
                 headers: {
                     "Content-Type": "application/json",
                     "x-goog-api-key": GEMINI_API_KEY
-                }
+                },
+                timeout: 45000
             }
         );
 
@@ -178,9 +179,12 @@ app.post("/api/gemini-voice", async (req, res) => {
             model: GEMINI_VOICE_MODEL
         });
     } catch (err) {
+        const status = err.response?.status;
+        const apiMessage = err.response?.data?.error?.message;
+        const message = apiMessage || err.message || "Gemini voice failed";
         console.error("Gemini voice error:", err.response?.data || err.message);
         res.status(500).json({
-            error: err.response?.data?.error?.message || err.message || "Gemini voice failed"
+            error: status ? `Gemini ${status}: ${message}` : message
         });
     }
 });

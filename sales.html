@@ -1848,14 +1848,17 @@
         if (!candidate) return null;
         const item = candidate.item || candidate;
         const code = item.item_code || item.code;
-        const name = item.item_name || item.name;
+        const fullItem = getDepartmentFilteredStockData().find(x =>
+            String(x.item_code || '').trim().toUpperCase() === String(code || '').trim().toUpperCase()
+        ) || item;
+        const name = fullItem.item_name || item.item_name || item.name;
         if (!code && !name) return null;
 
         return {
-            code,
+            code: fullItem.item_code || code,
             name,
             score: candidate.score || item.score || 0,
-            item
+            item: fullItem
         };
     }
 
@@ -1915,7 +1918,9 @@
 
     function selectVoiceCandidate(code) {
         const candidate = voiceBillingState.pendingCandidates.find(x => String(x.code || '') === String(code || ''));
-        const item = candidate?.item || getDepartmentFilteredStockData().find(x => String(x.item_code || '') === String(code || ''));
+        const item = getDepartmentFilteredStockData().find(x =>
+            String(x.item_code || '').trim().toUpperCase() === String(code || '').trim().toUpperCase()
+        ) || candidate?.item;
         if (!item) return;
 
         const qty = voiceBillingState.pendingQty || 1;
@@ -2121,7 +2126,7 @@
                 })
             });
 
-            const data = await response.json();
+            const data = await response.json().catch(() => ({}));
             if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
 
             const alternatives = Array.isArray(data.alternatives)
@@ -2638,7 +2643,12 @@
         if (!row) return;
 
         const rowId = parseInt(row.id.replace('row_', ''), 10);
-        await fillItem(rowId, item);
+        const filled = await fillItem(rowId, item);
+        if (!filled) {
+            row.remove();
+            calcTotal();
+            return;
+        }
         const qtyInput = row.querySelector('.qty-inp');
         qtyInput.value = qty.toFixed(2).replace(/\.00$/, '');
         calcForward(rowId);
@@ -4727,6 +4737,18 @@ ${data.map((c, idx) => {
     }
 
     async function fillItem(id, item) {
+        const resolvedItem = item && item.item_code
+            ? getDepartmentFilteredStockData().find(x =>
+                String(x.item_code || '').trim().toUpperCase() === String(item.item_code || '').trim().toUpperCase()
+            ) || item
+            : item;
+        item = resolvedItem;
+        if (!item || !item.item_code || !item.item_name) {
+            console.error('Invalid item selected', item);
+            showVoicePrompt('Selected item data is incomplete. Please choose another match.', 'error', 4000);
+            return false;
+        }
+
         const row = document.getElementById(`row_${id}`);
 
         row.querySelectorAll('.autocomplete-list').forEach(list => {
@@ -4800,6 +4822,7 @@ ${data.map((c, idx) => {
         if(isMinimumQtyWarningMode()){
             maybeShowMinimumQtyWarning(row, { showWarning: false, once: true });
         }
+        return true;
     }
 
     function calcProfit() {

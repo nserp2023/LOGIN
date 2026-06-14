@@ -2059,10 +2059,10 @@
 
             if (btn) btn.textContent = 'STOP GEMINI';
             setVoiceStatus('GEMINI LISTENING...');
-            showVoicePrompt('Gemini voice recording...', 'info', 2500);
+            showVoicePrompt('Gemini voice recording... press STOP GEMINI when done', 'info', 3500);
 
             clearTimeout(voiceBillingState.geminiTimer);
-            voiceBillingState.geminiTimer = setTimeout(stopGeminiVoiceRecording, 4500);
+            voiceBillingState.geminiTimer = null;
         } catch (err) {
             console.error(err);
             voiceBillingState.geminiRecording = false;

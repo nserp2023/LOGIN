@@ -2309,7 +2309,7 @@
         return Math.max(0, total - advance - receipt);
     }
 
-    function applySalesOrderConversionPaidAmount(totalAmount = getCurrentRoundedGrandTotal()) {
+    function applySalesOrderConversionPaidAmount(totalAmount = getCurrentRoundedGrandTotal(), forceSetAmount = false) {
         if (!isSalesOrderConversionMode) return;
 
         const paymentTypeEl = document.getElementById("payment_type");
@@ -2323,8 +2323,10 @@
 
         if (paidAmountEl) {
             const receiptAmount = getSalesOrderConversionReceiptAmount(totalAmount);
-            paidAmountEl.value = receiptAmount.toFixed(2);
-            paidAmountEl.readOnly = true;
+            if (forceSetAmount || paidAmountEl.dataset.salesOrderReceiptEdited !== "1") {
+                paidAmountEl.value = receiptAmount.toFixed(2);
+            }
+            paidAmountEl.readOnly = false;
             paidAmountEl.disabled = false;
             paidAmountEl.placeholder = "Bill Total - Advance";
             paidAmountEl.title = `Advance credit receipt amount. Bill Total - Sales Order Advance = ₹${receiptAmount.toFixed(2)} (Advance: ₹${(parseFloat(salesOrderAdvancePaid || 0) || 0).toFixed(2)})`;
@@ -2449,6 +2451,12 @@
             paidAmountEl.disabled = true;
         } else if (isSalesOrderConversionMode) {
             applySalesOrderConversionPaidAmount(total);
+            const maxReceipt = getSalesOrderConversionReceiptAmount(total);
+            let paid = getMoneyValue(paidAmountEl.value);
+
+            if (paid < 0) paid = 0;
+            if (paid > maxReceipt) paid = maxReceipt;
+            paidAmountEl.value = paid.toFixed(2);
         } else {
             paidAmountEl.disabled = false;
             paidAmountEl.readOnly = false;
@@ -2466,7 +2474,9 @@
         }
 
         const paidAmount = getMoneyValue(paidAmountEl.value);
-        const balanceAmount = Math.max(0, total - paidAmount);
+        const balanceAmount = isSalesOrderConversionMode
+            ? getSalesOrderConversionBalanceAmount(total, paidAmount)
+            : Math.max(0, total - paidAmount);
         balanceText.innerText = "₹" + balanceAmount.toFixed(2);
 
         // Hide Credit Paid / Paid Amount and Balance box for CASH bills.
@@ -2509,10 +2519,37 @@
         if (paidAmountEl && !paidAmountEl.dataset.boundCreditFix) {
             paidAmountEl.addEventListener("input", () => {
                 const total = getCurrentRoundedGrandTotal();
+                const isConversionReceipt = isSalesOrderConversionMode;
+                if (isConversionReceipt) {
+                    paidAmountEl.dataset.salesOrderReceiptEdited = "1";
+                }
                 let paid = getMoneyValue(paidAmountEl.value);
+                const maxPaid = isConversionReceipt
+                    ? getSalesOrderConversionReceiptAmount(total)
+                    : total;
 
                 if (paid < 0) paid = 0;
-                if (paid > total) paid = total;
+                if (paid > maxPaid) paid = maxPaid;
+
+                if (isConversionReceipt) {
+                    if (getMoneyValue(paidAmountEl.value) > maxPaid || getMoneyValue(paidAmountEl.value) < 0) {
+                        paidAmountEl.value = paid.toFixed(2);
+                    }
+
+                    const balanceText = document.getElementById("display_balance_amount");
+                    if (balanceText) {
+                        balanceText.innerText = "â‚¹" + getSalesOrderConversionBalanceAmount(total, paid).toFixed(2);
+                    }
+                    if (balanceText) {
+                        balanceText.innerText = "\u20B9" + getSalesOrderConversionBalanceAmount(total, paid).toFixed(2);
+                    }
+
+                    closeStockWarning();
+                    document.querySelectorAll("#bill_body tr").forEach(row => {
+                        applyItemRestriction(row);
+                    });
+                    return;
+                }
 
                 paidAmountEl.value = paid ? paid.toFixed(2) : "0.00";
                 syncPaymentUI(true);
@@ -4694,8 +4731,8 @@ function calcTotal() {
             let paidAmount = parseFloat(document.getElementById("paid_amount")?.value) || 0;
 
             if (isSalesOrderConversionMode) {
-                // ADVANCE CREDIT: receipt amount = current converted bill total - sales order advance.
-                paidAmount = getSalesOrderConversionReceiptAmount(roundedTotal);
+                // ADVANCE CREDIT: default receipt is bill total - sales order advance, but user can edit it.
+                paidAmount = Math.max(0, Math.min(getSalesOrderConversionReceiptAmount(roundedTotal), paidAmount));
                 const paidAmountEl = document.getElementById("paid_amount");
                 if (paidAmountEl) paidAmountEl.value = paidAmount.toFixed(2);
             } else {
@@ -5157,6 +5194,7 @@ function calcTotal() {
             paymentTypeEl.dataset.justChangedToCredit = "0";
         }
         if (paidAmountEl) {
+            paidAmountEl.dataset.salesOrderReceiptEdited = "0";
             paidAmountEl.disabled = false;
             paidAmountEl.placeholder = "Bill Total - Advance";
         }
@@ -5227,7 +5265,7 @@ function calcTotal() {
         });
 
         calcTotal();
-        applySalesOrderConversionPaidAmount();
+        applySalesOrderConversionPaidAmount(getCurrentRoundedGrandTotal(), true);
         syncPaymentUI(true);
         alert(`Sales Order loaded. Advance paid: ₹${salesOrderAdvancePaid.toFixed(2)}. Payment Type is ADVANCE CREDIT and receipt amount is Current Bill Total - Advance.`);
     }

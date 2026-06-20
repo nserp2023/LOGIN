@@ -528,7 +528,7 @@
               <button class="btn warn" type="button" onclick="clearAdvancedQueue()">Clear queue</button>
               <button class="btn" id="extractPdfBtn" type="button" onclick="extractPdfCatalog()">Extract PDF images</button>
             </div>
-            <p class="advanced-note">The PDF is processed in this browser. Embedded catalogue images are extracted and matched using item codes and product-name words. Every match remains pending until you approve it.</p>
+            <p class="advanced-note">The PDF is processed in this browser. Matching prioritizes product names, descriptions, model and specifications such as colour, shape, ampere, watts and voltage. Item code is only supporting evidence because catalogue and internal codes may differ. Every match remains pending until you approve it.</p>
             <div id="advancedStatus" class="status"></div>
           </div>
         </section>
@@ -622,7 +622,7 @@ async function loadAllStock() {
     while (true) {
       const { data, error } = await sb
         .from("stock_items")
-        .select("id,item_code,item_name,barcode,department,price1_gst,price2_gst,price3_gst,product_image_url")
+        .select("*")
         .order("item_name", { ascending: true })
         .range(from, from + pageSize - 1);
 
@@ -636,7 +636,7 @@ async function loadAllStock() {
 
     stockItems = all.map(x => ({
       ...x,
-      search_key: normalize(`${x.item_code || ""} ${x.item_name || ""} ${x.barcode || ""}`)
+      search_key: normalize(getItemCatalogText(x))
     }));
 
     stockCountPill.textContent = `${stockItems.length.toLocaleString("en-IN")} items loaded`;
@@ -942,6 +942,62 @@ async function uploadToCloudinary(file, item = selectedItem) {
   return json.secure_url;
 }
 
+function getItemCatalogText(item) {
+  return [
+    item?.item_code,
+    item?.item_name,
+    item?.barcode,
+    item?.description,
+    item?.item_description,
+    item?.product_description,
+    item?.brand,
+    item?.model,
+    item?.colour,
+    item?.color,
+    item?.shape,
+    item?.ampere,
+    item?.amps,
+    item?.watt,
+    item?.watts,
+    item?.voltage,
+    item?.volt,
+    item?.type,
+    item?.department
+  ].filter(value => value !== null && value !== undefined && value !== "").join(" ");
+}
+
+function getItemDescriptionText(item) {
+  return [
+    item?.item_name,
+    item?.description,
+    item?.item_description,
+    item?.product_description,
+    item?.brand,
+    item?.model,
+    item?.colour,
+    item?.color,
+    item?.shape,
+    item?.ampere,
+    item?.amps,
+    item?.watt,
+    item?.watts,
+    item?.voltage,
+    item?.volt,
+    item?.type,
+    item?.department
+  ].filter(value => value !== null && value !== undefined && value !== "").join(" ");
+}
+
+function normalizeCatalogDescription(text) {
+  return normalize(text)
+    .replace(/\b(\d+(?:\s+\d+)?)\s*(?:w|watt|watts)\b/g, "$1 watt")
+    .replace(/\b(\d+(?:\s+\d+)?)\s*(?:a|amp|amps|ampere|amperes)\b/g, "$1 ampere")
+    .replace(/\b(\d+(?:\s+\d+)?)\s*(?:v|volt|volts|voltage)\b/g, "$1 volt")
+    .replace(/\bcolour\b/g, "color")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 /* =========================================================
    8) ADVANCED PDF / BRAND MODE
    ========================================================= */
@@ -1033,26 +1089,39 @@ function clearAdvancedQueue(showMessage = true) {
 }
 
 function findCatalogMatches(pageText) {
-  const text = normalize(pageText);
+  const text = normalizeCatalogDescription(pageText);
+  const textWords = new Set(text.split(" ").filter(Boolean));
   const compactText = text.replace(/\s+/g, "");
-  const brandWords = new Set(normalize(advancedBrand.value).split(" ").filter(Boolean));
+  const brandWords = new Set(normalizeCatalogDescription(advancedBrand.value).split(" ").filter(Boolean));
+  const ignoredWords = new Set(["and", "with", "for", "the", "type", "item", "product", "all"]);
   const scored = [];
 
   for (const item of getBrandItems()) {
     const code = normalize(item.item_code);
     const compactCode = code.replace(/\s+/g, "");
-    const nameWords = normalize(item.item_name)
+    const namePhrase = normalizeCatalogDescription(item.item_name);
+    const modelPhrase = normalizeCatalogDescription(item.model);
+    const descriptionWords = normalizeCatalogDescription(getItemDescriptionText(item))
       .split(" ")
-      .filter(word => word.length >= 3 && !brandWords.has(word));
+      .filter(word => word.length >= 2 && !brandWords.has(word) && !ignoredWords.has(word));
 
     let score = 0;
-    if (compactCode.length >= 3 && compactText.includes(compactCode)) score += 120;
+    const uniqueWords = [...new Set(descriptionWords)];
+    const matchedWords = uniqueWords.filter(word => textWords.has(word));
+    const coverage = matchedWords.length / Math.max(uniqueWords.length, 1);
 
-    const uniqueWords = [...new Set(nameWords)];
-    const hits = uniqueWords.filter(word => text.includes(word)).length;
-    if (hits >= 2) score += Math.round((hits / Math.max(uniqueWords.length, 1)) * 70) + hits;
+    matchedWords.forEach(word => {
+      score += /\d/.test(word) || word.length >= 6 ? 12 : 6;
+    });
+    score += Math.round(coverage * 90);
 
-    if (score >= 20) scored.push({ item, score });
+    if (namePhrase.length >= 5 && text.includes(namePhrase)) score += 100;
+    if (modelPhrase.length >= 2 && text.includes(modelPhrase)) score += 85;
+
+    // Internal and catalogue item codes may differ, so code is supporting evidence only.
+    if (compactCode.length >= 3 && compactText.includes(compactCode)) score += 18;
+
+    if (matchedWords.length >= 2 && score >= 32) scored.push({ item, score });
   }
 
   return scored.sort((a, b) => b.score - a.score).slice(0, 10).map(row => row.item);

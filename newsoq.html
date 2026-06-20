@@ -5024,7 +5024,6 @@ function calcTotal() {
                     quotation_date: head.date,
                     customer_name: head.name,
                     customer_mobile: head.mob,
-                    address: head.addr,
                     gst_number: head.gst,
                     total_amount: roundedTotal,
                     remark: document.getElementById("quotation_remark")?.value || "",
@@ -5538,6 +5537,18 @@ function calcTotal() {
             document.getElementById("cust_mobile").value = qHead.customer_mobile || "";
             document.getElementById("cust_gst").value = qHead.gst_number || "";
             document.getElementById("cust_address").value = qHead.address || "";
+
+            // quotation_details has no address column in the current schema.
+            // The customer master is the source of truth for quotation addresses.
+            if (!document.getElementById("cust_address").value && qHead.customer_mobile) {
+                const { data: customer } = await sb
+                    .from("customers")
+                    .select("address")
+                    .eq("mobile", qHead.customer_mobile)
+                    .limit(1)
+                    .maybeSingle();
+                document.getElementById("cust_address").value = customer?.address || "";
+            }
         }
 
         const {data,error}=await sb

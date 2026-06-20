@@ -159,6 +159,19 @@
         padding: 0;
     }
 
+    #items_body > tr > td {
+        transition: background-color 0.12s ease, box-shadow 0.12s ease;
+    }
+
+    #items_body > tr.active-return-row > td:not(.hidden-cell) {
+        background: rgba(37, 99, 235, 0.32);
+        box-shadow: inset 0 1px 0 #60a5fa, inset 0 -1px 0 #60a5fa;
+    }
+
+    #items_body > tr.active-return-row > td:first-child {
+        box-shadow: inset 4px 0 0 #38bdf8, inset 0 1px 0 #60a5fa, inset 0 -1px 0 #60a5fa;
+    }
+
     td input, td select {
         color: white;
         width: 100%;
@@ -581,6 +594,25 @@ let stockLoaded = false;
 
 const modeEl = () => document.getElementById("return_mode");
 const isManualMode = () => modeEl().value === "WITHOUT_BILL";
+
+function setActiveReturnRow(row) {
+    document.querySelectorAll("#items_body > tr.active-return-row").forEach(activeRow => {
+        if (activeRow !== row) activeRow.classList.remove("active-return-row");
+    });
+
+    if (row) {
+        row.classList.add("active-return-row");
+        row.scrollIntoView({ block: "nearest", inline: "nearest" });
+    }
+}
+
+const returnItemsBody = document.getElementById("items_body");
+returnItemsBody.addEventListener("focusin", (e) => {
+    setActiveReturnRow(e.target.closest("#items_body > tr"));
+});
+returnItemsBody.addEventListener("mousedown", (e) => {
+    setActiveReturnRow(e.target.closest("#items_body > tr"));
+});
 
 const settlementEl = () => document.getElementById("settlement_mode");
 const getSettlementMode = () => (settlementEl()?.value || "CASH").toUpperCase();

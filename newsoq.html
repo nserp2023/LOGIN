@@ -584,14 +584,14 @@
             position: fixed;
             right: 16px;
             bottom: 86px;
-            width: min(390px, calc(100vw - 24px));
+            width: min(310px, calc(100vw - 24px));
             background: rgba(15, 23, 42, 0.96);
             color: #ffffff;
             border: 1px solid rgba(34, 197, 94, 0.55);
             border-radius: 18px;
             box-shadow: 0 18px 45px rgba(0,0,0,0.34);
             z-index: 16000;
-            padding: 12px;
+            padding: 8px;
             display: none;
             animation: draftToastIn 0.22s ease-out;
         }
@@ -642,16 +642,16 @@
         }
 
         .draft-toast-actions {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
         }
 
         .draft-toast-btn {
             border: none;
             border-radius: 10px;
-            padding: 8px 11px;
-            font-size: 12px;
+            padding: 8px 7px;
+            font-size: 10px;
             font-weight: 900;
             cursor: pointer;
         }
@@ -678,20 +678,15 @@
 
         @media (max-width: 600px){
             .draft-toast{
-                left: 8px;
+                left: auto;
                 right: 8px;
                 bottom: 76px;
-                width: auto;
+                width: min(310px, calc(100vw - 16px));
                 border-radius: 14px;
             }
 
             .draft-toast-actions{
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-            }
-
-            .draft-toast-restore{
-                grid-column: 1 / -1;
+                grid-template-columns: repeat(3, 1fr);
             }
         }
 
@@ -705,7 +700,8 @@
         .history-panel{
             position: fixed;
             top: 75px;
-            left: 10px;
+            left: auto;
+            right: 10px;
             width: 520px;
             max-height: 320px;
             overflow: hidden;
@@ -1560,22 +1556,9 @@
         const draft = readSavedBillDraft();
         if(!draft || !billDraftHasData(draft)) return false;
 
-        const savedTime = formatDraftSavedTime(draft.saved_at);
-        const rowCount = Array.isArray(draft.rows) ? draft.rows.length : 0;
-        const customer = draft.header?.customer_name || draft.header?.customer_mobile || "customer not entered";
-        const total = draft.totals?.grand_total || "₹0.00";
         const toast = ensureDraftRestoreToast();
 
         toast.innerHTML = `
-            <div class="draft-toast-head">
-                <div class="draft-toast-title">💬 Unsaved bill found</div>
-                <button type="button" class="draft-toast-close" title="Ignore">×</button>
-            </div>
-            <div class="draft-toast-body">
-                <div><b>Customer:</b> ${escapeHtml(customer)}</div>
-                <div><b>Items:</b> ${rowCount} &nbsp; <b>Total:</b> ${escapeHtml(total)}</div>
-                <div><b>Saved:</b> ${escapeHtml(savedTime)}</div>
-            </div>
             <div class="draft-toast-actions">
                 <button type="button" class="draft-toast-btn draft-toast-restore">RESTORE DRAFT</button>
                 <button type="button" class="draft-toast-btn draft-toast-ignore">IGNORE</button>
@@ -1583,7 +1566,6 @@
             </div>
         `;
 
-        toast.querySelector(".draft-toast-close")?.addEventListener("click", hideDraftRestoreToast);
         toast.querySelector(".draft-toast-ignore")?.addEventListener("click", hideDraftRestoreToast);
 
         toast.querySelector(".draft-toast-restore")?.addEventListener("click", () => {

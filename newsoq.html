@@ -5067,6 +5067,10 @@ function calcTotal() {
                 }
             }
 
+            // department_filter is a UI/print filter only. It is not a column in
+            // the deployed header tables, so never allow it into a Supabase write.
+            delete insertData.department_filter;
+
             let headerTable;
             if (docType === "quotation") headerTable = "quotation_details";
             else if (docType === "sales_order") headerTable = "sales_order_details";

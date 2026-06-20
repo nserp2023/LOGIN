@@ -303,9 +303,22 @@
       return;
     }
 
+    let customerAddress = q.address || '';
+    if(!customerAddress && q.customer_mobile){
+      const { data: customer, error: customerErr } = await sb
+        .from('customers')
+        .select('address')
+        .eq('mobile', q.customer_mobile)
+        .limit(1)
+        .maybeSingle();
+
+      if(customerErr) console.warn('Could not load quotation customer address:', customerErr);
+      customerAddress = customer?.address || '';
+    }
+
     document.getElementById('customerName').textContent = safe(q.customer_name);
     document.getElementById('customerMobile').textContent = safe(q.customer_mobile);
-    document.getElementById('customerAddress').textContent = safe(q.address);
+    document.getElementById('customerAddress').textContent = safe(customerAddress);
     document.getElementById('quotationNo').textContent = `${q.series_code || ''}${q.series_code ? '-' : ''}${q.quotation_number || ''}`;
     document.getElementById('quotationDate').textContent = formatDate(q.quotation_date || q.bill_date || q.created_at);
     document.getElementById('salesman').textContent = safe(q.salesman || q.created_by);

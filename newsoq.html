@@ -5006,12 +5006,14 @@ function calcTotal() {
                     order_date: head.date || new Date().toISOString().split("T")[0],
                     customer_name: head.name,
                     customer_mobile: head.mob,
+                    address: head.addr,
                     gst_number: head.gst,
                     total_amount: roundedTotal,
                     payment_type: paymentType,
                     advance_amount: paidAmount,
                     balance_amount: balanceAmount,
                     salesman: document.getElementById("salesman").value || "",
+                    department_filter: document.getElementById("department_filter").value || "",
                     created_by: createdBy
                 };
             }
@@ -5022,10 +5024,12 @@ function calcTotal() {
                     quotation_date: head.date,
                     customer_name: head.name,
                     customer_mobile: head.mob,
+                    address: head.addr,
                     gst_number: head.gst,
                     total_amount: roundedTotal,
                     remark: document.getElementById("quotation_remark")?.value || "",
                     salesman: document.getElementById("salesman").value || "",
+                    department_filter: document.getElementById("department_filter").value || "",
                     created_by: createdBy
                 };
             }
@@ -5045,6 +5049,7 @@ function calcTotal() {
                     paid_amount: paidAmount,
                     balance_amount: balanceAmount,
                     salesman: document.getElementById("salesman").value,
+                    department_filter: document.getElementById("department_filter").value || "",
                     created_by: createdBy,
                     round_off: roundOff
                 };
@@ -5705,6 +5710,30 @@ barcodeInput.addEventListener("keydown", async function (e) {
             }
 
             head = data;
+
+            // A packing header intentionally stores only packing-specific fields.
+            // Customer address and payment details live on its linked sales header.
+            if (data.sales_id) {
+                const { data: linkedSale, error: linkedSaleError } = await sb
+                    .from("sales_details")
+                    .select("*")
+                    .eq("id", data.sales_id)
+                    .maybeSingle();
+
+                if (linkedSaleError) {
+                    console.warn("Unable to load linked sales details for bill edit:", linkedSaleError);
+                } else if (linkedSale) {
+                    head = {
+                        ...linkedSale,
+                        ...data,
+                        address: data.address || linkedSale.address || "",
+                        payment_type: data.payment_type || linkedSale.payment_type || "CASH",
+                        paid_amount: data.paid_amount ?? linkedSale.paid_amount ?? 0,
+                        balance_amount: data.balance_amount ?? linkedSale.balance_amount ?? 0,
+                        department_filter: data.department_filter || linkedSale.department_filter || ""
+                    };
+                }
+            }
         }
         else{
             const {data, error} = await sb
@@ -5737,6 +5766,42 @@ barcodeInput.addEventListener("keydown", async function (e) {
         document.getElementById("cust_address").value = head.address || "";
         document.getElementById("cust_gst").value = head.gst_number || "";
 
+        // Customer remarks are maintained on the customer master rather than
+        // every historical document header.
+        const customerRemarkEl = document.getElementById("cust_remark");
+        if (customerRemarkEl && head.customer_mobile) {
+            const { data: savedCustomer, error: customerError } = await sb
+                .from("customers")
+                .select("*")
+                .eq("mobile", head.customer_mobile)
+                .maybeSingle();
+            if (!customerError && savedCustomer) {
+                customerRemarkEl.value = savedCustomer.customer_remark || "";
+                if (!document.getElementById("cust_address").value) {
+                    document.getElementById("cust_address").value = savedCustomer.address || "";
+                }
+            }
+        }
+
+        const seriesEl = document.getElementById("bill_series");
+        if (seriesEl && head.series_code) {
+            seriesEl.value = head.series_code;
+        }
+
+        const salesmanEl = document.getElementById("salesman");
+        if (salesmanEl) {
+            const savedSalesman = String(head.salesman || "").trim().toUpperCase();
+            if (savedSalesman && !Array.from(salesmanEl.options).some(option => option.value === savedSalesman)) {
+                salesmanEl.add(new Option(savedSalesman, savedSalesman));
+            }
+            salesmanEl.value = savedSalesman;
+        }
+
+        const savedDepartment = String(head.department_filter || "").trim().toUpperCase();
+        if (savedDepartment) {
+            document.getElementById("department_filter").value = savedDepartment;
+        }
+
         if (document.getElementById("quotation_remark")) {
             document.getElementById("quotation_remark").value = type === "quotation" ? (head.remark || "") : "";
         }
@@ -5744,8 +5809,26 @@ barcodeInput.addEventListener("keydown", async function (e) {
 
         const paymentTypeEl = document.getElementById("payment_type");
         const paidAmountEl = document.getElementById("paid_amount");
+        const savedPaymentType = type === "sales_order"
+            ? "CREDIT"
+            : String(head.payment_type || "CASH").toUpperCase();
+
+        // Editing a converted Sales Order must retain the exact saved receipt.
+        // Reconstruct its original advance from total - receipt - balance so the
+        // existing ADVANCE CREDIT calculations remain correct if items are edited.
+        isSalesOrderConversionMode = savedPaymentType === "ADVANCE CREDIT";
+        if (isSalesOrderConversionMode) {
+            const savedTotal = parseFloat(head.invoice_amount ?? head.total_amount ?? head.packing_amount ?? 0) || 0;
+            const savedPaid = parseFloat(head.paid_amount ?? 0) || 0;
+            const savedBalance = parseFloat(head.balance_amount ?? 0) || 0;
+            salesOrderAdvancePaid = Math.max(0, savedTotal - savedPaid - savedBalance);
+        } else {
+            salesOrderAdvancePaid = 0;
+        }
+
+        updateAdvanceCreditOptionVisibility();
         if (paymentTypeEl) {
-            paymentTypeEl.value = type === "sales_order" ? "CREDIT" : String(head.payment_type || "CASH").toUpperCase();
+            paymentTypeEl.value = savedPaymentType;
             paymentTypeEl.dataset.justChangedToCredit = "0";
         }
         if (paidAmountEl) {
@@ -5756,23 +5839,19 @@ barcodeInput.addEventListener("keydown", async function (e) {
                 paidValue = parseFloat(head.paid_amount ?? 0) || 0;
             }
             paidAmountEl.value = paidValue.toFixed(2);
+            paidAmountEl.dataset.salesOrderReceiptEdited = isSalesOrderConversionMode ? "1" : "0";
         }
 
-        const rawDate =
-            head.bill_date ||
-            head.quotation_date ||
-            head.order_date ||
-            head.packing_date ||
-            null;
+        const rawDate = type === "sales_pack"
+            ? (head.packing_date || head.bill_date || null)
+            : (head.bill_date || head.quotation_date || head.order_date || head.packing_date || null);
 
         document.getElementById("bill_date").value =
             rawDate ? rawDate.split("T")[0] : "";
 
-        document.getElementById("bill_number").value =
-            head.sales_number ||
-            head.packing_number ||
-            head.quotation_number ||
-            head.order_number || "";
+        document.getElementById("bill_number").value = type === "sales_pack"
+            ? (head.packing_number || head.sales_number || "")
+            : (head.sales_number || head.quotation_number || head.order_number || head.packing_number || "");
 
         document.getElementById("bill_body").innerHTML="";
         currentRowId=0;
@@ -5869,8 +5948,18 @@ barcodeInput.addEventListener("keydown", async function (e) {
         calcTotal();
 
         if(type === "sales_pack"){
-            document.getElementById("salesman").value = head.salesman || "VAJRA";
             document.getElementById("salesman").disabled=true;
+        }
+
+        // Older rows may not have department_filter. Recover the most accurate
+        // value possible from their saved items' current stock departments.
+        if (!savedDepartment) {
+            const itemDepartments = [...new Set((items || [])
+                .map(item => stockMap.get(String(item.item_code || "").trim().toUpperCase())?.department)
+                .map(normalizeDepartment)
+                .filter(Boolean))];
+            document.getElementById("department_filter").value = itemDepartments.length === 1 ? itemDepartments[0] : "";
+            document.querySelectorAll("#bill_body tr").forEach(row => applyItemRestriction(row));
         }
 
         syncPaymentUI(true);

@@ -1359,7 +1359,7 @@ async function analyzeFullCatalogWithAi(file, candidates) {
     candidates
   });
 
-  for (let attempt = 1; attempt <= 3; attempt += 1) {
+  for (let attempt = 1; attempt <= 6; attempt += 1) {
     let response;
     try {
       response = await fetch(endpoint, {
@@ -1374,9 +1374,9 @@ async function analyzeFullCatalogWithAi(file, candidates) {
     const result = await response.json().catch(() => ({}));
     if (response.ok) return Array.isArray(result.detections) ? result.detections : [];
 
-    if (response.status === 429 && attempt < 3) {
-      const waitSeconds = Math.max(5, Number(result.retryAfterSeconds) || 60) + 1;
-      setAdvancedStatus(`Gemini quota cooling down. Full PDF analysis resumes in ${waitSeconds} seconds...`, "wait");
+    if (response.status === 429 && attempt < 6) {
+      const waitSeconds = Math.max(65, Number(result.retryAfterSeconds) || 0) + 1;
+      setAdvancedStatus(`Gemini free quota is cooling down. Attempt ${attempt} of 6 will resume in ${waitSeconds} seconds. Keep this page open...`, "wait");
       await new Promise(resolve => setTimeout(resolve, waitSeconds * 1000));
       continue;
     }

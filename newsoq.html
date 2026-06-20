@@ -5812,6 +5812,9 @@ barcodeInput.addEventListener("keydown", async function (e) {
         const savedPaymentType = type === "sales_order"
             ? "CREDIT"
             : String(head.payment_type || "CASH").toUpperCase();
+        const savedPaidValue = type === "sales_order"
+            ? (parseFloat(head.advance_amount ?? 0) || 0)
+            : (parseFloat(head.paid_amount ?? 0) || 0);
 
         // Editing a converted Sales Order must retain the exact saved receipt.
         // Reconstruct its original advance from total - receipt - balance so the
@@ -5832,13 +5835,7 @@ barcodeInput.addEventListener("keydown", async function (e) {
             paymentTypeEl.dataset.justChangedToCredit = "0";
         }
         if (paidAmountEl) {
-            let paidValue = 0;
-            if (type === "sales_order") {
-                paidValue = parseFloat(head.advance_amount ?? 0) || 0;
-            } else {
-                paidValue = parseFloat(head.paid_amount ?? 0) || 0;
-            }
-            paidAmountEl.value = paidValue.toFixed(2);
+            paidAmountEl.value = savedPaidValue.toFixed(2);
             paidAmountEl.dataset.salesOrderReceiptEdited = isSalesOrderConversionMode ? "1" : "0";
         }
 
@@ -5946,6 +5943,15 @@ barcodeInput.addEventListener("keydown", async function (e) {
         }
 
         calcTotal();
+
+        // calcForward/calcTotal run while each item is being hydrated. During
+        // those partial totals syncPaymentUI can temporarily clamp an advance
+        // or receipt. Restore the database value after the complete bill total
+        // is available so edit mode shows exactly what was saved.
+        if (paidAmountEl) {
+            paidAmountEl.value = savedPaidValue.toFixed(2);
+            paidAmountEl.dataset.salesOrderReceiptEdited = isSalesOrderConversionMode ? "1" : "0";
+        }
 
         if(type === "sales_pack"){
             document.getElementById("salesman").disabled=true;

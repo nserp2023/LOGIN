@@ -192,7 +192,7 @@ app.post("/api/gemini-voice", async (req, res) => {
 
 app.post("/api/ai-catalog-page", async (req, res) => {
     try {
-        const { pageImageBase64, mimeType, brand, pageNumber, candidates } = req.body || {};
+        const { pageImageBase64, mimeType, brand, pageNumber, candidates, documentContext } = req.body || {};
 
         if (!GEMINI_API_KEY) {
             return res.status(500).json({ error: "GEMINI_API_KEY is missing in .env" });
@@ -212,6 +212,9 @@ app.post("/api/ai-catalog-page", async (req, res) => {
 
 Analyze catalogue page ${Number(pageNumber) || 1} for brand ${String(brand || "unknown")}.
 Match visible SELLABLE PRODUCT IMAGES to exactly one item from the supplied stock candidate list.
+
+FULL-CATALOGUE CONTEXT (already analyzed before this page):
+${String(documentContext || "No additional layout context supplied").slice(0, 5000)}
 
 Rules:
 1. Use product name, model, series, colour, shape, ampere, watts, voltage and type as the primary evidence.
@@ -327,6 +330,7 @@ The catalogue may use layouts where:
 - alignment, rows, columns, headings, arrows, shared model/series names, colours and specifications establish the relationship.
 
 For every supplied stock candidate, find its correct catalogue product image only when the full-document evidence is reliable.
+First explain the catalogue layout and list every page relevant to the selected brand/model or supplied candidates. Always return this layout analysis even when no direct product match is confident. Page-level vision will use your analysis afterward for precise crops.
 
 Matching priority:
 1. Product/series/model name and full description.
@@ -364,22 +368,28 @@ ${JSON.stringify(safeCandidates)}`;
                     maxOutputTokens: 32768,
                     responseMimeType: "application/json",
                     responseSchema: {
-                        type: "ARRAY",
-                        items: {
-                            type: "OBJECT",
-                            properties: {
-                                item_code: { type: "STRING" },
-                                confidence: { type: "NUMBER" },
-                                reason: { type: "STRING" },
-                                catalogue_code: { type: "STRING" },
-                                image_page: { type: "INTEGER" },
-                                box_2d: {
-                                    type: "ARRAY",
-                                    items: { type: "NUMBER" }
+                        type: "OBJECT",
+                        properties: {
+                            layout_summary: { type: "STRING" },
+                            code_image_relationship: { type: "STRING" },
+                            relevant_pages: { type: "ARRAY", items: { type: "INTEGER" } },
+                            detections: {
+                                type: "ARRAY",
+                                items: {
+                                    type: "OBJECT",
+                                    properties: {
+                                        item_code: { type: "STRING" },
+                                        confidence: { type: "NUMBER" },
+                                        reason: { type: "STRING" },
+                                        catalogue_code: { type: "STRING" },
+                                        image_page: { type: "INTEGER" },
+                                        box_2d: { type: "ARRAY", items: { type: "NUMBER" } }
+                                    },
+                                    required: ["item_code", "confidence", "reason", "image_page", "box_2d"]
                                 }
-                            },
-                            required: ["item_code", "confidence", "reason", "image_page", "box_2d"]
-                        }
+                            }
+                        },
+                        required: ["layout_summary", "code_image_relationship", "relevant_pages", "detections"]
                     }
                 }
             },
@@ -395,9 +405,9 @@ ${JSON.stringify(safeCandidates)}`;
 
         const parts = geminiRes.data?.candidates?.[0]?.content?.parts || [];
         const rawText = parts.map(part => part.text || "").join("").trim();
-        const parsed = JSON.parse(rawText || "[]");
+        const parsed = JSON.parse(rawText || "{}");
         const allowedCodes = new Set(safeCandidates.map(item => item.item_code));
-        const detections = (Array.isArray(parsed) ? parsed : [])
+        const detections = (Array.isArray(parsed.detections) ? parsed.detections : [])
             .filter(row => allowedCodes.has(String(row.item_code || "")))
             .map(row => ({
                 item_code: String(row.item_code),
@@ -409,7 +419,18 @@ ${JSON.stringify(safeCandidates)}`;
             }))
             .filter(row => row.confidence >= 0.65 && row.box_2d.length === 4 && row.box_2d.every(Number.isFinite));
 
-        res.json({ detections, model: GEMINI_IMAGE_MODEL, analyzedAs: "complete_pdf" });
+        res.json({
+            detections,
+            documentAnalysis: {
+                layout_summary: String(parsed.layout_summary || "").slice(0, 4000),
+                code_image_relationship: String(parsed.code_image_relationship || "").slice(0, 3000),
+                relevant_pages: Array.isArray(parsed.relevant_pages)
+                    ? [...new Set(parsed.relevant_pages.map(Number).filter(Number.isFinite))].slice(0, 100)
+                    : []
+            },
+            model: GEMINI_IMAGE_MODEL,
+            analyzedAs: "complete_pdf"
+        });
     } catch (err) {
         const status = err.response?.status;
         const apiMessage = err.response?.data?.error?.message;

@@ -5147,11 +5147,18 @@ function calcTotal() {
                 window.open(`print.html?type=${docType}&id=${saleId}${printDepartmentQuery}`, "_blank");
             }
 
-            if (["sales", "sales_pack"].includes(docType) && window.loadedQuotationId) {
-                await sb
+            // A quotation is converted when it becomes Sales, Bill, or a Sales Order.
+            // The report uses this flag to colour the original quotation green.
+            if (["sales", "sales_pack", "sales_order"].includes(docType) && window.loadedQuotationId) {
+                const { error: quotationUpdateError } = await sb
                     .from("quotation_details")
                     .update({ converted: true })
                     .eq("id", window.loadedQuotationId);
+
+                if (quotationUpdateError) {
+                    console.error("Quotation converted flag update failed:", quotationUpdateError);
+                    throw quotationUpdateError;
+                }
 
                 window.loadedQuotationId = null;
             }

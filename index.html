@@ -483,6 +483,39 @@
       text-align:center;
     }
 
+    .clear-history-button{
+      position:fixed;
+      right:18px;
+      top:50%;
+      z-index:5;
+      transform:translateY(-50%);
+      display:flex;
+      align-items:center;
+      gap:9px;
+      padding:12px 15px;
+      border:1px solid rgba(255,107,107,.38);
+      border-radius:15px;
+      color:#ffd7d7;
+      background:rgba(65,12,20,.82);
+      box-shadow:0 12px 30px rgba(0,0,0,.32), 0 0 22px rgba(255,31,53,.10);
+      backdrop-filter:blur(14px);
+      -webkit-backdrop-filter:blur(14px);
+      font:700 13px/1.2 "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      cursor:pointer;
+      transition:.2s ease;
+    }
+
+    .clear-history-button:hover:not(:disabled){
+      transform:translateY(-50%) translateX(-3px);
+      border-color:rgba(255,107,107,.72);
+      background:rgba(92,15,27,.92);
+    }
+
+    .clear-history-button:disabled{
+      opacity:.7;
+      cursor:wait;
+    }
+
     @media (max-width:860px){
       body{
         overflow:auto;
@@ -517,6 +550,18 @@
 
       .login-card h2{
         font-size:26px;
+      }
+
+      .clear-history-button{
+        position:fixed;
+        top:auto;
+        right:14px;
+        bottom:14px;
+        transform:none;
+      }
+
+      .clear-history-button:hover:not(:disabled){
+        transform:translateY(-2px);
       }
     }
 
@@ -565,6 +610,11 @@
   <span class="spark"></span>
   <span class="spark"></span>
   <span class="spark"></span>
+
+  <button type="button" class="clear-history-button" id="clearHistoryBtn" aria-label="Clear all app browsing data">
+    <span aria-hidden="true">&#128465;</span>
+    <span>Clear App History</span>
+  </button>
 
   <main class="login-shell">
     <section class="brand-side">
@@ -655,6 +705,7 @@
     const errorEl = document.getElementById("error-message");
     const loginBtn = document.getElementById("loginBtn");
     const togglePasswordBtn = document.getElementById("togglePassword");
+    const clearHistoryBtn = document.getElementById("clearHistoryBtn");
 
     if (!loginClient) {
       errorEl.textContent = "Supabase client not found. Please check supabaseClient.js";
@@ -669,6 +720,66 @@
       localStorage.removeItem("email");
       localStorage.removeItem("full_name");
       localStorage.removeItem("role");
+    }
+
+    async function clearAllAppHistory() {
+      const confirmed = window.confirm(
+        "Clear all saved data for this app on this device? You will be signed out. Business records in the database will not be deleted."
+      );
+
+      if (!confirmed) return;
+
+      clearHistoryBtn.disabled = true;
+      clearHistoryBtn.lastElementChild.textContent = "Clearing...";
+
+      try {
+        if (loginClient) {
+          try {
+            await loginClient.auth.signOut();
+          } catch (_) {}
+        }
+
+        localStorage.clear();
+        sessionStorage.clear();
+
+        document.cookie.split(";").forEach((cookie) => {
+          const name = cookie.split("=")[0].trim();
+          if (!name) return;
+          document.cookie = `${name}=; Max-Age=0; path=/; SameSite=Lax`;
+        });
+
+        if ("caches" in window) {
+          const cacheNames = await caches.keys();
+          await Promise.all(cacheNames.map((name) => caches.delete(name)));
+        }
+
+        if ("serviceWorker" in navigator) {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(registrations.map((registration) => registration.unregister()));
+        }
+
+        if (window.indexedDB && typeof indexedDB.databases === "function") {
+          const databases = await indexedDB.databases();
+          await Promise.all(databases.map((database) => new Promise((resolve) => {
+            if (!database.name) {
+              resolve();
+              return;
+            }
+
+            const request = indexedDB.deleteDatabase(database.name);
+            request.onsuccess = resolve;
+            request.onerror = resolve;
+            request.onblocked = resolve;
+          })));
+        }
+
+        alert("All app browsing data saved on this device has been cleared.");
+        window.location.reload();
+      } catch (err) {
+        showError("Could not clear all app data: " + (err && err.message ? err.message : err));
+        clearHistoryBtn.disabled = false;
+        clearHistoryBtn.lastElementChild.textContent = "Clear App History";
+      }
     }
 
     function forceUppercase(el) {
@@ -727,6 +838,8 @@
       togglePasswordBtn.setAttribute("aria-label", isPassword ? "Hide password" : "Show password");
       passwordInput.focus();
     });
+
+    clearHistoryBtn.addEventListener("click", clearAllAppHistory);
 
     fullNameInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {

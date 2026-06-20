@@ -268,7 +268,7 @@
     <label>Mobile:</label>
     <input type="text" id="mobile_filter" placeholder="Search mobile">
 
-    <label>GST No:</label>
+    <label id="gst_filter_label">GST No:</label>
     <input type="text" id="gst_filter" placeholder="Search GST number">
 
     <label>Salesman:</label>
@@ -286,7 +286,7 @@
             <th>Date</th>
             <th>Customer</th>
             <th>Mobile</th>
-            <th>GST No</th>
+            <th id="gst_or_advance_header">GST No</th>
             <th>Salesman</th>
             <th>Created By</th>
             <th>Total</th>
@@ -758,7 +758,11 @@
         const type = document.getElementById("report_type").value;
         const remarkHeader = document.getElementById("remark_header");
         const followupHeader = document.getElementById("followup_header");
+        const gstOrAdvanceHeader = document.getElementById("gst_or_advance_header");
+        const gstFilterLabel = document.getElementById("gst_filter_label");
+        const gstFilter = document.getElementById("gst_filter");
         const showQuotationExtra = (type === "quotation");
+        const showAdvance = (type === "sales_order");
 
         if(remarkHeader){
             remarkHeader.style.display = showQuotationExtra ? "" : "none";
@@ -766,6 +770,19 @@
 
         if(followupHeader){
             followupHeader.style.display = showQuotationExtra ? "" : "none";
+        }
+
+        if(gstOrAdvanceHeader){
+            gstOrAdvanceHeader.textContent = showAdvance ? "Advance Amount" : "GST No";
+        }
+
+        if(gstFilterLabel){
+            gstFilterLabel.style.display = showAdvance ? "none" : "";
+        }
+
+        if(gstFilter){
+            gstFilter.style.display = showAdvance ? "none" : "";
+            if(showAdvance) gstFilter.value = "";
         }
     }
 
@@ -816,7 +833,9 @@
         const series = document.getElementById('series_filter').value;
         const customer = document.getElementById('customer_filter').value.trim();
         const mobile = document.getElementById('mobile_filter').value.trim();
-        const gst = document.getElementById('gst_filter').value.trim();
+        const gst = type === "sales_order"
+            ? ""
+            : document.getElementById('gst_filter').value.trim();
         const salesmanFilter = document.getElementById('salesman_filter').value.trim();
         const createdByFilter = document.getElementById('created_by_filter').value.trim();
 
@@ -909,7 +928,9 @@
                 <td>${s[cfg.dateField] || ''}</td>
                 <td title="${(s.issueReasons || []).join(', ')}">${s.customer_name || ''}${s.hasMissingItem ? `<div style="font-size:11px;color:#ffd6df;margin-top:4px;">${(s.issueReasons || []).join(', ')}</div>` : ''}</td>
                 <td>${s.customer_mobile || ''}</td>
-                <td>${s.gst_number || ''}</td>
+                <td>${type === "sales_order"
+                    ? `&#8377;${(parseFloat(s.advance_amount || 0) || 0).toFixed(2)}`
+                    : (s.gst_number || '')}</td>
                 <td>${s.salesman || ''}</td>
                 <td>${getCreatedByValue(s) || ''}</td>
                 <td>₹${amount.toFixed(2)}</td>

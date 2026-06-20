@@ -990,7 +990,7 @@
 <div class="container">
     <div class="header-section">
         <div class="form-group">
-            <label>Type</label>
+            <label id="bill_mode_mobile_trigger" style="user-select:none;touch-action:manipulation;">Type</label>
             <select id="doc_type" class="form-control w-sm">
                 <option value="sales">SALES</option>
                 <option value="sales_pack" hidden>BILL</option>
@@ -1743,6 +1743,7 @@
         initAddressGeoapify();
         setupBelowLandingSecretUnlock();
         setupMobileProfitGestures();
+        setupMobileBillModeUnlock();
 
         const params = new URLSearchParams(window.location.search);
         const convertId = params.get("convert");
@@ -4225,6 +4226,44 @@ function calcTotal() {
                 longPressTriggered = false;
             }
         }, true);
+    }
+
+    function setupMobileBillModeUnlock() {
+        const triggerArea = document.getElementById("bill_mode_mobile_trigger");
+        if (!triggerArea || triggerArea.dataset.billModeUnlockBound === "1") return;
+
+        triggerArea.dataset.billModeUnlockBound = "1";
+        let pressTimer = null;
+        let startX = 0;
+        let startY = 0;
+
+        const cancelPress = () => {
+            clearTimeout(pressTimer);
+            pressTimer = null;
+        };
+
+        triggerArea.addEventListener("pointerdown", (e) => {
+            if (e.pointerType !== "touch" && e.pointerType !== "pen") return;
+
+            startX = e.clientX;
+            startY = e.clientY;
+            cancelPress();
+            pressTimer = setTimeout(() => {
+                unlockBillMode();
+                if (navigator.vibrate) navigator.vibrate(100);
+            }, 3000);
+        });
+
+        triggerArea.addEventListener("pointermove", (e) => {
+            if (Math.abs(e.clientX - startX) > 12 || Math.abs(e.clientY - startY) > 12) {
+                cancelPress();
+            }
+        });
+
+        triggerArea.addEventListener("pointerup", cancelPress);
+        triggerArea.addEventListener("pointercancel", cancelPress);
+        triggerArea.addEventListener("pointerleave", cancelPress);
+        triggerArea.addEventListener("contextmenu", (e) => e.preventDefault());
     }
 
     function handleListNav(e, list, callback) {

@@ -587,6 +587,7 @@ let activeSuggestionIndex = -1;
 let advancedCandidates = [];
 let advancedCandidateSequence = 0;
 let pdfJsLoadingPromise = null;
+let lastAiCatalogRequestAt = 0;
 
 const itemSearch = document.getElementById("itemSearch");
 const suggestions = document.getElementById("suggestions");
@@ -1303,26 +1304,44 @@ function cropAiProduct(pageCanvas, box) {
 async function analyzeCatalogPageWithAi(pageCanvas, pageNumber, candidates) {
   const dataUrl = pageCanvas.toDataURL("image/jpeg", 0.82);
   const endpoint = getAiCatalogEndpoint();
-  let response;
-  try {
-    response = await fetch(endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        pageImageBase64: dataUrl.split(",")[1],
-        mimeType: "image/jpeg",
-        brand: advancedBrand.value.trim(),
-        pageNumber,
-        candidates
-      })
-    });
-  } catch (error) {
-    throw new Error(`AI backend is unavailable at ${endpoint}. Start it with: node server.js`);
+  const requestBody = JSON.stringify({
+    pageImageBase64: dataUrl.split(",")[1],
+    mimeType: "image/jpeg",
+    brand: advancedBrand.value.trim(),
+    pageNumber,
+    candidates
+  });
+
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    const throttleWait = Math.max(0, 3500 - (Date.now() - lastAiCatalogRequestAt));
+    if (throttleWait) await new Promise(resolve => setTimeout(resolve, throttleWait));
+    lastAiCatalogRequestAt = Date.now();
+
+    let response;
+    try {
+      response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: requestBody
+      });
+    } catch (error) {
+      throw new Error(`AI backend is unavailable at ${endpoint}. Start it with: node server.js`);
+    }
+
+    const result = await response.json().catch(() => ({}));
+    if (response.ok) return Array.isArray(result.detections) ? result.detections : [];
+
+    if (response.status === 429 && attempt < 3) {
+      const waitSeconds = Math.max(5, Number(result.retryAfterSeconds) || 60) + 1;
+      setAdvancedStatus(`Gemini quota cooling down. Resuming page ${pageNumber} in ${waitSeconds} seconds...`, "wait");
+      await new Promise(resolve => setTimeout(resolve, waitSeconds * 1000));
+      continue;
+    }
+
+    throw new Error(result.error || "AI catalogue service failed");
   }
 
-  const result = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(result.error || "AI catalogue service failed");
-  return Array.isArray(result.detections) ? result.detections : [];
+  return [];
 }
 
 async function extractPdfCatalog() {

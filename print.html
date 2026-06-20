@@ -333,6 +333,14 @@ function getSalesman(head){
     return firstNonEmpty(head.salesman, head.sales_man, head.created_by);
 }
 
+function getPaymentType(head, linkedHead = null){
+    return String(firstNonEmpty(
+        head?.payment_type,
+        linkedHead?.payment_type,
+        type === "sales_order" ? "CREDIT" : "CASH"
+    )).trim().toUpperCase();
+}
+
 function normalizeDepartment(value){
     return String(value || "").trim().toUpperCase();
 }
@@ -564,6 +572,9 @@ Date : ${(
     head.created_at || ""
 ).split("T")[0]}<br>
 S.Man : ${escapeHtml(getSalesman(head))}<br>
+${["sales", "sales_pack", "sales_order"].includes(type)
+    ? `Payment : <b>${escapeHtml(getPaymentType(head, linkedSalesHead))} BILL</b><br>`
+    : ""}
 Page : ${p+1} / ${pages}
 
 </div>

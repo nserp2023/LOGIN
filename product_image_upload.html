@@ -525,11 +525,11 @@
               <input id="catalogPdf" type="file" accept="application/pdf,.pdf" />
             </div>
             <div class="advanced-actions">
-              <button class="btn dark" type="button" onclick="buildBrandProductList()">Load brand items</button>
+              <button class="btn dark" type="button" onclick="buildBrandProductList()">Load typed items</button>
               <button class="btn warn" type="button" onclick="clearAdvancedQueue()">Clear queue</button>
               <button class="btn" id="extractPdfBtn" type="button" onclick="extractPdfCatalog()">Analyze PDF with AI</button>
             </div>
-            <p class="advanced-note">AI examines each PDF page, rejects decorative/lifestyle images, identifies real products, matches names and specifications against your stock, and crops the correct product region. Item code is only supporting evidence. Every result remains pending until you approve it.</p>
+            <p class="advanced-note">Load the typed brand/model items first. AI then reads the complete PDF before matching, including layouts where descriptions/codes and their images appear on different sides or pages. It crops only confident product matches for your approval.</p>
             <div id="advancedStatus" class="status"></div>
           </div>
         </section>
@@ -585,6 +585,7 @@ let selectedItem = null;
 let selectedFile = null;
 let activeSuggestionIndex = -1;
 let advancedCandidates = [];
+let advancedLoadedItems = [];
 let advancedCandidateSequence = 0;
 let pdfJsLoadingPromise = null;
 let lastAiCatalogRequestAt = 0;
@@ -1037,6 +1038,9 @@ function refreshAdvancedStockOptions() {
   return items;
 }
 
+advancedBrand.addEventListener("input", () => {
+  advancedLoadedItems = [];
+});
 advancedBrand.addEventListener("change", refreshAdvancedStockOptions);
 
 function resolveAdvancedItem(value) {
@@ -1057,25 +1061,17 @@ function buildBrandProductList() {
 
   clearAdvancedQueue(false);
   const onlyMissing = document.getElementById("onlyMissingImages").checked;
-  const matches = refreshAdvancedStockOptions()
+  const matches = getBrandItems()
     .filter(item => !onlyMissing || !item.product_image_url)
-    .slice(0, 100);
+    .slice(0, 250);
 
-  advancedCandidates = matches.map(item => ({
-    id: ++advancedCandidateSequence,
-    page: 0,
-    blob: null,
-    objectUrl: "",
-    remoteUrl: "",
-    productValue: formatProductValue(item),
-    approved: false,
-    sourceLabel: "Web image URL required"
-  }));
+  advancedLoadedItems = matches;
+  refreshAdvancedStockOptions();
 
   renderAdvancedCandidates();
   setAdvancedStatus(
     matches.length
-      ? `${matches.length} ${brand} products loaded. Use Search web, paste an official image URL, review, then approve.`
+      ? `${matches.length} ${brand} stock items loaded for full-catalogue AI matching. Now choose the PDF and click Analyze PDF with AI.`
       : `No ${brand} products matched the current stock filter.`,
     matches.length ? "ok" : "err"
   );
@@ -1344,6 +1340,53 @@ async function analyzeCatalogPageWithAi(pageCanvas, pageNumber, candidates) {
   return [];
 }
 
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || "").split(",")[1] || "");
+    reader.onerror = () => reject(reader.error || new Error("PDF could not be read"));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function analyzeFullCatalogWithAi(file, candidates) {
+  const endpoint = getAiCatalogEndpoint().replace(/ai-catalog-page$/, "ai-catalog-document");
+  const pdfBase64 = await fileToBase64(file);
+  const requestBody = JSON.stringify({
+    pdfBase64,
+    mimeType: file.type || "application/pdf",
+    brand: advancedBrand.value.trim(),
+    candidates
+  });
+
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    let response;
+    try {
+      response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: requestBody
+      });
+    } catch (error) {
+      throw new Error(`AI backend is unavailable at ${endpoint}. Start it with: node server.js`);
+    }
+
+    const result = await response.json().catch(() => ({}));
+    if (response.ok) return Array.isArray(result.detections) ? result.detections : [];
+
+    if (response.status === 429 && attempt < 3) {
+      const waitSeconds = Math.max(5, Number(result.retryAfterSeconds) || 60) + 1;
+      setAdvancedStatus(`Gemini quota cooling down. Full PDF analysis resumes in ${waitSeconds} seconds...`, "wait");
+      await new Promise(resolve => setTimeout(resolve, waitSeconds * 1000));
+      continue;
+    }
+
+    throw new Error(result.error || "Full-catalogue AI service failed");
+  }
+
+  return [];
+}
+
 async function extractPdfCatalog() {
   const file = catalogPdf.files[0];
   if (!file) {
@@ -1354,6 +1397,14 @@ async function extractPdfCatalog() {
     setAdvancedStatus("Enter the brand or product series first so AI receives the correct stock candidates.", "err");
     return;
   }
+  if (!advancedLoadedItems.length) {
+    setAdvancedStatus("Click Load typed items first. AI will analyze the complete PDF only against that loaded stock list.", "err");
+    return;
+  }
+  if (file.size > 14 * 1024 * 1024) {
+    setAdvancedStatus("This PDF is over 14 MB. Compress or split it before full-document AI analysis.", "err");
+    return;
+  }
   const button = document.getElementById("extractPdfBtn");
   button.disabled = true;
   clearAdvancedQueue(false);
@@ -1362,72 +1413,61 @@ async function extractPdfCatalog() {
   try {
     setAdvancedStatus("Loading PDF reader...", "wait");
     await loadPdfJs();
-    setAdvancedStatus("Opening PDF catalogue...", "wait");
+    setAdvancedStatus("AI is reading the complete PDF and learning its product/image layout...", "wait");
     const data = await file.arrayBuffer();
     const pdf = await window.pdfjsLib.getDocument({ data }).promise;
+    const stockCandidates = advancedLoadedItems.slice(0, 250).map(item => ({
+      item_code: item.item_code || "",
+      item_name: item.item_name || "",
+      description: getItemDescriptionText(item)
+    }));
+    const detections = await analyzeFullCatalogWithAi(file, stockCandidates);
+    const bestByItem = new Map();
+    detections.forEach(detection => {
+      const existing = bestByItem.get(detection.item_code);
+      if (!existing || Number(detection.confidence) > Number(existing.confidence)) {
+        bestByItem.set(detection.item_code, detection);
+      }
+    });
+
+    const pageCanvases = new Map();
     let detectedCount = 0;
-    let failedPages = 0;
-    let consecutiveFailures = 0;
-
-    for (let pageNo = 1; pageNo <= pdf.numPages; pageNo += 1) {
-      try {
-        setAdvancedStatus(`AI analyzing PDF page ${pageNo} of ${pdf.numPages}...`, "wait");
-        const page = await pdf.getPage(pageNo);
-        const textContent = await page.getTextContent();
-        const pageText = textContent.items.map(item => item.str || "").join(" ");
-        const stockCandidates = buildAiStockCandidates(pageText);
-        if (!stockCandidates.length) continue;
-
-        const pageCanvas = await renderPdfPageForAi(page);
-        const detections = await analyzeCatalogPageWithAi(pageCanvas, pageNo, stockCandidates);
-        consecutiveFailures = 0;
-        const bestByItem = new Map();
-        detections.forEach(detection => {
-          const existing = bestByItem.get(detection.item_code);
-          if (!existing || Number(detection.confidence) > Number(existing.confidence)) {
-            bestByItem.set(detection.item_code, detection);
-          }
-        });
-
-        for (const detection of bestByItem.values()) {
-          const item = stockItems.find(row => String(row.item_code || "") === String(detection.item_code || ""));
-          const cropCanvas = cropAiProduct(pageCanvas, detection.box_2d);
-          if (!item || !cropCanvas) continue;
-
-          const blob = await canvasToJpegBlob(cropCanvas);
-          if (!blob) continue;
-          const confidence = Math.round((Number(detection.confidence) || 0) * 100);
-          advancedCandidates.push({
-            id: ++advancedCandidateSequence,
-            page: pageNo,
-            blob,
-            objectUrl: URL.createObjectURL(blob),
-            remoteUrl: "",
-            productValue: formatProductValue(item),
-            approved: false,
-            sourceLabel: `AI ${confidence}% · page ${pageNo}`,
-            aiReason: detection.reason || ""
-          });
-          detectedCount += 1;
-        }
-      } catch (pageError) {
-        failedPages += 1;
-        consecutiveFailures += 1;
-        console.error(`AI catalogue page ${pageNo} failed:`, pageError);
-        if (consecutiveFailures >= 2) {
-          throw new Error(`AI service failed on consecutive pages. ${cleanErr(pageError)}`);
-        }
+    for (const detection of bestByItem.values()) {
+      const pageNo = Math.max(1, Math.min(pdf.numPages, Number(detection.image_page) || 1));
+      let pageCanvas = pageCanvases.get(pageNo);
+      if (!pageCanvas) {
+        setAdvancedStatus(`Cropping AI-matched product images from page ${pageNo}...`, "wait");
+        pageCanvas = await renderPdfPageForAi(await pdf.getPage(pageNo));
+        pageCanvases.set(pageNo, pageCanvas);
       }
 
-      renderAdvancedCandidates();
+      const item = stockItems.find(row => String(row.item_code || "") === String(detection.item_code || ""));
+      const cropCanvas = cropAiProduct(pageCanvas, detection.box_2d);
+      if (!item || !cropCanvas) continue;
+      const blob = await canvasToJpegBlob(cropCanvas);
+      if (!blob) continue;
+
+      const confidence = Math.round((Number(detection.confidence) || 0) * 100);
+      advancedCandidates.push({
+        id: ++advancedCandidateSequence,
+        page: pageNo,
+        blob,
+        objectUrl: URL.createObjectURL(blob),
+        remoteUrl: "",
+        productValue: formatProductValue(item),
+        approved: false,
+        sourceLabel: `Full-PDF AI ${confidence}% · page ${pageNo}`,
+        aiReason: detection.reason || ""
+      });
+      detectedCount += 1;
     }
 
     renderAdvancedCandidates();
     setAdvancedStatus(
       detectedCount
-        ? `AI found ${detectedCount} matched product images${failedPages ? `; ${failedPages} page(s) failed` : ""}. Review before uploading.`
-        : `AI found no confident product matches${failedPages ? `; ${failedPages} page(s) failed` : ""}. Check the brand and server API configuration.`,
-      detectedCount && !failedPages ? "ok" : "err"
+        ? `Full-PDF AI matched ${detectedCount} product images from ${advancedLoadedItems.length} loaded stock items. Review before uploading.`
+        : "Full-PDF AI found no confident matches. Check the typed brand/model and loaded stock items.",
+      detectedCount ? "ok" : "err"
     );
   } catch (error) {
     console.error(error);

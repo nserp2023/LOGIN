@@ -993,7 +993,7 @@
             <label>Type</label>
             <select id="doc_type" class="form-control w-sm">
                 <option value="sales">SALES</option>
-                <option value="sales_pack">BILL</option>
+                <option value="sales_pack" hidden>BILL</option>
                 <option value="quotation">QUOTATION</option>
                 <option value="sales_order">SALES ORDER</option>
             </select>
@@ -1473,6 +1473,10 @@
         try{
             const h = draft.header || {};
 
+            if(h.doc_type === 'sales_pack'){
+                unlockBillMode({ selectMode: false, notify: false });
+            }
+
             setInputValue('doc_type', h.doc_type || 'sales');
             setInputValue('bill_series', h.series || getInputValue('bill_series'));
             setInputValue('bill_number', h.bill_number || getInputValue('bill_number'));
@@ -1693,6 +1697,38 @@
         }
     }
 
+    function unlockBillMode({ selectMode = true, notify = true } = {}){
+        const docTypeSelect = document.getElementById("doc_type");
+        if(!docTypeSelect) return;
+
+        let billOption = docTypeSelect.querySelector('option[value="sales_pack"]');
+        const wasHidden = !billOption || billOption.hidden;
+
+        if(!billOption){
+            billOption = document.createElement("option");
+            billOption.value = "sales_pack";
+            billOption.textContent = "BILL";
+
+            const quotationOption = docTypeSelect.querySelector('option[value="quotation"]');
+            if(quotationOption){
+                docTypeSelect.insertBefore(billOption, quotationOption);
+            } else {
+                docTypeSelect.appendChild(billOption);
+            }
+        }
+
+        billOption.hidden = false;
+
+        if(selectMode){
+            docTypeSelect.value = "sales_pack";
+            docTypeSelect.dispatchEvent(new Event("change"));
+        }
+
+        if(notify && wasHidden){
+            alert("Bill mode unlocked");
+        }
+    }
+
     window.onload = async () => {
         setupDate();
         await loadBillSeries();
@@ -1712,6 +1748,10 @@
         const convertSO = params.get("convert_so");
         const editId = params.get("edit");
         const editType = params.get("type");
+
+        if(editType === "sales_pack"){
+            unlockBillMode({ selectMode: false, notify: false });
+        }
 
         if(editId){
             isSalesOrderConversionMode = false;
@@ -5897,6 +5937,13 @@ async function handleBarcodeValue(code) {
     }
 
     document.addEventListener('keydown', (e) => {
+        if(e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'p'){
+            e.preventDefault();
+            e.stopPropagation();
+            unlockBillMode();
+            return;
+        }
+
         if(purchaseOrderPromptOpen){
             if(e.key === 'Escape'){
                 e.preventDefault();

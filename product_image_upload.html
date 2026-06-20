@@ -364,6 +364,50 @@
       display: none;
     }
 
+    .mode-switch {
+      display: inline-grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      padding: 6px;
+      margin-bottom: 16px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(2, 6, 23, 0.58);
+    }
+
+    .mode-btn {
+      border: 0;
+      border-radius: 13px;
+      padding: 11px 18px;
+      color: var(--muted);
+      background: transparent;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    .mode-btn.active {
+      color: #fff;
+      background: linear-gradient(135deg, #0284c7, #2563eb);
+    }
+
+    .mode-page[hidden] { display: none !important; }
+    .advanced-grid { display: grid; grid-template-columns: 0.8fr 1.2fr; gap: 16px; align-items: start; }
+    .advanced-actions { display: grid; gap: 10px; grid-template-columns: 1fr 1fr; }
+    .advanced-actions .btn:last-child { grid-column: 1 / -1; }
+    .advanced-note { color: var(--muted); font-size: 12px; line-height: 1.5; }
+    .candidate-list { display: grid; gap: 12px; max-height: 72vh; overflow: auto; padding-right: 4px; }
+    .candidate-empty { color: var(--muted); text-align: center; padding: 40px 12px; }
+    .candidate-card { display: grid; grid-template-columns: 128px 1fr; gap: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 18px; background: rgba(2, 6, 23, 0.5); }
+    .candidate-card img { width: 128px; height: 128px; object-fit: contain; border-radius: 12px; background: #fff; }
+    .candidate-meta { display: grid; gap: 8px; min-width: 0; }
+    .candidate-row { display: flex; align-items: center; gap: 8px; color: #cbd5e1; font-size: 12px; }
+    .candidate-row input[type="checkbox"] { width: auto; accent-color: var(--good); }
+    .candidate-meta input { padding: 10px 12px; border-radius: 12px; font-size: 13px; }
+    .candidate-tools { display: flex; gap: 8px; flex-wrap: wrap; }
+    .candidate-tools button { padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; color: #dbeafe; background: #1e293b; cursor: pointer; font-weight: 800; }
+    .batch-options { display: flex; gap: 10px; align-items: center; color: #cbd5e1; font-size: 13px; margin: 12px 0; }
+    .batch-options input { width: auto; }
+
     @media (max-width: 820px) {
       .app { padding: 12px; }
       .topbar { align-items: flex-start; }
@@ -372,6 +416,10 @@
       .dropzone { min-height: 260px; }
       .card-head, .card-body { padding: 14px; }
       .footer-actions { grid-template-columns: 1fr; }
+      .advanced-grid { grid-template-columns: 1fr; }
+      .candidate-list { max-height: none; }
+      .candidate-card { grid-template-columns: 92px 1fr; }
+      .candidate-card img { width: 92px; height: 92px; }
     }
   </style>
 </head>
@@ -386,6 +434,12 @@
       <div class="pill" id="stockCountPill">Loading stock...</div>
     </div>
 
+    <div class="mode-switch" role="tablist" aria-label="Image upload mode">
+      <button id="normalModeBtn" class="mode-btn active" type="button" onclick="setUploadMode('normal')">Normal mode</button>
+      <button id="advancedModeBtn" class="mode-btn" type="button" onclick="setUploadMode('advanced')">Advanced mode</button>
+    </div>
+
+    <div id="normalMode" class="mode-page">
     <div class="grid">
       <section class="card">
         <div class="card-head">
@@ -451,6 +505,54 @@
         </div>
       </section>
     </div>
+    </div>
+
+    <div id="advancedMode" class="mode-page" hidden>
+      <div class="advanced-grid">
+        <section class="card">
+          <div class="card-head">
+            <h2>Catalogue source</h2>
+            <span class="pill" style="display:inline-flex;">PDF + Review</span>
+          </div>
+          <div class="card-body">
+            <div class="field">
+              <label>Brand name</label>
+              <input id="advancedBrand" placeholder="Example: Polycab" />
+            </div>
+            <div class="field">
+              <label>Manufacturer PDF catalogue</label>
+              <input id="catalogPdf" type="file" accept="application/pdf,.pdf" />
+            </div>
+            <div class="advanced-actions">
+              <button class="btn dark" type="button" onclick="buildBrandProductList()">Load brand items</button>
+              <button class="btn warn" type="button" onclick="clearAdvancedQueue()">Clear queue</button>
+              <button class="btn" id="extractPdfBtn" type="button" onclick="extractPdfCatalog()">Extract PDF images</button>
+            </div>
+            <p class="advanced-note">The PDF is processed in this browser. Embedded catalogue images are extracted and matched using item codes and product-name words. Every match remains pending until you approve it.</p>
+            <div id="advancedStatus" class="status"></div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-head">
+            <h2>Review queue</h2>
+            <span id="candidateCount" class="pill" style="display:inline-flex;">0 images</span>
+          </div>
+          <div class="card-body">
+            <div class="batch-options">
+              <input id="onlyMissingImages" type="checkbox" checked />
+              <label for="onlyMissingImages" style="margin:0;text-transform:none;letter-spacing:0;">Skip products that already have an image</label>
+            </div>
+            <datalist id="advancedStockOptions"></datalist>
+            <div id="candidateList" class="candidate-list">
+              <div class="candidate-empty">Choose a brand and PDF catalogue to begin.</div>
+            </div>
+            <button class="btn dark" style="width:100%;margin-top:14px;" type="button" onclick="approveAllMatchedCandidates()">Approve all valid matches</button>
+            <button id="batchSaveBtn" class="btn good" style="width:100%;margin-top:14px;" type="button" onclick="saveApprovedCandidates()" disabled>Upload approved images</button>
+          </div>
+        </section>
+      </div>
+    </div>
   </div>
 
 <script>
@@ -481,6 +583,9 @@ let stockItems = [];
 let selectedItem = null;
 let selectedFile = null;
 let activeSuggestionIndex = -1;
+let advancedCandidates = [];
+let advancedCandidateSequence = 0;
+let pdfJsLoadingPromise = null;
 
 const itemSearch = document.getElementById("itemSearch");
 const suggestions = document.getElementById("suggestions");
@@ -495,6 +600,13 @@ const dropText = document.getElementById("dropText");
 const saveBtn = document.getElementById("saveBtn");
 const progressWrap = document.getElementById("progressWrap");
 const progressBar = document.getElementById("progressBar");
+const advancedBrand = document.getElementById("advancedBrand");
+const catalogPdf = document.getElementById("catalogPdf");
+const advancedStatus = document.getElementById("advancedStatus");
+const candidateList = document.getElementById("candidateList");
+const candidateCount = document.getElementById("candidateCount");
+const batchSaveBtn = document.getElementById("batchSaveBtn");
+const advancedStockOptions = document.getElementById("advancedStockOptions");
 
 /* =========================================================
    4) LOAD ALL STOCK - PAGINATED FOR 10000+ ITEMS
@@ -529,6 +641,7 @@ async function loadAllStock() {
 
     stockCountPill.textContent = `${stockItems.length.toLocaleString("en-IN")} items loaded`;
     setStatus("Stock loaded. Type item code or name to search.", "ok");
+    if (!document.getElementById("advancedMode").hidden) refreshAdvancedStockOptions();
   } catch (err) {
     console.error(err);
     setStatus("Stock loading failed: " + cleanErr(err), "err");
@@ -802,7 +915,7 @@ async function saveProductImage() {
   }
 }
 
-async function uploadToCloudinary(file) {
+async function uploadToCloudinary(file, item = selectedItem) {
   const url = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`;
 
   const formData = new FormData();
@@ -810,7 +923,7 @@ async function uploadToCloudinary(file) {
   formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
   formData.append("folder", CLOUDINARY_FOLDER);
 
-  const publicId = `${selectedItem.item_code || "product"}_${Date.now()}`
+  const publicId = `${item?.item_code || "product"}_${Date.now()}`
     .replace(/[^a-zA-Z0-9_-]/g, "_");
 
   formData.append("public_id", publicId);
@@ -830,7 +943,444 @@ async function uploadToCloudinary(file) {
 }
 
 /* =========================================================
-   8) HELPERS
+   8) ADVANCED PDF / BRAND MODE
+   ========================================================= */
+function setUploadMode(mode) {
+  const advanced = mode === "advanced";
+  document.getElementById("normalMode").hidden = advanced;
+  document.getElementById("advancedMode").hidden = !advanced;
+  document.getElementById("normalModeBtn").classList.toggle("active", !advanced);
+  document.getElementById("advancedModeBtn").classList.toggle("active", advanced);
+  if (advanced) refreshAdvancedStockOptions();
+}
+
+function setAdvancedStatus(message, type = "ok") {
+  advancedStatus.className = "status " + type;
+  advancedStatus.textContent = message;
+}
+
+function getBrandItems() {
+  const brand = normalize(advancedBrand.value);
+  const list = brand
+    ? stockItems.filter(item => item.search_key.includes(brand))
+    : stockItems;
+  return list;
+}
+
+function formatProductValue(item) {
+  return `${item?.item_code || ""} - ${item?.item_name || ""}`.trim();
+}
+
+function refreshAdvancedStockOptions() {
+  const items = getBrandItems().slice(0, 5000);
+  advancedStockOptions.innerHTML = items.map(item =>
+    `<option value="${escapeHtml(formatProductValue(item))}"></option>`
+  ).join("");
+  return items;
+}
+
+advancedBrand.addEventListener("change", refreshAdvancedStockOptions);
+
+function resolveAdvancedItem(value) {
+  const raw = String(value || "").trim();
+  const code = raw.includes(" - ") ? raw.split(" - ")[0].trim() : raw;
+  const codeKey = normalize(code);
+  return stockItems.find(item => normalize(item.item_code) === codeKey)
+    || stockItems.find(item => formatProductValue(item).toLowerCase() === raw.toLowerCase())
+    || null;
+}
+
+function buildBrandProductList() {
+  const brand = advancedBrand.value.trim();
+  if (!brand) {
+    setAdvancedStatus("Enter a brand name first.", "err");
+    return;
+  }
+
+  clearAdvancedQueue(false);
+  const onlyMissing = document.getElementById("onlyMissingImages").checked;
+  const matches = refreshAdvancedStockOptions()
+    .filter(item => !onlyMissing || !item.product_image_url)
+    .slice(0, 100);
+
+  advancedCandidates = matches.map(item => ({
+    id: ++advancedCandidateSequence,
+    page: 0,
+    blob: null,
+    objectUrl: "",
+    remoteUrl: "",
+    productValue: formatProductValue(item),
+    approved: false,
+    sourceLabel: "Web image URL required"
+  }));
+
+  renderAdvancedCandidates();
+  setAdvancedStatus(
+    matches.length
+      ? `${matches.length} ${brand} products loaded. Use Search web, paste an official image URL, review, then approve.`
+      : `No ${brand} products matched the current stock filter.`,
+    matches.length ? "ok" : "err"
+  );
+}
+
+function clearAdvancedQueue(showMessage = true) {
+  advancedCandidates.forEach(candidate => {
+    if (candidate.objectUrl) URL.revokeObjectURL(candidate.objectUrl);
+  });
+  advancedCandidates = [];
+  renderAdvancedCandidates();
+  if (showMessage) setAdvancedStatus("Advanced queue cleared.", "ok");
+}
+
+function findCatalogMatches(pageText) {
+  const text = normalize(pageText);
+  const compactText = text.replace(/\s+/g, "");
+  const brandWords = new Set(normalize(advancedBrand.value).split(" ").filter(Boolean));
+  const scored = [];
+
+  for (const item of getBrandItems()) {
+    const code = normalize(item.item_code);
+    const compactCode = code.replace(/\s+/g, "");
+    const nameWords = normalize(item.item_name)
+      .split(" ")
+      .filter(word => word.length >= 3 && !brandWords.has(word));
+
+    let score = 0;
+    if (compactCode.length >= 3 && compactText.includes(compactCode)) score += 120;
+
+    const uniqueWords = [...new Set(nameWords)];
+    const hits = uniqueWords.filter(word => text.includes(word)).length;
+    if (hits >= 2) score += Math.round((hits / Math.max(uniqueWords.length, 1)) * 70) + hits;
+
+    if (score >= 20) scored.push({ item, score });
+  }
+
+  return scored.sort((a, b) => b.score - a.score).slice(0, 10).map(row => row.item);
+}
+
+async function getPdfObject(page, objectName) {
+  return new Promise(resolve => {
+    let settled = false;
+    const finish = value => {
+      if (settled) return;
+      settled = true;
+      resolve(value || null);
+    };
+
+    try {
+      page.objs.get(objectName, finish);
+    } catch (error) {
+      console.warn("PDF image object could not be read:", error);
+      finish(null);
+    }
+    setTimeout(() => finish(null), 5000);
+  });
+}
+
+function pdfImageToCanvas(image) {
+  const source = image?.bitmap || image;
+  const width = Number(image?.width || source?.width || 0);
+  const height = Number(image?.height || source?.height || 0);
+  if (!width || !height || width < 160 || height < 160 || width * height < 40000) return null;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d", { alpha: false });
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, width, height);
+
+  if (source && typeof source === "object" && !image?.data) {
+    try {
+      ctx.drawImage(source, 0, 0, width, height);
+      return canvas;
+    } catch (error) {
+      console.warn("PDF bitmap draw failed:", error);
+    }
+  }
+
+  const data = image?.data;
+  if (!data) return null;
+  const pixelCount = width * height;
+  const rgba = new Uint8ClampedArray(pixelCount * 4);
+
+  if (data.length === pixelCount * 4) {
+    rgba.set(data);
+  } else if (data.length === pixelCount * 3) {
+    for (let p = 0, q = 0; p < data.length; p += 3, q += 4) {
+      rgba[q] = data[p];
+      rgba[q + 1] = data[p + 1];
+      rgba[q + 2] = data[p + 2];
+      rgba[q + 3] = 255;
+    }
+  } else if (data.length === pixelCount) {
+    for (let p = 0, q = 0; p < data.length; p += 1, q += 4) {
+      rgba[q] = rgba[q + 1] = rgba[q + 2] = data[p];
+      rgba[q + 3] = 255;
+    }
+  } else {
+    return null;
+  }
+
+  ctx.putImageData(new ImageData(rgba, width, height), 0, 0);
+  return canvas;
+}
+
+function canvasToJpegBlob(canvas) {
+  return new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", 0.88));
+}
+
+async function loadPdfJs() {
+  if (window.pdfjsLib) return window.pdfjsLib;
+  if (pdfJsLoadingPromise) return pdfJsLoadingPromise;
+
+  pdfJsLoadingPromise = new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+    script.onload = () => {
+      if (!window.pdfjsLib) {
+        reject(new Error("PDF reader loaded without its browser API"));
+        return;
+      }
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+      resolve(window.pdfjsLib);
+    };
+    script.onerror = () => reject(new Error("PDF reader download failed"));
+    document.head.appendChild(script);
+  });
+
+  return pdfJsLoadingPromise;
+}
+
+async function extractPdfCatalog() {
+  const file = catalogPdf.files[0];
+  if (!file) {
+    setAdvancedStatus("Choose a PDF catalogue first.", "err");
+    return;
+  }
+  const button = document.getElementById("extractPdfBtn");
+  button.disabled = true;
+  clearAdvancedQueue(false);
+  refreshAdvancedStockOptions();
+
+  try {
+    setAdvancedStatus("Loading PDF reader...", "wait");
+    await loadPdfJs();
+    setAdvancedStatus("Opening PDF catalogue...", "wait");
+    const data = await file.arrayBuffer();
+    const pdf = await window.pdfjsLib.getDocument({ data }).promise;
+    let extractedCount = 0;
+
+    for (let pageNo = 1; pageNo <= pdf.numPages; pageNo += 1) {
+      setAdvancedStatus(`Scanning PDF page ${pageNo} of ${pdf.numPages}...`, "wait");
+      const page = await pdf.getPage(pageNo);
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items.map(item => item.str || "").join(" ");
+      const matches = findCatalogMatches(pageText);
+      const operatorList = await page.getOperatorList();
+      const imageNames = [];
+
+      operatorList.fnArray.forEach((fn, index) => {
+        if (fn === window.pdfjsLib.OPS.paintImageXObject || fn === window.pdfjsLib.OPS.paintJpegXObject) {
+          const name = operatorList.argsArray[index]?.[0];
+          if (name && !imageNames.includes(name)) imageNames.push(name);
+        }
+      });
+
+      for (const imageName of imageNames) {
+        const image = await getPdfObject(page, imageName);
+        const canvas = pdfImageToCanvas(image);
+        if (!canvas) continue;
+
+        const blob = await canvasToJpegBlob(canvas);
+        if (!blob) continue;
+        const bestMatch = matches[0] || null;
+
+        advancedCandidates.push({
+          id: ++advancedCandidateSequence,
+          page: pageNo,
+          blob,
+          objectUrl: URL.createObjectURL(blob),
+          remoteUrl: "",
+          productValue: bestMatch ? formatProductValue(bestMatch) : "",
+          approved: false,
+          sourceLabel: `PDF page ${pageNo}`
+        });
+        extractedCount += 1;
+      }
+
+      if (pageNo % 5 === 0) renderAdvancedCandidates();
+    }
+
+    renderAdvancedCandidates();
+    setAdvancedStatus(
+      extractedCount
+        ? `${extractedCount} embedded images extracted. Check every product match before uploading.`
+        : "No reusable embedded images were found. This PDF may contain vector artwork or protected/scanned pages.",
+      extractedCount ? "ok" : "err"
+    );
+  } catch (error) {
+    console.error(error);
+    setAdvancedStatus("PDF extraction failed: " + cleanErr(error), "err");
+  } finally {
+    button.disabled = false;
+  }
+}
+
+const EMPTY_IMAGE = "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><rect width="100%" height="100%" fill="#e2e8f0"/><text x="50%" y="47%" text-anchor="middle" fill="#475569" font-family="Arial" font-size="16">Paste official</text><text x="50%" y="59%" text-anchor="middle" fill="#475569" font-family="Arial" font-size="16">image URL</text></svg>'
+);
+
+function renderAdvancedCandidates() {
+  candidateCount.textContent = `${advancedCandidates.length} image${advancedCandidates.length === 1 ? "" : "s"}`;
+  batchSaveBtn.disabled = !advancedCandidates.some(candidate => candidate.approved);
+
+  if (!advancedCandidates.length) {
+    candidateList.innerHTML = '<div class="candidate-empty">No images are waiting for review.</div>';
+    return;
+  }
+
+  candidateList.innerHTML = advancedCandidates.map(candidate => `
+    <div class="candidate-card" data-candidate-id="${candidate.id}">
+      <img src="${escapeHtml(candidate.objectUrl || candidate.remoteUrl || EMPTY_IMAGE)}" alt="Catalogue candidate" />
+      <div class="candidate-meta">
+        <div class="candidate-row">
+          <input type="checkbox" ${candidate.approved ? "checked" : ""} onchange="setCandidateApproved(${candidate.id}, this.checked)" />
+          <b>${escapeHtml(candidate.sourceLabel)}</b>
+        </div>
+        <input list="advancedStockOptions" value="${escapeHtml(candidate.productValue)}" placeholder="Item code - product name" onchange="setCandidateProduct(${candidate.id}, this.value)" />
+        <input value="${escapeHtml(candidate.remoteUrl)}" placeholder="Optional official image URL" onchange="setCandidateUrl(${candidate.id}, this.value, this)" />
+        <div class="candidate-tools">
+          <button type="button" onclick="searchCandidateWeb(${candidate.id})">Search web</button>
+          <button type="button" onclick="removeAdvancedCandidate(${candidate.id})">Remove</button>
+        </div>
+      </div>
+    </div>
+  `).join("");
+}
+
+function getCandidate(id) {
+  return advancedCandidates.find(candidate => candidate.id === Number(id));
+}
+
+function setCandidateApproved(id, approved) {
+  const candidate = getCandidate(id);
+  if (candidate) candidate.approved = approved;
+  batchSaveBtn.disabled = !advancedCandidates.some(row => row.approved);
+}
+
+function setCandidateProduct(id, value) {
+  const candidate = getCandidate(id);
+  if (!candidate) return;
+  candidate.productValue = value;
+  candidate.approved = Boolean(resolveAdvancedItem(value)) && Boolean(candidate.blob || candidate.remoteUrl);
+  renderAdvancedCandidates();
+}
+
+function setCandidateUrl(id, value, input) {
+  const candidate = getCandidate(id);
+  if (!candidate) return;
+  candidate.remoteUrl = String(value || "").trim();
+  candidate.approved = Boolean(resolveAdvancedItem(candidate.productValue)) && /^https?:\/\//i.test(candidate.remoteUrl);
+  const image = input?.closest(".candidate-card")?.querySelector("img");
+  if (image && candidate.remoteUrl) image.src = candidate.remoteUrl;
+  renderAdvancedCandidates();
+}
+
+function searchCandidateWeb(id) {
+  const candidate = getCandidate(id);
+  const item = resolveAdvancedItem(candidate?.productValue);
+  if (!item) {
+    setAdvancedStatus("Select a valid stock product before searching.", "err");
+    return;
+  }
+  const query = `${advancedBrand.value} ${item.item_code || ""} ${item.item_name || ""} official product image`;
+  window.open(`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query)}`, "_blank", "noopener");
+}
+
+function removeAdvancedCandidate(id) {
+  const candidate = getCandidate(id);
+  if (candidate?.objectUrl) URL.revokeObjectURL(candidate.objectUrl);
+  advancedCandidates = advancedCandidates.filter(row => row.id !== Number(id));
+  renderAdvancedCandidates();
+}
+
+function approveAllMatchedCandidates() {
+  let approved = 0;
+  advancedCandidates.forEach(candidate => {
+    const hasProduct = Boolean(resolveAdvancedItem(candidate.productValue));
+    const hasSource = Boolean(candidate.blob || /^https?:\/\//i.test(candidate.remoteUrl));
+    candidate.approved = hasProduct && hasSource;
+    if (candidate.approved) approved += 1;
+  });
+  renderAdvancedCandidates();
+  setAdvancedStatus(`${approved} valid matches approved. Review the checked rows before uploading.`, approved ? "ok" : "err");
+}
+
+async function saveApprovedCandidates() {
+  const approved = advancedCandidates.filter(candidate => candidate.approved);
+  if (!approved.length) {
+    setAdvancedStatus("Approve at least one reviewed image.", "err");
+    return;
+  }
+
+  batchSaveBtn.disabled = true;
+  const onlyMissing = document.getElementById("onlyMissingImages").checked;
+  let saved = 0;
+  let skipped = 0;
+  let failed = 0;
+
+  for (let index = 0; index < approved.length; index += 1) {
+    const candidate = approved[index];
+    const item = resolveAdvancedItem(candidate.productValue);
+    setAdvancedStatus(`Uploading ${index + 1} of ${approved.length}...`, "wait");
+
+    try {
+      if (!item) throw new Error("Stock product match is invalid");
+      if (onlyMissing && item.product_image_url) {
+        candidate.approved = false;
+        skipped += 1;
+        continue;
+      }
+
+      let source = candidate.remoteUrl;
+      if (!source && candidate.blob) {
+        source = new File([candidate.blob], `${item.item_code || "product"}.jpg`, { type: "image/jpeg" });
+      }
+      if (!source) throw new Error("Image source is missing");
+      if (typeof source === "string" && !/^https?:\/\//i.test(source)) throw new Error("Image URL must start with http:// or https://");
+
+      const imageUrl = await uploadToCloudinary(source, item);
+      const { error } = await sb
+        .from("stock_items")
+        .update({
+          product_image_url: imageUrl,
+          product_image_alt: item.item_name || "",
+          product_image_updated_at: new Date().toISOString()
+        })
+        .eq("item_code", item.item_code);
+
+      if (error) throw error;
+      item.product_image_url = imageUrl;
+      candidate.approved = false;
+      saved += 1;
+    } catch (error) {
+      console.error("Advanced image save failed:", error);
+      failed += 1;
+    }
+  }
+
+  renderAdvancedCandidates();
+  setAdvancedStatus(
+    `Batch complete: ${saved} saved, ${skipped} skipped, ${failed} failed.`,
+    failed ? "err" : "ok"
+  );
+  batchSaveBtn.disabled = !advancedCandidates.some(candidate => candidate.approved);
+}
+
+/* =========================================================
+   9) HELPERS
    ========================================================= */
 function setStatus(msg, type) {
   statusBox.className = "status " + type;

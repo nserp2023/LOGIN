@@ -1132,7 +1132,7 @@
                     <th class="col-price">Price+GST</th>
                     <th class="col-disc">Disc %</th>
                     <th class="col-landing landing-col">Landing</th>
-                    <th class="col-gst">GST%</th>
+                    <th class="col-gst" title="For new quotation/sales-order items, press Ctrl+Shift+G to edit GST">GST%</th>
                     <th class="col-tot">Total</th>
                     <th class="col-act"></th>
                 </tr>
@@ -3494,7 +3494,7 @@ ${data.map((c, idx) => {
             <input type="text" class="landing-inp" data-rid="${rId}" readonly tabindex="-1" style="color:#facc15;font-weight:bold;">
         </td>
         <td class="col-gst">
-            <input type="text" class="row-inp gst-inp" data-rid="${rId}" readonly tabindex="-1" style="color:#64748b">
+            <input type="number" class="row-inp gst-inp" data-rid="${rId}" min="0" max="100" step="0.01" readonly tabindex="-1" title="For new quotation/sales-order items, press Ctrl+Shift+G to edit GST" style="color:#64748b">
         </td>
         <td class="col-tot">
             <input type="text" class="row-inp total-inp" data-rid="${rId}" readonly tabindex="-1" style="font-weight:bold">
@@ -3564,6 +3564,7 @@ ${data.map((c, idx) => {
         const priceGstInp = row.querySelector('.price-gst-inp');
         const discInp = row.querySelector('.disc-inp');
         const landingInp = row.querySelector('.landing-inp');
+        const gstInp = row.querySelector('.gst-inp');
 
         [codeInp, nameInp, qtyInp, typeInp, priceInp, priceGstInp, discInp].forEach(el => {
             el.addEventListener("focus", () => triggerPurchaseHistory(row));
@@ -3749,6 +3750,40 @@ ${data.map((c, idx) => {
         discInp.addEventListener('input', () => calcForward(id));
         priceInp.addEventListener('input', () => calcForward(id));
         priceGstInp.addEventListener('input', () => calcReverse(id));
+        gstInp.addEventListener('input', () => calcForward(id));
+        gstInp.addEventListener('keydown', (e) => {
+            if(e.key !== 'Enter' && e.key !== 'Escape') return;
+
+            e.preventDefault();
+            e.stopImmediatePropagation();
+
+            if(e.key === 'Escape'){
+                gstInp.value = gstInp._gstOriginalValue || '';
+                calcForward(id);
+            }
+
+            const returnFocus = gstInp._gstReturnFocus;
+            gstInp.blur();
+
+            if(returnFocus && returnFocus.isConnected){
+                returnFocus.focus();
+                if(typeof returnFocus.select === 'function') returnFocus.select();
+            }
+        });
+        gstInp.addEventListener('blur', () => {
+            const gst = parseFloat(gstInp.value);
+
+            if(gstInp.value !== '' && (!Number.isFinite(gst) || gst < 0 || gst > 100)){
+                gstInp.value = '';
+                calcForward(id);
+                alert('GST must be between 0 and 100.');
+            }
+
+            gstInp.readOnly = true;
+            gstInp.tabIndex = -1;
+            gstInp.style.color = '#64748b';
+            gstInp.style.background = '';
+        });
         typeInp.addEventListener('change', () => {
             updatePriceFromType(id);
             applyItemRestriction(row);
@@ -4285,6 +4320,33 @@ function calcTotal() {
 
         const input = e.target.closest('.row-inp');
         if(!input) return;
+
+        if(e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'g'){
+            const docType = getCurrentDocType();
+            const row = input.closest('tr');
+
+            if((docType === 'quotation' || docType === 'sales_order') && row){
+                const code = row.querySelector('.code-inp')?.value || '';
+
+                // Stock items keep their saved GST. Only ad-hoc items can override it.
+                if(!isValidStockItem(code)){
+                    const gstInput = row.querySelector('.gst-inp');
+                    if(gstInput){
+                        e.preventDefault();
+                        e.stopImmediatePropagation();
+                        gstInput.readOnly = false;
+                        gstInput.tabIndex = 0;
+                        gstInput.style.color = '#111827';
+                        gstInput.style.background = '#fef3c7';
+                        gstInput._gstOriginalValue = gstInput.value;
+                        gstInput._gstReturnFocus = input;
+                        gstInput.focus();
+                        gstInput.select();
+                    }
+                }
+            }
+            return;
+        }
 
         const allowedKeys = ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Enter'];
         if(!allowedKeys.includes(e.key)) return;

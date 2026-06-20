@@ -10,7 +10,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const app = express();
-app.use(express.json({ limit: "12mb" }));
+app.use(express.json({ limit: "45mb" }));
 
 app.use((req, res, next) => {
     res.setHeader("Access-Control-Allow-Origin", process.env.CORS_ORIGIN || "*");
@@ -292,6 +292,131 @@ ${JSON.stringify(safeCandidates)}`;
         const retryMatch = String(message).match(/retry\s+in\s+([\d.]+)s/i);
         const retryAfterSeconds = retryMatch ? Math.ceil(Number(retryMatch[1]) || 0) : 0;
         console.error("AI catalogue error:", err.response?.data || err.message);
+        res.status(status === 429 ? 429 : 500).json({
+            error: status ? `Gemini ${status}: ${message}` : message,
+            retryAfterSeconds
+        });
+    }
+});
+
+app.post("/api/ai-catalog-document", async (req, res) => {
+    try {
+        const { pdfBase64, mimeType, brand, candidates } = req.body || {};
+
+        if (!GEMINI_API_KEY) {
+            return res.status(500).json({ error: "GEMINI_API_KEY is missing in .env" });
+        }
+        if (!pdfBase64 || !Array.isArray(candidates) || !candidates.length) {
+            return res.status(400).json({ error: "Complete PDF and loaded stock candidates are required" });
+        }
+
+        const safeCandidates = candidates.slice(0, 250).map(item => ({
+            item_code: String(item.item_code || "").slice(0, 100),
+            item_name: String(item.item_name || "").slice(0, 240),
+            description: String(item.description || "").slice(0, 800)
+        })).filter(item => item.item_code);
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_IMAGE_MODEL)}:generateContent`;
+        const prompt = `You are a document-level electrical-product catalogue matching system.
+
+Read the COMPLETE attached PDF before deciding any match. The selected brand/model filter is: ${String(brand || "unknown")}.
+
+The catalogue may use layouts where:
+- product descriptions and catalogue codes are on one side while matching product images are on the other side;
+- one page contains descriptions and another page contains corresponding images;
+- image labels use manufacturer product codes that differ from our internal item codes;
+- alignment, rows, columns, headings, arrows, shared model/series names, colours and specifications establish the relationship.
+
+For every supplied stock candidate, find its correct catalogue product image only when the full-document evidence is reliable.
+
+Matching priority:
+1. Product/series/model name and full description.
+2. Colour, shape, type, ampere, watts, voltage and other specifications.
+3. Manufacturer code relationships learned from the PDF layout.
+4. Internal item_code is only an output identifier. Never require it to equal the catalogue code.
+
+Image rules:
+- Exclude lifestyle/interior photos, people, logos, icons, QR codes, backgrounds and unrelated illustrations.
+- Return the 1-based PDF page containing the chosen product image.
+- box_2d must tightly surround only that product image on its page, using normalized 0-1000 coordinates [ymin, xmin, ymax, xmax].
+- item_code must be copied exactly from STOCK CANDIDATES.
+- Return only confidence >= 0.65. If uncertain, omit that item.
+- At most one best image per stock item.
+
+STOCK CANDIDATES:
+${JSON.stringify(safeCandidates)}`;
+
+        const geminiRes = await axios.post(
+            endpoint,
+            {
+                contents: [{
+                    parts: [
+                        { text: prompt },
+                        {
+                            inlineData: {
+                                mimeType: mimeType || "application/pdf",
+                                data: pdfBase64
+                            }
+                        }
+                    ]
+                }],
+                generationConfig: {
+                    temperature: 0.1,
+                    maxOutputTokens: 32768,
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "ARRAY",
+                        items: {
+                            type: "OBJECT",
+                            properties: {
+                                item_code: { type: "STRING" },
+                                confidence: { type: "NUMBER" },
+                                reason: { type: "STRING" },
+                                catalogue_code: { type: "STRING" },
+                                image_page: { type: "INTEGER" },
+                                box_2d: {
+                                    type: "ARRAY",
+                                    items: { type: "NUMBER" }
+                                }
+                            },
+                            required: ["item_code", "confidence", "reason", "image_page", "box_2d"]
+                        }
+                    }
+                }
+            },
+            {
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-goog-api-key": GEMINI_API_KEY
+                },
+                timeout: 300000,
+                maxBodyLength: Infinity
+            }
+        );
+
+        const parts = geminiRes.data?.candidates?.[0]?.content?.parts || [];
+        const rawText = parts.map(part => part.text || "").join("").trim();
+        const parsed = JSON.parse(rawText || "[]");
+        const allowedCodes = new Set(safeCandidates.map(item => item.item_code));
+        const detections = (Array.isArray(parsed) ? parsed : [])
+            .filter(row => allowedCodes.has(String(row.item_code || "")))
+            .map(row => ({
+                item_code: String(row.item_code),
+                confidence: Math.max(0, Math.min(1, Number(row.confidence) || 0)),
+                reason: String(row.reason || "").slice(0, 500),
+                catalogue_code: String(row.catalogue_code || "").slice(0, 120),
+                image_page: Math.max(1, Number(row.image_page) || 1),
+                box_2d: Array.isArray(row.box_2d) ? row.box_2d.slice(0, 4).map(Number) : []
+            }))
+            .filter(row => row.confidence >= 0.65 && row.box_2d.length === 4 && row.box_2d.every(Number.isFinite));
+
+        res.json({ detections, model: GEMINI_IMAGE_MODEL, analyzedAs: "complete_pdf" });
+    } catch (err) {
+        const status = err.response?.status;
+        const apiMessage = err.response?.data?.error?.message;
+        const message = apiMessage || err.message || "Full PDF AI analysis failed";
+        const retryMatch = String(message).match(/retry\s+in\s+([\d.]+)s/i);
+        const retryAfterSeconds = retryMatch ? Math.ceil(Number(retryMatch[1]) || 0) : 0;
+        console.error("Full PDF AI catalogue error:", err.response?.data || err.message);
         res.status(status === 429 ? 429 : 500).json({
             error: status ? `Gemini ${status}: ${message}` : message,
             retryAfterSeconds

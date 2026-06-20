@@ -1302,17 +1302,23 @@ function cropAiProduct(pageCanvas, box) {
 
 async function analyzeCatalogPageWithAi(pageCanvas, pageNumber, candidates) {
   const dataUrl = pageCanvas.toDataURL("image/jpeg", 0.82);
-  const response = await fetch(getAiCatalogEndpoint(), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      pageImageBase64: dataUrl.split(",")[1],
-      mimeType: "image/jpeg",
-      brand: advancedBrand.value.trim(),
-      pageNumber,
-      candidates
-    })
-  });
+  const endpoint = getAiCatalogEndpoint();
+  let response;
+  try {
+    response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        pageImageBase64: dataUrl.split(",")[1],
+        mimeType: "image/jpeg",
+        brand: advancedBrand.value.trim(),
+        pageNumber,
+        candidates
+      })
+    });
+  } catch (error) {
+    throw new Error(`AI backend is unavailable at ${endpoint}. Start it with: node server.js`);
+  }
 
   const result = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(result.error || "AI catalogue service failed");
@@ -1342,6 +1348,7 @@ async function extractPdfCatalog() {
     const pdf = await window.pdfjsLib.getDocument({ data }).promise;
     let detectedCount = 0;
     let failedPages = 0;
+    let consecutiveFailures = 0;
 
     for (let pageNo = 1; pageNo <= pdf.numPages; pageNo += 1) {
       try {
@@ -1354,6 +1361,7 @@ async function extractPdfCatalog() {
 
         const pageCanvas = await renderPdfPageForAi(page);
         const detections = await analyzeCatalogPageWithAi(pageCanvas, pageNo, stockCandidates);
+        consecutiveFailures = 0;
         const bestByItem = new Map();
         detections.forEach(detection => {
           const existing = bestByItem.get(detection.item_code);
@@ -1385,7 +1393,11 @@ async function extractPdfCatalog() {
         }
       } catch (pageError) {
         failedPages += 1;
+        consecutiveFailures += 1;
         console.error(`AI catalogue page ${pageNo} failed:`, pageError);
+        if (consecutiveFailures >= 2) {
+          throw new Error(`AI service failed on consecutive pages. ${cleanErr(pageError)}`);
+        }
       }
 
       renderAdvancedCandidates();

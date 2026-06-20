@@ -1113,7 +1113,7 @@
     <div id="display_total_before_gst">₹0.00</div>
 </div>
 
-        <div class="grand-total-box">
+        <div class="grand-total-box" id="grand_total_box" style="touch-action:manipulation;user-select:none;-webkit-user-select:none;">
             <span>GRAND TOTAL</span>
             <div id="display_grand_total">₹0.00</div>
         </div>
@@ -1742,6 +1742,7 @@
         bindPaymentEvents();
         initAddressGeoapify();
         setupBelowLandingSecretUnlock();
+        setupMobileProfitGestures();
 
         const params = new URLSearchParams(window.location.search);
         const convertId = params.get("convert");
@@ -4107,15 +4108,81 @@ function calcTotal() {
     const trigger = document.getElementById('profit_trigger');
     const profitBox = document.getElementById('profit_box');
 
+    function toggleProfitBox(){
+        if(!profitBox) return;
+
+        if(profitBox.style.display === 'none'){
+            calcProfit();
+            profitBox.style.display = 'block';
+        } else {
+            profitBox.style.display = 'none';
+        }
+    }
+
     if (trigger) {
-        trigger.addEventListener('dblclick', () => {
-            if (profitBox.style.display === 'none') {
-                calcProfit();
-                profitBox.style.display = 'block';
-            } else {
-                profitBox.style.display = 'none';
+        trigger.addEventListener('dblclick', toggleProfitBox);
+    }
+
+    function setupMobileProfitGestures(){
+        const gestureArea = document.getElementById('grand_total_box');
+        if(!gestureArea || gestureArea.dataset.mobileProfitBound === '1') return;
+
+        gestureArea.dataset.mobileProfitBound = '1';
+        let pressTimer = null;
+        let longPressTriggered = false;
+        let lastTapTime = 0;
+        let startX = 0;
+        let startY = 0;
+
+        const cancelPress = () => {
+            clearTimeout(pressTimer);
+            pressTimer = null;
+        };
+
+        gestureArea.addEventListener('pointerdown', (e) => {
+            if(e.pointerType !== 'touch' && e.pointerType !== 'pen') return;
+
+            startX = e.clientX;
+            startY = e.clientY;
+            longPressTriggered = false;
+            cancelPress();
+
+            pressTimer = setTimeout(() => {
+                longPressTriggered = true;
+                lastTapTime = 0;
+                unlockBelowLandingTemporarily();
+                if(navigator.vibrate) navigator.vibrate(120);
+            }, 4000);
+        });
+
+        gestureArea.addEventListener('pointermove', (e) => {
+            if(Math.abs(e.clientX - startX) > 12 || Math.abs(e.clientY - startY) > 12){
+                cancelPress();
             }
         });
+
+        gestureArea.addEventListener('pointerup', (e) => {
+            if(e.pointerType !== 'touch' && e.pointerType !== 'pen') return;
+
+            cancelPress();
+            if(longPressTriggered){
+                longPressTriggered = false;
+                return;
+            }
+
+            const now = Date.now();
+            if(now - lastTapTime <= 350){
+                e.preventDefault();
+                lastTapTime = 0;
+                toggleProfitBox();
+                if(navigator.vibrate) navigator.vibrate(40);
+            } else {
+                lastTapTime = now;
+            }
+        });
+
+        gestureArea.addEventListener('pointercancel', cancelPress);
+        gestureArea.addEventListener('pointerleave', cancelPress);
     }
 
     function setupBelowLandingSecretUnlock() {

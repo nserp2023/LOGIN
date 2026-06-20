@@ -227,6 +227,66 @@
       flex-wrap: wrap;
     }
 
+    .crm-overdue-reminder {
+      position: fixed;
+      top: 14px;
+      right: 14px;
+      z-index: 1500;
+      display: none;
+      align-items: center;
+      width: 54px;
+      height: 54px;
+      padding: 8px;
+      border: 1px solid rgba(255,255,255,.32);
+      border-radius: 999px;
+      color: #fff;
+      background: linear-gradient(135deg, #25d366, #128c3e);
+      box-shadow: 0 12px 30px rgba(18,140,62,.38);
+      cursor: pointer;
+      font: inherit;
+      font-weight: 800;
+      transition: transform .16s ease, box-shadow .16s ease;
+    }
+
+    .crm-overdue-reminder.show { display: inline-flex; }
+    .dashboard-page.crm-reminder-active .topbar { padding-right: 82px; }
+    .crm-overdue-reminder:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 16px 36px rgba(18,140,62,.48);
+    }
+
+    .crm-reminder-icon {
+      position: relative;
+      display: grid;
+      place-items: center;
+      width: 36px;
+      height: 36px;
+      flex: 0 0 auto;
+      border-radius: 50%;
+      background: rgba(255,255,255,.17);
+    }
+
+    .crm-reminder-icon svg { width: 24px; height: 24px; fill: currentColor; }
+    .crm-reminder-count {
+      position: absolute;
+      top: -7px;
+      right: -8px;
+      display: grid;
+      place-items: center;
+      min-width: 23px;
+      height: 23px;
+      padding: 0 6px;
+      border: 2px solid #fff;
+      border-radius: 999px;
+      color: #fff;
+      background: #ef4444;
+      font-size: 12px;
+      line-height: 1;
+      box-shadow: 0 4px 10px rgba(0,0,0,.25);
+    }
+
+    .crm-reminder-copy { display: none; }
+
     .mobile-menu-btn,
     .header-action-btn,
     .backup-btn,
@@ -1164,6 +1224,14 @@
       .card {
         min-height: 88px;
       }
+      .crm-overdue-reminder {
+        top: 9px;
+        right: 9px;
+        width: 48px;
+        height: 48px;
+        padding: 6px;
+      }
+      .dashboard-page.crm-reminder-active .topbar { padding-right: 68px; }
     }
     .change-password-btn{
   display:flex;
@@ -1250,6 +1318,18 @@
   </style>
 </head>
 <body class="dashboard-page">
+  <button id="crmOverdueReminder" class="crm-overdue-reminder" type="button"
+    title="Open overdue CRM follow-ups" aria-label="Open overdue CRM follow-ups"
+    onclick="go('crm.html')">
+    <span class="crm-reminder-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><path d="M12 2a9.5 9.5 0 0 0-8.21 14.28L2.5 21.5l5.37-1.25A9.5 9.5 0 1 0 12 2Zm0 17a7.45 7.45 0 0 1-3.8-1.04l-.42-.25-2.3.54.56-2.22-.28-.44A7.5 7.5 0 1 1 12 19Zm4.1-5.62c-.22-.11-1.32-.65-1.52-.73-.2-.07-.35-.11-.5.11-.15.23-.57.73-.7.88-.13.15-.26.17-.48.06-.22-.11-.94-.35-1.79-1.1a6.7 6.7 0 0 1-1.23-1.53c-.13-.22-.01-.34.1-.45.1-.1.22-.26.33-.39.11-.13.15-.22.22-.37.08-.15.04-.28-.02-.39-.05-.11-.5-1.2-.68-1.64-.18-.43-.36-.37-.5-.38h-.42c-.15 0-.39.06-.59.28-.2.22-.77.75-.77 1.84s.79 2.13.9 2.28c.11.15 1.56 2.38 3.78 3.34.53.23.94.36 1.26.46.53.17 1.01.14 1.39.09.43-.06 1.32-.54 1.5-1.06.19-.52.19-.97.13-1.06-.05-.09-.2-.14-.42-.25Z"/></svg>
+      <span id="crmOverdueCount" class="crm-reminder-count">0</span>
+    </span>
+    <span class="crm-reminder-copy">
+      <span>CRM Overdue</span>
+      <small>Open pending follow-ups</small>
+    </span>
+  </button>
   <div class="dashboard-shell">
 
 
@@ -1521,6 +1601,7 @@
         setupFab();
         setupBackupButton();
         setupCashClosingButtons();
+        loadCRMOverdueReminder();
 
         await loadTodayDashboardSummary();
         await loadLatestCashClosing();
@@ -1541,6 +1622,54 @@
         year: "numeric"
       });
       el.innerText = "Today • " + formatted;
+    }
+
+    function isCRMComplaintClosed(notes) {
+      const marker = "[[CRM_META_V1]]";
+      const text = String(notes || "");
+      const markerIndex = text.indexOf(marker);
+      if (markerIndex === -1) return false;
+
+      try {
+        const meta = JSON.parse(text.slice(markerIndex + marker.length).trim());
+        const status = String(meta?.complaint_status || "").trim().toUpperCase();
+        return status === "SOLVED" || status === "CLOSED";
+      } catch (_) {
+        return false;
+      }
+    }
+
+    async function loadCRMOverdueReminder() {
+      const reminder = document.getElementById("crmOverdueReminder");
+      const countEl = document.getElementById("crmOverdueCount");
+      if (!reminder || !countEl) return;
+
+      try {
+        const now = new Date();
+        const today = [
+          now.getFullYear(),
+          String(now.getMonth() + 1).padStart(2, "0"),
+          String(now.getDate()).padStart(2, "0")
+        ].join("-");
+        const { data, error } = await sb
+          .from("crm_customers")
+          .select("next_followup_date, notes")
+          .lt("next_followup_date", today)
+          .not("next_followup_date", "is", null);
+
+        if (error) throw error;
+
+        const overdueCount = (data || []).filter(row => !isCRMComplaintClosed(row.notes)).length;
+        countEl.textContent = overdueCount > 99 ? "99+" : String(overdueCount);
+        reminder.classList.toggle("show", overdueCount > 0);
+        document.body.classList.toggle("crm-reminder-active", overdueCount > 0);
+        reminder.setAttribute("aria-label", `Open ${overdueCount} overdue CRM follow-up${overdueCount === 1 ? "" : "s"}`);
+        reminder.title = `${overdueCount} overdue CRM follow-up${overdueCount === 1 ? "" : "s"}`;
+      } catch (err) {
+        reminder.classList.remove("show");
+        document.body.classList.remove("crm-reminder-active");
+        console.warn("Unable to load CRM overdue reminder:", err?.message || err);
+      }
     }
 
     async function loadUserInfo() {

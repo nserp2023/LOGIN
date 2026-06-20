@@ -289,9 +289,12 @@ ${JSON.stringify(safeCandidates)}`;
         const status = err.response?.status;
         const apiMessage = err.response?.data?.error?.message;
         const message = apiMessage || err.message || "AI catalogue analysis failed";
+        const retryMatch = String(message).match(/retry\s+in\s+([\d.]+)s/i);
+        const retryAfterSeconds = retryMatch ? Math.ceil(Number(retryMatch[1]) || 0) : 0;
         console.error("AI catalogue error:", err.response?.data || err.message);
-        res.status(500).json({
-            error: status ? `Gemini ${status}: ${message}` : message
+        res.status(status === 429 ? 429 : 500).json({
+            error: status ? `Gemini ${status}: ${message}` : message,
+            retryAfterSeconds
         });
     }
 });

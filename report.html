@@ -176,6 +176,22 @@
             margin-left:6px;
         }
 
+        .payment-badge {
+            display:inline-block;
+            padding:3px 7px;
+            border-radius:999px;
+            color:#fff;
+            font-size:10px;
+            font-weight:900;
+            letter-spacing:.35px;
+            margin:4px 0 0 6px;
+            white-space:nowrap;
+        }
+
+        .payment-cash { background:#15803d; }
+        .payment-credit { background:#b91c1c; }
+        .payment-advance-credit { background:#c2410c; }
+
         .cancel-info {
             color:#ffd6d6;
             font-size:11px;
@@ -322,6 +338,25 @@
 
     function getCreatedByValue(row){
         return row.created_by || row.created_user || row.created_by_user || row.user_name || row.username || "";
+    }
+
+    function getReportPaymentType(row, type){
+        if(type === "quotation") return "";
+        if(type === "sales_order") return "CREDIT";
+
+        const savedType = row.report_payment_type || row.payment_type;
+        return String(savedType || "CASH").trim().toUpperCase();
+    }
+
+    function getPaymentBadge(row, type){
+        const paymentType = getReportPaymentType(row, type);
+        if(!paymentType) return "";
+
+        const badgeClass = paymentType === "ADVANCE CREDIT"
+            ? "payment-advance-credit"
+            : (paymentType === "CREDIT" ? "payment-credit" : "payment-cash");
+
+        return `<span class="payment-badge ${badgeClass}">${escapeHTML(paymentType)}</span>`;
     }
 
     function getCurrentTypeConfig() {
@@ -867,6 +902,27 @@
 
         let rows = data || [];
 
+        // Packing headers do not store payment_type; read it from their linked Sales bill.
+        if(type === "sales_pack"){
+            const linkedSalesIds = [...new Set(rows.map(r => Number(r.sales_id)).filter(Boolean))];
+            if(linkedSalesIds.length){
+                const { data: linkedSales, error: linkedPaymentError } = await sb
+                    .from("sales_details")
+                    .select("id,payment_type")
+                    .in("id", linkedSalesIds);
+
+                if(linkedPaymentError){
+                    console.warn("Could not load packing payment types:", linkedPaymentError);
+                }else{
+                    const paymentBySalesId = new Map((linkedSales || []).map(s => [Number(s.id), s.payment_type]));
+                    rows = rows.map(r => ({
+                        ...r,
+                        report_payment_type: paymentBySalesId.get(Number(r.sales_id)) || "CASH"
+                    }));
+                }
+            }
+        }
+
         if(salesmanFilter){
             rows = rows.filter(r =>
                 normalizeText(r.salesman).includes(normalizeText(salesmanFilter))
@@ -922,6 +978,7 @@
                     ${s[cfg.numberField] || ''}
                     ${s.hasMissingItem ? '<span class="warn-badge">⚠</span>' : ''}
                     ${s.status === "CANCELLED" ? '<span class="cancelled-badge">CANCELLED</span>' : ''}
+                    ${getPaymentBadge(s, type)}
                     ${cancelInfo}
                 </td>
 

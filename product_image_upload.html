@@ -1236,11 +1236,12 @@ function getAiCatalogEndpoint() {
 }
 
 function buildAiStockCandidates(pageText) {
-  const ranked = findCatalogMatches(pageText);
+  const loadedCodes = new Set(advancedLoadedItems.map(item => String(item.item_code || "")));
+  const ranked = findCatalogMatches(pageText).filter(item => loadedCodes.has(String(item.item_code || "")));
   const combined = [...ranked];
   const usedCodes = new Set(ranked.map(item => String(item.item_code || "")));
 
-  for (const item of getBrandItems()) {
+  for (const item of advancedLoadedItems) {
     const code = String(item.item_code || "");
     if (!code || usedCodes.has(code)) continue;
     combined.push(item);
@@ -1297,7 +1298,7 @@ function cropAiProduct(pageCanvas, box) {
   return crop;
 }
 
-async function analyzeCatalogPageWithAi(pageCanvas, pageNumber, candidates) {
+async function analyzeCatalogPageWithAi(pageCanvas, pageNumber, candidates, documentContext = "") {
   const dataUrl = pageCanvas.toDataURL("image/jpeg", 0.82);
   const endpoint = getAiCatalogEndpoint();
   const requestBody = JSON.stringify({
@@ -1305,7 +1306,8 @@ async function analyzeCatalogPageWithAi(pageCanvas, pageNumber, candidates) {
     mimeType: "image/jpeg",
     brand: advancedBrand.value.trim(),
     pageNumber,
-    candidates
+    candidates,
+    documentContext
   });
 
   for (let attempt = 1; attempt <= 3; attempt += 1) {
@@ -1372,7 +1374,7 @@ async function analyzeFullCatalogWithAi(file, candidates) {
     }
 
     const result = await response.json().catch(() => ({}));
-    if (response.ok) return Array.isArray(result.detections) ? result.detections : [];
+    if (response.ok) return result;
 
     if (response.status === 429 && attempt < 6) {
       const waitSeconds = Math.max(65, Number(result.retryAfterSeconds) || 0) + 1;
@@ -1421,7 +1423,41 @@ async function extractPdfCatalog() {
       item_name: item.item_name || "",
       description: getItemDescriptionText(item)
     }));
-    const detections = await analyzeFullCatalogWithAi(file, stockCandidates);
+    const fullResult = await analyzeFullCatalogWithAi(file, stockCandidates);
+    const documentAnalysis = fullResult.documentAnalysis || {};
+    const documentContext = JSON.stringify({
+      layout_summary: documentAnalysis.layout_summary || "",
+      code_image_relationship: documentAnalysis.code_image_relationship || ""
+    });
+    let relevantPages = (Array.isArray(documentAnalysis.relevant_pages) ? documentAnalysis.relevant_pages : [])
+      .map(Number)
+      .filter(pageNo => Number.isInteger(pageNo) && pageNo >= 1 && pageNo <= pdf.numPages);
+    relevantPages = [...new Set(relevantPages)];
+
+    if (!relevantPages.length) {
+      relevantPages = Array.from({ length: pdf.numPages }, (_, index) => index + 1);
+    }
+
+    const refinedDetections = [];
+    const pageCanvases = new Map();
+    for (let index = 0; index < relevantPages.length; index += 1) {
+      const pageNo = relevantPages[index];
+      setAdvancedStatus(`Full PDF understood. Refining product images on relevant page ${index + 1} of ${relevantPages.length}...`, "wait");
+      const page = await pdf.getPage(pageNo);
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items.map(item => item.str || "").join(" ");
+      const pageCandidates = buildAiStockCandidates(pageText);
+      if (!pageCandidates.length) continue;
+
+      const pageCanvas = await renderPdfPageForAi(page);
+      pageCanvases.set(pageNo, pageCanvas);
+      const pageDetections = await analyzeCatalogPageWithAi(pageCanvas, pageNo, pageCandidates, documentContext);
+      pageDetections.forEach(detection => refinedDetections.push({ ...detection, image_page: pageNo }));
+    }
+
+    const detections = refinedDetections.length
+      ? refinedDetections
+      : (Array.isArray(fullResult.detections) ? fullResult.detections : []);
     const bestByItem = new Map();
     detections.forEach(detection => {
       const existing = bestByItem.get(detection.item_code);
@@ -1430,7 +1466,6 @@ async function extractPdfCatalog() {
       }
     });
 
-    const pageCanvases = new Map();
     let detectedCount = 0;
     for (const detection of bestByItem.values()) {
       const pageNo = Math.max(1, Math.min(pdf.numPages, Number(detection.image_page) || 1));

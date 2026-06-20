@@ -401,6 +401,7 @@
     .candidate-card img { width: 128px; height: 128px; object-fit: contain; border-radius: 12px; background: #fff; }
     .candidate-meta { display: grid; gap: 8px; min-width: 0; }
     .candidate-row { display: flex; align-items: center; gap: 8px; color: #cbd5e1; font-size: 12px; }
+    .candidate-reason { color: #94a3b8; font-size: 11px; line-height: 1.35; }
     .candidate-row input[type="checkbox"] { width: auto; accent-color: var(--good); }
     .candidate-meta input { padding: 10px 12px; border-radius: 12px; font-size: 13px; }
     .candidate-tools { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -512,7 +513,7 @@
         <section class="card">
           <div class="card-head">
             <h2>Catalogue source</h2>
-            <span class="pill" style="display:inline-flex;">PDF + Review</span>
+            <span class="pill" style="display:inline-flex;">AI Vision</span>
           </div>
           <div class="card-body">
             <div class="field">
@@ -526,9 +527,9 @@
             <div class="advanced-actions">
               <button class="btn dark" type="button" onclick="buildBrandProductList()">Load brand items</button>
               <button class="btn warn" type="button" onclick="clearAdvancedQueue()">Clear queue</button>
-              <button class="btn" id="extractPdfBtn" type="button" onclick="extractPdfCatalog()">Extract PDF images</button>
+              <button class="btn" id="extractPdfBtn" type="button" onclick="extractPdfCatalog()">Analyze PDF with AI</button>
             </div>
-            <p class="advanced-note">The PDF is processed in this browser. Matching prioritizes product names, descriptions, model and specifications such as colour, shape, ampere, watts and voltage. Item code is only supporting evidence because catalogue and internal codes may differ. Every match remains pending until you approve it.</p>
+            <p class="advanced-note">AI examines each PDF page, rejects decorative/lifestyle images, identifies real products, matches names and specifications against your stock, and crops the correct product region. Item code is only supporting evidence. Every result remains pending until you approve it.</p>
             <div id="advancedStatus" class="status"></div>
           </div>
         </section>
@@ -1222,10 +1223,110 @@ async function loadPdfJs() {
   return pdfJsLoadingPromise;
 }
 
+function getAiCatalogEndpoint() {
+  const configuredUrl = window.AI_CATALOG_API_URL || localStorage.getItem("AI_CATALOG_API_URL");
+  if (configuredUrl) return configuredUrl;
+
+  if (window.location.protocol === "http:" || window.location.protocol === "https:") {
+    const isLocalHost = ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
+    const apiOrigin = isLocalHost && window.location.port && window.location.port !== "3000"
+      ? `${window.location.protocol}//${window.location.hostname}:3000`
+      : window.location.origin;
+    return `${apiOrigin}/api/ai-catalog-page`;
+  }
+
+  return "http://localhost:3000/api/ai-catalog-page";
+}
+
+function buildAiStockCandidates(pageText) {
+  const ranked = findCatalogMatches(pageText);
+  const combined = [...ranked];
+  const usedCodes = new Set(ranked.map(item => String(item.item_code || "")));
+
+  for (const item of getBrandItems()) {
+    const code = String(item.item_code || "");
+    if (!code || usedCodes.has(code)) continue;
+    combined.push(item);
+    usedCodes.add(code);
+    if (combined.length >= 120) break;
+  }
+
+  return combined.slice(0, 120).map(item => ({
+    item_code: item.item_code || "",
+    item_name: item.item_name || "",
+    description: getItemDescriptionText(item)
+  }));
+}
+
+async function renderPdfPageForAi(page) {
+  const initialViewport = page.getViewport({ scale: 2 });
+  const scale = initialViewport.width > 1800 ? 2 * (1800 / initialViewport.width) : 2;
+  const viewport = page.getViewport({ scale });
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(viewport.width);
+  canvas.height = Math.round(viewport.height);
+  const context = canvas.getContext("2d", { alpha: false });
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  await page.render({ canvasContext: context, viewport }).promise;
+  return canvas;
+}
+
+function cropAiProduct(pageCanvas, box) {
+  if (!Array.isArray(box) || box.length !== 4) return null;
+  let [ymin, xmin, ymax, xmax] = box.map(value => Math.max(0, Math.min(1000, Number(value) || 0)));
+  if (ymax <= ymin || xmax <= xmin) return null;
+
+  const paddingX = Math.min(18, (xmax - xmin) * 0.06);
+  const paddingY = Math.min(18, (ymax - ymin) * 0.06);
+  xmin = Math.max(0, xmin - paddingX);
+  xmax = Math.min(1000, xmax + paddingX);
+  ymin = Math.max(0, ymin - paddingY);
+  ymax = Math.min(1000, ymax + paddingY);
+
+  const sx = Math.round((xmin / 1000) * pageCanvas.width);
+  const sy = Math.round((ymin / 1000) * pageCanvas.height);
+  const sw = Math.max(1, Math.round(((xmax - xmin) / 1000) * pageCanvas.width));
+  const sh = Math.max(1, Math.round(((ymax - ymin) / 1000) * pageCanvas.height));
+  if (sw < 80 || sh < 80) return null;
+
+  const crop = document.createElement("canvas");
+  crop.width = sw;
+  crop.height = sh;
+  const ctx = crop.getContext("2d", { alpha: false });
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, sw, sh);
+  ctx.drawImage(pageCanvas, sx, sy, sw, sh, 0, 0, sw, sh);
+  return crop;
+}
+
+async function analyzeCatalogPageWithAi(pageCanvas, pageNumber, candidates) {
+  const dataUrl = pageCanvas.toDataURL("image/jpeg", 0.82);
+  const response = await fetch(getAiCatalogEndpoint(), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      pageImageBase64: dataUrl.split(",")[1],
+      mimeType: "image/jpeg",
+      brand: advancedBrand.value.trim(),
+      pageNumber,
+      candidates
+    })
+  });
+
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(result.error || "AI catalogue service failed");
+  return Array.isArray(result.detections) ? result.detections : [];
+}
+
 async function extractPdfCatalog() {
   const file = catalogPdf.files[0];
   if (!file) {
     setAdvancedStatus("Choose a PDF catalogue first.", "err");
+    return;
+  }
+  if (!advancedBrand.value.trim()) {
+    setAdvancedStatus("Enter the brand or product series first so AI receives the correct stock candidates.", "err");
     return;
   }
   const button = document.getElementById("extractPdfBtn");
@@ -1239,59 +1340,67 @@ async function extractPdfCatalog() {
     setAdvancedStatus("Opening PDF catalogue...", "wait");
     const data = await file.arrayBuffer();
     const pdf = await window.pdfjsLib.getDocument({ data }).promise;
-    let extractedCount = 0;
+    let detectedCount = 0;
+    let failedPages = 0;
 
     for (let pageNo = 1; pageNo <= pdf.numPages; pageNo += 1) {
-      setAdvancedStatus(`Scanning PDF page ${pageNo} of ${pdf.numPages}...`, "wait");
-      const page = await pdf.getPage(pageNo);
-      const textContent = await page.getTextContent();
-      const pageText = textContent.items.map(item => item.str || "").join(" ");
-      const matches = findCatalogMatches(pageText);
-      const operatorList = await page.getOperatorList();
-      const imageNames = [];
+      try {
+        setAdvancedStatus(`AI analyzing PDF page ${pageNo} of ${pdf.numPages}...`, "wait");
+        const page = await pdf.getPage(pageNo);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items.map(item => item.str || "").join(" ");
+        const stockCandidates = buildAiStockCandidates(pageText);
+        if (!stockCandidates.length) continue;
 
-      operatorList.fnArray.forEach((fn, index) => {
-        if (fn === window.pdfjsLib.OPS.paintImageXObject || fn === window.pdfjsLib.OPS.paintJpegXObject) {
-          const name = operatorList.argsArray[index]?.[0];
-          if (name && !imageNames.includes(name)) imageNames.push(name);
-        }
-      });
-
-      for (const imageName of imageNames) {
-        const image = await getPdfObject(page, imageName);
-        const canvas = pdfImageToCanvas(image);
-        if (!canvas) continue;
-
-        const blob = await canvasToJpegBlob(canvas);
-        if (!blob) continue;
-        const bestMatch = matches[0] || null;
-
-        advancedCandidates.push({
-          id: ++advancedCandidateSequence,
-          page: pageNo,
-          blob,
-          objectUrl: URL.createObjectURL(blob),
-          remoteUrl: "",
-          productValue: bestMatch ? formatProductValue(bestMatch) : "",
-          approved: false,
-          sourceLabel: `PDF page ${pageNo}`
+        const pageCanvas = await renderPdfPageForAi(page);
+        const detections = await analyzeCatalogPageWithAi(pageCanvas, pageNo, stockCandidates);
+        const bestByItem = new Map();
+        detections.forEach(detection => {
+          const existing = bestByItem.get(detection.item_code);
+          if (!existing || Number(detection.confidence) > Number(existing.confidence)) {
+            bestByItem.set(detection.item_code, detection);
+          }
         });
-        extractedCount += 1;
+
+        for (const detection of bestByItem.values()) {
+          const item = stockItems.find(row => String(row.item_code || "") === String(detection.item_code || ""));
+          const cropCanvas = cropAiProduct(pageCanvas, detection.box_2d);
+          if (!item || !cropCanvas) continue;
+
+          const blob = await canvasToJpegBlob(cropCanvas);
+          if (!blob) continue;
+          const confidence = Math.round((Number(detection.confidence) || 0) * 100);
+          advancedCandidates.push({
+            id: ++advancedCandidateSequence,
+            page: pageNo,
+            blob,
+            objectUrl: URL.createObjectURL(blob),
+            remoteUrl: "",
+            productValue: formatProductValue(item),
+            approved: false,
+            sourceLabel: `AI ${confidence}% · page ${pageNo}`,
+            aiReason: detection.reason || ""
+          });
+          detectedCount += 1;
+        }
+      } catch (pageError) {
+        failedPages += 1;
+        console.error(`AI catalogue page ${pageNo} failed:`, pageError);
       }
 
-      if (pageNo % 5 === 0) renderAdvancedCandidates();
+      renderAdvancedCandidates();
     }
 
     renderAdvancedCandidates();
     setAdvancedStatus(
-      extractedCount
-        ? `${extractedCount} embedded images extracted. Check every product match before uploading.`
-        : "No reusable embedded images were found. This PDF may contain vector artwork or protected/scanned pages.",
-      extractedCount ? "ok" : "err"
+      detectedCount
+        ? `AI found ${detectedCount} matched product images${failedPages ? `; ${failedPages} page(s) failed` : ""}. Review before uploading.`
+        : `AI found no confident product matches${failedPages ? `; ${failedPages} page(s) failed` : ""}. Check the brand and server API configuration.`,
+      detectedCount && !failedPages ? "ok" : "err"
     );
   } catch (error) {
     console.error(error);
-    setAdvancedStatus("PDF extraction failed: " + cleanErr(error), "err");
+    setAdvancedStatus("AI PDF analysis failed: " + cleanErr(error), "err");
   } finally {
     button.disabled = false;
   }
@@ -1318,6 +1427,7 @@ function renderAdvancedCandidates() {
           <input type="checkbox" ${candidate.approved ? "checked" : ""} onchange="setCandidateApproved(${candidate.id}, this.checked)" />
           <b>${escapeHtml(candidate.sourceLabel)}</b>
         </div>
+        ${candidate.aiReason ? `<div class="candidate-reason">${escapeHtml(candidate.aiReason)}</div>` : ""}
         <input list="advancedStockOptions" value="${escapeHtml(candidate.productValue)}" placeholder="Item code - product name" onchange="setCandidateProduct(${candidate.id}, this.value)" />
         <input value="${escapeHtml(candidate.remoteUrl)}" placeholder="Optional official image URL" onchange="setCandidateUrl(${candidate.id}, this.value, this)" />
         <div class="candidate-tools">

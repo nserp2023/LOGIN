@@ -1609,21 +1609,22 @@
         }
 
         const type = document.getElementById("report_type").value;
+        const pageVersion = Date.now();
 
         if(type === "sales"){
-            window.location = `newsoq.html?edit=${id}&type=sales`;
+            window.location = `newsoq.html?edit=${id}&type=sales&v=${pageVersion}`;
         }
 
         if(type === "sales_pack"){
-            window.location = `newsoq.html?edit=${id}&type=sales_pack`;
+            window.location = `newsoq.html?edit=${id}&type=sales_pack&v=${pageVersion}`;
         }
 
         if(type === "quotation"){
-            window.location = `newsoq.html?edit=${id}&type=quotation`;
+            window.location = `newsoq.html?edit=${id}&type=quotation&v=${pageVersion}`;
         }
 
         if(type === "sales_order"){
-            window.location = `newsoq.html?edit=${id}&type=sales_order`;
+            window.location = `newsoq.html?edit=${id}&type=sales_order&v=${pageVersion}`;
         }
     }
 

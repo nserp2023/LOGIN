@@ -174,6 +174,7 @@
     .create-stack{width:100%;}
     .crm-list-panel{width:100%;}
     .profile-panel-wrap{width:100%;}
+    .profile-panel-wrap[hidden]{display:none;}
 
     .panel{
       background:var(--panel);
@@ -815,12 +816,13 @@
       </section>
 
       <!-- CUSTOMER OLD DETAILS / PROFILE -->
-      <section class="panel panel-profile profile-panel-wrap">
+      <section class="panel panel-profile profile-panel-wrap" id="profilePanelWrap" hidden>
         <div class="panel-header">
           <div>
             <h2>Customer Profile</h2>
             <p>CRM details, complaint tracker + billing history</p>
           </div>
+          <button class="mini-btn" type="button" onclick="closeProfile()" aria-label="Close customer profile">Close</button>
         </div>
         <div class="panel-body" id="profilePanel">
           <div class="profile-empty">Select a customer to view full profile and sales history</div>
@@ -873,6 +875,7 @@
 
     const customerTableBody = document.getElementById("customerTableBody");
     const followupList = document.getElementById("followupList");
+    const profilePanelWrap = document.getElementById("profilePanelWrap");
     const profilePanel = document.getElementById("profilePanel");
 
     const totalCustomers = document.getElementById("totalCustomers");
@@ -1402,6 +1405,13 @@
       window.location.href = `crm_register.html?id=${encodeURIComponent(id)}`;
     }
 
+    function closeProfile() {
+      selectedCustomerId = null;
+      profilePanelWrap.hidden = true;
+      profilePanel.innerHTML = `<div class="profile-empty">Select a customer to view full profile and sales history</div>`;
+      renderCustomers();
+    }
+
     async function deleteCustomer(id, name) {
       const ok = confirm(`DELETE CUSTOMER "${name}"?`);
       if (!ok) return;
@@ -1418,8 +1428,7 @@
 
       if (Number(editingId) === Number(id)) resetForm();
       if (Number(selectedCustomerId) === Number(id)) {
-        selectedCustomerId = null;
-        profilePanel.innerHTML = `<div class="profile-empty">Select a customer to view full profile and sales history</div>`;
+        closeProfile();
       }
 
       showStatus("CRM CUSTOMER DELETED SUCCESSFULLY.", "success");
@@ -1431,9 +1440,11 @@
       if (!row) return;
 
       selectedCustomerId = id;
+      profilePanelWrap.hidden = false;
       renderCustomers();
 
       profilePanel.innerHTML = `<div class="profile-empty">Loading customer profile...</div>`;
+      requestAnimationFrame(() => profilePanelWrap.scrollIntoView({ behavior: "smooth", block: "start" }));
 
       const salesSummary = await loadSalesSummaryByMobile(row.mobile);
       const salesItems = await loadRecentSalesItemsByMobile(row.mobile);
@@ -1725,7 +1736,7 @@
       document.querySelectorAll(".chip").forEach(c => c.classList.toggle("active", c.dataset.quick === quickFilter));
       updateClosedButtons();
       await loadCustomers();
-      profilePanel.innerHTML = `<div class="profile-empty">Complaint solved. Use “View Solved” to see completed complaint details.</div>`;
+      closeProfile();
     }
 
     function formatWhatsAppLine(label, value) {
@@ -1816,6 +1827,7 @@ ${formatWhatsAppLine("🧾 Customer Note:", visibleNotes)}
     window.editCustomer = editCustomer;
     window.deleteCustomer = deleteCustomer;
     window.openProfile = openProfile;
+    window.closeProfile = closeProfile;
     window.solveComplaint = solveComplaint;
     window.followupComplaint = followupComplaint;
     window.reopenComplaint = reopenComplaint;

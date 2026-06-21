@@ -29,6 +29,39 @@ const APP_BASE_URL = process.env.APP_BASE_URL || "http://localhost:5500";
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_VOICE_MODEL = process.env.GEMINI_VOICE_MODEL || "gemini-3.5-flash";
 const GEMINI_IMAGE_MODEL = process.env.GEMINI_IMAGE_MODEL || "gemini-2.5-flash";
+const GEMINI_IMAGE_GENERATION_MODEL = process.env.GEMINI_IMAGE_GENERATION_MODEL || "gemini-3.1-flash-image";
+
+const CATALOGUE_COLOURS = [
+    "rose gold", "champagne gold", "antique gold", "satin gold", "light gold", "dark gold",
+    "stainless steel", "brushed steel", "rosewood", "dark grey", "light grey",
+    "red", "green", "blue", "silver", "black", "white", "grey", "gray", "gold",
+    "bronze", "brown", "ivory", "beige", "copper", "chrome", "nickel", "brass",
+    "orange", "yellow", "purple", "pink"
+];
+
+function extractCatalogueColour(value) {
+    const text = String(value || "").toLowerCase().replace(/[_/-]+/g, " ");
+    const colour = CATALOGUE_COLOURS.find(name => new RegExp(`\\b${name.replace(/ /g, "\\s+")}\\b`, "i").test(text));
+    if (!colour) return "";
+    return colour === "gray" ? "grey" : colour;
+}
+
+function extractModuleSize(value) {
+    const match = String(value || "").match(/\b(\d{1,2})\s*(?:m|module(?:s)?)\b/i);
+    return match ? Number(match[1]) : 0;
+}
+
+function hasCompatibleCatalogueEvidence(row, candidate) {
+    const candidateText = `${candidate.item_name || ""} ${candidate.description || ""}`;
+    const candidateColour = extractCatalogueColour(candidateText);
+    const observedColour = extractCatalogueColour(row.observed_colour);
+    if (candidateColour && observedColour && candidateColour !== observedColour) return false;
+
+    const candidateModules = extractModuleSize(candidateText);
+    const observedModules = extractModuleSize(row.observed_module_size);
+    if (candidateModules && observedModules && candidateModules !== observedModules) return false;
+    return true;
+}
 
 function formatNumber(raw) {
     let num = String(raw || "").replace(/\D/g, "").replace(/^0+/, "");
@@ -225,6 +258,9 @@ Rules:
 6. box_2d uses normalized 0-1000 coordinates in this order: [ymin, xmin, ymax, xmax].
 7. item_code must be copied exactly from the candidate list. Do not invent products.
 8. If no candidate is reliable, return an empty array.
+9. Colour and module/size are HARD constraints. Never match RED to rose gold, gold, brown or another colour. Never match 1M to 2M, 16M or 18M. Omit the detection when either attribute conflicts.
+10. observed_colour and observed_module_size must describe only what the catalogue visibly says, never values copied from the stock candidate.
+11. The crop box must contain only the product render/photo. Exclude captions, colour swatches, catalogue codes, prices, tables and surrounding labels.
 
 STOCK CANDIDATES:
 ${JSON.stringify(safeCandidates)}`;
@@ -254,12 +290,14 @@ ${JSON.stringify(safeCandidates)}`;
                                 item_code: { type: "STRING" },
                                 confidence: { type: "NUMBER" },
                                 reason: { type: "STRING" },
+                                observed_colour: { type: "STRING" },
+                                observed_module_size: { type: "STRING" },
                                 box_2d: {
                                     type: "ARRAY",
                                     items: { type: "NUMBER" }
                                 }
                             },
-                            required: ["item_code", "confidence", "reason", "box_2d"]
+                            required: ["item_code", "confidence", "reason", "observed_colour", "observed_module_size", "box_2d"]
                         }
                     }
                 }
@@ -277,12 +315,16 @@ ${JSON.stringify(safeCandidates)}`;
         const rawText = parts.map(part => part.text || "").join("").trim();
         const parsed = JSON.parse(rawText || "[]");
         const allowedCodes = new Set(safeCandidates.map(item => item.item_code));
+        const candidatesByCode = new Map(safeCandidates.map(item => [item.item_code, item]));
         const detections = (Array.isArray(parsed) ? parsed : [])
             .filter(row => allowedCodes.has(String(row.item_code || "")))
+            .filter(row => hasCompatibleCatalogueEvidence(row, candidatesByCode.get(String(row.item_code || "")) || {}))
             .map(row => ({
                 item_code: String(row.item_code),
                 confidence: Math.max(0, Math.min(1, Number(row.confidence) || 0)),
                 reason: String(row.reason || "").slice(0, 300),
+                observed_colour: String(row.observed_colour || "").slice(0, 80),
+                observed_module_size: String(row.observed_module_size || "").slice(0, 80),
                 box_2d: Array.isArray(row.box_2d) ? row.box_2d.slice(0, 4).map(Number) : []
             }))
             .filter(row => row.confidence >= 0.65 && row.box_2d.length === 4 && row.box_2d.every(Number.isFinite));
@@ -334,6 +376,7 @@ The catalogue may use layouts where:
 
 For every supplied stock candidate, find its correct catalogue product image only when the full-document evidence is reliable.
 First explain the catalogue layout and list every page relevant to the selected brand/model or supplied candidates. Always return this layout analysis even when no direct product match is confident. Page-level vision will use your analysis afterward for precise crops.
+Also summarize the catalogue product family's visual design language: geometry, materials, finish, proportions, camera angle, lighting and background. This will guide review-only image generation for stock items whose exact image is absent.
 
 Matching priority:
 1. Product/series/model name and full description.
@@ -348,6 +391,9 @@ Image rules:
 - item_code must be copied exactly from STOCK CANDIDATES.
 - Return only confidence >= 0.65. If uncertain, omit that item.
 - At most one best image per stock item.
+- Colour and module/size are HARD constraints. RED is not rose gold, gold, brown or any other colour. 1M, 2M, 16M and 18M are different products and must never be interchanged.
+- observed_colour and observed_module_size must come from visible catalogue evidence, not from the stock candidate. Omit a match if either value conflicts or cannot be established reliably.
+- box_2d must contain only the product photo/render, excluding captions, swatches, tables, codes, prices and labels.
 
 STOCK CANDIDATES:
 ${JSON.stringify(safeCandidates)}`;
@@ -375,6 +421,7 @@ ${JSON.stringify(safeCandidates)}`;
                         properties: {
                             layout_summary: { type: "STRING" },
                             code_image_relationship: { type: "STRING" },
+                            visual_style_summary: { type: "STRING" },
                             relevant_pages: { type: "ARRAY", items: { type: "INTEGER" } },
                             detections: {
                                 type: "ARRAY",
@@ -384,15 +431,17 @@ ${JSON.stringify(safeCandidates)}`;
                                         item_code: { type: "STRING" },
                                         confidence: { type: "NUMBER" },
                                         reason: { type: "STRING" },
+                                        observed_colour: { type: "STRING" },
+                                        observed_module_size: { type: "STRING" },
                                         catalogue_code: { type: "STRING" },
                                         image_page: { type: "INTEGER" },
                                         box_2d: { type: "ARRAY", items: { type: "NUMBER" } }
                                     },
-                                    required: ["item_code", "confidence", "reason", "image_page", "box_2d"]
+                                    required: ["item_code", "confidence", "reason", "observed_colour", "observed_module_size", "image_page", "box_2d"]
                                 }
                             }
                         },
-                        required: ["layout_summary", "code_image_relationship", "relevant_pages", "detections"]
+                        required: ["layout_summary", "code_image_relationship", "visual_style_summary", "relevant_pages", "detections"]
                     }
                 }
             },
@@ -410,12 +459,16 @@ ${JSON.stringify(safeCandidates)}`;
         const rawText = parts.map(part => part.text || "").join("").trim();
         const parsed = JSON.parse(rawText || "{}");
         const allowedCodes = new Set(safeCandidates.map(item => item.item_code));
+        const candidatesByCode = new Map(safeCandidates.map(item => [item.item_code, item]));
         const detections = (Array.isArray(parsed.detections) ? parsed.detections : [])
             .filter(row => allowedCodes.has(String(row.item_code || "")))
+            .filter(row => hasCompatibleCatalogueEvidence(row, candidatesByCode.get(String(row.item_code || "")) || {}))
             .map(row => ({
                 item_code: String(row.item_code),
                 confidence: Math.max(0, Math.min(1, Number(row.confidence) || 0)),
                 reason: String(row.reason || "").slice(0, 500),
+                observed_colour: String(row.observed_colour || "").slice(0, 80),
+                observed_module_size: String(row.observed_module_size || "").slice(0, 80),
                 catalogue_code: String(row.catalogue_code || "").slice(0, 120),
                 image_page: Math.max(1, Number(row.image_page) || 1),
                 box_2d: Array.isArray(row.box_2d) ? row.box_2d.slice(0, 4).map(Number) : []
@@ -427,6 +480,7 @@ ${JSON.stringify(safeCandidates)}`;
             documentAnalysis: {
                 layout_summary: String(parsed.layout_summary || "").slice(0, 4000),
                 code_image_relationship: String(parsed.code_image_relationship || "").slice(0, 3000),
+                visual_style_summary: String(parsed.visual_style_summary || "").slice(0, 3000),
                 relevant_pages: Array.isArray(parsed.relevant_pages)
                     ? [...new Set(parsed.relevant_pages.map(Number).filter(Number.isFinite))].slice(0, 100)
                     : []
@@ -444,6 +498,100 @@ ${JSON.stringify(safeCandidates)}`;
             ? Math.ceil(Number(retryMatch[1]) || 0)
             : (Number.isFinite(retryAfterHeader) ? Math.ceil(retryAfterHeader) : (status === 503 ? 15 : 0));
         console.error("Full PDF AI catalogue error:", err.response?.data || err.message);
+        res.status(status === 429 || status === 503 ? status : 500).json({
+            error: status ? `Gemini ${status}: ${message}` : message,
+            retryAfterSeconds
+        });
+    }
+});
+
+app.post("/api/ai-catalog-generate", async (req, res) => {
+    try {
+        const { brand, item, documentAnalysis, referenceImages } = req.body || {};
+        if (!GEMINI_API_KEY) {
+            return res.status(500).json({ error: "GEMINI_API_KEY is missing in .env" });
+        }
+        if (!item?.item_code || !item?.item_name) {
+            return res.status(400).json({ error: "A valid unmatched stock item is required" });
+        }
+
+        const references = (Array.isArray(referenceImages) ? referenceImages : [])
+            .slice(0, 3)
+            .filter(image => image?.data)
+            .map(image => ({
+                inlineData: {
+                    mimeType: String(image.mimeType || "image/jpeg"),
+                    data: String(image.data)
+                }
+            }));
+        if (!references.length) {
+            return res.status(400).json({ error: "Catalogue reference pages are required for generation" });
+        }
+
+        const safeItem = {
+            item_code: String(item.item_code).slice(0, 100),
+            item_name: String(item.item_name).slice(0, 240),
+            description: String(item.description || "").slice(0, 1200)
+        };
+        const analysis = {
+            layout_summary: String(documentAnalysis?.layout_summary || "").slice(0, 3000),
+            visual_style_summary: String(documentAnalysis?.visual_style_summary || "").slice(0, 3000)
+        };
+        const prompt = `Create one clean, photorealistic e-commerce product image for this exact stock item:
+BRAND/FAMILY: ${String(brand || "unknown").slice(0, 120)}
+ITEM: ${JSON.stringify(safeItem)}
+
+The attached images are reference pages from a catalogue that was studied in full. Use them only to understand the product family's physical design language. Full-document analysis:
+${JSON.stringify(analysis)}
+
+Requirements:
+- Depict the exact product type, colour, module count/size and specifications stated in ITEM. These are hard constraints.
+- Use the catalogue family's geometry, materials and finish without copying page text, tables or layout.
+- Show one isolated product, centered, front three-quarter or catalogue-consistent angle, on a pure white background with soft studio lighting.
+- No packaging, hands, room scene, captions, prices, borders, watermarks or extra accessories.
+- Do not invent or render logos, brand names, model numbers or readable text.
+- If a visual detail is unspecified, choose the simplest physically plausible detail consistent with the reference family.
+- Return the image, not an explanation.`;
+
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_IMAGE_GENERATION_MODEL)}:generateContent`;
+        const geminiRes = await axios.post(
+            endpoint,
+            {
+                contents: [{ parts: [{ text: prompt }, ...references] }],
+                generationConfig: {
+                    responseModalities: ["TEXT", "IMAGE"],
+                    imageConfig: { aspectRatio: "1:1" }
+                }
+            },
+            {
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-goog-api-key": GEMINI_API_KEY
+                },
+                timeout: 300000,
+                maxBodyLength: Infinity
+            }
+        );
+
+        const parts = geminiRes.data?.candidates?.[0]?.content?.parts || [];
+        const imagePart = parts.find(part => part.inlineData?.data && String(part.inlineData?.mimeType || "").startsWith("image/"));
+        if (!imagePart) throw new Error("Image model returned no image");
+        res.json({
+            imageBase64: imagePart.inlineData.data,
+            mimeType: imagePart.inlineData.mimeType || "image/png",
+            model: GEMINI_IMAGE_GENERATION_MODEL,
+            generated: true
+        });
+    } catch (err) {
+        const status = err.response?.status;
+        const apiMessage = err.response?.data?.error?.message;
+        const message = apiMessage || err.message || "Catalogue-style image generation failed";
+        const retryMatch = String(message).match(/retry\s+in\s+([\d.]+)s/i);
+        const retryAfterHeader = Number(err.response?.headers?.["retry-after"]);
+        const retryAfterSeconds = retryMatch
+            ? Math.ceil(Number(retryMatch[1]) || 0)
+            : (Number.isFinite(retryAfterHeader) ? Math.ceil(retryAfterHeader) : (status === 503 ? 15 : 0));
+        console.error("Catalogue image generation error:", err.response?.data || err.message);
         res.status(status === 429 || status === 503 ? status : 500).json({
             error: status ? `Gemini ${status}: ${message}` : message,
             retryAfterSeconds

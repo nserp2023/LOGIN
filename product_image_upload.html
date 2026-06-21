@@ -556,8 +556,7 @@
             <div class="advanced-actions">
               <button class="btn dark" type="button" onclick="buildBrandProductList()">Load typed items</button>
               <button class="btn warn" type="button" onclick="clearAdvancedQueue()">Clear queue</button>
-              <button class="btn" id="extractPdfBtn" type="button" onclick="extractPdfCatalog()">Analyze PDF with AI</button>
-              <button class="btn dark" id="generateMissingBtn" type="button" onclick="generateMissingCatalogImages()" disabled>Generate unmatched with AI</button>
+              <button class="btn" id="extractPdfBtn" type="button" onclick="runFullAiWorkflow()">Analyze PDF &amp; Generate with AI</button>
             </div>
             <p class="advanced-note">Load the typed brand/model items first. AI reads the complete PDF and crops confident catalogue matches. Generation processes the complete unmatched queue, keeps retrying temporary AI/network failures, and can be cancelled safely. Generated images are clearly labeled and require individual approval.</p>
             <div id="advancedStatus" class="status"></div>
@@ -631,6 +630,7 @@ let advancedFullAnalysisCache = null;
 let aiReviewHistoryAvailable = null;
 let aiReviewsByHash = new Map();
 let advancedGenerationJob = null;
+let advancedWorkflowRunning = false;
 
 const itemSearch = document.getElementById("itemSearch");
 const suggestions = document.getElementById("suggestions");
@@ -651,7 +651,7 @@ const advancedStatus = document.getElementById("advancedStatus");
 const candidateList = document.getElementById("candidateList");
 const candidateCount = document.getElementById("candidateCount");
 const batchSaveBtn = document.getElementById("batchSaveBtn");
-const generateMissingBtn = document.getElementById("generateMissingBtn");
+const generateMissingBtn = document.getElementById("extractPdfBtn");
 const advancedProgress = document.getElementById("advancedProgress");
 const advancedProgressPhase = document.getElementById("advancedProgressPhase");
 const advancedProgressPercent = document.getElementById("advancedProgressPercent");
@@ -1109,6 +1109,11 @@ advancedBrand.addEventListener("input", () => {
   updateGenerateMissingButton();
 });
 advancedBrand.addEventListener("change", refreshAdvancedStockOptions);
+catalogPdf.addEventListener("change", () => {
+  advancedDocumentStudy = null;
+  advancedFullAnalysisCache = null;
+  updateGenerateMissingButton();
+});
 
 function resolveAdvancedItem(value) {
   const raw = String(value || "").trim();
@@ -1146,7 +1151,7 @@ async function buildBrandProductList() {
   renderAdvancedCandidates();
   setAdvancedStatus(
     matches.length
-      ? `${matches.length} ${brand} stock items loaded for full-catalogue AI matching.${aiReviewHistoryAvailable ? ` ${aiReviewsByHash.size} prior image decisions loaded as learning memory.` : ""} Now choose the PDF and click Analyze PDF with AI.`
+      ? `${matches.length} ${brand} stock items loaded for full-catalogue AI matching.${aiReviewHistoryAvailable ? ` ${aiReviewsByHash.size} prior image decisions loaded as learning memory.` : ""} Now choose the PDF and click Analyze PDF & Generate with AI.`
       : `No ${brand} products matched the current stock filter.`,
     matches.length ? "ok" : "err"
   );
@@ -1633,6 +1638,30 @@ async function verifyCatalogCandidateWithAi(cropCanvas, item, detection, documen
   }
 }
 
+async function runFullAiWorkflow() {
+  if (advancedGenerationJob?.running || advancedWorkflowRunning) {
+    setAdvancedStatus("The AI workflow is already running. Follow its progress below.", "wait");
+    return;
+  }
+  advancedWorkflowRunning = true;
+  updateGenerateMissingButton();
+  try {
+    if (!advancedDocumentStudy) await extractPdfCatalog();
+    if (!advancedDocumentStudy) return;
+
+    const remaining = getGenerationTargetItems().length;
+    if (remaining) {
+      setAdvancedStatus(`PDF analysis complete. Starting generation for ${remaining} remaining products...`, "wait");
+      await generateMissingCatalogImages();
+    } else {
+      setAdvancedStatus("AI workflow complete. No unmatched products require generation.", "ok");
+    }
+  } finally {
+    advancedWorkflowRunning = false;
+    updateGenerateMissingButton();
+  }
+}
+
 async function extractPdfCatalog() {
   if (advancedGenerationJob?.running) {
     setAdvancedStatus("Cancel the active generation job before analyzing another PDF.", "err");
@@ -1827,7 +1856,7 @@ async function extractPdfCatalog() {
     console.error(error);
     setAdvancedStatus("AI PDF analysis failed: " + cleanErr(error), "err");
   } finally {
-    button.disabled = false;
+    updateGenerateMissingButton();
   }
 }
 
@@ -1868,12 +1897,17 @@ function updateGenerateMissingButton() {
   if (!generateMissingBtn) return;
   const count = advancedDocumentStudy ? getGenerationTargetItems().length : 0;
   const running = advancedGenerationJob?.running === true;
-  generateMissingBtn.disabled = running || !advancedDocumentStudy || !advancedDocumentStudy.referenceImages?.length || !count;
+  const canAnalyze = Boolean(advancedBrand.value.trim() && catalogPdf.files[0] && advancedLoadedItems.length);
+  generateMissingBtn.disabled = advancedWorkflowRunning || running || (!canAnalyze && !count);
   generateMissingBtn.textContent = running
     ? `Generating ${advancedGenerationJob.completed}/${advancedGenerationJob.total}`
-    : count
-    ? `Generate with AI (${count})`
-    : "Generate with AI";
+    : advancedWorkflowRunning
+      ? (advancedDocumentStudy ? "Finishing AI workflow..." : "Analyzing PDF with AI...")
+      : advancedDocumentStudy && count
+        ? `Resume AI generation (${count} remaining)`
+        : advancedDocumentStudy
+          ? "AI workflow complete"
+          : "Analyze PDF & Generate with AI";
 }
 
 function base64ImageToBlob(base64, mimeType) {
@@ -1916,6 +1950,7 @@ function startAdvancedGenerationProgress(total) {
   advancedGenerationJob = {
     running: true,
     cancelled: false,
+    paused: false,
     total,
     completed: 0,
     generated: 0,
@@ -1945,6 +1980,12 @@ function cancelAdvancedGeneration() {
 function generationCancelledError() {
   const error = new Error("AI generation cancelled by user");
   error.code = "GENERATION_CANCELLED";
+  return error;
+}
+
+function generationQuotaPausedError(message) {
+  const error = new Error(message || "Gemini image generation quota is unavailable.");
+  error.code = "GENERATION_QUOTA_PAUSED";
   return error;
 }
 
@@ -2002,6 +2043,9 @@ async function generateCatalogueStyleImage(item, job, queueIndex, queueTotal) {
     }
     const result = await response.json().catch(() => ({}));
     if (response.ok && result.imageBase64) return result;
+    if (result.quotaUnavailable) {
+      throw generationQuotaPausedError(result.error);
+    }
     const transient = response.status === 429 || response.status === 503 || response.status >= 500;
     if (transient) {
       const waitSeconds = Math.min(300, Math.max(15, Number(result.retryAfterSeconds) || attempt * 20));
@@ -2075,6 +2119,15 @@ async function generateMissingCatalogImages() {
       renderAdvancedCandidates();
     } catch (error) {
       if (error?.code === "GENERATION_CANCELLED") break;
+      if (error?.code === "GENERATION_QUOTA_PAUSED") {
+        job.paused = true;
+        updateAdvancedGenerationProgress({
+          phase: "Generation paused · quota unavailable",
+          detail: `${item.item_code || item.item_name}: ${cleanErr(error)} No image was marked failed.`,
+          retryAttempt: 0
+        });
+        break;
+      }
       console.error("Generated catalogue image failed:", error);
       failed += 1;
       processed += 1;
@@ -2095,10 +2148,12 @@ async function generateMissingCatalogImages() {
     completed: processed,
     generated,
     failed,
-    phase: job.cancelled ? "Generation cancelled" : "Generation queue complete",
+    phase: job.cancelled ? "Generation cancelled" : (job.paused ? "Generation paused · quota unavailable" : "Generation queue complete"),
     detail: job.cancelled
       ? `Stopped after ${processed} of ${batch.length}. Completed images remain available for review.`
-      : `Processed all ${batch.length} products. Review generated images before approval.`
+      : job.paused
+        ? `Enable Gemini billing/quota for the configured image model, restart the server if configuration changed, then click Resume AI generation.`
+        : `Processed all ${batch.length} products. Review generated images before approval.`
   });
   renderAdvancedCandidates();
   updateGenerateMissingButton();
@@ -2106,8 +2161,10 @@ async function generateMissingCatalogImages() {
   setAdvancedStatus(
     job.cancelled
       ? `AI generation cancelled: ${generated} created, ${failed} permanently failed, ${remaining} still unmatched.`
+      : job.paused
+        ? `AI generation paused safely because the configured Gemini image model has quota limit 0. Enable billing or usable quota, then resume; no product was marked failed.`
       : `AI generation complete: ${generated} created for review, ${failed} permanently failed${remaining ? `, ${remaining} still unmatched` : ""}. Generated images require individual approval.`,
-    failed && !generated ? "err" : "ok"
+    job.paused || (failed && !generated) ? "err" : "ok"
   );
 }
 

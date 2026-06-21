@@ -31,6 +31,7 @@ const GEMINI_VOICE_MODEL = process.env.GEMINI_VOICE_MODEL || "gemini-3.5-flash";
 const GEMINI_IMAGE_MODEL = process.env.GEMINI_IMAGE_MODEL || "gemini-2.5-flash";
 const GEMINI_CATALOG_FALLBACK_MODEL = process.env.GEMINI_CATALOG_FALLBACK_MODEL || "gemini-3.1-flash-lite";
 const GEMINI_IMAGE_GENERATION_MODEL = process.env.GEMINI_IMAGE_GENERATION_MODEL || "gemini-3.1-flash-image";
+const GEMINI_CATALOG_VERIFY_MODEL = process.env.GEMINI_CATALOG_VERIFY_MODEL || GEMINI_IMAGE_MODEL;
 
 axios.interceptors.response.use(response => response, async error => {
     const status = error.response?.status;
@@ -82,6 +83,41 @@ function hasCompatibleCatalogueEvidence(row, candidate) {
     const observedModules = extractModuleSize(row.observed_module_size);
     if (candidateModules && observedModules && candidateModules !== observedModules) return false;
     return true;
+}
+
+function parseModelJson(rawText, fallback = {}) {
+    const text = String(rawText || "").trim();
+    if (!text) return fallback;
+    try {
+        return JSON.parse(text);
+    } catch (_) {
+        const start = text.indexOf("{");
+        const end = text.lastIndexOf("}");
+        if (start >= 0 && end > start) {
+            try {
+                return JSON.parse(text.slice(start, end + 1));
+            } catch (_) {}
+        }
+    }
+    return fallback;
+}
+
+function getGeminiText(response) {
+    return (response?.data?.candidates?.[0]?.content?.parts || [])
+        .map(part => part.text || "")
+        .join("")
+        .trim();
+}
+
+function getGroundingSources(response) {
+    const chunks = response?.data?.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
+    return [...new Map(chunks
+        .map(chunk => chunk?.web)
+        .filter(web => web?.uri)
+        .map(web => [web.uri, {
+            title: String(web.title || "Web source").slice(0, 200),
+            url: String(web.uri).slice(0, 1500)
+        }])).values()].slice(0, 8);
 }
 
 function formatNumber(raw) {
@@ -532,6 +568,174 @@ ${JSON.stringify(safeCandidates)}`;
         res.status(status === 429 || status === 503 ? status : 500).json({
             error: status ? `Gemini ${status}: ${message}` : message,
             retryAfterSeconds
+        });
+    }
+});
+
+app.post("/api/ai-catalog-verify", async (req, res) => {
+    try {
+        const { imageBase64, mimeType, brand, item, catalogueContext, initialConfidence } = req.body || {};
+        if (!GEMINI_API_KEY) {
+            return res.status(500).json({ error: "GEMINI_API_KEY is missing in .env" });
+        }
+        if (!imageBase64 || !item?.item_code || !item?.item_name) {
+            return res.status(400).json({ error: "A cropped image and stock item are required" });
+        }
+
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_CATALOG_VERIFY_MODEL)}:generateContent`;
+        const imagePart = {
+            inlineData: {
+                mimeType: String(mimeType || "image/jpeg"),
+                data: String(imageBase64)
+            }
+        };
+
+        // Pass one deliberately hides the expected stock item to reduce confirmation bias.
+        const visualPrompt = `Independently inspect this cropped electrical-product catalogue image. You are not told which stock item it is expected to represent.
+
+Return JSON only with these keys:
+product_type, visible_brand, visible_model_or_code, colour, module_size, specifications, visible_text, single_product, crop_clean, quality_score, problems.
+
+Rules:
+- Describe only visible evidence. Never guess unreadable text or hidden specifications.
+- single_product is true only when exactly one sellable product is shown.
+- crop_clean is false if captions, tables, prices, unrelated products, large borders, clipped product parts, or catalogue layout remain.
+- quality_score is 0-1 based on sharpness, resolution, isolation, and completeness.
+- specifications and problems must be arrays of short strings.`;
+
+        const visualRes = await axios.post(endpoint, {
+            contents: [{ parts: [{ text: visualPrompt }, imagePart] }],
+            generationConfig: {
+                temperature: 0,
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: "OBJECT",
+                    properties: {
+                        product_type: { type: "STRING" },
+                        visible_brand: { type: "STRING" },
+                        visible_model_or_code: { type: "STRING" },
+                        colour: { type: "STRING" },
+                        module_size: { type: "STRING" },
+                        specifications: { type: "ARRAY", items: { type: "STRING" } },
+                        visible_text: { type: "ARRAY", items: { type: "STRING" } },
+                        single_product: { type: "BOOLEAN" },
+                        crop_clean: { type: "BOOLEAN" },
+                        quality_score: { type: "NUMBER" },
+                        problems: { type: "ARRAY", items: { type: "STRING" } }
+                    },
+                    required: ["product_type", "colour", "module_size", "specifications", "visible_text", "single_product", "crop_clean", "quality_score", "problems"]
+                }
+            }
+        }, {
+            headers: { "Content-Type": "application/json", "x-goog-api-key": GEMINI_API_KEY },
+            timeout: 120000,
+            maxBodyLength: Infinity
+        });
+
+        const visual = parseModelJson(getGeminiText(visualRes), {});
+        const safeItem = {
+            item_code: String(item.item_code).slice(0, 100),
+            item_name: String(item.item_name).slice(0, 240),
+            description: String(item.description || "").slice(0, 1200)
+        };
+        const verificationPrompt = `Verify whether the attached product image correctly represents this claimed stock item.
+
+CLAIMED BRAND: ${String(brand || "unknown").slice(0, 120)}
+CLAIMED ITEM: ${JSON.stringify(safeItem)}
+BLIND VISUAL OBSERVATION: ${JSON.stringify(visual)}
+CATALOGUE CONTEXT: ${String(catalogueContext || "").slice(0, 4000)}
+FIRST-PASS CATALOGUE CONFIDENCE: ${Math.max(0, Math.min(1, Number(initialConfidence) || 0))}
+
+Use Google Search to look for reliable current evidence, prioritizing the manufacturer's official website/catalogue, then authorized distributors. General marketplace listings alone are weak evidence. Compare product type, series/model/code, colour, module count or size, shape, wattage, ampere, voltage, and other available specifications.
+
+Return one JSON object only:
+{
+  "verdict": "exact_match|likely_match|uncertain|mismatch",
+  "confidence": 0.0,
+  "web_supported": false,
+  "official_source_found": false,
+  "hard_conflicts": [],
+  "matched_attributes": [],
+  "reason": "short evidence-based explanation"
+}
+
+Use exact_match only when the visible product and reliable web evidence support the claimed variant with no hard conflict. A colour, module-size, product-type, or explicit model/specification conflict requires mismatch. If the precise variant cannot be established online, use likely_match or uncertain; never invent evidence.`;
+
+        let grounded;
+        try {
+            grounded = await axios.post(endpoint, {
+                contents: [{ parts: [{ text: verificationPrompt }, imagePart] }],
+                tools: [{ google_search: {} }],
+                generationConfig: { temperature: 0.05 }
+            }, {
+                headers: { "Content-Type": "application/json", "x-goog-api-key": GEMINI_API_KEY },
+                timeout: 180000,
+                maxBodyLength: Infinity
+            });
+        } catch (groundingError) {
+            console.warn("Grounded catalogue verification unavailable:", groundingError.response?.data || groundingError.message);
+            return res.json({
+                verdict: "uncertain",
+                confidence: 0,
+                verified: false,
+                autoApprove: false,
+                webSupported: false,
+                officialSourceFound: false,
+                hardConflicts: [],
+                matchedAttributes: [],
+                reason: "Independent visual inspection completed, but grounded internet verification was unavailable.",
+                visual,
+                sources: [],
+                model: GEMINI_CATALOG_VERIFY_MODEL
+            });
+        }
+
+        const result = parseModelJson(getGeminiText(grounded), {});
+        const sources = getGroundingSources(grounded);
+        const verdict = ["exact_match", "likely_match", "uncertain", "mismatch"].includes(result.verdict)
+            ? result.verdict
+            : "uncertain";
+        const confidence = Math.max(0, Math.min(1, Number(result.confidence) || 0));
+        const hardConflicts = Array.isArray(result.hard_conflicts) ? result.hard_conflicts.map(String).slice(0, 12) : [];
+        const matchedAttributes = Array.isArray(result.matched_attributes) ? result.matched_attributes.map(String).slice(0, 16) : [];
+        const cropValid = visual.single_product === true
+            && visual.crop_clean === true
+            && Number(visual.quality_score) >= 0.65;
+        const webSupported = result.web_supported === true && sources.length > 0;
+        const officialSourceFound = result.official_source_found === true && sources.length > 0;
+        const verified = verdict === "exact_match"
+            && confidence >= 0.85
+            && webSupported
+            && cropValid
+            && hardConflicts.length === 0;
+        const autoApprove = verified
+            && officialSourceFound
+            && confidence >= 0.92
+            && Number(initialConfidence) >= 0.9
+            && Number(visual.quality_score) >= 0.75;
+
+        res.json({
+            verdict,
+            confidence,
+            verified,
+            autoApprove,
+            webSupported,
+            officialSourceFound,
+            hardConflicts,
+            matchedAttributes,
+            reason: String(result.reason || "No verification explanation returned.").slice(0, 1000),
+            visual,
+            sources,
+            model: GEMINI_CATALOG_VERIFY_MODEL
+        });
+    } catch (err) {
+        const status = err.response?.status;
+        const apiMessage = err.response?.data?.error?.message;
+        const message = apiMessage || err.message || "Catalogue image verification failed";
+        console.error("Catalogue verification error:", err.response?.data || err.message);
+        res.status(status === 429 || status === 503 ? status : 500).json({
+            error: status ? `Gemini ${status}: ${message}` : message,
+            retryAfterSeconds: status === 503 ? 15 : 0
         });
     }
 });

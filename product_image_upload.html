@@ -528,8 +528,9 @@
               <button class="btn dark" type="button" onclick="buildBrandProductList()">Load typed items</button>
               <button class="btn warn" type="button" onclick="clearAdvancedQueue()">Clear queue</button>
               <button class="btn" id="extractPdfBtn" type="button" onclick="extractPdfCatalog()">Analyze PDF with AI</button>
+              <button class="btn dark" id="generateMissingBtn" type="button" onclick="generateMissingCatalogImages()" disabled>Generate unmatched with AI</button>
             </div>
-            <p class="advanced-note">Load the typed brand/model items first. AI then reads the complete PDF before matching, including layouts where descriptions/codes and their images appear on different sides or pages. It crops only confident product matches for your approval.</p>
+            <p class="advanced-note">Load the typed brand/model items first. AI reads the complete PDF and crops confident catalogue matches. After analysis, you can generate catalogue-inspired images for unmatched items in review-only batches. Generated images are clearly labeled and require individual approval.</p>
             <div id="advancedStatus" class="status"></div>
           </div>
         </section>
@@ -589,6 +590,7 @@ let advancedLoadedItems = [];
 let advancedCandidateSequence = 0;
 let pdfJsLoadingPromise = null;
 let lastAiCatalogRequestAt = 0;
+let advancedDocumentStudy = null;
 
 const itemSearch = document.getElementById("itemSearch");
 const suggestions = document.getElementById("suggestions");
@@ -609,6 +611,7 @@ const advancedStatus = document.getElementById("advancedStatus");
 const candidateList = document.getElementById("candidateList");
 const candidateCount = document.getElementById("candidateCount");
 const batchSaveBtn = document.getElementById("batchSaveBtn");
+const generateMissingBtn = document.getElementById("generateMissingBtn");
 const advancedStockOptions = document.getElementById("advancedStockOptions");
 
 /* =========================================================
@@ -1040,6 +1043,8 @@ function refreshAdvancedStockOptions() {
 
 advancedBrand.addEventListener("input", () => {
   advancedLoadedItems = [];
+  advancedDocumentStudy = null;
+  updateGenerateMissingButton();
 });
 advancedBrand.addEventListener("change", refreshAdvancedStockOptions);
 
@@ -1060,6 +1065,8 @@ function buildBrandProductList() {
   }
 
   clearAdvancedQueue(false);
+  advancedDocumentStudy = null;
+  updateGenerateMissingButton();
   const onlyMissing = document.getElementById("onlyMissingImages").checked;
   const matches = getBrandItems()
     .filter(item => !onlyMissing || !item.product_image_url)
@@ -1443,7 +1450,8 @@ async function extractPdfCatalog() {
     const documentAnalysis = fullResult.documentAnalysis || {};
     const documentContext = JSON.stringify({
       layout_summary: documentAnalysis.layout_summary || "",
-      code_image_relationship: documentAnalysis.code_image_relationship || ""
+      code_image_relationship: documentAnalysis.code_image_relationship || "",
+      visual_style_summary: documentAnalysis.visual_style_summary || ""
     });
     let relevantPages = (Array.isArray(documentAnalysis.relevant_pages) ? documentAnalysis.relevant_pages : [])
       .map(Number)
@@ -1513,7 +1521,17 @@ async function extractPdfCatalog() {
       detectedCount += 1;
     }
 
+    advancedDocumentStudy = {
+      documentAnalysis,
+      referenceImages: [...pageCanvases.entries()].slice(0, 3).map(([pageNumber, canvas]) => ({
+        pageNumber,
+        mimeType: "image/jpeg",
+        data: canvas.toDataURL("image/jpeg", 0.72).split(",")[1]
+      }))
+    };
+
     renderAdvancedCandidates();
+    updateGenerateMissingButton();
     setAdvancedStatus(
       detectedCount
         ? `Full-PDF AI matched ${detectedCount} product images from ${advancedLoadedItems.length} loaded stock items. Review before uploading.`
@@ -1528,6 +1546,124 @@ async function extractPdfCatalog() {
   }
 }
 
+function getUnmatchedGenerationItems() {
+  const queuedCodes = new Set(advancedCandidates.map(candidate => {
+    const item = resolveAdvancedItem(candidate.productValue);
+    return String(item?.item_code || "");
+  }).filter(Boolean));
+  const onlyMissing = document.getElementById("onlyMissingImages").checked;
+  return advancedLoadedItems.filter(item => {
+    const code = String(item.item_code || "");
+    return code && !queuedCodes.has(code) && (!onlyMissing || !item.product_image_url);
+  });
+}
+
+function updateGenerateMissingButton() {
+  if (!generateMissingBtn) return;
+  const count = advancedDocumentStudy ? getUnmatchedGenerationItems().length : 0;
+  generateMissingBtn.disabled = !advancedDocumentStudy || !advancedDocumentStudy.referenceImages?.length || !count;
+  generateMissingBtn.textContent = count
+    ? `Generate unmatched with AI (${count})`
+    : "Generate unmatched with AI";
+}
+
+function base64ImageToBlob(base64, mimeType) {
+  const bytes = atob(base64);
+  const output = new Uint8Array(bytes.length);
+  for (let index = 0; index < bytes.length; index += 1) output[index] = bytes.charCodeAt(index);
+  return new Blob([output], { type: mimeType || "image/png" });
+}
+
+async function generateCatalogueStyleImage(item) {
+  const endpoint = getAiCatalogEndpoint().replace(/ai-catalog-page$/, "ai-catalog-generate");
+  const requestBody = JSON.stringify({
+    brand: advancedBrand.value.trim(),
+    item: {
+      item_code: item.item_code || "",
+      item_name: item.item_name || "",
+      description: getItemDescriptionText(item)
+    },
+    documentAnalysis: advancedDocumentStudy.documentAnalysis,
+    referenceImages: advancedDocumentStudy.referenceImages
+  });
+
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    let response;
+    try {
+      response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: requestBody
+      });
+    } catch (error) {
+      throw new Error(`AI backend is unavailable at ${endpoint}`);
+    }
+    const result = await response.json().catch(() => ({}));
+    if (response.ok && result.imageBase64) return result;
+    if ((response.status === 429 || response.status === 503) && attempt < 3) {
+      const waitSeconds = Math.max(15, Number(result.retryAfterSeconds) || attempt * 15);
+      setAdvancedStatus(`Image AI is temporarily busy. Retrying in ${waitSeconds} seconds...`, "wait");
+      await new Promise(resolve => setTimeout(resolve, waitSeconds * 1000));
+      continue;
+    }
+    throw new Error(result.error || "AI image generation failed");
+  }
+  throw new Error("AI image generation did not complete");
+}
+
+async function generateMissingCatalogImages() {
+  if (!advancedDocumentStudy?.referenceImages?.length) {
+    setAdvancedStatus("Analyze the complete PDF first so AI can learn the catalogue style.", "err");
+    return;
+  }
+
+  const allUnmatched = getUnmatchedGenerationItems();
+  if (!allUnmatched.length) {
+    setAdvancedStatus("Every loaded item already has a review image.", "ok");
+    updateGenerateMissingButton();
+    return;
+  }
+
+  const batch = allUnmatched.slice(0, 12);
+  generateMissingBtn.disabled = true;
+  let generated = 0;
+  let failed = 0;
+
+  for (let index = 0; index < batch.length; index += 1) {
+    const item = batch[index];
+    setAdvancedStatus(`Generating review image ${index + 1} of ${batch.length} for ${item.item_code || item.item_name}...`, "wait");
+    try {
+      const result = await generateCatalogueStyleImage(item);
+      const blob = base64ImageToBlob(result.imageBase64, result.mimeType);
+      advancedCandidates.push({
+        id: ++advancedCandidateSequence,
+        page: 0,
+        blob,
+        objectUrl: URL.createObjectURL(blob),
+        remoteUrl: "",
+        productValue: formatProductValue(item),
+        approved: false,
+        generated: true,
+        sourceLabel: "AI-generated · catalogue-inspired",
+        aiReason: "The exact catalogue image was not found. Verify colour, size, module count and physical accuracy before approving."
+      });
+      generated += 1;
+      renderAdvancedCandidates();
+    } catch (error) {
+      console.error("Generated catalogue image failed:", error);
+      failed += 1;
+    }
+  }
+
+  renderAdvancedCandidates();
+  updateGenerateMissingButton();
+  const remaining = getUnmatchedGenerationItems().length;
+  setAdvancedStatus(
+    `AI generation batch complete: ${generated} created for review, ${failed} failed${remaining ? `, ${remaining} still unmatched` : ""}. Generated images require individual approval.`,
+    failed ? "err" : "ok"
+  );
+}
+
 const EMPTY_IMAGE = "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(
   '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><rect width="100%" height="100%" fill="#e2e8f0"/><text x="50%" y="47%" text-anchor="middle" fill="#475569" font-family="Arial" font-size="16">Paste official</text><text x="50%" y="59%" text-anchor="middle" fill="#475569" font-family="Arial" font-size="16">image URL</text></svg>'
 );
@@ -1535,6 +1671,7 @@ const EMPTY_IMAGE = "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(
 function renderAdvancedCandidates() {
   candidateCount.textContent = `${advancedCandidates.length} image${advancedCandidates.length === 1 ? "" : "s"}`;
   batchSaveBtn.disabled = !advancedCandidates.some(candidate => candidate.approved);
+  updateGenerateMissingButton();
 
   if (!advancedCandidates.length) {
     candidateList.innerHTML = '<div class="candidate-empty">No images are waiting for review.</div>';
@@ -1575,7 +1712,7 @@ function setCandidateProduct(id, value) {
   const candidate = getCandidate(id);
   if (!candidate) return;
   candidate.productValue = value;
-  candidate.approved = Boolean(resolveAdvancedItem(value)) && Boolean(candidate.blob || candidate.remoteUrl);
+  candidate.approved = !candidate.generated && Boolean(resolveAdvancedItem(value)) && Boolean(candidate.blob || candidate.remoteUrl);
   renderAdvancedCandidates();
 }
 
@@ -1612,7 +1749,7 @@ function approveAllMatchedCandidates() {
   advancedCandidates.forEach(candidate => {
     const hasProduct = Boolean(resolveAdvancedItem(candidate.productValue));
     const hasSource = Boolean(candidate.blob || /^https?:\/\//i.test(candidate.remoteUrl));
-    candidate.approved = hasProduct && hasSource;
+    candidate.approved = !candidate.generated && hasProduct && hasSource;
     if (candidate.approved) approved += 1;
   });
   renderAdvancedCandidates();

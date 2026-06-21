@@ -122,7 +122,8 @@
       letter-spacing: 0.05em;
     }
 
-    input {
+    input,
+    select {
       width: 100%;
       border: 1px solid rgba(148, 163, 184, 0.28);
       background: rgba(2, 6, 23, 0.62);
@@ -134,9 +135,15 @@
       font-weight: 750;
     }
 
-    input:focus {
+    input:focus,
+    select:focus {
       border-color: rgba(56, 189, 248, 0.8);
       box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.12);
+    }
+
+    select option {
+      background: #0f172a;
+      color: var(--text);
     }
 
     .field {
@@ -524,6 +531,14 @@
               <label>Manufacturer PDF catalogue</label>
               <input id="catalogPdf" type="file" accept="application/pdf,.pdf" />
             </div>
+            <div class="field">
+              <label>AI image creation</label>
+              <select id="generationMode">
+                <option value="missing-low-quality" selected>Missing or low-quality catalogue images</option>
+                <option value="missing">Missing catalogue images only</option>
+                <option value="all">Generate every loaded product</option>
+              </select>
+            </div>
             <div class="advanced-actions">
               <button class="btn dark" type="button" onclick="buildBrandProductList()">Load typed items</button>
               <button class="btn warn" type="button" onclick="clearAdvancedQueue()">Clear queue</button>
@@ -612,7 +627,11 @@ const candidateList = document.getElementById("candidateList");
 const candidateCount = document.getElementById("candidateCount");
 const batchSaveBtn = document.getElementById("batchSaveBtn");
 const generateMissingBtn = document.getElementById("generateMissingBtn");
+const generationMode = document.getElementById("generationMode");
 const advancedStockOptions = document.getElementById("advancedStockOptions");
+
+generationMode.addEventListener("change", updateGenerateMissingButton);
+document.getElementById("onlyMissingImages").addEventListener("change", updateGenerateMissingButton);
 
 /* =========================================================
    4) LOAD ALL STOCK - PAGINATED FOR 10000+ ITEMS
@@ -1507,6 +1526,8 @@ async function extractPdfCatalog() {
       if (!blob) continue;
 
       const confidence = Math.round((Number(detection.confidence) || 0) * 100);
+      const imageQuality = Math.round((Number(detection.image_quality_score) || 0) * 100);
+      const lowQuality = imageQuality < 72 || cropCanvas.width < 400 || cropCanvas.height < 400;
       advancedCandidates.push({
         id: ++advancedCandidateSequence,
         page: pageNo,
@@ -1515,8 +1536,11 @@ async function extractPdfCatalog() {
         remoteUrl: "",
         productValue: formatProductValue(item),
         approved: false,
+        generated: false,
+        lowQuality,
+        imageQuality,
         sourceLabel: `Full-PDF AI ${confidence}% · page ${pageNo}`,
-        aiReason: detection.reason || ""
+        aiReason: [detection.reason, lowQuality ? (detection.quality_issue || "Catalogue crop may be too small or unclear.") : ""].filter(Boolean).join(" ")
       });
       detectedCount += 1;
     }
@@ -1546,25 +1570,46 @@ async function extractPdfCatalog() {
   }
 }
 
-function getUnmatchedGenerationItems() {
-  const queuedCodes = new Set(advancedCandidates.map(candidate => {
+function getGenerationTargetItems() {
+  const mode = generationMode?.value || "missing-low-quality";
+  const generatedCodes = new Set(advancedCandidates.filter(candidate => candidate.generated).map(candidate => {
     const item = resolveAdvancedItem(candidate.productValue);
     return String(item?.item_code || "");
   }).filter(Boolean));
+  const catalogueCandidates = new Map();
+  advancedCandidates.filter(candidate => !candidate.generated).forEach(candidate => {
+    const item = resolveAdvancedItem(candidate.productValue);
+    const code = String(item?.item_code || "");
+    if (!code) return;
+    if (!catalogueCandidates.has(code)) catalogueCandidates.set(code, []);
+    catalogueCandidates.get(code).push(candidate);
+  });
   const onlyMissing = document.getElementById("onlyMissingImages").checked;
-  return advancedLoadedItems.filter(item => {
+
+  return advancedLoadedItems.flatMap(item => {
     const code = String(item.item_code || "");
-    return code && !queuedCodes.has(code) && (!onlyMissing || !item.product_image_url);
+    if (!code || generatedCodes.has(code) || (onlyMissing && item.product_image_url)) return [];
+    const catalogueRows = catalogueCandidates.get(code) || [];
+    const hasCatalogueImage = catalogueRows.length > 0;
+    const hasLowQualityImage = hasCatalogueImage && catalogueRows.every(candidate => candidate.lowQuality);
+    if (mode === "missing" && hasCatalogueImage) return [];
+    if (mode === "missing-low-quality" && hasCatalogueImage && !hasLowQualityImage) return [];
+    return [{
+      item,
+      reason: !hasCatalogueImage
+        ? "No matching catalogue image was found."
+        : (hasLowQualityImage ? "The matching catalogue image was assessed as low quality." : "Full AI creation mode was selected.")
+    }];
   });
 }
 
 function updateGenerateMissingButton() {
   if (!generateMissingBtn) return;
-  const count = advancedDocumentStudy ? getUnmatchedGenerationItems().length : 0;
+  const count = advancedDocumentStudy ? getGenerationTargetItems().length : 0;
   generateMissingBtn.disabled = !advancedDocumentStudy || !advancedDocumentStudy.referenceImages?.length || !count;
   generateMissingBtn.textContent = count
-    ? `Generate unmatched with AI (${count})`
-    : "Generate unmatched with AI";
+    ? `Generate with AI (${count})`
+    : "Generate with AI";
 }
 
 function base64ImageToBlob(base64, mimeType) {
@@ -1617,20 +1662,20 @@ async function generateMissingCatalogImages() {
     return;
   }
 
-  const allUnmatched = getUnmatchedGenerationItems();
-  if (!allUnmatched.length) {
-    setAdvancedStatus("Every loaded item already has a review image.", "ok");
+  const allTargets = getGenerationTargetItems();
+  if (!allTargets.length) {
+    setAdvancedStatus("No products need AI generation under the selected creation mode.", "ok");
     updateGenerateMissingButton();
     return;
   }
 
-  const batch = allUnmatched.slice(0, 12);
+  const batch = allTargets.slice(0, 12);
   generateMissingBtn.disabled = true;
   let generated = 0;
   let failed = 0;
 
   for (let index = 0; index < batch.length; index += 1) {
-    const item = batch[index];
+    const { item, reason } = batch[index];
     setAdvancedStatus(`Generating review image ${index + 1} of ${batch.length} for ${item.item_code || item.item_name}...`, "wait");
     try {
       const result = await generateCatalogueStyleImage(item);
@@ -1645,7 +1690,7 @@ async function generateMissingCatalogImages() {
         approved: false,
         generated: true,
         sourceLabel: "AI-generated · catalogue-inspired",
-        aiReason: "The exact catalogue image was not found. Verify colour, size, module count and physical accuracy before approving."
+        aiReason: `${reason} Generated from the full-catalogue style study and stock description. Verify colour, size, module count and physical accuracy before approving.`
       });
       generated += 1;
       renderAdvancedCandidates();
@@ -1657,7 +1702,7 @@ async function generateMissingCatalogImages() {
 
   renderAdvancedCandidates();
   updateGenerateMissingButton();
-  const remaining = getUnmatchedGenerationItems().length;
+  const remaining = getGenerationTargetItems().length;
   setAdvancedStatus(
     `AI generation batch complete: ${generated} created for review, ${failed} failed${remaining ? `, ${remaining} still unmatched` : ""}. Generated images require individual approval.`,
     failed ? "err" : "ok"
@@ -1686,6 +1731,7 @@ function renderAdvancedCandidates() {
           <input type="checkbox" ${candidate.approved ? "checked" : ""} onchange="setCandidateApproved(${candidate.id}, this.checked)" />
           <b>${escapeHtml(candidate.sourceLabel)}</b>
         </div>
+        ${Number.isFinite(candidate.imageQuality) ? `<div class="candidate-reason">Catalogue image quality: ${candidate.imageQuality}%${candidate.lowQuality ? " · AI alternative recommended" : ""}</div>` : ""}
         ${candidate.aiReason ? `<div class="candidate-reason">${escapeHtml(candidate.aiReason)}</div>` : ""}
         <input list="advancedStockOptions" value="${escapeHtml(candidate.productValue)}" placeholder="Item code - product name" onchange="setCandidateProduct(${candidate.id}, this.value)" />
         <input value="${escapeHtml(candidate.remoteUrl)}" placeholder="Optional official image URL" onchange="setCandidateUrl(${candidate.id}, this.value, this)" />

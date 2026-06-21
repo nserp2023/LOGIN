@@ -261,6 +261,7 @@ Rules:
 9. Colour and module/size are HARD constraints. Never match RED to rose gold, gold, brown or another colour. Never match 1M to 2M, 16M or 18M. Omit the detection when either attribute conflicts.
 10. observed_colour and observed_module_size must describe only what the catalogue visibly says, never values copied from the stock candidate.
 11. The crop box must contain only the product render/photo. Exclude captions, colour swatches, catalogue codes, prices, tables and surrounding labels.
+12. Assess the usable source image itself. image_quality_score is 0-1 based on sharpness, resolution, clean isolation and lack of text overlap. Explain blur, tiny size, pixelation or obstruction in quality_issue; otherwise return an empty string.
 
 STOCK CANDIDATES:
 ${JSON.stringify(safeCandidates)}`;
@@ -292,12 +293,14 @@ ${JSON.stringify(safeCandidates)}`;
                                 reason: { type: "STRING" },
                                 observed_colour: { type: "STRING" },
                                 observed_module_size: { type: "STRING" },
+                                image_quality_score: { type: "NUMBER" },
+                                quality_issue: { type: "STRING" },
                                 box_2d: {
                                     type: "ARRAY",
                                     items: { type: "NUMBER" }
                                 }
                             },
-                            required: ["item_code", "confidence", "reason", "observed_colour", "observed_module_size", "box_2d"]
+                            required: ["item_code", "confidence", "reason", "observed_colour", "observed_module_size", "image_quality_score", "quality_issue", "box_2d"]
                         }
                     }
                 }
@@ -325,6 +328,8 @@ ${JSON.stringify(safeCandidates)}`;
                 reason: String(row.reason || "").slice(0, 300),
                 observed_colour: String(row.observed_colour || "").slice(0, 80),
                 observed_module_size: String(row.observed_module_size || "").slice(0, 80),
+                image_quality_score: Math.max(0, Math.min(1, Number(row.image_quality_score) || 0)),
+                quality_issue: String(row.quality_issue || "").slice(0, 300),
                 box_2d: Array.isArray(row.box_2d) ? row.box_2d.slice(0, 4).map(Number) : []
             }))
             .filter(row => row.confidence >= 0.65 && row.box_2d.length === 4 && row.box_2d.every(Number.isFinite));
@@ -394,6 +399,7 @@ Image rules:
 - Colour and module/size are HARD constraints. RED is not rose gold, gold, brown or any other colour. 1M, 2M, 16M and 18M are different products and must never be interchanged.
 - observed_colour and observed_module_size must come from visible catalogue evidence, not from the stock candidate. Omit a match if either value conflicts or cannot be established reliably.
 - box_2d must contain only the product photo/render, excluding captions, swatches, tables, codes, prices and labels.
+- Assess image_quality_score from 0-1 for sharpness, usable resolution, clean isolation and lack of text overlap. State any blur, pixelation, tiny source size or obstruction in quality_issue.
 
 STOCK CANDIDATES:
 ${JSON.stringify(safeCandidates)}`;
@@ -433,11 +439,13 @@ ${JSON.stringify(safeCandidates)}`;
                                         reason: { type: "STRING" },
                                         observed_colour: { type: "STRING" },
                                         observed_module_size: { type: "STRING" },
+                                        image_quality_score: { type: "NUMBER" },
+                                        quality_issue: { type: "STRING" },
                                         catalogue_code: { type: "STRING" },
                                         image_page: { type: "INTEGER" },
                                         box_2d: { type: "ARRAY", items: { type: "NUMBER" } }
                                     },
-                                    required: ["item_code", "confidence", "reason", "observed_colour", "observed_module_size", "image_page", "box_2d"]
+                                    required: ["item_code", "confidence", "reason", "observed_colour", "observed_module_size", "image_quality_score", "quality_issue", "image_page", "box_2d"]
                                 }
                             }
                         },
@@ -469,6 +477,8 @@ ${JSON.stringify(safeCandidates)}`;
                 reason: String(row.reason || "").slice(0, 500),
                 observed_colour: String(row.observed_colour || "").slice(0, 80),
                 observed_module_size: String(row.observed_module_size || "").slice(0, 80),
+                image_quality_score: Math.max(0, Math.min(1, Number(row.image_quality_score) || 0)),
+                quality_issue: String(row.quality_issue || "").slice(0, 300),
                 catalogue_code: String(row.catalogue_code || "").slice(0, 120),
                 image_page: Math.max(1, Number(row.image_page) || 1),
                 box_2d: Array.isArray(row.box_2d) ? row.box_2d.slice(0, 4).map(Number) : []

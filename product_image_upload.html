@@ -415,6 +415,14 @@
     .verification-badge.blocked { color: #fecaca; border-color: rgba(239,68,68,.45); background: rgba(239,68,68,.12); }
     .verification-sources { display: flex; gap: 7px; flex-wrap: wrap; }
     .verification-sources a { color: #7dd3fc; font-size: 11px; text-decoration: none; }
+    .advanced-progress { margin-top: 14px; padding: 14px; border: 1px solid rgba(56,189,248,.34); border-radius: 16px; background: rgba(2,6,23,.62); }
+    .advanced-progress[hidden] { display: none; }
+    .advanced-progress-head { display: flex; justify-content: space-between; gap: 12px; color: #e0f2fe; font-size: 12px; font-weight: 900; }
+    .advanced-progress-track { height: 13px; margin-top: 10px; overflow: hidden; border-radius: 999px; background: rgba(148,163,184,.2); }
+    .advanced-progress-fill { width: 0%; height: 100%; border-radius: inherit; background: linear-gradient(90deg,#0284c7,#38bdf8,#22c55e); transition: width .35s ease; }
+    .advanced-progress-detail { margin-top: 9px; color: #cbd5e1; font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; }
+    .advanced-progress-stats { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; color: #94a3b8; font-size: 11px; }
+    .advanced-progress-cancel { margin-top: 10px; padding: 8px 11px; border: 1px solid rgba(239,68,68,.45); border-radius: 10px; color: #fecaca; background: rgba(127,29,29,.25); cursor: pointer; font-weight: 850; }
     .candidate-row input[type="checkbox"] { width: auto; accent-color: var(--good); }
     .candidate-meta input { padding: 10px 12px; border-radius: 12px; font-size: 13px; }
     .candidate-tools { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -551,8 +559,15 @@
               <button class="btn" id="extractPdfBtn" type="button" onclick="extractPdfCatalog()">Analyze PDF with AI</button>
               <button class="btn dark" id="generateMissingBtn" type="button" onclick="generateMissingCatalogImages()" disabled>Generate unmatched with AI</button>
             </div>
-            <p class="advanced-note">Load the typed brand/model items first. AI reads the complete PDF and crops confident catalogue matches. After analysis, you can generate catalogue-inspired images for unmatched items in review-only batches. Generated images are clearly labeled and require individual approval.</p>
+            <p class="advanced-note">Load the typed brand/model items first. AI reads the complete PDF and crops confident catalogue matches. Generation processes the complete unmatched queue, keeps retrying temporary AI/network failures, and can be cancelled safely. Generated images are clearly labeled and require individual approval.</p>
             <div id="advancedStatus" class="status"></div>
+            <div id="advancedProgress" class="advanced-progress" hidden>
+              <div class="advanced-progress-head"><span id="advancedProgressPhase">Preparing...</span><span id="advancedProgressPercent">0%</span></div>
+              <div class="advanced-progress-track"><div id="advancedProgressFill" class="advanced-progress-fill"></div></div>
+              <div id="advancedProgressDetail" class="advanced-progress-detail">Waiting to start.</div>
+              <div id="advancedProgressStats" class="advanced-progress-stats"></div>
+              <button id="advancedProgressCancel" class="advanced-progress-cancel" type="button" onclick="cancelAdvancedGeneration()">Cancel generation</button>
+            </div>
           </div>
         </section>
 
@@ -615,6 +630,7 @@ let advancedDocumentStudy = null;
 let advancedFullAnalysisCache = null;
 let aiReviewHistoryAvailable = null;
 let aiReviewsByHash = new Map();
+let advancedGenerationJob = null;
 
 const itemSearch = document.getElementById("itemSearch");
 const suggestions = document.getElementById("suggestions");
@@ -636,6 +652,13 @@ const candidateList = document.getElementById("candidateList");
 const candidateCount = document.getElementById("candidateCount");
 const batchSaveBtn = document.getElementById("batchSaveBtn");
 const generateMissingBtn = document.getElementById("generateMissingBtn");
+const advancedProgress = document.getElementById("advancedProgress");
+const advancedProgressPhase = document.getElementById("advancedProgressPhase");
+const advancedProgressPercent = document.getElementById("advancedProgressPercent");
+const advancedProgressFill = document.getElementById("advancedProgressFill");
+const advancedProgressDetail = document.getElementById("advancedProgressDetail");
+const advancedProgressStats = document.getElementById("advancedProgressStats");
+const advancedProgressCancel = document.getElementById("advancedProgressCancel");
 const generationMode = document.getElementById("generationMode");
 const advancedStockOptions = document.getElementById("advancedStockOptions");
 
@@ -1097,6 +1120,10 @@ function resolveAdvancedItem(value) {
 }
 
 async function buildBrandProductList() {
+  if (advancedGenerationJob?.running) {
+    setAdvancedStatus("Cancel the active generation job before loading another product list.", "err");
+    return;
+  }
   const brand = advancedBrand.value.trim();
   if (!brand) {
     setAdvancedStatus("Enter a brand name first.", "err");
@@ -1230,6 +1257,10 @@ async function recordAiReview(candidate, decision, imageUrl = "") {
 }
 
 function clearAdvancedQueue(showMessage = true) {
+  if (advancedGenerationJob?.running) {
+    setAdvancedStatus("Cancel the active generation job before clearing its review queue.", "err");
+    return;
+  }
   advancedCandidates.forEach(candidate => {
     if (candidate.objectUrl) URL.revokeObjectURL(candidate.objectUrl);
   });
@@ -1603,6 +1634,10 @@ async function verifyCatalogCandidateWithAi(cropCanvas, item, detection, documen
 }
 
 async function extractPdfCatalog() {
+  if (advancedGenerationJob?.running) {
+    setAdvancedStatus("Cancel the active generation job before analyzing another PDF.", "err");
+    return;
+  }
   const file = catalogPdf.files[0];
   if (!file) {
     setAdvancedStatus("Choose a PDF catalogue first.", "err");
@@ -1832,8 +1867,11 @@ function getGenerationTargetItems() {
 function updateGenerateMissingButton() {
   if (!generateMissingBtn) return;
   const count = advancedDocumentStudy ? getGenerationTargetItems().length : 0;
-  generateMissingBtn.disabled = !advancedDocumentStudy || !advancedDocumentStudy.referenceImages?.length || !count;
-  generateMissingBtn.textContent = count
+  const running = advancedGenerationJob?.running === true;
+  generateMissingBtn.disabled = running || !advancedDocumentStudy || !advancedDocumentStudy.referenceImages?.length || !count;
+  generateMissingBtn.textContent = running
+    ? `Generating ${advancedGenerationJob.completed}/${advancedGenerationJob.total}`
+    : count
     ? `Generate with AI (${count})`
     : "Generate with AI";
 }
@@ -1845,7 +1883,86 @@ function base64ImageToBlob(base64, mimeType) {
   return new Blob([output], { type: mimeType || "image/png" });
 }
 
-async function generateCatalogueStyleImage(item) {
+function formatAdvancedElapsed(milliseconds) {
+  const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  return [hours, minutes, seconds].map(value => String(value).padStart(2, "0")).join(":");
+}
+
+function renderAdvancedGenerationProgress() {
+  const job = advancedGenerationJob;
+  if (!job) return;
+  advancedProgress.hidden = false;
+  const percent = job.total ? Math.min(100, Math.round((job.completed / job.total) * 100)) : 0;
+  advancedProgressFill.style.width = `${percent}%`;
+  advancedProgressPercent.textContent = `${percent}%`;
+  advancedProgressPhase.textContent = job.phase || "Working...";
+  advancedProgressDetail.textContent = job.detail || "Preparing generation queue...";
+  advancedProgressStats.textContent = `Processed ${job.completed}/${job.total} · Created ${job.generated} · Failed ${job.failed} · Retry ${job.retryAttempt || 0} · Elapsed ${formatAdvancedElapsed(Date.now() - job.startedAt)}`;
+  advancedProgressCancel.hidden = !job.running;
+  updateGenerateMissingButton();
+}
+
+function updateAdvancedGenerationProgress(patch = {}) {
+  if (!advancedGenerationJob) return;
+  Object.assign(advancedGenerationJob, patch);
+  renderAdvancedGenerationProgress();
+}
+
+function startAdvancedGenerationProgress(total) {
+  if (advancedGenerationJob?.timer) clearInterval(advancedGenerationJob.timer);
+  advancedGenerationJob = {
+    running: true,
+    cancelled: false,
+    total,
+    completed: 0,
+    generated: 0,
+    failed: 0,
+    retryAttempt: 0,
+    startedAt: Date.now(),
+    phase: "Starting AI generation",
+    detail: `Preparing ${total} unmatched products...`,
+    abortController: null,
+    timer: null
+  };
+  advancedGenerationJob.timer = setInterval(renderAdvancedGenerationProgress, 1000);
+  renderAdvancedGenerationProgress();
+  return advancedGenerationJob;
+}
+
+function cancelAdvancedGeneration() {
+  const job = advancedGenerationJob;
+  if (!job?.running) return;
+  job.cancelled = true;
+  job.phase = "Cancelling safely...";
+  job.detail = "The current request is being stopped. Completed images will remain in the review queue.";
+  job.abortController?.abort();
+  renderAdvancedGenerationProgress();
+}
+
+function generationCancelledError() {
+  const error = new Error("AI generation cancelled by user");
+  error.code = "GENERATION_CANCELLED";
+  return error;
+}
+
+async function waitForGenerationRetry(seconds, job, itemLabel, attempt) {
+  const retryUntil = Date.now() + Math.max(1, seconds) * 1000;
+  while (Date.now() < retryUntil) {
+    if (job.cancelled) throw generationCancelledError();
+    const remaining = Math.max(1, Math.ceil((retryUntil - Date.now()) / 1000));
+    updateAdvancedGenerationProgress({
+      phase: "AI temporarily busy · waiting to retry",
+      detail: `${itemLabel} · attempt ${attempt} · retrying in ${remaining} second${remaining === 1 ? "" : "s"}`,
+      retryAttempt: attempt
+    });
+    await new Promise(resolve => setTimeout(resolve, Math.min(1000, remaining * 1000)));
+  }
+}
+
+async function generateCatalogueStyleImage(item, job, queueIndex, queueTotal) {
   const endpoint = getAiCatalogEndpoint().replace(/ai-catalog-page$/, "ai-catalog-generate");
   const requestBody = JSON.stringify({
     brand: advancedBrand.value.trim(),
@@ -1858,31 +1975,48 @@ async function generateCatalogueStyleImage(item) {
     referenceImages: advancedDocumentStudy.referenceImages
   });
 
-  for (let attempt = 1; attempt <= 3; attempt += 1) {
+  const itemLabel = `${item.item_code || item.item_name} (${queueIndex}/${queueTotal})`;
+  for (let attempt = 1; ; attempt += 1) {
+    if (job.cancelled) throw generationCancelledError();
+    updateAdvancedGenerationProgress({
+      phase: "Generating product image",
+      detail: `${itemLabel} · request attempt ${attempt} is running...`,
+      retryAttempt: attempt
+    });
     let response;
+    job.abortController = new AbortController();
     try {
       response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: requestBody
+        body: requestBody,
+        signal: job.abortController.signal
       });
     } catch (error) {
-      throw new Error(`AI backend is unavailable at ${endpoint}`);
+      if (job.cancelled || error?.name === "AbortError") throw generationCancelledError();
+      const waitSeconds = Math.min(300, Math.max(15, attempt * 20));
+      await waitForGenerationRetry(waitSeconds, job, `${itemLabel} · backend/network unavailable`, attempt);
+      continue;
+    } finally {
+      job.abortController = null;
     }
     const result = await response.json().catch(() => ({}));
     if (response.ok && result.imageBase64) return result;
-    if ((response.status === 429 || response.status === 503) && attempt < 3) {
-      const waitSeconds = Math.max(15, Number(result.retryAfterSeconds) || attempt * 15);
-      setAdvancedStatus(`Image AI is temporarily busy. Retrying in ${waitSeconds} seconds...`, "wait");
-      await new Promise(resolve => setTimeout(resolve, waitSeconds * 1000));
+    const transient = response.status === 429 || response.status === 503 || response.status >= 500;
+    if (transient) {
+      const waitSeconds = Math.min(300, Math.max(15, Number(result.retryAfterSeconds) || attempt * 20));
+      await waitForGenerationRetry(waitSeconds, job, `${itemLabel} · ${result.error || `AI returned ${response.status}`}`, attempt);
       continue;
     }
     throw new Error(result.error || "AI image generation failed");
   }
-  throw new Error("AI image generation did not complete");
 }
 
 async function generateMissingCatalogImages() {
+  if (advancedGenerationJob?.running) {
+    setAdvancedStatus("AI generation is already running. See the progress monitor below.", "wait");
+    return;
+  }
   if (!advancedDocumentStudy?.referenceImages?.length) {
     setAdvancedStatus("Analyze the complete PDF first so AI can learn the catalogue style.", "err");
     return;
@@ -1895,16 +2029,18 @@ async function generateMissingCatalogImages() {
     return;
   }
 
-  const batch = allTargets.slice(0, 12);
-  generateMissingBtn.disabled = true;
+  const batch = allTargets;
+  const job = startAdvancedGenerationProgress(batch.length);
   let generated = 0;
   let failed = 0;
+  let processed = 0;
 
   for (let index = 0; index < batch.length; index += 1) {
+    if (job.cancelled) break;
     const { item, reason } = batch[index];
     setAdvancedStatus(`Generating review image ${index + 1} of ${batch.length} for ${item.item_code || item.item_name}...`, "wait");
     try {
-      const result = await generateCatalogueStyleImage(item);
+      const result = await generateCatalogueStyleImage(item, job, index + 1, batch.length);
       const blob = base64ImageToBlob(result.imageBase64, result.mimeType);
       const imageSha256 = await sha256Blob(blob);
       const priorReview = imageSha256 ? aiReviewsByHash.get(imageSha256) : null;
@@ -1927,19 +2063,51 @@ async function generateMissingCatalogImages() {
         aiReason: `${reason} Generated from the full-catalogue style study and stock description. Verify colour, size, module count and physical accuracy before approving.`
       });
       generated += 1;
+      processed += 1;
+      updateAdvancedGenerationProgress({
+        completed: processed,
+        generated,
+        failed,
+        retryAttempt: 0,
+        phase: "Image created for review",
+        detail: `${item.item_code || item.item_name} completed. Moving to the next product...`
+      });
       renderAdvancedCandidates();
     } catch (error) {
+      if (error?.code === "GENERATION_CANCELLED") break;
       console.error("Generated catalogue image failed:", error);
       failed += 1;
+      processed += 1;
+      updateAdvancedGenerationProgress({
+        completed: processed,
+        generated,
+        failed,
+        retryAttempt: 0,
+        phase: "Permanent error · continuing queue",
+        detail: `${item.item_code || item.item_name} failed: ${cleanErr(error)}`
+      });
     }
   }
 
+  job.running = false;
+  if (job.timer) clearInterval(job.timer);
+  updateAdvancedGenerationProgress({
+    completed: processed,
+    generated,
+    failed,
+    phase: job.cancelled ? "Generation cancelled" : "Generation queue complete",
+    detail: job.cancelled
+      ? `Stopped after ${processed} of ${batch.length}. Completed images remain available for review.`
+      : `Processed all ${batch.length} products. Review generated images before approval.`
+  });
   renderAdvancedCandidates();
   updateGenerateMissingButton();
   const remaining = getGenerationTargetItems().length;
   setAdvancedStatus(
-    `AI generation batch complete: ${generated} created for review, ${failed} failed${remaining ? `, ${remaining} still unmatched` : ""}. Generated images require individual approval.`,
-    failed ? "err" : "ok"
+    job.cancelled
+      ? `AI generation cancelled: ${generated} created, ${failed} permanently failed, ${remaining} still unmatched.`
+      : `AI generation complete: ${generated} created for review, ${failed} permanently failed${remaining ? `, ${remaining} still unmatched` : ""}. Generated images require individual approval.`,
+    failed && !generated ? "err" : "ok"
   );
 }
 

@@ -293,9 +293,12 @@ ${JSON.stringify(safeCandidates)}`;
         const apiMessage = err.response?.data?.error?.message;
         const message = apiMessage || err.message || "AI catalogue analysis failed";
         const retryMatch = String(message).match(/retry\s+in\s+([\d.]+)s/i);
-        const retryAfterSeconds = retryMatch ? Math.ceil(Number(retryMatch[1]) || 0) : 0;
+        const retryAfterHeader = Number(err.response?.headers?.["retry-after"]);
+        const retryAfterSeconds = retryMatch
+            ? Math.ceil(Number(retryMatch[1]) || 0)
+            : (Number.isFinite(retryAfterHeader) ? Math.ceil(retryAfterHeader) : (status === 503 ? 15 : 0));
         console.error("AI catalogue error:", err.response?.data || err.message);
-        res.status(status === 429 ? 429 : 500).json({
+        res.status(status === 429 || status === 503 ? status : 500).json({
             error: status ? `Gemini ${status}: ${message}` : message,
             retryAfterSeconds
         });
@@ -436,9 +439,12 @@ ${JSON.stringify(safeCandidates)}`;
         const apiMessage = err.response?.data?.error?.message;
         const message = apiMessage || err.message || "Full PDF AI analysis failed";
         const retryMatch = String(message).match(/retry\s+in\s+([\d.]+)s/i);
-        const retryAfterSeconds = retryMatch ? Math.ceil(Number(retryMatch[1]) || 0) : 0;
+        const retryAfterHeader = Number(err.response?.headers?.["retry-after"]);
+        const retryAfterSeconds = retryMatch
+            ? Math.ceil(Number(retryMatch[1]) || 0)
+            : (Number.isFinite(retryAfterHeader) ? Math.ceil(retryAfterHeader) : (status === 503 ? 15 : 0));
         console.error("Full PDF AI catalogue error:", err.response?.data || err.message);
-        res.status(status === 429 ? 429 : 500).json({
+        res.status(status === 429 || status === 503 ? status : 500).json({
             error: status ? `Gemini ${status}: ${message}` : message,
             retryAfterSeconds
         });

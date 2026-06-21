@@ -918,10 +918,15 @@ Requirements:
         const retryAfterSeconds = retryMatch
             ? Math.ceil(Number(retryMatch[1]) || 0)
             : (Number.isFinite(retryAfterHeader) ? Math.ceil(retryAfterHeader) : (status === 503 ? 15 : 0));
+        const quotaUnavailable = status === 429 && /(?:limit\s*:\s*0|limit\s+0|free[_\s-]*tier[^\n]*limit\s*:\s*0)/i.test(String(message));
         console.error("Catalogue image generation error:", err.response?.data || err.message);
         res.status(status === 429 || status === 503 ? status : 500).json({
-            error: status ? `Gemini ${status}: ${message}` : message,
-            retryAfterSeconds
+            error: quotaUnavailable
+                ? `Gemini image generation quota is unavailable for ${GEMINI_IMAGE_GENERATION_MODEL} (limit 0). Enable billing or assign quota, then resume.`
+                : (status ? `Gemini ${status}: ${message}` : message),
+            retryAfterSeconds,
+            quotaUnavailable,
+            model: GEMINI_IMAGE_GENERATION_MODEL
         });
     }
 });

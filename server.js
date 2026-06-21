@@ -29,7 +29,28 @@ const APP_BASE_URL = process.env.APP_BASE_URL || "http://localhost:5500";
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_VOICE_MODEL = process.env.GEMINI_VOICE_MODEL || "gemini-3.5-flash";
 const GEMINI_IMAGE_MODEL = process.env.GEMINI_IMAGE_MODEL || "gemini-2.5-flash";
+const GEMINI_CATALOG_FALLBACK_MODEL = process.env.GEMINI_CATALOG_FALLBACK_MODEL || "gemini-3.1-flash-lite";
 const GEMINI_IMAGE_GENERATION_MODEL = process.env.GEMINI_IMAGE_GENERATION_MODEL || "gemini-3.1-flash-image";
+
+axios.interceptors.response.use(response => response, async error => {
+    const status = error.response?.status;
+    const config = error.config;
+    const primaryModelPath = `/models/${encodeURIComponent(GEMINI_IMAGE_MODEL)}:generateContent`;
+    if (
+        (status === 429 || status === 503)
+        && config?.url?.includes(primaryModelPath)
+        && !config.__catalogModelFallbackAttempted
+        && GEMINI_CATALOG_FALLBACK_MODEL !== GEMINI_IMAGE_MODEL
+    ) {
+        console.warn(`Gemini ${status} on ${GEMINI_IMAGE_MODEL}; retrying with ${GEMINI_CATALOG_FALLBACK_MODEL}.`);
+        return axios.request({
+            ...config,
+            url: config.url.replace(primaryModelPath, `/models/${encodeURIComponent(GEMINI_CATALOG_FALLBACK_MODEL)}:generateContent`),
+            __catalogModelFallbackAttempted: true
+        });
+    }
+    throw error;
+});
 
 const CATALOGUE_COLOURS = [
     "rose gold", "champagne gold", "antique gold", "satin gold", "light gold", "dark gold",

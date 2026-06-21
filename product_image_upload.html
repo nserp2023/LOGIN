@@ -606,6 +606,7 @@ let advancedCandidateSequence = 0;
 let pdfJsLoadingPromise = null;
 let lastAiCatalogRequestAt = 0;
 let advancedDocumentStudy = null;
+let advancedFullAnalysisCache = null;
 
 const itemSearch = document.getElementById("itemSearch");
 const suggestions = document.getElementById("suggestions");
@@ -1063,6 +1064,7 @@ function refreshAdvancedStockOptions() {
 advancedBrand.addEventListener("input", () => {
   advancedLoadedItems = [];
   advancedDocumentStudy = null;
+  advancedFullAnalysisCache = null;
   updateGenerateMissingButton();
 });
 advancedBrand.addEventListener("change", refreshAdvancedStockOptions);
@@ -1085,6 +1087,7 @@ function buildBrandProductList() {
 
   clearAdvancedQueue(false);
   advancedDocumentStudy = null;
+  advancedFullAnalysisCache = null;
   updateGenerateMissingButton();
   const onlyMissing = document.getElementById("onlyMissingImages").checked;
   const matches = getBrandItems()
@@ -1261,21 +1264,15 @@ function getAiCatalogEndpoint() {
   return "http://localhost:3000/api/ai-catalog-page";
 }
 
-function buildAiStockCandidates(pageText) {
+function buildAiStockCandidates(pageText, preferredCodes = []) {
   const loadedCodes = new Set(advancedLoadedItems.map(item => String(item.item_code || "")));
   const ranked = findCatalogMatches(pageText).filter(item => loadedCodes.has(String(item.item_code || "")));
-  const combined = [...ranked];
-  const usedCodes = new Set(ranked.map(item => String(item.item_code || "")));
+  const preferredSet = new Set(preferredCodes.map(String));
+  const preferred = advancedLoadedItems.filter(item => preferredSet.has(String(item.item_code || "")));
+  const combined = [...preferred, ...ranked];
+  const unique = [...new Map(combined.map(item => [String(item.item_code || ""), item])).values()];
 
-  for (const item of advancedLoadedItems) {
-    const code = String(item.item_code || "");
-    if (!code || usedCodes.has(code)) continue;
-    combined.push(item);
-    usedCodes.add(code);
-    if (combined.length >= 120) break;
-  }
-
-  return combined.slice(0, 120).map(item => ({
+  return unique.slice(0, 30).map(item => ({
     item_code: item.item_code || "",
     item_name: item.item_name || "",
     description: getItemDescriptionText(item)
@@ -1465,7 +1462,22 @@ async function extractPdfCatalog() {
       item_name: item.item_name || "",
       description: getItemDescriptionText(item)
     }));
-    const fullResult = await analyzeFullCatalogWithAi(file, stockCandidates);
+    const analysisCacheKey = JSON.stringify({
+      name: file.name,
+      size: file.size,
+      modified: file.lastModified,
+      brand: advancedBrand.value.trim().toLowerCase(),
+      codes: stockCandidates.map(item => item.item_code)
+    });
+    let fullResult;
+    if (advancedFullAnalysisCache?.key === analysisCacheKey) {
+      fullResult = advancedFullAnalysisCache.result;
+      setAdvancedStatus("Reusing the completed full-PDF study and refining matched pages...", "wait");
+    } else {
+      fullResult = await analyzeFullCatalogWithAi(file, stockCandidates);
+      advancedFullAnalysisCache = { key: analysisCacheKey, result: fullResult };
+    }
+    const fullDetections = Array.isArray(fullResult.detections) ? fullResult.detections : [];
     const documentAnalysis = fullResult.documentAnalysis || {};
     const documentContext = JSON.stringify({
       layout_summary: documentAnalysis.layout_summary || "",
@@ -1477,9 +1489,14 @@ async function extractPdfCatalog() {
       .filter(pageNo => Number.isInteger(pageNo) && pageNo >= 1 && pageNo <= pdf.numPages);
     relevantPages = [...new Set(relevantPages)];
 
-    if (!relevantPages.length) {
-      relevantPages = Array.from({ length: pdf.numPages }, (_, index) => index + 1);
-    }
+    const detectedPages = [...new Set(fullDetections
+      .map(detection => Number(detection.image_page))
+      .filter(pageNo => Number.isInteger(pageNo) && pageNo >= 1 && pageNo <= pdf.numPages))];
+    relevantPages = detectedPages.length
+      ? detectedPages.slice(0, 8)
+      : (relevantPages.length
+          ? relevantPages.slice(0, 8)
+          : Array.from({ length: Math.min(pdf.numPages, 8) }, (_, index) => index + 1));
 
     const refinedDetections = [];
     const pageCanvases = new Map();
@@ -1489,7 +1506,10 @@ async function extractPdfCatalog() {
       const page = await pdf.getPage(pageNo);
       const textContent = await page.getTextContent();
       const pageText = textContent.items.map(item => item.str || "").join(" ");
-      const pageCandidates = buildAiStockCandidates(pageText);
+      const preferredCodes = fullDetections
+        .filter(detection => Number(detection.image_page) === pageNo)
+        .map(detection => detection.item_code);
+      const pageCandidates = buildAiStockCandidates(pageText, preferredCodes);
       if (!pageCandidates.length) continue;
 
       const pageCanvas = await renderPdfPageForAi(page);
@@ -1498,9 +1518,15 @@ async function extractPdfCatalog() {
       pageDetections.forEach(detection => refinedDetections.push({ ...detection, image_page: pageNo }));
     }
 
+    for (const pageNo of relevantPages.slice(0, 3)) {
+      if (!pageCanvases.has(pageNo)) {
+        pageCanvases.set(pageNo, await renderPdfPageForAi(await pdf.getPage(pageNo)));
+      }
+    }
+
     const detections = refinedDetections.length
       ? refinedDetections
-      : (Array.isArray(fullResult.detections) ? fullResult.detections : []);
+      : fullDetections;
     const bestByItem = new Map();
     detections.forEach(detection => {
       const existing = bestByItem.get(detection.item_code);

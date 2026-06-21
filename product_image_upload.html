@@ -1135,20 +1135,33 @@ async function sha256Blob(blob) {
   }
 }
 
+function getReviewApiEndpoint(path) {
+  return getAiCatalogEndpoint().replace(/\/api\/ai-catalog-page$/, path);
+}
+
+async function getReviewApiHeaders() {
+  const { data } = await sb.auth.getSession();
+  const token = data?.session?.access_token;
+  if (!token) throw new Error("A signed-in session is required for review history");
+  return {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`
+  };
+}
+
 async function loadAiReviewHistory(items) {
   aiReviewsByHash = new Map();
   const codes = [...new Set((items || []).map(item => String(item.item_code || "")).filter(Boolean))];
   if (!codes.length) return;
   try {
-    const { data, error } = await sb
-      .from("product_image_ai_reviews")
-      .select("item_code,decision,image_sha256,verification_verdict,verification_confidence,created_at")
-      .in("item_code", codes)
-      .not("image_sha256", "is", null)
-      .order("created_at", { ascending: false })
-      .limit(1000);
-    if (error) throw error;
-    (data || []).forEach(review => {
+    const response = await fetch(getReviewApiEndpoint("/api/product-image-review-history"), {
+      method: "POST",
+      headers: await getReviewApiHeaders(),
+      body: JSON.stringify({ itemCodes: codes })
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || "Review history request failed");
+    (result.reviews || []).forEach(review => {
       const hash = String(review.image_sha256 || "");
       if (hash && !aiReviewsByHash.has(hash)) aiReviewsByHash.set(hash, review);
     });
@@ -1168,7 +1181,7 @@ async function recordAiReview(candidate, decision, imageUrl = "") {
     ? "ai_generated"
     : (candidate.remoteUrl ? "official_url" : "catalogue_crop"));
   try {
-    const { error } = await sb.from("product_image_ai_reviews").insert({
+    const payload = {
       item_code: String(item.item_code || ""),
       item_name: String(item.item_name || ""),
       brand: advancedBrand.value.trim() || String(item.brand || ""),
@@ -1191,8 +1204,14 @@ async function recordAiReview(candidate, decision, imageUrl = "") {
       evidence_sources: Array.isArray(verification.sources) ? verification.sources : [],
       visual_observation: verification.visual && typeof verification.visual === "object" ? verification.visual : {},
       model_name: verification.model || null
+    };
+    const response = await fetch(getReviewApiEndpoint("/api/product-image-review"), {
+      method: "POST",
+      headers: await getReviewApiHeaders(),
+      body: JSON.stringify(payload)
     });
-    if (error) throw error;
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || "Review write failed");
     aiReviewHistoryAvailable = true;
     if (candidate.imageSha256) {
       aiReviewsByHash.set(candidate.imageSha256, {

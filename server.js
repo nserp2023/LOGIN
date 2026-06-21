@@ -6,6 +6,7 @@ import axios from "axios";
 import FormData from "form-data";
 import puppeteer from "puppeteer";
 import dotenv from "dotenv";
+import { createClient } from "@supabase/supabase-js";
 
 dotenv.config();
 
@@ -14,7 +15,7 @@ app.use(express.json({ limit: "45mb" }));
 
 app.use((req, res, next) => {
     res.setHeader("Access-Control-Allow-Origin", process.env.CORS_ORIGIN || "*");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
     res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
     if (req.method === "OPTIONS") return res.sendStatus(204);
     next();
@@ -32,6 +33,15 @@ const GEMINI_IMAGE_MODEL = process.env.GEMINI_IMAGE_MODEL || "gemini-2.5-flash";
 const GEMINI_CATALOG_FALLBACK_MODEL = process.env.GEMINI_CATALOG_FALLBACK_MODEL || "gemini-3.1-flash-lite";
 const GEMINI_IMAGE_GENERATION_MODEL = process.env.GEMINI_IMAGE_GENERATION_MODEL || "gemini-3.1-flash-image";
 const GEMINI_CATALOG_VERIFY_MODEL = process.env.GEMINI_CATALOG_VERIFY_MODEL || GEMINI_IMAGE_MODEL;
+const PRIMARY_SUPABASE_URL = process.env.PRIMARY_SUPABASE_URL || "https://kzxwjujjvnehhthazicc.supabase.co";
+const PRIMARY_SUPABASE_PUBLISHABLE_KEY = process.env.PRIMARY_SUPABASE_PUBLISHABLE_KEY || "sb_publishable_Iu3sQGl9gq_VsVYxR3j_7g_SLvgqp_9";
+const REVIEW_SUPABASE_URL = process.env.REVIEW_SUPABASE_URL;
+const REVIEW_SUPABASE_SERVICE_ROLE_KEY = process.env.REVIEW_SUPABASE_SERVICE_ROLE_KEY;
+const reviewSb = REVIEW_SUPABASE_URL && REVIEW_SUPABASE_SERVICE_ROLE_KEY
+    ? createClient(REVIEW_SUPABASE_URL, REVIEW_SUPABASE_SERVICE_ROLE_KEY, {
+        auth: { persistSession: false, autoRefreshToken: false }
+    })
+    : null;
 
 axios.interceptors.response.use(response => response, async error => {
     const status = error.response?.status;
@@ -125,6 +135,88 @@ function formatNumber(raw) {
     if (num.length === 10) num = "91" + num;
     return num;
 }
+
+async function requirePrimarySupabaseUser(req, res) {
+    const authorization = String(req.headers.authorization || "");
+    if (!authorization.startsWith("Bearer ")) {
+        res.status(401).json({ error: "A signed-in Supabase user is required" });
+        return null;
+    }
+    try {
+        const response = await axios.get(`${PRIMARY_SUPABASE_URL}/auth/v1/user`, {
+            headers: { apikey: PRIMARY_SUPABASE_PUBLISHABLE_KEY, Authorization: authorization },
+            timeout: 15000
+        });
+        if (!response.data?.id) throw new Error("Invalid authenticated user");
+        return response.data;
+    } catch (_) {
+        res.status(401).json({ error: "Your login session is invalid or expired" });
+        return null;
+    }
+}
+
+app.post("/api/product-image-review-history", async (req, res) => {
+    const user = await requirePrimarySupabaseUser(req, res);
+    if (!user) return;
+    if (!reviewSb) return res.status(503).json({ error: "Review Supabase is not configured on the server" });
+    const itemCodes = [...new Set((Array.isArray(req.body?.itemCodes) ? req.body.itemCodes : [])
+        .map(value => String(value || "").slice(0, 100))
+        .filter(Boolean))].slice(0, 250);
+    if (!itemCodes.length) return res.json({ reviews: [] });
+    const { data, error } = await reviewSb
+        .from("product_image_ai_reviews")
+        .select("item_code,decision,image_sha256,verification_verdict,verification_confidence,created_at")
+        .in("item_code", itemCodes)
+        .not("image_sha256", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(1000);
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ reviews: data || [] });
+});
+
+app.post("/api/product-image-review", async (req, res) => {
+    const user = await requirePrimarySupabaseUser(req, res);
+    if (!user) return;
+    if (!reviewSb) return res.status(503).json({ error: "Review Supabase is not configured on the server" });
+    const input = req.body || {};
+    const validDecisions = new Set(["accepted", "rejected", "ai_blocked", "generated_accepted"]);
+    const validSourceTypes = new Set(["catalogue_crop", "official_url", "ai_generated", "manual"]);
+    if (!input.item_code || !validDecisions.has(input.decision) || !validSourceTypes.has(input.source_type)) {
+        return res.status(400).json({ error: "Invalid product image review" });
+    }
+    const payload = {
+        item_code: String(input.item_code).slice(0, 100),
+        item_name: String(input.item_name || "").slice(0, 300) || null,
+        brand: String(input.brand || "").slice(0, 160) || null,
+        decision: input.decision,
+        source_type: input.source_type,
+        image_url: String(input.image_url || "").slice(0, 2000) || null,
+        image_sha256: /^[a-f0-9]{64}$/i.test(String(input.image_sha256 || "")) ? String(input.image_sha256).toLowerCase() : null,
+        catalogue_page: Number.isInteger(Number(input.catalogue_page)) && Number(input.catalogue_page) > 0 ? Number(input.catalogue_page) : null,
+        catalogue_code: String(input.catalogue_code || "").slice(0, 160) || null,
+        catalogue_confidence: input.catalogue_confidence !== null && input.catalogue_confidence !== undefined && input.catalogue_confidence !== "" && Number.isFinite(Number(input.catalogue_confidence))
+            ? Math.max(0, Math.min(1, Number(input.catalogue_confidence))) : null,
+        verification_verdict: String(input.verification_verdict || "").slice(0, 40) || null,
+        verification_confidence: input.verification_confidence !== null && input.verification_confidence !== undefined && input.verification_confidence !== "" && Number.isFinite(Number(input.verification_confidence))
+            ? Math.max(0, Math.min(1, Number(input.verification_confidence))) : null,
+        web_supported: input.web_supported === true,
+        official_source_found: input.official_source_found === true,
+        verification_reason: String(input.verification_reason || "").slice(0, 2000) || null,
+        hard_conflicts: Array.isArray(input.hard_conflicts) ? input.hard_conflicts.slice(0, 20) : [],
+        matched_attributes: Array.isArray(input.matched_attributes) ? input.matched_attributes.slice(0, 30) : [],
+        evidence_sources: Array.isArray(input.evidence_sources) ? input.evidence_sources.slice(0, 12) : [],
+        visual_observation: input.visual_observation && typeof input.visual_observation === "object" ? input.visual_observation : {},
+        model_name: String(input.model_name || "").slice(0, 160) || null,
+        reviewed_by: user.id
+    };
+    const { data, error } = await reviewSb
+        .from("product_image_ai_reviews")
+        .insert(payload)
+        .select("id,created_at")
+        .single();
+    if (error) return res.status(500).json({ error: error.message });
+    res.status(201).json({ review: data });
+});
 
 async function generatePDF(id, type) {
     const browser = await puppeteer.launch({

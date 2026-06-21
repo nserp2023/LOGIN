@@ -409,6 +409,12 @@
     .candidate-meta { display: grid; gap: 8px; min-width: 0; }
     .candidate-row { display: flex; align-items: center; gap: 8px; color: #cbd5e1; font-size: 12px; }
     .candidate-reason { color: #94a3b8; font-size: 11px; line-height: 1.35; }
+    .verification-badge { display: inline-flex; width: fit-content; padding: 5px 9px; border-radius: 999px; border: 1px solid var(--line); font-size: 11px; font-weight: 900; }
+    .verification-badge.verified { color: #bbf7d0; border-color: rgba(34,197,94,.45); background: rgba(34,197,94,.12); }
+    .verification-badge.review { color: #fde68a; border-color: rgba(245,158,11,.45); background: rgba(245,158,11,.12); }
+    .verification-badge.blocked { color: #fecaca; border-color: rgba(239,68,68,.45); background: rgba(239,68,68,.12); }
+    .verification-sources { display: flex; gap: 7px; flex-wrap: wrap; }
+    .verification-sources a { color: #7dd3fc; font-size: 11px; text-decoration: none; }
     .candidate-row input[type="checkbox"] { width: auto; accent-color: var(--good); }
     .candidate-meta input { padding: 10px 12px; border-radius: 12px; font-size: 13px; }
     .candidate-tools { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -607,6 +613,8 @@ let pdfJsLoadingPromise = null;
 let lastAiCatalogRequestAt = 0;
 let advancedDocumentStudy = null;
 let advancedFullAnalysisCache = null;
+let aiReviewHistoryAvailable = null;
+let aiReviewsByHash = new Map();
 
 const itemSearch = document.getElementById("itemSearch");
 const suggestions = document.getElementById("suggestions");
@@ -926,6 +934,16 @@ async function saveProductImage() {
     if (error) throw error;
 
     selectedItem.product_image_url = imageUrl;
+    await recordAiReview({
+      productValue: formatProductValue(selectedItem),
+      blob: compressedFile,
+      imageSha256: await sha256Blob(compressedFile),
+      sourceType: "manual",
+      generated: false,
+      remoteUrl: "",
+      verification: null,
+      page: 0
+    }, "accepted", imageUrl);
     setProgress(100);
 
     setStatus(`Saved successfully. Image URL updated for ${selectedItem.item_code}.`, "ok");
@@ -1078,7 +1096,7 @@ function resolveAdvancedItem(value) {
     || null;
 }
 
-function buildBrandProductList() {
+async function buildBrandProductList() {
   const brand = advancedBrand.value.trim();
   if (!brand) {
     setAdvancedStatus("Enter a brand name first.", "err");
@@ -1096,14 +1114,100 @@ function buildBrandProductList() {
 
   advancedLoadedItems = matches;
   refreshAdvancedStockOptions();
+  await loadAiReviewHistory(matches);
 
   renderAdvancedCandidates();
   setAdvancedStatus(
     matches.length
-      ? `${matches.length} ${brand} stock items loaded for full-catalogue AI matching. Now choose the PDF and click Analyze PDF with AI.`
+      ? `${matches.length} ${brand} stock items loaded for full-catalogue AI matching.${aiReviewHistoryAvailable ? ` ${aiReviewsByHash.size} prior image decisions loaded as learning memory.` : ""} Now choose the PDF and click Analyze PDF with AI.`
       : `No ${brand} products matched the current stock filter.`,
     matches.length ? "ok" : "err"
   );
+}
+
+async function sha256Blob(blob) {
+  if (!blob || !window.crypto?.subtle) return "";
+  try {
+    const digest = await window.crypto.subtle.digest("SHA-256", await blob.arrayBuffer());
+    return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, "0")).join("");
+  } catch (_) {
+    return "";
+  }
+}
+
+async function loadAiReviewHistory(items) {
+  aiReviewsByHash = new Map();
+  const codes = [...new Set((items || []).map(item => String(item.item_code || "")).filter(Boolean))];
+  if (!codes.length) return;
+  try {
+    const { data, error } = await sb
+      .from("product_image_ai_reviews")
+      .select("item_code,decision,image_sha256,verification_verdict,verification_confidence,created_at")
+      .in("item_code", codes)
+      .not("image_sha256", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(1000);
+    if (error) throw error;
+    (data || []).forEach(review => {
+      const hash = String(review.image_sha256 || "");
+      if (hash && !aiReviewsByHash.has(hash)) aiReviewsByHash.set(hash, review);
+    });
+    aiReviewHistoryAvailable = true;
+  } catch (error) {
+    aiReviewHistoryAvailable = false;
+    console.info("AI review history is unavailable. Apply supabase_product_image_ai_reviews.sql to enable learning.");
+  }
+}
+
+async function recordAiReview(candidate, decision, imageUrl = "") {
+  if (!candidate || aiReviewHistoryAvailable === false) return;
+  const item = resolveAdvancedItem(candidate.productValue);
+  if (!item) return;
+  const verification = candidate.verification || {};
+  const sourceType = candidate.sourceType || (candidate.generated
+    ? "ai_generated"
+    : (candidate.remoteUrl ? "official_url" : "catalogue_crop"));
+  try {
+    const { error } = await sb.from("product_image_ai_reviews").insert({
+      item_code: String(item.item_code || ""),
+      item_name: String(item.item_name || ""),
+      brand: advancedBrand.value.trim() || String(item.brand || ""),
+      decision,
+      source_type: sourceType,
+      image_url: imageUrl || candidate.remoteUrl || null,
+      image_sha256: candidate.imageSha256 || null,
+      catalogue_page: candidate.page || null,
+      catalogue_code: candidate.catalogueCode || null,
+      catalogue_confidence: Number.isFinite(candidate.catalogConfidence) ? candidate.catalogConfidence : null,
+      verification_verdict: verification.verdict || null,
+      verification_confidence: verification.confidence !== undefined && Number.isFinite(Number(verification.confidence))
+        ? Number(verification.confidence)
+        : null,
+      web_supported: verification.webSupported === true,
+      official_source_found: verification.officialSourceFound === true,
+      verification_reason: String(verification.reason || "").slice(0, 2000) || null,
+      hard_conflicts: Array.isArray(verification.hardConflicts) ? verification.hardConflicts : [],
+      matched_attributes: Array.isArray(verification.matchedAttributes) ? verification.matchedAttributes : [],
+      evidence_sources: Array.isArray(verification.sources) ? verification.sources : [],
+      visual_observation: verification.visual && typeof verification.visual === "object" ? verification.visual : {},
+      model_name: verification.model || null
+    });
+    if (error) throw error;
+    aiReviewHistoryAvailable = true;
+    if (candidate.imageSha256) {
+      aiReviewsByHash.set(candidate.imageSha256, {
+        item_code: item.item_code,
+        decision,
+        image_sha256: candidate.imageSha256,
+        verification_verdict: verification.verdict || null,
+        verification_confidence: verification.confidence || null,
+        created_at: new Date().toISOString()
+      });
+    }
+  } catch (error) {
+    aiReviewHistoryAvailable = false;
+    console.info("AI review was not recorded. Apply the review-history migration to enable learning.");
+  }
 }
 
 function clearAdvancedQueue(showMessage = true) {
@@ -1272,7 +1376,7 @@ function buildAiStockCandidates(pageText, preferredCodes = []) {
   const combined = [...preferred, ...ranked];
   const unique = [...new Map(combined.map(item => [String(item.item_code || ""), item])).values()];
 
-  return unique.slice(0, 30).map(item => ({
+  return unique.slice(0, 60).map(item => ({
     item_code: item.item_code || "",
     item_name: item.item_name || "",
     description: getItemDescriptionText(item)
@@ -1428,6 +1532,57 @@ async function analyzeFullCatalogWithAi(file, candidates) {
   return [];
 }
 
+async function verifyCatalogCandidateWithAi(cropCanvas, item, detection, documentContext) {
+  const endpoint = getAiCatalogEndpoint().replace(/ai-catalog-page$/, "ai-catalog-verify");
+  const dataUrl = cropCanvas.toDataURL("image/jpeg", 0.88);
+  const requestBody = JSON.stringify({
+    imageBase64: dataUrl.split(",")[1],
+    mimeType: "image/jpeg",
+    brand: advancedBrand.value.trim(),
+    item: {
+      item_code: item.item_code || "",
+      item_name: item.item_name || "",
+      description: getItemDescriptionText(item)
+    },
+    catalogueContext: documentContext,
+    initialConfidence: Number(detection.confidence) || 0
+  });
+
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    let response;
+    try {
+      response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: requestBody
+      });
+    } catch (_) {
+      return {
+        verdict: "uncertain",
+        verified: false,
+        autoApprove: false,
+        reason: "Verification backend was unavailable.",
+        sources: []
+      };
+    }
+    const result = await response.json().catch(() => ({}));
+    if (response.ok) return result;
+    if ((response.status === 429 || response.status === 503) && attempt < 3) {
+      const waitSeconds = Math.max(12, Number(result.retryAfterSeconds) || attempt * 15);
+      setAdvancedStatus(`Verifier is temporarily busy. Retrying in ${waitSeconds} seconds...`, "wait");
+      await new Promise(resolve => setTimeout(resolve, waitSeconds * 1000));
+      continue;
+    }
+    return {
+      verdict: "uncertain",
+      verified: false,
+      autoApprove: false,
+      reason: result.error || "Independent verification did not complete.",
+      sources: []
+    };
+  }
+}
+
 async function extractPdfCatalog() {
   const file = catalogPdf.files[0];
   if (!file) {
@@ -1493,10 +1648,10 @@ async function extractPdfCatalog() {
       .map(detection => Number(detection.image_page))
       .filter(pageNo => Number.isInteger(pageNo) && pageNo >= 1 && pageNo <= pdf.numPages))];
     relevantPages = detectedPages.length
-      ? detectedPages.slice(0, 8)
+      ? detectedPages.slice(0, 20)
       : (relevantPages.length
-          ? relevantPages.slice(0, 8)
-          : Array.from({ length: Math.min(pdf.numPages, 8) }, (_, index) => index + 1));
+          ? relevantPages.slice(0, 20)
+          : Array.from({ length: Math.min(pdf.numPages, 20) }, (_, index) => index + 1));
 
     const refinedDetections = [];
     const pageCanvases = new Map();
@@ -1515,7 +1670,7 @@ async function extractPdfCatalog() {
       const pageCanvas = await renderPdfPageForAi(page);
       pageCanvases.set(pageNo, pageCanvas);
       const pageDetections = await analyzeCatalogPageWithAi(pageCanvas, pageNo, pageCandidates, documentContext);
-      pageDetections.forEach(detection => refinedDetections.push({ ...detection, image_page: pageNo }));
+      pageDetections.forEach(detection => refinedDetections.push({ ...detection, image_page: pageNo, detectionStage: "page" }));
     }
 
     for (const pageNo of relevantPages.slice(0, 3)) {
@@ -1524,13 +1679,18 @@ async function extractPdfCatalog() {
       }
     }
 
-    const detections = refinedDetections.length
-      ? refinedDetections
-      : fullDetections;
+    const detections = [
+      ...fullDetections.map(detection => ({ ...detection, detectionStage: "document" })),
+      ...refinedDetections
+    ];
     const bestByItem = new Map();
     detections.forEach(detection => {
       const existing = bestByItem.get(detection.item_code);
-      if (!existing || Number(detection.confidence) > Number(existing.confidence)) {
+      const score = Number(detection.confidence) + (detection.detectionStage === "page" ? 0.03 : 0);
+      const existingScore = existing
+        ? Number(existing.confidence) + (existing.detectionStage === "page" ? 0.03 : 0)
+        : -1;
+      if (!existing || score > existingScore) {
         bestByItem.set(detection.item_code, detection);
       }
     });
@@ -1554,20 +1714,39 @@ async function extractPdfCatalog() {
       const confidence = Math.round((Number(detection.confidence) || 0) * 100);
       const imageQuality = Math.round((Number(detection.image_quality_score) || 0) * 100);
       const lowQuality = imageQuality < 72 || cropCanvas.width < 400 || cropCanvas.height < 400;
-      advancedCandidates.push({
+      const imageSha256 = await sha256Blob(blob);
+      const priorReview = imageSha256 ? aiReviewsByHash.get(imageSha256) : null;
+      const priorAccepted = priorReview
+        && String(priorReview.item_code || "") === String(item.item_code || "")
+        && ["accepted", "generated_accepted"].includes(priorReview.decision);
+      const priorRejected = priorReview
+        && String(priorReview.item_code || "") === String(item.item_code || "")
+        && ["rejected", "ai_blocked"].includes(priorReview.decision);
+      setAdvancedStatus(`Independently verifying ${item.item_code || item.item_name} with visual inspection and grounded web evidence...`, "wait");
+      const verification = await verifyCatalogCandidateWithAi(cropCanvas, item, detection, documentContext);
+      const blocked = priorRejected || verification.verdict === "mismatch" || (verification.hardConflicts || []).length > 0;
+      const catalogCandidate = {
         id: ++advancedCandidateSequence,
         page: pageNo,
         blob,
         objectUrl: URL.createObjectURL(blob),
         remoteUrl: "",
         productValue: formatProductValue(item),
-        approved: false,
+        approved: !blocked && !lowQuality && (Boolean(verification.autoApprove) || (priorAccepted && verification.verified)),
         generated: false,
         lowQuality,
         imageQuality,
+        catalogConfidence: Number(detection.confidence) || 0,
+        catalogueCode: detection.catalogue_code || "",
+        imageSha256,
+        priorReview: (priorAccepted || priorRejected) ? priorReview : null,
+        verification,
+        blocked,
         sourceLabel: `Full-PDF AI ${confidence}% · page ${pageNo}`,
         aiReason: [detection.reason, lowQuality ? (detection.quality_issue || "Catalogue crop may be too small or unclear.") : ""].filter(Boolean).join(" ")
-      });
+      };
+      advancedCandidates.push(catalogCandidate);
+      if (blocked && !priorRejected) await recordAiReview(catalogCandidate, "ai_blocked");
       detectedCount += 1;
     }
 
@@ -1582,9 +1761,11 @@ async function extractPdfCatalog() {
 
     renderAdvancedCandidates();
     updateGenerateMissingButton();
+    const verifiedCount = advancedCandidates.filter(candidate => candidate.verification?.verified).length;
+    const blockedCount = advancedCandidates.filter(candidate => candidate.blocked).length;
     setAdvancedStatus(
       detectedCount
-        ? `Full-PDF AI matched ${detectedCount} product images from ${advancedLoadedItems.length} loaded stock items. Review before uploading.`
+        ? `Full-PDF AI found ${detectedCount} candidates: ${verifiedCount} independently verified with web evidence, ${blockedCount} blocked as mismatches, and ${detectedCount - verifiedCount - blockedCount} requiring review.`
         : "Full-PDF AI found no confident matches. Check the typed brand/model and loaded stock items.",
       detectedCount ? "ok" : "err"
     );
@@ -1706,6 +1887,11 @@ async function generateMissingCatalogImages() {
     try {
       const result = await generateCatalogueStyleImage(item);
       const blob = base64ImageToBlob(result.imageBase64, result.mimeType);
+      const imageSha256 = await sha256Blob(blob);
+      const priorReview = imageSha256 ? aiReviewsByHash.get(imageSha256) : null;
+      const priorReviewForItem = priorReview && String(priorReview.item_code || "") === String(item.item_code || "")
+        ? priorReview
+        : null;
       advancedCandidates.push({
         id: ++advancedCandidateSequence,
         page: 0,
@@ -1715,6 +1901,9 @@ async function generateMissingCatalogImages() {
         productValue: formatProductValue(item),
         approved: false,
         generated: true,
+        imageSha256,
+        priorReview: priorReviewForItem,
+        blocked: Boolean(priorReviewForItem && ["rejected", "ai_blocked"].includes(priorReviewForItem.decision)),
         sourceLabel: "AI-generated · catalogue-inspired",
         aiReason: `${reason} Generated from the full-catalogue style study and stock description. Verify colour, size, module count and physical accuracy before approving.`
       });
@@ -1739,6 +1928,27 @@ const EMPTY_IMAGE = "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(
   '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><rect width="100%" height="100%" fill="#e2e8f0"/><text x="50%" y="47%" text-anchor="middle" fill="#475569" font-family="Arial" font-size="16">Paste official</text><text x="50%" y="59%" text-anchor="middle" fill="#475569" font-family="Arial" font-size="16">image URL</text></svg>'
 );
 
+function getVerificationPresentation(candidate) {
+  if (candidate.blocked) return { css: "blocked", label: "Mismatch detected · approval blocked" };
+  if (candidate.generated) return { css: "review", label: "AI generated · manual verification required" };
+  const verification = candidate.verification;
+  if (!verification) return { css: "review", label: "Not independently verified" };
+  const confidence = Math.round((Number(verification.confidence) || 0) * 100);
+  return verification.verified
+    ? { css: "verified", label: `Visual + web verified ${confidence}%` }
+    : { css: "review", label: `Uncertain ${confidence}% · review required` };
+}
+
+function renderVerificationSources(candidate) {
+  const sources = Array.isArray(candidate.verification?.sources) ? candidate.verification.sources : [];
+  const links = sources
+    .filter(source => /^https?:\/\//i.test(String(source.url || "")))
+    .slice(0, 4)
+    .map(source => `<a href="${escapeHtml(source.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(source.title || "Evidence source")}</a>`)
+    .join("");
+  return links ? `<div class="verification-sources">${links}</div>` : "";
+}
+
 function renderAdvancedCandidates() {
   candidateCount.textContent = `${advancedCandidates.length} image${advancedCandidates.length === 1 ? "" : "s"}`;
   batchSaveBtn.disabled = !advancedCandidates.some(candidate => candidate.approved);
@@ -1754,11 +1964,15 @@ function renderAdvancedCandidates() {
       <img src="${escapeHtml(candidate.objectUrl || candidate.remoteUrl || EMPTY_IMAGE)}" alt="Catalogue candidate" />
       <div class="candidate-meta">
         <div class="candidate-row">
-          <input type="checkbox" ${candidate.approved ? "checked" : ""} onchange="setCandidateApproved(${candidate.id}, this.checked)" />
+          <input type="checkbox" ${candidate.approved ? "checked" : ""} ${candidate.blocked ? "disabled" : ""} onchange="setCandidateApproved(${candidate.id}, this.checked)" />
           <b>${escapeHtml(candidate.sourceLabel)}</b>
         </div>
+        <div class="verification-badge ${getVerificationPresentation(candidate).css}">${escapeHtml(getVerificationPresentation(candidate).label)}</div>
+        ${candidate.priorReview ? `<div class="candidate-reason"><b>Learning memory:</b> this exact image was previously ${escapeHtml(candidate.priorReview.decision)}.</div>` : ""}
         ${Number.isFinite(candidate.imageQuality) ? `<div class="candidate-reason">Catalogue image quality: ${candidate.imageQuality}%${candidate.lowQuality ? " · AI alternative recommended" : ""}</div>` : ""}
         ${candidate.aiReason ? `<div class="candidate-reason">${escapeHtml(candidate.aiReason)}</div>` : ""}
+        ${candidate.verification?.reason ? `<div class="candidate-reason"><b>Independent check:</b> ${escapeHtml(candidate.verification.reason)}</div>` : ""}
+        ${renderVerificationSources(candidate)}
         <input list="advancedStockOptions" value="${escapeHtml(candidate.productValue)}" placeholder="Item code - product name" onchange="setCandidateProduct(${candidate.id}, this.value)" />
         <input value="${escapeHtml(candidate.remoteUrl)}" placeholder="Optional official image URL" onchange="setCandidateUrl(${candidate.id}, this.value, this)" />
         <div class="candidate-tools">
@@ -1776,7 +1990,7 @@ function getCandidate(id) {
 
 function setCandidateApproved(id, approved) {
   const candidate = getCandidate(id);
-  if (candidate) candidate.approved = approved;
+  if (candidate) candidate.approved = candidate.blocked ? false : approved;
   batchSaveBtn.disabled = !advancedCandidates.some(row => row.approved);
 }
 
@@ -1784,7 +1998,9 @@ function setCandidateProduct(id, value) {
   const candidate = getCandidate(id);
   if (!candidate) return;
   candidate.productValue = value;
-  candidate.approved = !candidate.generated && Boolean(resolveAdvancedItem(value)) && Boolean(candidate.blob || candidate.remoteUrl);
+  candidate.approved = false;
+  candidate.verification = null;
+  candidate.blocked = false;
   renderAdvancedCandidates();
 }
 
@@ -1792,7 +2008,9 @@ function setCandidateUrl(id, value, input) {
   const candidate = getCandidate(id);
   if (!candidate) return;
   candidate.remoteUrl = String(value || "").trim();
-  candidate.approved = Boolean(resolveAdvancedItem(candidate.productValue)) && /^https?:\/\//i.test(candidate.remoteUrl);
+  candidate.approved = false;
+  candidate.verification = null;
+  candidate.blocked = false;
   const image = input?.closest(".candidate-card")?.querySelector("img");
   if (image && candidate.remoteUrl) image.src = candidate.remoteUrl;
   renderAdvancedCandidates();
@@ -1809,8 +2027,9 @@ function searchCandidateWeb(id) {
   window.open(`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query)}`, "_blank", "noopener");
 }
 
-function removeAdvancedCandidate(id) {
+async function removeAdvancedCandidate(id) {
   const candidate = getCandidate(id);
+  if (candidate) await recordAiReview(candidate, "rejected");
   if (candidate?.objectUrl) URL.revokeObjectURL(candidate.objectUrl);
   advancedCandidates = advancedCandidates.filter(row => row.id !== Number(id));
   renderAdvancedCandidates();
@@ -1821,7 +2040,11 @@ function approveAllMatchedCandidates() {
   advancedCandidates.forEach(candidate => {
     const hasProduct = Boolean(resolveAdvancedItem(candidate.productValue));
     const hasSource = Boolean(candidate.blob || /^https?:\/\//i.test(candidate.remoteUrl));
-    candidate.approved = !candidate.generated && hasProduct && hasSource;
+    candidate.approved = !candidate.generated
+      && !candidate.blocked
+      && Boolean(candidate.verification?.verified)
+      && hasProduct
+      && hasSource;
     if (candidate.approved) approved += 1;
   });
   renderAdvancedCandidates();
@@ -1848,6 +2071,7 @@ async function saveApprovedCandidates() {
 
     try {
       if (!item) throw new Error("Stock product match is invalid");
+      if (candidate.blocked) throw new Error("Independent verification found a product mismatch");
       if (onlyMissing && item.product_image_url) {
         candidate.approved = false;
         skipped += 1;
@@ -1873,6 +2097,7 @@ async function saveApprovedCandidates() {
 
       if (error) throw error;
       item.product_image_url = imageUrl;
+      await recordAiReview(candidate, candidate.generated ? "generated_accepted" : "accepted", imageUrl);
       candidate.approved = false;
       saved += 1;
     } catch (error) {

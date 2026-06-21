@@ -1329,9 +1329,17 @@ async function analyzeCatalogPageWithAi(pageCanvas, pageNumber, candidates, docu
     const result = await response.json().catch(() => ({}));
     if (response.ok) return Array.isArray(result.detections) ? result.detections : [];
 
-    if (response.status === 429 && attempt < 3) {
-      const waitSeconds = Math.max(5, Number(result.retryAfterSeconds) || 60) + 1;
-      setAdvancedStatus(`Gemini quota cooling down. Resuming page ${pageNumber} in ${waitSeconds} seconds...`, "wait");
+    if ((response.status === 429 || response.status === 503) && attempt < 3) {
+      const isCapacityError = response.status === 503;
+      const waitSeconds = isCapacityError
+        ? Math.max(10, Number(result.retryAfterSeconds) || attempt * 10)
+        : Math.max(5, Number(result.retryAfterSeconds) || 60) + 1;
+      setAdvancedStatus(
+        isCapacityError
+          ? `Gemini is temporarily busy. Retrying page ${pageNumber} in ${waitSeconds} seconds...`
+          : `Gemini quota cooling down. Resuming page ${pageNumber} in ${waitSeconds} seconds...`,
+        "wait"
+      );
       await new Promise(resolve => setTimeout(resolve, waitSeconds * 1000));
       continue;
     }
@@ -1376,9 +1384,17 @@ async function analyzeFullCatalogWithAi(file, candidates) {
     const result = await response.json().catch(() => ({}));
     if (response.ok) return result;
 
-    if (response.status === 429 && attempt < 6) {
-      const waitSeconds = Math.max(65, Number(result.retryAfterSeconds) || 0) + 1;
-      setAdvancedStatus(`Gemini free quota is cooling down. Attempt ${attempt} of 6 will resume in ${waitSeconds} seconds. Keep this page open...`, "wait");
+    if ((response.status === 429 || response.status === 503) && attempt < 6) {
+      const isCapacityError = response.status === 503;
+      const waitSeconds = isCapacityError
+        ? Math.max(15, Number(result.retryAfterSeconds) || attempt * 15)
+        : Math.max(65, Number(result.retryAfterSeconds) || 0) + 1;
+      setAdvancedStatus(
+        isCapacityError
+          ? `Gemini is temporarily busy. Attempt ${attempt + 1} of 6 will retry in ${waitSeconds} seconds. Keep this page open...`
+          : `Gemini free quota is cooling down. Attempt ${attempt + 1} of 6 will resume in ${waitSeconds} seconds. Keep this page open...`,
+        "wait"
+      );
       await new Promise(resolve => setTimeout(resolve, waitSeconds * 1000));
       continue;
     }

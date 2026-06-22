@@ -149,8 +149,8 @@ th,td{
 }
 th:last-child,
 td.action-cell{
-    width:260px;
-    min-width:260px;
+    width:156px;
+    min-width:156px;
 }
 th{
     background:#e2e8f0;
@@ -177,23 +177,25 @@ tr:hover{
 .action-btn{
     border:none;
     border-radius:7px;
-    padding:7px 9px;
+    padding:0;
     cursor:pointer;
     font-size:11px;
     line-height:1;
     font-weight:800;
     margin:0;
-    min-width:72px;
-    max-width:96px;
-    height:30px;
+    width:32px;
+    min-width:32px;
+    height:32px;
     display:inline-flex;
     align-items:center;
     justify-content:center;
     text-align:center;
 }
+.action-btn svg{ width:17px; height:17px; pointer-events:none; }
 .edit-btn{ background:#2563eb; color:#fff; }
 .print-btn{ background:#059669; color:#fff; }
 .accept-btn{ background:#16a34a; color:#fff; }
+.delete-btn{ background:#dc2626; color:#fff; }
 
 .accepted-badge{
     display:inline-block;
@@ -304,9 +306,9 @@ tr:hover{
     table{ min-width:1180px; }
     th,td{ font-size:12px; padding:8px 6px; }
     th:last-child,
-    td.action-cell{ width:240px; min-width:240px; }
+    td.action-cell{ width:156px; min-width:156px; }
     .action-buttons{ gap:5px; flex-wrap:nowrap; min-width:max-content; }
-    .action-btn{ min-width:68px; max-width:88px; height:28px; padding:6px 7px; font-size:10px; }
+    .action-btn{ width:30px; min-width:30px; max-width:30px; height:30px; padding:0; }
 }
 </style>
 </head>
@@ -438,18 +440,25 @@ function getReturnType(row){
 function getCashRefundAmount(row){
     const type = getReturnType(row);
     const total = parseFloat(row.total_return_amount || row.payable || row.total_amount || 0) || 0;
-    const stored = parseFloat(row.cash_refund_amount || 0) || 0;
     if(type !== "CASH") return 0;
-    return stored || total;
+    // The return total is authoritative. This also fixes older modified returns
+    // whose stored cash_refund_amount was not updated with the new total.
+    return total;
 }
 
 function getCreditAdjustmentAmount(row){
     const type = getReturnType(row);
     const total = parseFloat(row.total_return_amount || row.payable || row.total_amount || 0) || 0;
-    const stored = parseFloat(row.credit_adjustment_amount || 0) || 0;
     if(type !== "CREDIT") return 0;
-    return stored || total;
+    return total;
 }
+
+const ACTION_ICONS = {
+    edit: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`,
+    accept: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>`,
+    print: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6z"/></svg>`,
+    delete: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 15H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>`
+};
 
 function returnTypeBadge(type){
     return type === "CREDIT"
@@ -573,17 +582,22 @@ async function loadReport(){
                 <div class="action-buttons">
                     <button class="action-btn edit-btn ${accepted ? "disabled-btn" : ""}"
                             onclick="${accepted ? "" : `modifyReturn(${r.id})`}"
+                            title="Modify return" aria-label="Modify return"
                             ${accepted ? "disabled" : ""}>
-                        Modify
+                        ${ACTION_ICONS.edit}
                     </button>
 
                     ${
                         accepted
-                        ? `<button class="action-btn accept-btn disabled-btn" disabled>Accepted</button>`
-                        : `<button class="action-btn accept-btn" onclick="acceptReturn(${r.id})">Accept</button>`
+                        ? `<button class="action-btn accept-btn disabled-btn" title="Return accepted" aria-label="Return accepted" disabled>${ACTION_ICONS.accept}</button>`
+                        : `<button class="action-btn accept-btn" onclick="acceptReturn(${r.id})" title="Accept return" aria-label="Accept return">${ACTION_ICONS.accept}</button>`
                     }
 
-                    <button class="action-btn print-btn" onclick="printReturn(${r.id})">Print</button>
+                    <button class="action-btn print-btn" onclick="printReturn(${r.id})" title="Print return" aria-label="Print return">${ACTION_ICONS.print}</button>
+                    <button class="action-btn delete-btn ${accepted ? "disabled-btn" : ""}"
+                            onclick="${accepted ? "" : `deleteReturn(${r.id})`}"
+                            title="${accepted ? "Accepted returns cannot be deleted" : "Delete return"}"
+                            aria-label="Delete return" ${accepted ? "disabled" : ""}>${ACTION_ICONS.delete}</button>
                 </div>
             </td>
         `;
@@ -767,6 +781,71 @@ async function acceptReturn(id){
 
 function printReturn(id){
     window.open(`sales_return_print.html?id=${id}`, "_blank");
+}
+
+async function deleteReturn(id){
+    const ok = confirm(`Delete sales return ${id}? This will reverse its returned stock and cannot be undone.`);
+    if(!ok) return;
+
+    const { data: returnHead, error: headErr } = await sb
+        .from("sales_return_details")
+        .select("id,is_accepted")
+        .eq("id", id)
+        .maybeSingle();
+
+    if(headErr || !returnHead){
+        alert("Unable to load this return: " + (headErr?.message || "record not found"));
+        return;
+    }
+    if(returnHead.is_accepted){
+        alert("Accepted returns cannot be deleted.");
+        await loadReport();
+        return;
+    }
+
+    const { data: items, error: itemsErr } = await sb
+        .from("sales_return_item_details")
+        .select("item_code,return_qty")
+        .eq("return_id", id);
+
+    if(itemsErr){
+        alert("Unable to load return items: " + itemsErr.message);
+        return;
+    }
+
+    try{
+        for(const item of (items || [])){
+            const qty = parseFloat(item.return_qty || 0) || 0;
+            if(qty <= 0) continue;
+            const { error: stockErr } = await sb.rpc("decrease_stock", {
+                p_item_code: item.item_code,
+                p_qty: qty,
+                p_reference_id: id
+            });
+            if(stockErr) throw stockErr;
+        }
+
+        const { error: itemDeleteErr } = await sb
+            .from("sales_return_item_details")
+            .delete()
+            .eq("return_id", id);
+        if(itemDeleteErr) throw itemDeleteErr;
+
+        const { data: deletedHead, error: headDeleteErr } = await sb
+            .from("sales_return_details")
+            .delete()
+            .eq("id", id)
+            .or("is_accepted.is.null,is_accepted.eq.false")
+            .select("id");
+        if(headDeleteErr) throw headDeleteErr;
+        if(!deletedHead?.length) throw new Error("The return was accepted or already deleted before this action completed.");
+
+        alert("Sales return deleted successfully");
+        await loadReport();
+    } catch(err){
+        console.error(err);
+        alert("Delete failed: " + (err.message || err));
+    }
 }
 </script>
 

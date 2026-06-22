@@ -979,6 +979,200 @@
             font-weight: 900;
             letter-spacing: .4px;
         }
+
+        /* Compact, accessible action icons */
+        .footer-section{
+            align-items:center;
+            gap:10px;
+        }
+
+        .footer-actions{
+            display:flex;
+            align-items:center;
+            gap:10px;
+        }
+
+        .icon-btn{
+            position:relative;
+            display:inline-flex;
+            align-items:center;
+            justify-content:center;
+            flex:0 0 44px !important;
+            width:44px !important;
+            min-width:44px;
+            height:44px;
+            min-height:44px;
+            padding:0 !important;
+            border:1px solid rgba(255,255,255,.18);
+            border-radius:12px;
+            color:#fff;
+            background:rgba(255,255,255,.10);
+            box-shadow:0 5px 14px rgba(0,0,0,.2);
+            transition:transform .15s ease, background .15s ease, box-shadow .15s ease;
+        }
+
+        .icon-btn:hover{
+            transform:translateY(-2px);
+            box-shadow:0 8px 18px rgba(0,0,0,.28);
+        }
+
+        .icon-btn:focus-visible{
+            outline:3px solid rgba(96,165,250,.75);
+            outline-offset:2px;
+        }
+
+        .icon-btn svg{
+            width:22px;
+            height:22px;
+            fill:none;
+            stroke:currentColor;
+            stroke-width:2;
+            stroke-linecap:round;
+            stroke-linejoin:round;
+            pointer-events:none;
+        }
+
+        .icon-btn-report{ background:#2563eb; }
+        .icon-btn-new{ background:#7c3aed; }
+        .icon-btn-reset{ background:#475569; }
+        .icon-btn-save{ background:#059669; }
+        .icon-btn-save:disabled{ background:#64748b; opacity:.7; cursor:not-allowed; transform:none; }
+
+        .icon-btn::after{
+            content:attr(data-tooltip);
+            position:absolute;
+            right:0;
+            bottom:calc(100% + 9px);
+            width:max-content;
+            max-width:220px;
+            padding:6px 9px;
+            border-radius:7px;
+            background:#f8fafc;
+            color:#0f172a;
+            font-size:11px;
+            font-weight:800;
+            letter-spacing:.2px;
+            text-transform:none;
+            pointer-events:none;
+            opacity:0;
+            transform:translateY(4px);
+            transition:.15s ease;
+            z-index:10020;
+        }
+
+        .icon-btn:hover::after,
+        .icon-btn:focus-visible::after{
+            opacity:1;
+            transform:translateY(0);
+        }
+
+        /* History stays visible without blocking or hiding the item-row controls. */
+        .history-panel{
+            top:auto;
+            left:auto;
+            right:12px;
+            bottom:78px;
+            width:min(470px, calc(100vw - 24px));
+            max-height:min(310px, 42vh);
+            background:rgba(15,23,42,.54);
+            border:1px solid rgba(255,255,255,.42);
+            border-radius:18px;
+            box-shadow:0 14px 36px rgba(15,23,42,.28), inset 0 1px 0 rgba(255,255,255,.28);
+            backdrop-filter:blur(2px) saturate(135%);
+            -webkit-backdrop-filter:blur(2px) saturate(135%);
+            pointer-events:none;
+            color:#f8fafc;
+        }
+
+        .history-header{
+            background:rgba(15,23,42,.56);
+            border-bottom:1px solid rgba(255,255,255,.2);
+        }
+
+        .history-close{
+            display:inline-flex;
+            align-items:center;
+            justify-content:center;
+            width:30px;
+            height:30px;
+            border-radius:50%;
+            background:rgba(255,255,255,.13);
+            pointer-events:auto;
+        }
+
+        .history-subtitle{ color:#e2e8f0; }
+        .history-table-wrap{ border-color:rgba(255,255,255,.28); }
+        .history-table{ background:transparent; }
+        .history-table th,
+        .history-table td{
+            background:rgba(255,255,255,.58);
+            border-color:rgba(255,255,255,.36);
+        }
+        .history-table th{ background:rgba(226,232,240,.82); }
+
+        /* Same-page report viewer */
+        .report-viewer{
+            position:fixed;
+            inset:0;
+            z-index:10050;
+            display:none;
+            padding:14px;
+            background:rgba(2,6,23,.66);
+            backdrop-filter:blur(5px);
+            -webkit-backdrop-filter:blur(5px);
+        }
+
+        .report-viewer.open{ display:flex; }
+
+        .report-viewer-card{
+            width:100%;
+            height:100%;
+            overflow:hidden;
+            border:1px solid rgba(255,255,255,.3);
+            border-radius:16px;
+            background:#fff;
+            box-shadow:0 25px 70px rgba(0,0,0,.42);
+            display:flex;
+            flex-direction:column;
+        }
+
+        .report-viewer-header{
+            min-height:48px;
+            padding:7px 10px 7px 16px;
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            background:#0f172a;
+            color:#fff;
+            font-weight:800;
+        }
+
+        .report-viewer-close{
+            width:34px;
+            height:34px;
+            border:0;
+            border-radius:9px;
+            background:rgba(255,255,255,.14);
+            color:#fff;
+            font-size:24px;
+            line-height:1;
+            cursor:pointer;
+        }
+
+        .report-viewer iframe{
+            width:100%;
+            flex:1;
+            border:0;
+            background:#fff;
+        }
+
+        @media (max-width:600px){
+            .footer-section{ justify-content:center; }
+            .footer-actions{ width:100%; justify-content:center; }
+            .history-panel{ left:8px; right:8px; bottom:74px; width:calc(100vw - 16px); max-height:35vh; }
+            .report-viewer{ padding:0; }
+            .report-viewer-card{ border-radius:0; border:0; }
+        }
     </style>
 </head>
 <body>
@@ -1158,16 +1352,32 @@
             Profit: ₹<span id="display_profit">0.00</span>
         </div>
 
-        <button class="btn"
-                style="background:#2563eb;color:white;"
-                onclick="window.open('report.html','_blank')">
-            SALES REPORT
-        </button>
-
         <div id="draft_status_text" style="align-self:center;color:#22c55e;font-weight:800;font-size:12px;padding:8px 10px;border:1px solid rgba(34,197,94,.45);border-radius:6px;background:rgba(20,83,45,.35);">Auto Backup ON</div>
 
-        <button class="btn" style="color: #64748b; background:transparent;" onclick="disableAutoBackupAndClearDraft('New bill - draft cleared'); location.reload();">Reset / New Bill</button>
-        <button id="btn_save" class="btn btn-save" onclick="saveAndPrint()" tabindex="100">PRINT & SAVE</button>
+        <div class="footer-actions" aria-label="Billing actions">
+            <button type="button" class="btn icon-btn icon-btn-report" data-tooltip="Sales report" aria-label="Open sales report" title="Sales report" onclick="openReportPanel()">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/></svg>
+            </button>
+            <button type="button" class="btn icon-btn icon-btn-new" data-tooltip="Open second billing page" aria-label="Open second billing page" title="Open second billing page" onclick="openSecondBillingPage()">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+            <button type="button" class="btn icon-btn icon-btn-reset" data-tooltip="Reset / new bill" aria-label="Reset and start a new bill" title="Reset / new bill" onclick="resetCurrentBill()">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+            </button>
+            <button type="button" id="btn_save" class="btn icon-btn icon-btn-save" data-tooltip="Print & save" aria-label="Print and save" title="Print & save" onclick="saveAndPrint()" tabindex="100">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/><path d="M18 12h.01"/></svg>
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="report_viewer" class="report-viewer" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="report_viewer_title" onclick="if(event.target === this) closeReportPanel()">
+    <div class="report-viewer-card">
+        <div class="report-viewer-header">
+            <span id="report_viewer_title">Sales Report</span>
+            <button type="button" class="report-viewer-close" aria-label="Close sales report" title="Close report" onclick="closeReportPanel()">&times;</button>
+        </div>
+        <iframe id="report_frame" title="Sales report" loading="lazy"></iframe>
     </div>
 </div>
 
@@ -1291,12 +1501,58 @@
 
 
     // --- AUTO BACKUP / RECOVERY DRAFT MODE ---
-    const BILL_DRAFT_KEY = "vajra_billing_unsaved_draft_v2";
+    // A plus-button workspace gets its own draft, so two bills cannot overwrite each other.
+    const BILL_WORKSPACE_ID = new URLSearchParams(window.location.search).get("workspace") || "";
+    const BILL_DRAFT_KEY = "vajra_billing_unsaved_draft_v2" + (BILL_WORKSPACE_ID ? `_${BILL_WORKSPACE_ID}` : "");
     const BILL_DRAFT_MAX_AGE_MS = 24 * 60 * 60 * 1000; // keep draft for 24 hours
     let autoBackupReady = false;
     let autoBackupTimer = null;
     let restoringDraft = false;
     let autoBackupPaused = false;
+
+    let reportReturnFocus = null;
+
+    function openReportPanel(){
+        const viewer = document.getElementById("report_viewer");
+        const frame = document.getElementById("report_frame");
+        reportReturnFocus = document.activeElement;
+        if(!frame.getAttribute("src")) frame.src = "report.html";
+        viewer.classList.add("open");
+        viewer.setAttribute("aria-hidden", "false");
+        viewer.querySelector(".report-viewer-close")?.focus();
+    }
+
+    function closeReportPanel(){
+        const viewer = document.getElementById("report_viewer");
+        viewer.classList.remove("open");
+        viewer.setAttribute("aria-hidden", "true");
+        reportReturnFocus?.focus?.();
+    }
+
+    function openSecondBillingPage(){
+        const secondPageUrl = new URL(window.location.pathname, window.location.origin);
+        secondPageUrl.searchParams.set("workspace", `${Date.now()}`);
+        window.open(secondPageUrl.href, "_blank", "noopener");
+    }
+
+    function resetCurrentBill(){
+        disableAutoBackupAndClearDraft("New bill - draft cleared");
+        window.location.reload();
+    }
+
+    function setSaveButtonLabel(label){
+        const btn = document.getElementById("btn_save");
+        if(!btn) return;
+        btn.dataset.tooltip = label;
+        btn.title = label;
+        btn.setAttribute("aria-label", label);
+    }
+
+    document.addEventListener("keydown", event => {
+        if(event.key === "Escape" && document.getElementById("report_viewer")?.classList.contains("open")){
+            closeReportPanel();
+        }
+    });
 
     function getInputValue(id){
         return document.getElementById(id)?.value || "";
@@ -1778,15 +2034,15 @@
 
             if(type==="quotation"){
                 document.title="VAJRA LIGHTS - Quotation";
-                document.getElementById("btn_save").innerText="SAVE & PRINT QUOTATION";
+                setSaveButtonLabel("Save & print quotation");
             }
             else if(type==="sales_order"){
                 document.title="VAJRA LIGHTS - Sales Order";
-                document.getElementById("btn_save").innerText="SAVE & PRINT SALES ORDER";
+                setSaveButtonLabel("Save & print sales order");
             }
             else{
                 document.title="VAJRA LIGHTS - Billing Software";
-                document.getElementById("btn_save").innerText="PRINT & SAVE";
+                setSaveButtonLabel("Print & save");
                 sm.value="";
             }
 
@@ -4869,7 +5125,7 @@ function calcTotal() {
         saveBillDraftNow(true);
 
         btn.disabled = true;
-        btn.innerText = "SAVING...";
+        setSaveButtonLabel("Saving...");
 
         try {
             const {
@@ -5323,17 +5579,21 @@ function calcTotal() {
                 salesOrderAdvancePaid = 0;
             }
 
-            window.location.replace(window.location.pathname + "?fresh=" + Date.now());
+            const freshUrl = new URL(window.location.pathname, window.location.origin);
+            freshUrl.searchParams.set("fresh", `${Date.now()}`);
+            if(BILL_WORKSPACE_ID) freshUrl.searchParams.set("workspace", BILL_WORKSPACE_ID);
+            window.location.replace(freshUrl.href);
 
         } catch (e) {
             console.error(e);
             alert("Error: " + (e.message || e));
         } finally {
             btn.disabled = false;
-            btn.innerText =
-                docType === "quotation" ? "SAVE & PRINT QUOTATION" :
-                docType === "sales_order" ? "SAVE & PRINT SALES ORDER" :
-                "PRINT & SAVE";
+            setSaveButtonLabel(
+                docType === "quotation" ? "Save & print quotation" :
+                docType === "sales_order" ? "Save & print sales order" :
+                "Print & save"
+            );
         }
     }
 

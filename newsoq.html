@@ -1114,7 +1114,8 @@
         .report-viewer{
             position:fixed;
             inset:0;
-            z-index:10050;
+            /* Stay above the shared floating Home button (z-index: 99999). */
+            z-index:100100;
             display:none;
             padding:14px;
             background:rgba(2,6,23,.66);

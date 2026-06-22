@@ -5092,14 +5092,15 @@ function calcTotal() {
             // the deployed header tables, so never allow it into a Supabase write.
             delete insertData.department_filter;
 
-            // sales_order_details does not have an address column. The address is
-            // already saved above in the customers table and loaded from there.
-            if (docType === "sales_order") delete insertData.address;
-
             let headerTable;
             if (docType === "quotation") headerTable = "quotation_details";
             else if (docType === "sales_order") headerTable = "sales_order_details";
             else headerTable = "sales_details";
+
+            // Final schema guard at the database boundary. Sales-order addresses
+            // live in customers; sales_order_details has no address column.
+            const headerWriteData = { ...insertData };
+            if (headerTable === "sales_order_details") delete headerWriteData.address;
 
             let sale;
 
@@ -5115,7 +5116,7 @@ function calcTotal() {
 
                     const { data, error } = await sb
                         .from("sales_details")
-                        .update(insertData)
+                        .update(headerWriteData)
                         .eq("id", pack.sales_id)
                         .select()
                         .maybeSingle();
@@ -5125,7 +5126,7 @@ function calcTotal() {
                 } else {
                     const { data, error } = await sb
                         .from(headerTable)
-                        .update(insertData)
+                        .update(headerWriteData)
                         .eq("id", editingId)
                         .select()
                         .maybeSingle();
@@ -5136,7 +5137,7 @@ function calcTotal() {
             } else {
                 const { data, error } = await sb
                     .from(headerTable)
-                    .insert([insertData])
+                    .insert([headerWriteData])
                     .select()
                     .maybeSingle();
 

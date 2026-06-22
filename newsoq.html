@@ -5027,7 +5027,6 @@ function calcTotal() {
                     order_date: head.date || new Date().toISOString().split("T")[0],
                     customer_name: head.name,
                     customer_mobile: head.mob,
-                    address: head.addr,
                     gst_number: head.gst,
                     total_amount: roundedTotal,
                     payment_type: paymentType,
@@ -5092,6 +5091,10 @@ function calcTotal() {
             // department_filter is a UI/print filter only. It is not a column in
             // the deployed header tables, so never allow it into a Supabase write.
             delete insertData.department_filter;
+
+            // sales_order_details does not have an address column. The address is
+            // already saved above in the customers table and loaded from there.
+            if (docType === "sales_order") delete insertData.address;
 
             let headerTable;
             if (docType === "quotation") headerTable = "quotation_details";
@@ -5416,6 +5419,16 @@ function calcTotal() {
             document.getElementById("cust_mobile").value = head.customer_mobile || "";
             document.getElementById("cust_gst").value = head.gst_number || "";
             document.getElementById("cust_address").value = head.address || "";
+
+            if (!document.getElementById("cust_address").value && head.customer_mobile) {
+                const { data: customer } = await sb
+                    .from("customers")
+                    .select("address")
+                    .eq("mobile", head.customer_mobile)
+                    .limit(1)
+                    .maybeSingle();
+                document.getElementById("cust_address").value = customer?.address || "";
+            }
             salesOrderAdvancePaid = parseFloat(head.advance_amount ?? head.paid_amount ?? 0) || 0;
         } else {
             salesOrderAdvancePaid = 0;

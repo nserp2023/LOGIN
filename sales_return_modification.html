@@ -291,6 +291,7 @@ let currentReturnId = null;
 let currentSaleId = null;
 let oldReturnItems = [];
 let isWithoutBillReturn = false;
+let currentReturnType = "CASH";
 let stockMaster = [];
 let stockLoaded = false;
 
@@ -335,6 +336,9 @@ async function loadSavedReturn(returnId){
         window.location.href = "sales_return_report.html";
         return;
     }
+
+    const settlementValue = returnHead.return_payment_type || returnHead.settlement_mode || returnHead.payment_type || "CASH";
+    currentReturnType = String(settlementValue).toUpperCase().includes("CREDIT") ? "CREDIT" : "CASH";
 
     currentSaleId = hasValidOriginalSaleId(returnHead.original_sales_id) ? returnHead.original_sales_id : null;
     isWithoutBillReturn = !hasValidOriginalSaleId(returnHead.original_sales_id);
@@ -897,6 +901,8 @@ async function updateReturn(){
             .update({
                 original_sales_id: isWithoutBillReturn ? null : currentSaleId,
                 total_return_amount: totalReturn,
+                cash_refund_amount: currentReturnType === "CASH" ? totalReturn : 0,
+                credit_adjustment_amount: currentReturnType === "CREDIT" ? totalReturn : 0,
                 customer_name: document.getElementById("cust_name").value || null,
                 customer_mobile: document.getElementById("cust_mobile").value || null,
                 gst_number: document.getElementById("cust_gst").value || null,

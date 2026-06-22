@@ -147,6 +147,56 @@
             min-width: 86px;
         }
 
+        .row-actions{
+            display:flex;
+            align-items:center;
+            gap:4px;
+            flex-wrap:wrap;
+            min-width:max-content;
+        }
+
+        button.icon-action,
+        .wa-col button.icon-action{
+            width:32px;
+            min-width:32px;
+            height:32px;
+            padding:0;
+            margin:1px;
+            display:inline-flex;
+            align-items:center;
+            justify-content:center;
+            color:#fff;
+            background:#475569;
+        }
+
+        button.icon-action svg{
+            width:17px;
+            height:17px;
+            pointer-events:none;
+        }
+
+        button.icon-action:hover{ background:#334155; }
+        button.icon-edit{ background:#2563eb; }
+        button.icon-edit:hover{ background:#1d4ed8; }
+        button.icon-print{ background:#059669; }
+        button.icon-print:hover{ background:#047857; }
+        button.icon-packing{ background:#0891b2; }
+        button.icon-packing:hover{ background:#0e7490; }
+        button.icon-eway{ background:#7c3aed; }
+        button.icon-eway:hover{ background:#6d28d9; }
+        button.icon-whatsapp{ background:#16a34a; }
+        button.icon-whatsapp:hover{ background:#15803d; }
+        button.icon-convert{ background:#d97706; }
+        button.icon-convert:hover{ background:#b45309; }
+        button.icon-delete{ background:#dc2626; }
+        button.icon-delete:hover{ background:#b91c1c; }
+        button.icon-action:disabled,
+        button.icon-action:disabled:hover{
+            background:#9ca3af;
+            color:#f8fafc;
+            opacity:.65;
+        }
+
         .cancel-btn {
             background:#dc2626;
             color:white;
@@ -338,6 +388,27 @@
 
     function getCreatedByValue(row){
         return row.created_by || row.created_user || row.created_by_user || row.user_name || row.username || "";
+    }
+
+    const REPORT_ACTION_ICONS = {
+        phone: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.9.33 1.78.62 2.63a2 2 0 0 1-.45 2.11L8 9.73a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.85.29 1.73.5 2.63.62A2 2 0 0 1 22 16.92Z"/></svg>`,
+        message: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z"/></svg>`,
+        image: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>`,
+        truck: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M10 17h4V5H2v12h3"/><path d="M14 9h4l4 4v4h-3"/><circle cx="7.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="17.5" r="2.5"/></svg>`,
+        document: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M8 13h8M8 17h8"/></svg>`,
+        print: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6z"/></svg>`,
+        packing: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m21 8-9 5-9-5"/><path d="M3 8 12 3l9 5v10l-9 5-9-5Z"/><path d="M12 13v10"/></svg>`,
+        edit: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`,
+        delete: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2m3 0-1 15H6L5 6M10 11v6M14 11v6"/></svg>`,
+        convert: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m17 1 4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="m7 23-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>`
+    };
+
+    function reportIconButton(icon, title, handler, options = {}){
+        const disabled = !!options.disabled;
+        const cssClass = options.cssClass || "";
+        const safeTitle = escapeHTML(title);
+        const clickAttribute = disabled ? "" : `onclick="event.stopPropagation(); ${handler}"`;
+        return `<button type="button" class="icon-action ${cssClass}" title="${safeTitle}" aria-label="${safeTitle}" ${disabled ? "disabled" : ""} ${clickAttribute}>${REPORT_ACTION_ICONS[icon]}</button>`;
     }
 
     function getReportPaymentType(row, type){
@@ -996,7 +1067,7 @@
                     <td class="remark-report-cell">${escapeHTML(s.remark || '')}</td>
                     <td class="followup-report-cell">
                         <div class="followup-wrap">
-                            <button class="followup-btn" onclick="event.stopPropagation(); saveFollowUp(${s.id})">📞 Follow Up</button>
+                            ${reportIconButton("phone", "Add follow-up", `saveFollowUp(${s.id})`, { cssClass:"icon-convert" })}
                             <div id="followup-text-${s.id}" class="${s.follow_up ? 'followup-text' : 'followup-empty'}">
                                 ${s.follow_up ? escapeHTML(s.follow_up) : 'No follow up'}
                             </div>
@@ -1004,57 +1075,56 @@
                     </td>
                 ` : ''}
 
-                <td class="wa-col">
-                    <button ${s.status === "CANCELLED" ? 'disabled title="Cancelled bill"' : ''} onclick="event.stopPropagation(); shareWhatsAppText(${s.id})">💬 Text</button>
-                    <button ${s.status === "CANCELLED" ? 'disabled title="Cancelled bill"' : ''} onclick="event.stopPropagation(); shareWhatsAppImage(${s.id})">🖼 Image</button>
-                </td>
+                <td class="wa-col"><div class="row-actions">
+                    ${reportIconButton("message", s.status === "CANCELLED" ? "Cancelled bill" : "WhatsApp text", `shareWhatsAppText(${s.id})`, { disabled:s.status === "CANCELLED", cssClass:"icon-whatsapp" })}
+                    ${reportIconButton("image", s.status === "CANCELLED" ? "Cancelled bill" : "WhatsApp image", `shareWhatsAppImage(${s.id})`, { disabled:s.status === "CANCELLED", cssClass:"icon-whatsapp" })}
+                </div></td>
 
-                <td>
+                <td><div class="row-actions">
                     ${
                         (type === "sales" || type === "sales_pack")
-                        ? `<button ${s.status === "CANCELLED" ? 'disabled title="Cancelled bill"' : ''} onclick="event.stopPropagation(); openEWayBill(${s.id})">🚚 E-Way Bill</button>`
+                        ? reportIconButton("truck", s.status === "CANCELLED" ? "Cancelled bill" : "Open E-Way Bill", `openEWayBill(${s.id})`, { disabled:s.status === "CANCELLED", cssClass:"icon-eway" })
                         : ""
                     }
 
                     ${
                         type === "quotation"
-                        ? `<button ${s.status === "CANCELLED" ? 'disabled title="Cancelled quotation"' : ''} onclick="event.stopPropagation(); printQuotationSimple(${s.id})">📄 Simple Quote</button>`
+                        ? reportIconButton("document", s.status === "CANCELLED" ? "Cancelled quotation" : "Print simple quotation", `printQuotationSimple(${s.id})`, { disabled:s.status === "CANCELLED", cssClass:"icon-print" })
                         : ""
                     }
 
                     ${
                         type === "sales_pack"
-                        ? `<button ${s.status === "CANCELLED" ? 'disabled title="Cancelled bill"' : ''} onclick="event.stopPropagation(); printSalesPacking(${s.id})">🧾📦 Sales + Packing</button>`
-                        : `<button ${s.status === "CANCELLED" ? 'disabled title="Cancelled bill"' : ''} onclick="event.stopPropagation(); printDoc(${s.id})">🖨 Invoice</button>`
+                        ? reportIconButton("packing", s.status === "CANCELLED" ? "Cancelled bill" : "Print sales and packing", `printSalesPacking(${s.id})`, { disabled:s.status === "CANCELLED", cssClass:"icon-packing" })
+                        : reportIconButton("print", s.status === "CANCELLED" ? "Cancelled bill" : "Print invoice", `printDoc(${s.id})`, { disabled:s.status === "CANCELLED", cssClass:"icon-print" })
                     }
 
-                    ${type === "sales" ? `
-                        <button ${s.status === "CANCELLED" ? 'disabled title="Cancelled bill"' : ''} onclick="event.stopPropagation(); printPacking(${s.id})">📦 Packing</button>
-                    ` : ""}
-                </td>
+                    ${type === "sales"
+                        ? reportIconButton("packing", s.status === "CANCELLED" ? "Cancelled bill" : "Print packing list", `printPacking(${s.id})`, { disabled:s.status === "CANCELLED", cssClass:"icon-packing" })
+                        : ""}
+                </div></td>
 
-                <td>
+                <td><div class="row-actions">
                     ${
                         canEditBills && s.status !== "CANCELLED"
-                        ? `<button onclick="event.stopPropagation(); editDoc(${s.id})">✏ Edit</button>`
+                        ? reportIconButton("edit", "Edit bill", `editDoc(${s.id})`, { cssClass:"icon-edit" })
                         : s.status === "CANCELLED"
-                            ? `<button disabled title="Cancelled bill">✏ Edit</button>`
-                            : `<button disabled title="No permission">✏ Edit</button>`
+                            ? reportIconButton("edit", "Cancelled bill", "", { disabled:true, cssClass:"icon-edit" })
+                            : reportIconButton("edit", "No edit permission", "", { disabled:true, cssClass:"icon-edit" })
                     }
 
                     ${
                         canEditBills && s.status !== "CANCELLED"
-                        ? `<button class="cancel-btn" onclick="event.stopPropagation(); cancelDoc(${s.id})">❌ Cancel</button>`
+                        ? reportIconButton("delete", "Cancel bill", `cancelDoc(${s.id})`, { cssClass:"icon-delete" })
                         : s.status === "CANCELLED"
                             ? `<span class="cancelled-badge">CANCELLED</span>`
                             : ""
                     }
 
                     ${(type === "quotation" || type === "sales_order") && !s.converted && s.status !== "CANCELLED" ? `
-                        <br>
-                        <button onclick="event.stopPropagation(); convertToSales(${s.id})">🔄 Convert</button>
+                        ${reportIconButton("convert", "Convert to sales", `convertToSales(${s.id})`, { cssClass:"icon-convert" })}
                     ` : ""}
-                </td>
+                </div></td>
             </tr>
 
             <tr id="details-${s.id}" style="display:none;">

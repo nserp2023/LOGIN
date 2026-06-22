@@ -5046,6 +5046,7 @@ function calcTotal() {
                     customer_mobile: head.mob,
                     gst_number: head.gst,
                     total_amount: roundedTotal,
+                    remark: document.getElementById("quotation_remark")?.value.trim() || "",
                     salesman: document.getElementById("salesman").value || "",
                     created_by: createdBy
                 };

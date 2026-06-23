@@ -3492,13 +3492,14 @@ const stockSelect = 'item_code,item_name,barcode,price1,price2,price3,landing,ba
         if(!list) return;
 
         list.innerHTML = '';
+        const showNetPurchase = input?.id !== 'cust_mobile';
 
         if(data && data.length > 0) {
             list.innerHTML = `
 <table class="autocomplete-table">
 <tr>
 <th>Mobile</th>
-<th>Net Purchased</th>
+${showNetPurchase ? '<th>Net Purchased</th>' : ''}
 <th>Name</th>
 <th>Address</th>
 <th>GST</th>
@@ -3512,7 +3513,7 @@ ${data.map((c, idx) => {
     return `
 <tr class="autocomplete-row ${rowClass}" data-idx="${idx}" title="${escapeHtml(rowTitle)}">
 <td>${escapeHtml(c.mobile || '')}</td>
-<td><span class="customer-net-purchase ${Number(c.net_purchase_amount || 0) < 0 ? 'negative' : ''}">${c.net_purchase_amount === undefined ? '—' : customerNetPurchaseFormatter.format(c.net_purchase_amount)}</span></td>
+${showNetPurchase ? `<td><span class="customer-net-purchase ${Number(c.net_purchase_amount || 0) < 0 ? 'negative' : ''}">${c.net_purchase_amount === undefined ? '—' : customerNetPurchaseFormatter.format(c.net_purchase_amount)}</span></td>` : ''}
 <td>${escapeHtml(c.name || '')}</td>
 <td>${escapeHtml(c.address || '')}</td>
 <td>${escapeHtml(c.gst_number || '')}${hasGst ? '<span class="gst-badge">GST</span>' : ''}</td>
@@ -3665,9 +3666,11 @@ ${data.map((c, idx) => {
                 }
 
                 if(requestId !== customerSearchRequestId) return;
-                const customersWithTotals = await addCustomerNetPurchaseAmounts(data || []);
+                const customers = mode === 'mobile'
+                    ? (data || [])
+                    : await addCustomerNetPurchaseAmounts(data || []);
                 if(requestId !== customerSearchRequestId) return;
-                renderCustomerSuggestions(input, list, customersWithTotals);
+                renderCustomerSuggestions(input, list, customers);
             }, 250);
         });
 

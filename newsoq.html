@@ -3446,13 +3446,13 @@ const stockSelect = 'item_code,item_name,barcode,price1,price2,price3,landing,ba
                 const [salesRows, returnRows] = await Promise.all([
                     fetchAllCustomerAmountRows(
                         'sales_details',
-                        'customer_mobile, invoice_amount, payable, status',
+                        'customer_mobile, invoice_amount, status',
                         missingMobiles,
                         query => query.or('status.is.null,status.neq.CANCELLED')
                     ),
                     fetchAllCustomerAmountRows(
                         'sales_return_details',
-                        'customer_mobile, total_return_amount, payable, total_amount, approval_status, is_accepted',
+                        'customer_mobile, total_return_amount, approval_status, is_accepted',
                         missingMobiles
                     )
                 ]);
@@ -3462,14 +3462,14 @@ const stockSelect = 'item_code,item_name,barcode,price1,price2,price3,landing,ba
 
                 salesRows.forEach(row => {
                     const key = customerMobileKey(row.customer_mobile);
-                    const amount = customerAmount(row.invoice_amount || row.payable);
+                    const amount = customerAmount(row.invoice_amount);
                     billTotals.set(key, (billTotals.get(key) || 0) + amount);
                 });
 
                 returnRows.forEach(row => {
                     if(!isAcceptedCustomerReturn(row)) return;
                     const key = customerMobileKey(row.customer_mobile);
-                    const amount = customerAmount(row.total_return_amount || row.payable || row.total_amount);
+                    const amount = customerAmount(row.total_return_amount);
                     returnTotals.set(key, (returnTotals.get(key) || 0) + amount);
                 });
 
@@ -3479,12 +3479,16 @@ const stockSelect = 'item_code,item_name,barcode,price1,price2,price3,landing,ba
                 });
             }catch(error){
                 console.warn('Customer net purchase total load error:', error);
+                missingMobiles.forEach(mobile => {
+                    const key = customerMobileKey(mobile);
+                    if(!customerNetPurchaseCache.has(key)) customerNetPurchaseCache.set(key, 0);
+                });
             }
         }
 
         return list.map(customer => ({
             ...customer,
-            net_purchase_amount: customerNetPurchaseCache.get(customerMobileKey(customer.mobile))
+            net_purchase_amount: customerNetPurchaseCache.get(customerMobileKey(customer.mobile)) ?? 0
         }));
     }
 
@@ -3492,14 +3496,13 @@ const stockSelect = 'item_code,item_name,barcode,price1,price2,price3,landing,ba
         if(!list) return;
 
         list.innerHTML = '';
-        const showNetPurchase = input?.id !== 'cust_mobile';
 
         if(data && data.length > 0) {
             list.innerHTML = `
 <table class="autocomplete-table">
 <tr>
 <th>Mobile</th>
-${showNetPurchase ? '<th>Net Purchased</th>' : ''}
+<th>Net Purchased</th>
 <th>Name</th>
 <th>Address</th>
 <th>GST</th>
@@ -3513,7 +3516,7 @@ ${data.map((c, idx) => {
     return `
 <tr class="autocomplete-row ${rowClass}" data-idx="${idx}" title="${escapeHtml(rowTitle)}">
 <td>${escapeHtml(c.mobile || '')}</td>
-${showNetPurchase ? `<td><span class="customer-net-purchase ${Number(c.net_purchase_amount || 0) < 0 ? 'negative' : ''}">${c.net_purchase_amount === undefined ? '—' : customerNetPurchaseFormatter.format(c.net_purchase_amount)}</span></td>` : ''}
+<td><span class="customer-net-purchase ${Number(c.net_purchase_amount || 0) < 0 ? 'negative' : ''}">${customerNetPurchaseFormatter.format(Number(c.net_purchase_amount) || 0)}</span></td>
 <td>${escapeHtml(c.name || '')}</td>
 <td>${escapeHtml(c.address || '')}</td>
 <td>${escapeHtml(c.gst_number || '')}${hasGst ? '<span class="gst-badge">GST</span>' : ''}</td>
@@ -3666,9 +3669,7 @@ ${showNetPurchase ? `<td><span class="customer-net-purchase ${Number(c.net_purch
                 }
 
                 if(requestId !== customerSearchRequestId) return;
-                const customers = mode === 'mobile'
-                    ? (data || [])
-                    : await addCustomerNetPurchaseAmounts(data || []);
+                const customers = await addCustomerNetPurchaseAmounts(data || []);
                 if(requestId !== customerSearchRequestId) return;
                 renderCustomerSuggestions(input, list, customers);
             }, 250);

@@ -982,19 +982,22 @@
 
         .customer-net-purchase{
             display:inline-block;
-            min-width:105px;
-            padding:4px 8px;
+            min-width:115px;
+            padding:6px 10px;
             border-radius:999px;
-            background:#dcfce7;
-            color:#166534;
-            font-size:11px;
-            font-weight:900;
+            background:#bbf7d0;
+            border:2px solid #16a34a;
+            color:#14532d;
+            font-size:15px;
+            line-height:1.15;
+            font-weight:1000;
             text-align:right;
             white-space:nowrap;
         }
 
         .customer-net-purchase.negative{
             background:#fee2e2;
+            border-color:#dc2626;
             color:#991b1b;
         }
 
@@ -3353,8 +3356,8 @@ const stockSelect = 'item_code,item_name,barcode,price1,price2,price3,landing,ba
     const customerNetPurchaseFormatter = new Intl.NumberFormat('en-IN', {
         style: 'currency',
         currency: 'INR',
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
     });
 
     function cleanCustomerSearch(value){

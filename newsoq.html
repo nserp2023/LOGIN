@@ -5236,6 +5236,20 @@ function calcTotal() {
         };
     }
 
+    function printFromCurrentPage(printUrl) {
+        const iframe = document.createElement("iframe");
+        iframe.style.position = "absolute";
+        iframe.style.width = "0";
+        iframe.style.height = "0";
+        iframe.src = printUrl;
+
+        document.body.appendChild(iframe);
+
+        setTimeout(() => {
+            if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+        }, 5000);
+    }
+
     async function saveAndPrint() {
         const totalAmount = parseFloat(
             (document.getElementById('display_grand_total').innerText || '₹0').replace('₹', '')
@@ -5657,10 +5671,10 @@ function calcTotal() {
             const printDepartmentQuery = printDepartment ? `&department=${printDepartment}` : "";
 
             if (docType === "sales_pack") {
-                window.open(`print.html?type=sales_pack&id=${packingId}${printDepartmentQuery}`, "_blank");
+                printFromCurrentPage(`print.html?type=sales_pack&id=${packingId}${printDepartmentQuery}`);
             }
             else {
-                window.open(`print.html?type=${docType}&id=${saleId}${printDepartmentQuery}`, "_blank");
+                printFromCurrentPage(`print.html?type=${docType}&id=${saleId}${printDepartmentQuery}`);
             }
 
             // A quotation is converted when it becomes Sales, Bill, or a Sales Order.

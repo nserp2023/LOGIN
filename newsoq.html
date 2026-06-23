@@ -5236,6 +5236,31 @@ function calcTotal() {
         };
     }
 
+    function printInCurrentPage(printUrl) {
+        const printFrame = document.createElement("iframe");
+        printFrame.title = "Print document";
+        printFrame.setAttribute("aria-hidden", "true");
+        printFrame.style.cssText = "position:fixed;width:1px;height:1px;right:0;bottom:0;border:0;opacity:0;pointer-events:none;";
+
+        const removePrintFrame = () => {
+            if (printFrame.isConnected) printFrame.remove();
+        };
+
+        printFrame.addEventListener("load", () => {
+            try {
+                printFrame.contentWindow.addEventListener("afterprint", removePrintFrame, { once: true });
+            } catch (error) {
+                console.warn("Could not attach print cleanup handler:", error);
+            }
+        });
+
+        printFrame.src = printUrl;
+        document.body.appendChild(printFrame);
+
+        // Fallback cleanup for browsers that do not fire afterprint on iframes.
+        setTimeout(removePrintFrame, 300000);
+    }
+
     async function saveAndPrint() {
         const totalAmount = parseFloat(
             (document.getElementById('display_grand_total').innerText || '₹0').replace('₹', '')
@@ -5657,10 +5682,10 @@ function calcTotal() {
             const printDepartmentQuery = printDepartment ? `&department=${printDepartment}` : "";
 
             if (docType === "sales_pack") {
-                window.open(`print.html?type=sales_pack&id=${packingId}${printDepartmentQuery}`, "_blank");
+                printInCurrentPage(`print.html?type=sales_pack&id=${packingId}${printDepartmentQuery}`);
             }
             else {
-                window.open(`print.html?type=${docType}&id=${saleId}${printDepartmentQuery}`, "_blank");
+                printInCurrentPage(`print.html?type=${docType}&id=${saleId}${printDepartmentQuery}`);
             }
 
             // A quotation is converted when it becomes Sales, Bill, or a Sales Order.

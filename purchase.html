@@ -412,6 +412,12 @@
     .warn{color:var(--warn)}
     .err{color:var(--err)}
 
+    .grid input.price-rule-invalid{
+      border-color:var(--err) !important;
+      background:rgba(244,63,94,.12) !important;
+      box-shadow:0 0 0 3px rgba(244,63,94,.12);
+    }
+
     .shake{animation:shake .25s linear 1}
     @keyframes shake{
       0%{transform:translateX(0)}
@@ -620,6 +626,8 @@
         <div id="items"></div>
       </div>
 
+      <div class="status" id="priceValidationStatus" aria-live="polite"></div>
+
       <div class="actions">
         <button class="btn" id="addRowBtn">+ Add row</button>
         <button class="btn primary" id="saveBtn" disabled>Save & Update</button>
@@ -636,7 +644,7 @@
       </div>
       <div class="sticky-actions">
         <button class="btn" id="addRowBtnSticky">+ Add row</button>
-        <button class="btn primary" id="saveBtnSticky">Save & Update</button>
+        <button class="btn primary" id="saveBtnSticky" disabled>Save & Update</button>
       </div>
     </div>
   </div>
@@ -1561,13 +1569,77 @@ if (baseLanding > 0) {
       const okTotals = Math.abs(inv.invoice_amount - expectedFinal) < 0.01 && Math.abs(inv.payable - inv.invoice_amount) < 0.01;
       const hasItems = collectItems().length > 0;
       const headerReady = inv.gst_number && inv.invoice_number && inv.invoice_date;
+      const sellingPricesValid = validateSellingPrices().valid;
 
-      byId("saveBtn").disabled = !(!duplicateInvoiceFound && headerReady && okTotals && hasItems && inv.supplier_name);
+      byId("saveBtn").disabled = !(!duplicateInvoiceFound && headerReady && okTotals && hasItems && inv.supplier_name && sellingPricesValid);
       syncStickySaveState();
+    }
+
+    function validateSellingPrices(options = {}){
+      const invalid = [];
+      const rows = [...byId("items").querySelectorAll(".grid")];
+
+      rows.forEach(row => {
+        const f = getRowFields(row);
+        [f.p1g, f.p2g, f.p3g].forEach(el => {
+          if(!el) return;
+          if(el.dataset.priceRuleMessage) el.title = el.placeholder || "";
+          el.classList.remove("price-rule-invalid");
+          el.removeAttribute("aria-invalid");
+          el.removeAttribute("data-price-rule-message");
+        });
+
+        const hasItem = [f.code, f.name, f.barcode].some(el => String(el?.value || "").trim());
+        if(!hasItem) return;
+
+        const landingValue = num(f.landing?.value);
+        const purchaseGstValue = num(f.purchG?.value);
+        const minimum = Math.max(Number.isFinite(landingValue) ? landingValue : 0, Number.isFinite(purchaseGstValue) ? purchaseGstValue : 0);
+        const itemLabel = String(f.code?.value || f.name?.value || "item").trim();
+        const tiers = [
+          { label:"P1+GST", el:f.p1g },
+          { label:"P2+GST", el:f.p2g },
+          { label:"P3+GST", el:f.p3g }
+        ];
+
+        tiers.forEach(tier => {
+          const value = num(tier.el?.value);
+          if(!tier.el || !Number.isFinite(value) || value <= minimum + 0.004){
+            if(tier.el){
+              const message = `${tier.label} must be above ${fmt2(minimum)}`;
+              tier.el.classList.add("price-rule-invalid");
+              tier.el.setAttribute("aria-invalid", "true");
+              tier.el.dataset.priceRuleMessage = message;
+              tier.el.title = message;
+            }
+            invalid.push({ itemLabel, tier:tier.label, minimum, el:tier.el });
+          }
+        });
+      });
+
+      const status = byId("priceValidationStatus");
+      if(invalid.length){
+        const first = invalid[0];
+        const message = document.createElement("span");
+        message.className = "err";
+        message.textContent = `Save blocked: ${first.itemLabel} ${first.tier} must be above ${fmt2(first.minimum)} (the higher of Landing and Purchase+GST).${invalid.length > 1 ? ` ${invalid.length - 1} more price(s) need correction.` : ""}`;
+        status.replaceChildren(message);
+        if(options.focusFirst && first.el) first.el.focus();
+      }else{
+        status.textContent = "";
+      }
+
+      return { valid: invalid.length === 0, invalid };
     }
 
     async function saveAll(){
       const status = byId("saveStatus");
+
+      if(!validateSellingPrices({ focusFirst:true }).valid){
+        status.innerHTML = `<span class="err">Save stopped. Correct the highlighted sales prices first.</span>`;
+        maybeEnableSave();
+        return;
+      }
 
       const isDup = await checkDuplicateInvoice();
       if (isDup) {

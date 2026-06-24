@@ -203,6 +203,28 @@ tr:hover td{background:rgba(56,189,248,.045)}
 .okText{color:#86efac;font-weight:950}
 .row-actions{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap}
 .smallbtn{padding:7px 9px;font-size:12px;border-radius:10px}
+.iconbtn{
+  width:36px;
+  height:36px;
+  padding:0;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 36px;
+}
+.iconbtn svg{
+  width:18px;
+  height:18px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:2;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+.editbtn{background:linear-gradient(135deg,#2563eb,#1d4ed8)}
+.receivebtn{background:linear-gradient(135deg,#16a34a,#15803d)}
+.whatsappbtn{background:linear-gradient(135deg,#22c55e,#15803d)}
+.cancelbtn{background:linear-gradient(135deg,#e11d48,#be123c)}
 .empty{
   padding:35px;
   text-align:center;
@@ -371,6 +393,7 @@ th:first-child{z-index:30;background:#102039}
   td:nth-child(6){white-space:normal;min-width:230px}
   .row-actions{justify-content:flex-start;flex-wrap:nowrap}
   .smallbtn{padding:6px 7px;font-size:11px;white-space:nowrap}
+  .iconbtn{width:34px;height:34px;padding:0;flex-basis:34px}
   .modal{align-items:flex-end;padding:0}
   .modalbox{width:100%;border-radius:20px 20px 0 0}
   .receiveGrid{grid-template-columns:1fr 1fr}
@@ -403,18 +426,17 @@ th:first-child{z-index:30;background:#102039}
 .po-print-brand h2{margin:0;font-size:18px;font-weight:900;letter-spacing:.3px;color:#000}
 .po-print-header{display:grid;grid-template-columns:repeat(2,1fr);border:1px solid #000;margin:0 0 8px;font-size:11px;font-weight:800;color:#000;background:#fff}
 .po-print-header span{border:1px solid #000;padding:5px 7px;min-height:24px;color:#000;background:#fff}
-.po-print-grid{display:grid;grid-template-columns:36px 82px 1.7fr 58px 68px 82px 86px 1fr;gap:0;align-items:stretch;width:100%;color:#000;background:#fff}
+.po-print-grid{display:grid;grid-template-columns:36px 110px 1.8fr 80px 1fr;gap:0;align-items:stretch;width:100%;color:#000;background:#fff}
 .po-print-grid-head{border:1px solid #000;background:#eaeaea;break-inside:avoid}
 .po-print-grid-head>div{font-size:10px;font-weight:900;color:#000;text-transform:uppercase;border-right:1px solid #000;padding:5px 4px;background:#eaeaea;display:flex;align-items:center}
 .po-print-grid-head>div:last-child{border-right:none}
-.po-print-row{display:grid;grid-template-columns:36px 82px 1.7fr 58px 68px 82px 86px 1fr;gap:0;align-items:stretch;width:100%;break-inside:avoid;border-left:1px solid #000;border-right:1px solid #000;border-bottom:1px solid #000;background:#fff;min-height:25px;color:#000}
+.po-print-row{display:grid;grid-template-columns:36px 110px 1.8fr 80px 1fr;gap:0;align-items:stretch;width:100%;break-inside:avoid;border-left:1px solid #000;border-right:1px solid #000;border-bottom:1px solid #000;background:#fff;min-height:25px;color:#000}
 .po-cell{border-right:1px solid #000;padding:4px 5px;min-height:25px;display:flex;align-items:center;color:#000;background:#fff;font-size:11px;font-weight:800;white-space:normal;word-break:break-word}
 .po-cell:last-child{border-right:none}
 .po-right{text-align:right!important;justify-content:flex-end!important;font-variant-numeric:tabular-nums!important}
 .po-center{text-align:center!important;justify-content:center!important}
-.po-print-total{display:grid;grid-template-columns:1fr 1fr;border:1px solid #000;border-top:none;color:#000;background:#fff;font-size:11px;font-weight:900}
-.po-print-total span{border-right:1px solid #000;padding:6px 7px;color:#000;background:#fff}
-.po-print-total span:last-child{border-right:none;text-align:right}
+.po-print-total{display:flex;justify-content:flex-end;border:1px solid #000;border-top:none;color:#000;background:#fff;font-size:11px;font-weight:900}
+.po-print-total span{padding:6px 10px;color:#000;background:#fff}
 
 </style>
 </head>
@@ -793,6 +815,15 @@ async function loadReport(){
       rows = rows.filter(r=>r.pending_qty>0 && r.status!=="CANCELLED");
     }
 
+    // Keep products from the newest purchase orders at the top of Item Wise view.
+    rows.sort((a,b)=>{
+      const dateDiff = (Date.parse(b.order_date) || 0) - (Date.parse(a.order_date) || 0);
+      if(dateDiff) return dateDiff;
+      const orderDiff = Number(b.order_id || 0) - Number(a.order_id || 0);
+      if(orderDiff) return orderDiff;
+      return Number(a.item_id || 0) - Number(b.item_id || 0);
+    });
+
     allRows = rows;
     allOrders = orders || [];
     allItems = items || [];
@@ -855,10 +886,10 @@ function renderRows(rows){
         <td>${badge(r.status)}</td>
         <td class="right">
           <div class="row-actions">
-            <button class="smallbtn green" onclick="sharePOWhatsApp(${r.order_id})" ${cancelled ? "disabled" : ""}>🖼 WhatsApp</button>
-            <button class="smallbtn ghost" onclick="printPO(${r.order_id})">🖨 Print</button>
-            <button class="smallbtn green" onclick="openReceiveModal(${r.item_id})" ${cancelled || r.pending_qty<=0 ? "disabled" : ""}>📦 Material Received</button>
-            <button class="smallbtn red" onclick="cancelPO(${r.order_id})" ${cancelled ? "disabled" : ""}>Cancel</button>
+            <button class="smallbtn iconbtn whatsappbtn" type="button" title="Share on WhatsApp" aria-label="Share purchase order on WhatsApp" onclick="sharePOWhatsApp(${r.order_id})" ${cancelled ? "disabled" : ""}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.5 8.5 0 0 1-12.6 7.4L3 21l2.1-5.2A8.5 8.5 0 1 1 21 11.5Z"/><path d="M8.5 8.2c.6 3 2.3 4.7 5.3 5.3"/></svg></button>
+            <button class="smallbtn iconbtn editbtn" type="button" title="Edit purchase order" aria-label="Edit purchase order" onclick="editPO(${r.order_id})" ${cancelled ? "disabled" : ""}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg></button>
+            <button class="smallbtn iconbtn receivebtn" type="button" title="Material received" aria-label="Record material received" onclick="openReceiveModal(${r.item_id})" ${cancelled || r.pending_qty<=0 ? "disabled" : ""}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/><path d="m9 16 2 2 4-4"/></svg></button>
+            <button class="smallbtn iconbtn cancelbtn" type="button" title="Cancel purchase order" aria-label="Cancel purchase order" onclick="cancelPO(${r.order_id})" ${cancelled ? "disabled" : ""}><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m9 9 6 6m0-6-6 6"/></svg></button>
           </div>
         </td>
       </tr>
@@ -970,10 +1001,10 @@ function renderOrders(orders, items){
         <td>${badge(String(o.status||'').toUpperCase() || (r.pending>0? 'OPEN':'CLOSED'))}</td>
         <td class="right">
           <div class="row-actions">
-            <button class="smallbtn green" onclick="sharePOWhatsApp(${o.id})" ${cancelled ? 'disabled' : ''}>🖼 WhatsApp</button>
-            <button class="smallbtn ghost" onclick="printPO(${o.id})">🖨 Print</button>
-            <button class="smallbtn green" onclick="openOrderReceiveModal(${o.id})" ${cancelled ? 'disabled' : ''}>📦 Material Received</button>
-            <button class="smallbtn red" onclick="cancelPO(${o.id})" ${cancelled ? 'disabled' : ''}>Cancel</button>
+            <button class="smallbtn iconbtn whatsappbtn" type="button" title="Share on WhatsApp" aria-label="Share purchase order on WhatsApp" onclick="sharePOWhatsApp(${o.id})" ${cancelled ? 'disabled' : ''}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.5 8.5 0 0 1-12.6 7.4L3 21l2.1-5.2A8.5 8.5 0 1 1 21 11.5Z"/><path d="M8.5 8.2c.6 3 2.3 4.7 5.3 5.3"/></svg></button>
+            <button class="smallbtn iconbtn editbtn" type="button" title="Edit purchase order" aria-label="Edit purchase order" onclick="editPO(${o.id})" ${cancelled ? 'disabled' : ''}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg></button>
+            <button class="smallbtn iconbtn receivebtn" type="button" title="Material received" aria-label="Record material received" onclick="openOrderReceiveModal(${o.id})" ${cancelled ? 'disabled' : ''}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/><path d="m9 16 2 2 4-4"/></svg></button>
+            <button class="smallbtn iconbtn cancelbtn" type="button" title="Cancel purchase order" aria-label="Cancel purchase order" onclick="cancelPO(${o.id})" ${cancelled ? 'disabled' : ''}><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m9 9 6 6m0-6-6 6"/></svg></button>
           </div>
         </td>
       </tr>
@@ -1210,25 +1241,9 @@ async function fetchPOForShare(orderId){
 
   if(itemErr) throw itemErr;
 
-  const itemRows = items || [];
-  const codes = [...new Set(itemRows.map(x => String(x.item_code || '').trim()).filter(Boolean))];
-  const stockMap = {};
-
-  if(codes.length){
-    try{
-      const {data:stockRows,error:stockErr} = await sb
-        .from('stock_balance_view')
-        .select('item_code,balance')
-        .in('item_code', codes);
-      if(!stockErr){
-        (stockRows || []).forEach(x => stockMap[String(x.item_code || '')] = x.balance);
-      }
-    }catch(e){
-      console.warn('Stock balance skipped for PO print image:', e);
-    }
-  }
-
-  return {order, items:itemRows, stockMap};
+  // WhatsApp sharing intentionally uses only order and item/quantity details.
+  // Do not query stock or include purchase prices/amounts in the shared image.
+  return {order, items:items || []};
 }
 
 function rawDateForPO(v){
@@ -1239,28 +1254,22 @@ function two(v){
   return Number(v || 0).toFixed(2);
 }
 
-function makePOExactPrintCardFromData(order, items, stockMap = {}){
+function makePOExactPrintCardFromData(order, items){
   const mobile = order.supplier_mobile || order.mobile || getMobileFromRemark(order.remark || order.remarks || '');
   const poDate = rawDateForPO(order.order_date || order.purchase_order_date || order.bill_date || order.created_at);
   const rows = (items || []).map((it, idx) => {
     const qty = Number(it.quantity || it.qty || 0);
-    const price = Number(it.price ?? it.purchase_price_gst ?? it.purchase_price ?? 0);
-    const amount = qty * price;
     const code = String(it.item_code || '').trim();
     return {
       sl: idx + 1,
       item_code: code,
       item_name: it.item_name || '',
-      stock: stockMap[code] == null ? '—' : two(stockMap[code]),
       qty: two(qty),
-      price: price ? two(price) : '',
-      amount: two(amount),
       remark: it.remark || it.remarks || ''
     };
   });
 
   const totalQty = rows.reduce((a,r) => a + Number(r.qty || 0), 0);
-  const totalAmount = rows.reduce((a,r) => a + Number(r.amount || 0), 0);
   const stage = document.createElement('div');
   stage.className = 'po-exact-print-stage';
 
@@ -1269,10 +1278,7 @@ function makePOExactPrintCardFromData(order, items, stockMap = {}){
       <div class="po-cell po-center">${safe(r.sl)}</div>
       <div class="po-cell">${safe(r.item_code)}</div>
       <div class="po-cell">${safe(r.item_name)}</div>
-      <div class="po-cell po-right">${safe(r.stock)}</div>
       <div class="po-cell po-right">${safe(r.qty)}</div>
-      <div class="po-cell po-right">${safe(r.price)}</div>
-      <div class="po-cell po-right">${safe(r.amount)}</div>
       <div class="po-cell">${safe(r.remark)}</div>
     </div>`).join('');
 
@@ -1292,11 +1298,8 @@ function makePOExactPrintCardFromData(order, items, stockMap = {}){
       <div class="po-print-grid po-print-grid-head">
         <div>#</div>
         <div>Item Code</div>
-        <div>Item Name / Search</div>
-        <div>Stock</div>
+        <div>Item Name</div>
         <div class="po-right">Qty</div>
-        <div class="po-right">Price</div>
-        <div class="po-right">Amount</div>
         <div>Remark</div>
       </div>
 
@@ -1306,7 +1309,6 @@ function makePOExactPrintCardFromData(order, items, stockMap = {}){
 
       <div class="po-print-total">
         <span><strong>Total Qty:</strong> ${two(totalQty)}</span>
-        <span><strong>Total Amount:</strong> ₹${two(totalAmount)}</span>
       </div>
     </div>`;
 
@@ -1315,9 +1317,9 @@ function makePOExactPrintCardFromData(order, items, stockMap = {}){
 }
 
 async function generatePOImageBlob(orderId){
-  // Builds an image that matches the Purchase Order print layout, not the report page.
-  const {order, items, stockMap} = await fetchPOForShare(orderId);
-  const stage = makePOExactPrintCardFromData(order, items, stockMap);
+  // Build a supplier-safe image without stock, price, amount, or total amount.
+  const {order, items} = await fetchPOForShare(orderId);
+  const stage = makePOExactPrintCardFromData(order, items);
   try{
     const card = stage.querySelector('#poExactPrintCard');
     const canvas = await html2canvas(card, {
@@ -1465,8 +1467,8 @@ async function sharePOWhatsApp(orderId){
   }
 }
 
-function printPO(orderId){
-  window.open(`purchase_order.html?print=${encodeURIComponent(orderId)}`, "_blank");
+function editPO(orderId){
+  window.location.href = `purchase_order.html?edit=${encodeURIComponent(orderId)}`;
 }
 
 function exportCSV(){

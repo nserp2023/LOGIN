@@ -1755,6 +1755,232 @@
                 box-shadow:0 18px 44px rgba(23,33,47,.28);
             }
         }
+
+        /* Phone-first refinements */
+        body.android-phone-mode{
+            user-select:none;
+            -webkit-user-select:none;
+        }
+
+        body.android-phone-mode input,
+        body.android-phone-mode textarea{
+            user-select:text;
+            -webkit-user-select:text;
+        }
+
+        .mobile-quick-strip{
+            display:none;
+        }
+
+        .mobile-quick-btn{
+            border:0;
+            min-height:46px;
+            padding:0 14px;
+            border-radius:999px;
+            background:#ffffff;
+            color:var(--android-primary);
+            font-size:12px;
+            font-weight:1000;
+            letter-spacing:.3px;
+            box-shadow:0 4px 12px rgba(23,33,47,.16);
+            white-space:nowrap;
+        }
+
+        .mobile-quick-btn.primary{
+            background:var(--android-primary);
+            color:#ffffff;
+        }
+
+        .mobile-quick-btn.success{
+            background:var(--android-success);
+            color:#ffffff;
+        }
+
+        .mobile-quick-btn:active,
+        .icon-btn:active,
+        .btn:active{
+            transform:scale(.96);
+            filter:brightness(.96);
+        }
+
+        @media (max-width:700px){
+            body{
+                overflow:hidden;
+            }
+
+            .container{
+                display:grid;
+                grid-template-rows:auto minmax(0, 1fr) auto;
+            }
+
+            .header-section{
+                max-height:34dvh;
+                align-content:start;
+                border-radius:0 0 24px 24px;
+                scroll-snap-type:x proximity;
+            }
+
+            .header-section .form-group,
+            .header-section .grand-total-box{
+                scroll-snap-align:start;
+            }
+
+            .header-section .grand-total-box{
+                min-height:58px;
+                display:flex;
+                flex-direction:column;
+                justify-content:center;
+            }
+
+            #balance_box,
+            #grand_total_box{
+                order:-2;
+            }
+
+            #grand_total_box{
+                min-width:174px;
+            }
+
+            #payment_type_group,
+            #paid_amount_group{
+                order:-1;
+            }
+
+            #customer_remark_group,
+            #remark_group{
+                width:238px;
+            }
+
+            .items-container{
+                margin:8px 8px 74px;
+                overscroll-behavior:contain;
+                scroll-padding:90px 20px 120px;
+            }
+
+            .items-container > div[style*="Tip:"]{
+                display:none !important;
+            }
+
+            #bill_table{
+                min-width:720px;
+            }
+
+            #bill_table th,
+            #bill_table td{
+                contain:paint;
+            }
+
+            #bill_table .col-idx{
+                position:sticky;
+                left:0;
+                z-index:16;
+                background:#f7faff;
+                box-shadow:1px 0 0 #d7e2f4;
+            }
+
+            #bill_table .col-code{
+                position:sticky;
+                left:42px;
+                z-index:15;
+                background:#ffffff;
+                box-shadow:1px 0 0 #d7e2f4;
+            }
+
+            #bill_table thead .col-idx,
+            #bill_table thead .col-code{
+                z-index:30;
+                background:#dfeaff;
+            }
+
+            #bill_table .col-name{
+                width:260px;
+            }
+
+            #bill_table .col-type{
+                width:54px;
+            }
+
+            #bill_table .col-price{
+                width:92px;
+            }
+
+            #bill_table .col-disc{
+                width:64px;
+            }
+
+            .row-inp:focus,
+            .nav-input:focus{
+                outline:0;
+            }
+
+            .row-inp.mobile-active-input,
+            .nav-input.mobile-active-input,
+            .form-control.mobile-active-input{
+                background:#f2f7ff !important;
+                box-shadow:inset 0 0 0 2px var(--android-primary), 0 0 0 4px rgba(11,87,208,.12) !important;
+            }
+
+            .footer-section{
+                border-radius:24px 24px 0 0;
+            }
+
+            #draft_status_text{
+                display:none !important;
+            }
+
+            .mobile-quick-strip{
+                position:fixed;
+                left:8px;
+                right:8px;
+                bottom:calc(72px + env(safe-area-inset-bottom));
+                z-index:95;
+                display:flex;
+                gap:8px;
+                padding:7px;
+                overflow-x:auto;
+                background:rgba(232,240,254,.88);
+                border:1px solid rgba(139,166,214,.72);
+                border-radius:999px;
+                box-shadow:0 8px 24px rgba(23,33,47,.18);
+                backdrop-filter:blur(14px);
+                -webkit-backdrop-filter:blur(14px);
+                scrollbar-width:none;
+            }
+
+            .mobile-quick-strip::-webkit-scrollbar{
+                display:none;
+            }
+
+            .history-panel{
+                bottom:132px;
+            }
+
+            .draft-toast{
+                bottom:136px;
+            }
+
+            .stock-warning-overlay,
+            .po-confirm-overlay{
+                align-items:flex-end;
+                padding:10px;
+            }
+
+            .stock-warning-box,
+            .po-confirm-box{
+                width:100%;
+                border-radius:28px 28px 22px 22px;
+                padding:24px 18px calc(24px + env(safe-area-inset-bottom));
+            }
+
+            .report-viewer-header{
+                min-height:58px;
+                padding-top:calc(8px + env(safe-area-inset-top));
+            }
+
+            .autocomplete-list{
+                max-height:min(48dvh, 360px);
+            }
+        }
     </style>
 </head>
 <body>
@@ -7181,6 +7407,150 @@ async function handleBarcodeValue(code) {
             closeStockWarning();
         }
     }, true);
+
+    function isPhoneBillingViewport(){
+        return window.matchMedia('(max-width: 700px), (pointer: coarse)').matches;
+    }
+
+    function mobileVibrate(ms = 18){
+        if(isPhoneBillingViewport() && navigator.vibrate){
+            navigator.vibrate(ms);
+        }
+    }
+
+    function focusAndSelectMobile(target){
+        if(!target) return;
+        target.focus({ preventScroll: true });
+        if(target.select) target.select();
+        requestAnimationFrame(() => {
+            target.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' });
+        });
+        mobileVibrate(12);
+    }
+
+    function focusFirstBillItem(){
+        let target = document.querySelector('#bill_body tr:last-child .code-inp');
+        if(!target){
+            addNewRow(false);
+            target = document.querySelector('#bill_body tr:last-child .code-inp');
+        }
+        focusAndSelectMobile(target);
+    }
+
+    function addMobileQuickStrip(){
+        if(document.getElementById('mobile_quick_strip')) return;
+
+        const strip = document.createElement('div');
+        strip.id = 'mobile_quick_strip';
+        strip.className = 'mobile-quick-strip';
+        strip.setAttribute('aria-label', 'Mobile billing shortcuts');
+        strip.innerHTML = `
+            <button type="button" class="mobile-quick-btn primary" data-mobile-action="scan">SCAN</button>
+            <button type="button" class="mobile-quick-btn" data-mobile-action="item">ITEM</button>
+            <button type="button" class="mobile-quick-btn" data-mobile-action="customer">CUSTOMER</button>
+            <button type="button" class="mobile-quick-btn" data-mobile-action="pay">PAY</button>
+            <button type="button" class="mobile-quick-btn success" data-mobile-action="save">SAVE</button>
+        `;
+        document.body.appendChild(strip);
+
+        strip.addEventListener('click', (event) => {
+            const button = event.target.closest('[data-mobile-action]');
+            if(!button) return;
+
+            mobileVibrate(22);
+            const action = button.dataset.mobileAction;
+
+            if(action === 'scan'){
+                if(typeof startBarcodeCamera === 'function'){
+                    startBarcodeCamera();
+                }else{
+                    focusAndSelectMobile(document.getElementById('barcode_scan'));
+                }
+            }
+            else if(action === 'item'){
+                focusFirstBillItem();
+            }
+            else if(action === 'customer'){
+                focusAndSelectMobile(document.getElementById('cust_mobile'));
+            }
+            else if(action === 'pay'){
+                focusAndSelectMobile(document.getElementById('paid_amount'));
+            }
+            else if(action === 'save'){
+                document.getElementById('btn_save')?.click();
+            }
+        });
+    }
+
+    function applyMobileInputModes(){
+        const decimalInputs = [
+            '#paid_amount',
+            '#bill_body .qty-inp',
+            '#bill_body .price-inp',
+            '#bill_body .price-gst-inp',
+            '#bill_body .disc-inp',
+            '#bill_body .landing-inp',
+            '#bill_body .gst-inp'
+        ].join(',');
+
+        document.querySelectorAll(decimalInputs).forEach(input => {
+            input.setAttribute('inputmode', 'decimal');
+        });
+
+        document.getElementById('cust_mobile')?.setAttribute('inputmode', 'tel');
+        document.getElementById('barcode_scan')?.setAttribute('inputmode', 'none');
+    }
+
+    function setupMobileFocusPolish(){
+        if(document.body.dataset.mobileFocusPolish === '1') return;
+        document.body.dataset.mobileFocusPolish = '1';
+
+        document.addEventListener('focusin', (event) => {
+            const target = event.target;
+            if(!(target instanceof HTMLElement)) return;
+            if(!target.matches('input, select, textarea')) return;
+
+            document.querySelectorAll('.mobile-active-input').forEach(el => {
+                el.classList.remove('mobile-active-input');
+            });
+            target.classList.add('mobile-active-input');
+
+            if(isPhoneBillingViewport()){
+                setTimeout(() => {
+                    target.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' });
+                }, 120);
+            }
+        }, true);
+
+        document.addEventListener('focusout', (event) => {
+            if(event.target instanceof HTMLElement){
+                event.target.classList.remove('mobile-active-input');
+            }
+        }, true);
+
+        document.addEventListener('pointerdown', (event) => {
+            if(event.target.closest('button, .btn, .icon-btn, .mobile-quick-btn, select, input')){
+                mobileVibrate(10);
+            }
+        }, { passive: true });
+    }
+
+    function applySmartphoneBillingMode(){
+        document.body.classList.toggle('android-phone-mode', isPhoneBillingViewport());
+        addMobileQuickStrip();
+        applyMobileInputModes();
+        setupMobileFocusPolish();
+    }
+
+    applySmartphoneBillingMode();
+    window.addEventListener('resize', applySmartphoneBillingMode);
+    const billBodyForMobileMode = document.getElementById('bill_body');
+    if(billBodyForMobileMode){
+        new MutationObserver(applyMobileInputModes).observe(billBodyForMobileMode, {
+            childList: true,
+            subtree: true
+        });
+    }
 
 
 </script>

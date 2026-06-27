@@ -767,7 +767,7 @@ async function acceptReturn(id){
             accepted_by: acceptedBy
         })
         .eq("id", id)
-        .eq("is_accepted", false);
+        .or("is_accepted.is.null,is_accepted.eq.false");
 
     if(error){
         console.error(error);

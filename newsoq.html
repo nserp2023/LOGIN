@@ -307,6 +307,64 @@
         .landing-col-hidden {
             display: none !important;
         }
+
+        .landing-toggle-group {
+            min-width: 96px;
+            align-items: center;
+        }
+
+        .landing-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            height: 32px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .landing-toggle input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .landing-toggle-slider {
+            position: relative;
+            width: 44px;
+            height: 24px;
+            border-radius: 999px;
+            background: #64748b;
+            transition: background 0.15s ease;
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,.22);
+        }
+
+        .landing-toggle-slider::after {
+            content: "";
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            left: 3px;
+            top: 3px;
+            border-radius: 50%;
+            background: #ffffff;
+            transition: transform 0.15s ease;
+            box-shadow: 0 1px 4px rgba(0,0,0,.35);
+        }
+
+        .landing-toggle input:checked + .landing-toggle-slider {
+            background: #16a34a;
+        }
+
+        .landing-toggle input:checked + .landing-toggle-slider::after {
+            transform: translateX(20px);
+        }
+
+        .landing-toggle-text {
+            color: #ffffff;
+            font-size: 12px;
+            font-weight: 900;
+            min-width: 24px;
+        }
         .col-tot  { width: 100px; }
         .col-act  { width: 30px; }
 
@@ -1310,6 +1368,15 @@
             <div id="display_balance_qty">-</div>
         </div>
 
+        <div class="form-group landing-toggle-group" id="landing_toggle_group" style="display:none;">
+            <label for="landing_toggle">Landing</label>
+            <label class="landing-toggle" title="Show or hide landing column">
+                <input type="checkbox" id="landing_toggle" checked>
+                <span class="landing-toggle-slider" aria-hidden="true"></span>
+                <span class="landing-toggle-text" id="landing_toggle_text">ON</span>
+            </label>
+        </div>
+
         <div class="form-group" id="remark_group">
             <label>Remark</label>
             <input type="text" id="quotation_remark" class="form-control w-xl" placeholder="Quotation remark">
@@ -1496,6 +1563,7 @@
     let stockLoaded = false;
     let currentUserRole = "";
     let canSeeLandingColumn = false;
+    let landingColumnEnabled = true;
     let isSalesOrderConversionMode = false;
     let salesOrderAdvancePaid = 0;
     let purchaseOrderPromptOpen = false;
@@ -1526,6 +1594,7 @@
     // A plus-button workspace gets its own draft, so two bills cannot overwrite each other.
     const BILL_WORKSPACE_ID = new URLSearchParams(window.location.search).get("workspace") || "";
     const BILL_DRAFT_KEY = "vajra_billing_unsaved_draft_v2" + (BILL_WORKSPACE_ID ? `_${BILL_WORKSPACE_ID}` : "");
+    const LANDING_COLUMN_PREF_KEY = "vajra_billing_show_landing_column";
     const BILL_DRAFT_MAX_AGE_MS = 24 * 60 * 60 * 1000; // keep draft for 24 hours
     let autoBackupReady = false;
     let autoBackupTimer = null;
@@ -1935,10 +2004,55 @@
         }
     }
 
+    function loadLandingColumnPreference() {
+        try {
+            landingColumnEnabled = localStorage.getItem(LANDING_COLUMN_PREF_KEY) !== "0";
+        } catch (err) {
+            landingColumnEnabled = true;
+        }
+    }
+
+    function isLandingColumnVisible() {
+        return canSeeLandingColumn && landingColumnEnabled;
+    }
+
+    function syncLandingToggleControl() {
+        const group = document.getElementById("landing_toggle_group");
+        const toggle = document.getElementById("landing_toggle");
+        const text = document.getElementById("landing_toggle_text");
+
+        if (group) {
+            group.style.display = canSeeLandingColumn ? "flex" : "none";
+        }
+        if (toggle) {
+            toggle.checked = landingColumnEnabled;
+            toggle.disabled = !canSeeLandingColumn;
+        }
+        if (text) {
+            text.textContent = landingColumnEnabled ? "ON" : "OFF";
+        }
+    }
+
     function applyLandingColumnVisibility(root = document) {
-        const hidden = !canSeeLandingColumn;
+        const hidden = !isLandingColumnVisible();
         root.querySelectorAll('.landing-col').forEach(el => {
             el.classList.toggle('landing-col-hidden', hidden);
+        });
+        syncLandingToggleControl();
+    }
+
+    function setupLandingColumnToggle() {
+        const toggle = document.getElementById("landing_toggle");
+        if (!toggle) return;
+
+        toggle.addEventListener("change", () => {
+            landingColumnEnabled = toggle.checked;
+            try {
+                localStorage.setItem(LANDING_COLUMN_PREF_KEY, landingColumnEnabled ? "1" : "0");
+            } catch (err) {}
+            applyLandingColumnVisibility();
+            hidePurchaseHistory();
+            lastHistoryKey = "";
         });
     }
 
@@ -1994,12 +2108,14 @@
         await loadBillSeries();
         await fetchNextBillNumber();
         await loadCurrentUserRole();
+        loadLandingColumnPreference();
         await loadStockData();
         applyLandingColumnVisibility();
         toggleRemarkField();
         syncPaymentUI();
 
         bindPaymentEvents();
+        setupLandingColumnToggle();
         initAddressGeoapify();
         setupBelowLandingSecretUnlock();
         setupMobileProfitGestures();
@@ -4033,7 +4149,7 @@ ${data.map((c, idx) => {
                     <th>P1</th>
                     <th>P2</th>
                     <th>P3</th>
-                    ${canSeeLandingColumn ? '<th>Landing</th>' : ''}
+                    ${isLandingColumnVisible() ? '<th>Landing</th>' : ''}
                     </tr>
                     `;
 
@@ -4049,7 +4165,7 @@ ${data.map((c, idx) => {
                         <td>₹${item.price1 || 0}</td>
                         <td>₹${item.price2 || 0}</td>
                         <td>₹${item.price3 || 0}</td>
-                        ${canSeeLandingColumn ? `<td>₹${item.landing || 0}</td>` : ''}
+                        ${isLandingColumnVisible() ? `<td>₹${item.landing || 0}</td>` : ''}
                         </tr>
                         `;
                     });

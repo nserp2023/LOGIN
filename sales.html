@@ -1487,8 +1487,8 @@
         .col-price{ width:100px; }
         .col-disc{ width:78px; }
         .col-landing{ width:94px; }
-        .col-gst{ width:62px; }
-        .col-tot{ width:112px; }
+        .col-gst,
+        .col-tot{ display:none !important; }
         .col-act{ width:48px; }
 
         .autocomplete-list{
@@ -1684,7 +1684,7 @@
             }
 
             table{
-                min-width:930px;
+                min-width:760px;
             }
 
             th{
@@ -5371,6 +5371,10 @@ function calcTotal() {
         }
         else if(e.key === 'ArrowRight' || e.key === 'Enter'){
             targetCol++;
+        }
+
+        if(e.key === 'Enter' && !e.shiftKey && currentInput.classList.contains('qty-inp')){
+            targetCol = 4;
         }
 
         if(targetCol < 0){

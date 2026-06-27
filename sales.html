@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <link rel="icon" href="favicon.ico" type="image/x-icon">
 
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
@@ -307,6 +307,64 @@
         .landing-col-hidden {
             display: none !important;
         }
+
+        .landing-toggle-group {
+            min-width: 96px;
+            align-items: center;
+        }
+
+        .landing-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            height: 32px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .landing-toggle input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .landing-toggle-slider {
+            position: relative;
+            width: 44px;
+            height: 24px;
+            border-radius: 999px;
+            background: #64748b;
+            transition: background 0.15s ease;
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,.22);
+        }
+
+        .landing-toggle-slider::after {
+            content: "";
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            left: 3px;
+            top: 3px;
+            border-radius: 50%;
+            background: #ffffff;
+            transition: transform 0.15s ease;
+            box-shadow: 0 1px 4px rgba(0,0,0,.35);
+        }
+
+        .landing-toggle input:checked + .landing-toggle-slider {
+            background: #16a34a;
+        }
+
+        .landing-toggle input:checked + .landing-toggle-slider::after {
+            transform: translateX(20px);
+        }
+
+        .landing-toggle-text {
+            color: #ffffff;
+            font-size: 12px;
+            font-weight: 900;
+            min-width: 24px;
+        }
         .col-tot  { width: 100px; }
         .col-act  { width: 30px; }
 
@@ -341,129 +399,6 @@
         
         .btn-save:hover { background: #047857; }
         .btn-save:disabled { background: #94a3b8; cursor: not-allowed; }
-
-        .voice-status {
-            color: #7dd3fc;
-            font-weight: 800;
-            font-size: 12px;
-            align-self: center;
-            min-width: 180px;
-            text-align: right;
-        }
-
-        .voice-prompt-overlay {
-            position: fixed;
-            top: 105px;
-            left: 50%;
-            transform: translateX(-50%);
-            max-width: 90%;
-            min-width: 280px;
-            padding: 12px 16px;
-            border-radius: 14px;
-            background: rgba(15, 23, 42, 0.95);
-            color: #e2e8f0;
-            font-size: 13px;
-            line-height: 1.4;
-            text-align: center;
-            z-index: 99999;
-            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
-            display: none;
-        }
-
-        .voice-prompt-overlay.info { border: 1px solid #38bdf8; }
-        .voice-prompt-overlay.success { border: 1px solid #22c55e; }
-        .voice-prompt-overlay.error { border: 1px solid #f87171; }
-
-        .voice-prompt-overlay small {
-            display: block;
-            margin-top: 8px;
-            opacity: 0.75;
-            font-size: 12px;
-        }
-
-        .voice-match-panel {
-            position: fixed;
-            left: 12px;
-            right: 12px;
-            bottom: 82px;
-            z-index: 99998;
-            display: none;
-            max-height: min(58vh, 430px);
-            overflow: hidden;
-            border: 1px solid rgba(56, 189, 248, 0.45);
-            border-radius: 10px;
-            background: rgba(2, 6, 23, 0.96);
-            color: #e2e8f0;
-            box-shadow: 0 18px 42px rgba(0, 0, 0, 0.42);
-        }
-
-        .voice-match-panel.show {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .voice-match-head {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 10px;
-            padding: 10px 12px;
-            border-bottom: 1px solid rgba(148, 163, 184, 0.25);
-            font-weight: 900;
-            color: #7dd3fc;
-            text-transform: uppercase;
-            letter-spacing: 0.4px;
-        }
-
-        .voice-match-close {
-            border: none;
-            background: rgba(148, 163, 184, 0.18);
-            color: #ffffff;
-            border-radius: 999px;
-            width: 30px;
-            height: 30px;
-            font-size: 20px;
-            line-height: 1;
-        }
-
-        .voice-match-list {
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
-            padding: 8px;
-        }
-
-        .voice-match-option {
-            width: 100%;
-            border: 1px solid rgba(148, 163, 184, 0.25);
-            background: rgba(15, 23, 42, 0.94);
-            color: #ffffff;
-            border-radius: 8px;
-            padding: 10px;
-            margin-bottom: 8px;
-            text-align: left;
-            cursor: pointer;
-        }
-
-        .voice-match-option:focus,
-        .voice-match-option:hover {
-            outline: none;
-            border-color: #38bdf8;
-            background: rgba(30, 64, 175, 0.72);
-        }
-
-        .voice-match-name {
-            display: block;
-            font-size: 15px;
-            font-weight: 900;
-            line-height: 1.25;
-        }
-
-        .voice-match-meta {
-            display: block;
-            margin-top: 4px;
-            color: #cbd5e1;
-            font-size: 12px;
-        }
 
         .autocomplete-wrapper { position: relative; width: 100%; height: 100%; }
         
@@ -632,20 +567,89 @@
             cursor: pointer;
         }
 
+        .po-confirm-overlay{
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(2, 6, 23, 0.36);
+            backdrop-filter: blur(5px);
+            z-index: 21000;
+            padding: 20px;
+        }
+
+        .po-confirm-overlay.show{
+            display: flex;
+        }
+
+        .po-confirm-box{
+            width: min(94vw, 520px);
+            border-radius: 16px;
+            border: 1px solid rgba(34, 197, 94, 0.45);
+            background: linear-gradient(135deg, rgba(6, 78, 59, 0.96), rgba(21, 94, 117, 0.96));
+            box-shadow: 0 24px 70px rgba(2, 44, 34, 0.45);
+            color: #ecfdf5;
+            padding: 22px 20px;
+            text-align: center;
+        }
+
+        .po-confirm-box h3{
+            margin: 0 0 10px;
+            color: #bbf7d0;
+            font-size: 23px;
+        }
+
+        .po-confirm-box p{
+            margin: 0;
+            color: #dcfce7;
+            line-height: 1.55;
+            white-space: pre-line;
+            font-size: 15px;
+        }
+
+        .po-confirm-actions{
+            margin-top: 18px;
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .po-confirm-btn{
+            border: none;
+            border-radius: 10px;
+            padding: 10px 22px;
+            font-weight: 900;
+            cursor: pointer;
+            min-width: 110px;
+        }
+
+        .po-confirm-btn.yes{
+            background: #22c55e;
+            color: #052e16;
+        }
+
+        .po-confirm-btn.no{
+            background: rgba(255,255,255,0.14);
+            color: #f8fafc;
+            border: 1px solid rgba(255,255,255,0.28);
+        }
+
 
         /* ===== NON-BLOCKING DRAFT RESTORE MESSAGE ===== */
         .draft-toast {
             position: fixed;
             right: 16px;
             bottom: 86px;
-            width: min(390px, calc(100vw - 24px));
+            width: min(310px, calc(100vw - 24px));
             background: rgba(15, 23, 42, 0.96);
             color: #ffffff;
             border: 1px solid rgba(34, 197, 94, 0.55);
             border-radius: 18px;
             box-shadow: 0 18px 45px rgba(0,0,0,0.34);
             z-index: 16000;
-            padding: 12px;
+            padding: 8px;
             display: none;
             animation: draftToastIn 0.22s ease-out;
         }
@@ -696,16 +700,16 @@
         }
 
         .draft-toast-actions {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
         }
 
         .draft-toast-btn {
             border: none;
             border-radius: 10px;
-            padding: 8px 11px;
-            font-size: 12px;
+            padding: 8px 7px;
+            font-size: 10px;
             font-weight: 900;
             cursor: pointer;
         }
@@ -732,20 +736,15 @@
 
         @media (max-width: 600px){
             .draft-toast{
-                left: 8px;
+                left: auto;
                 right: 8px;
                 bottom: 76px;
-                width: auto;
+                width: min(310px, calc(100vw - 16px));
                 border-radius: 14px;
             }
 
             .draft-toast-actions{
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-            }
-
-            .draft-toast-restore{
-                grid-column: 1 / -1;
+                grid-template-columns: repeat(3, 1fr);
             }
         }
 
@@ -759,7 +758,8 @@
         .history-panel{
             position: fixed;
             top: 75px;
-            left: 10px;
+            left: auto;
+            right: 10px;
             width: 520px;
             max-height: 320px;
             overflow: hidden;
@@ -898,22 +898,7 @@
             }
 
             table{
-                min-width: 760px;
-            }
-
-            #bill_table .col-name{
-                width: 230px;
-            }
-
-            #bill_table .name-inp{
-                font-size: 14px;
-                font-weight: 800;
-                overflow: visible;
-                text-overflow: clip;
-            }
-
-            #bill_table .col-type{
-                display: none;
+                min-width: 860px;
             }
 
             .footer-section{
@@ -981,30 +966,7 @@
             }
 
             table{
-                min-width: 700px;
-            }
-
-            #bill_table .col-code { width: 72px; }
-            #bill_table .col-name { width: 260px; }
-            #bill_table .col-qty { width: 52px; }
-            #bill_table .col-price { width: 80px; }
-            #bill_table .col-disc,
-            #bill_table .col-gst,
-            #bill_table .col-act {
-                width: 46px;
-            }
-
-            #bill_table .name-inp{
-                font-size: 15px;
-                padding-left: 7px;
-                padding-right: 7px;
-            }
-
-            .voice-match-panel {
-                left: 8px;
-                right: 8px;
-                bottom: 74px;
-                max-height: 54vh;
+                min-width: 820px;
             }
 
             .autocomplete-list{
@@ -1075,6 +1037,724 @@
             font-weight: 900;
             letter-spacing: .4px;
         }
+
+        .customer-net-purchase{
+            display:inline-block;
+            min-width:115px;
+            padding:6px 10px;
+            border-radius:999px;
+            background:#bbf7d0;
+            border:2px solid #16a34a;
+            color:#14532d;
+            font-size:15px;
+            line-height:1.15;
+            font-weight:1000;
+            text-align:right;
+            white-space:nowrap;
+        }
+
+        .customer-net-purchase.negative{
+            background:#fee2e2;
+            border-color:#dc2626;
+            color:#991b1b;
+        }
+
+        /* Compact, accessible action icons */
+        .footer-section{
+            align-items:center;
+            gap:10px;
+        }
+
+        .footer-actions{
+            display:flex;
+            align-items:center;
+            gap:10px;
+        }
+
+        .icon-btn{
+            position:relative;
+            display:inline-flex;
+            align-items:center;
+            justify-content:center;
+            flex:0 0 44px !important;
+            width:44px !important;
+            min-width:44px;
+            height:44px;
+            min-height:44px;
+            padding:0 !important;
+            border:1px solid rgba(255,255,255,.18);
+            border-radius:12px;
+            color:#fff;
+            background:rgba(255,255,255,.10);
+            box-shadow:0 5px 14px rgba(0,0,0,.2);
+            transition:transform .15s ease, background .15s ease, box-shadow .15s ease;
+        }
+
+        .icon-btn:hover{
+            transform:translateY(-2px);
+            box-shadow:0 8px 18px rgba(0,0,0,.28);
+        }
+
+        .icon-btn:focus-visible{
+            outline:3px solid rgba(96,165,250,.75);
+            outline-offset:2px;
+        }
+
+        .icon-btn svg{
+            width:22px;
+            height:22px;
+            fill:none;
+            stroke:currentColor;
+            stroke-width:2;
+            stroke-linecap:round;
+            stroke-linejoin:round;
+            pointer-events:none;
+        }
+
+        .icon-btn-report{ background:#2563eb; }
+        .icon-btn-new{ background:#7c3aed; }
+        .icon-btn-reset{ background:#475569; }
+        .icon-btn-save{ background:#059669; }
+        .icon-btn-save:disabled{ background:#64748b; opacity:.7; cursor:not-allowed; transform:none; }
+
+        .icon-btn::after{
+            content:attr(data-tooltip);
+            position:absolute;
+            right:0;
+            bottom:calc(100% + 9px);
+            width:max-content;
+            max-width:220px;
+            padding:6px 9px;
+            border-radius:7px;
+            background:#f8fafc;
+            color:#0f172a;
+            font-size:11px;
+            font-weight:800;
+            letter-spacing:.2px;
+            text-transform:none;
+            pointer-events:none;
+            opacity:0;
+            transform:translateY(4px);
+            transition:.15s ease;
+            z-index:10020;
+        }
+
+        .icon-btn:hover::after,
+        .icon-btn:focus-visible::after{
+            opacity:1;
+            transform:translateY(0);
+        }
+
+        /* History stays visible without blocking or hiding the item-row controls. */
+        .history-panel{
+            top:auto;
+            left:auto;
+            right:12px;
+            bottom:78px;
+            width:min(470px, calc(100vw - 24px));
+            max-height:min(310px, 42vh);
+            background:rgba(15,23,42,.54);
+            border:1px solid rgba(255,255,255,.42);
+            border-radius:18px;
+            box-shadow:0 14px 36px rgba(15,23,42,.28), inset 0 1px 0 rgba(255,255,255,.28);
+            backdrop-filter:blur(2px) saturate(135%);
+            -webkit-backdrop-filter:blur(2px) saturate(135%);
+            pointer-events:none;
+            color:#f8fafc;
+        }
+
+        .history-header{
+            background:rgba(15,23,42,.56);
+            border-bottom:1px solid rgba(255,255,255,.2);
+        }
+
+        .history-close{
+            display:inline-flex;
+            align-items:center;
+            justify-content:center;
+            width:30px;
+            height:30px;
+            border-radius:50%;
+            background:rgba(255,255,255,.13);
+            pointer-events:auto;
+        }
+
+        .history-subtitle{ color:#e2e8f0; }
+        .history-table-wrap{ border-color:rgba(255,255,255,.28); }
+        .history-table{ background:transparent; }
+        .history-table th,
+        .history-table td{
+            background:rgba(255,255,255,.58);
+            border-color:rgba(255,255,255,.36);
+        }
+        .history-table th{ background:rgba(226,232,240,.82); }
+
+        /* Same-page report viewer */
+        .report-viewer{
+            position:fixed;
+            inset:0;
+            /* Stay above the shared floating Home button (z-index: 99999). */
+            z-index:100100;
+            display:none;
+            padding:14px;
+            background:rgba(2,6,23,.66);
+            backdrop-filter:blur(5px);
+            -webkit-backdrop-filter:blur(5px);
+        }
+
+        .report-viewer.open{ display:flex; }
+
+        .report-viewer-card{
+            width:100%;
+            height:100%;
+            overflow:hidden;
+            border:1px solid rgba(255,255,255,.3);
+            border-radius:16px;
+            background:#fff;
+            box-shadow:0 25px 70px rgba(0,0,0,.42);
+            display:flex;
+            flex-direction:column;
+        }
+
+        .report-viewer-header{
+            min-height:48px;
+            padding:7px 10px 7px 16px;
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            background:#0f172a;
+            color:#fff;
+            font-weight:800;
+        }
+
+        .report-viewer-close{
+            width:34px;
+            height:34px;
+            border:0;
+            border-radius:9px;
+            background:rgba(255,255,255,.14);
+            color:#fff;
+            font-size:24px;
+            line-height:1;
+            cursor:pointer;
+        }
+
+        .report-viewer iframe{
+            width:100%;
+            flex:1;
+            border:0;
+            background:#fff;
+        }
+
+        @media (max-width:600px){
+            .footer-section{ justify-content:center; }
+            .footer-actions{ width:100%; justify-content:center; }
+            .history-panel{ left:8px; right:8px; bottom:74px; width:calc(100vw - 16px); max-height:35vh; }
+            .report-viewer{ padding:0; }
+            .report-viewer-card{ border-radius:0; border:0; }
+        }
+
+        /* Android app shell for sales.html */
+        :root{
+            --android-primary:#0b57d0;
+            --android-primary-dark:#0842a0;
+            --android-secondary:#006a6a;
+            --android-surface:#ffffff;
+            --android-surface-2:#f7f9fc;
+            --android-surface-3:#eef4ff;
+            --android-outline:#d6dbe6;
+            --android-text:#17212f;
+            --android-muted:#5f6b7a;
+            --android-success:#0b8043;
+            --android-danger:#b3261e;
+            --android-radius:18px;
+            --android-shadow:0 3px 10px rgba(18,26,38,.10);
+        }
+
+        html{
+            height:100%;
+            background:#edf2f8;
+            overscroll-behavior:none;
+        }
+
+        body{
+            min-height:100%;
+            height:100dvh;
+            padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+            background:
+                linear-gradient(180deg, #eef4ff 0%, #f8fbff 42%, #edf2f8 100%);
+            background-attachment:fixed;
+            color:var(--android-text);
+            font-family:Roboto, "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+            font-size:14px;
+            -webkit-tap-highlight-color:transparent;
+            touch-action:manipulation;
+        }
+
+        .container{
+            height:100dvh;
+            max-width:100%;
+            border-radius:0;
+            box-shadow:none;
+            background:var(--android-surface-2);
+            overflow:hidden;
+        }
+
+        .header-section{
+            position:sticky;
+            top:0;
+            z-index:80;
+            align-items:flex-end;
+            gap:10px;
+            padding:12px 12px 14px;
+            background:var(--android-surface);
+            border-bottom:1px solid var(--android-outline);
+            box-shadow:0 2px 12px rgba(23,33,47,.08);
+            overflow-x:auto;
+            overflow-y:visible;
+            -webkit-overflow-scrolling:touch;
+            scrollbar-width:none;
+        }
+
+        .header-section::-webkit-scrollbar{ display:none; }
+
+        .form-group{
+            flex:0 0 auto;
+            gap:4px;
+        }
+
+        .form-group label{
+            margin:0;
+            color:var(--android-muted);
+            font-size:10px;
+            font-weight:800;
+            letter-spacing:.4px;
+            line-height:1.1;
+            text-transform:uppercase;
+        }
+
+        .form-control,
+        td input,
+        td select{
+            min-height:46px;
+            border-radius:14px;
+            border:1px solid var(--android-outline);
+            background:var(--android-surface);
+            color:var(--android-text);
+            font-size:15px;
+            font-weight:700;
+            box-shadow:0 1px 0 rgba(23,33,47,.04);
+        }
+
+        .form-control{
+            height:46px;
+            padding:9px 12px;
+        }
+
+        .form-control:focus,
+        td input:focus,
+        td select:focus{
+            background:#fff;
+            color:var(--android-text);
+            border-color:var(--android-primary);
+            box-shadow:0 0 0 3px rgba(11,87,208,.16);
+        }
+
+        select.form-control{
+            padding-right:28px;
+            accent-color:var(--android-primary);
+        }
+
+        .w-xs{ width:74px; }
+        .w-sm{ width:122px; }
+        .w-md{ width:158px; }
+        .w-lg{ width:214px; }
+        .w-xl{ width:268px; }
+
+        .grand-total-box{
+            position:sticky;
+            right:0;
+            min-width:164px;
+            padding:8px 16px;
+            border-radius:18px;
+            background:linear-gradient(135deg, var(--android-primary), var(--android-secondary));
+            color:#fff;
+            box-shadow:0 8px 20px rgba(11,87,208,.22);
+        }
+
+        .grand-total-box span{
+            font-size:10px;
+            letter-spacing:.7px;
+            opacity:.86;
+        }
+
+        .grand-total-box div{
+            font-size:25px;
+            line-height:1.08;
+        }
+
+        .stock-display{
+            min-width:116px;
+            min-height:46px;
+            padding:7px 12px;
+            border-radius:16px;
+            background:#fff7e6;
+            border:1px solid #f5c56b;
+            color:#7a4b00;
+            box-shadow:0 1px 0 rgba(23,33,47,.04);
+        }
+
+        .stock-display label{
+            color:#7a4b00;
+            font-size:9px;
+        }
+
+        .stock-display div{
+            font-size:17px;
+            color:#583700;
+        }
+
+        .items-container{
+            flex:1;
+            margin:10px;
+            border:1px solid var(--android-outline);
+            border-radius:20px;
+            background:var(--android-surface);
+            box-shadow:var(--android-shadow);
+            overflow:auto;
+            -webkit-overflow-scrolling:touch;
+        }
+
+        table{
+            min-width:980px;
+            border-collapse:separate;
+            border-spacing:0;
+            background:#fff;
+        }
+
+        thead{
+            top:0;
+            background:#e8f0fe;
+            box-shadow:0 1px 0 var(--android-outline);
+        }
+
+        th{
+            height:42px;
+            padding:8px 7px;
+            color:#27456f;
+            border-bottom:1px solid #ccd8ee;
+            font-size:11px;
+            font-weight:900;
+            letter-spacing:.2px;
+            white-space:nowrap;
+        }
+
+        td{
+            border-bottom:1px solid #edf1f7;
+            background:#fff;
+        }
+
+        td input,
+        td select{
+            min-height:48px;
+            padding:8px 7px;
+            border:0;
+            border-radius:0;
+            box-shadow:none;
+            background:transparent;
+        }
+
+        #bill_body tr.item-row.active-bill-row > td{
+            background:#eaf2ff !important;
+            border-top:2px solid #7aa7f8;
+            border-bottom:2px solid #7aa7f8;
+        }
+
+        #bill_body tr.item-row.active-bill-row .col-idx{
+            color:var(--android-primary) !important;
+        }
+
+        #bill_body tr.item-row.active-bill-row input,
+        #bill_body tr.item-row.active-bill-row select{
+            color:var(--android-text) !important;
+        }
+
+        .col-idx{ width:42px; }
+        .col-code{ width:108px; }
+        .col-name{ width:305px; }
+        .col-qty{ width:72px; }
+        .col-type{ width:62px; }
+        .col-price{ width:100px; }
+        .col-disc{ width:78px; }
+        .col-landing{ width:94px; }
+        .col-gst{ width:62px; }
+        .col-tot{ width:112px; }
+        .col-act{ width:48px; }
+
+        .autocomplete-list{
+            border-radius:18px;
+            border:1px solid var(--android-outline);
+            box-shadow:0 12px 34px rgba(23,33,47,.20);
+            overflow:auto;
+        }
+
+        .autocomplete-item{
+            min-height:48px;
+            padding:11px 14px;
+            font-size:14px;
+        }
+
+        .autocomplete-row.selected,
+        .autocomplete-row.selected td,
+        .autocomplete-item.selected,
+        .autocomplete-item:hover{
+            background:var(--android-primary) !important;
+            color:#fff !important;
+        }
+
+        .footer-section{
+            position:sticky;
+            bottom:0;
+            z-index:90;
+            justify-content:space-between;
+            align-items:center;
+            gap:8px;
+            padding:10px 12px calc(10px + env(safe-area-inset-bottom));
+            border-top:1px solid var(--android-outline);
+            background:rgba(255,255,255,.96);
+            box-shadow:0 -4px 18px rgba(23,33,47,.12);
+            backdrop-filter:blur(12px);
+            -webkit-backdrop-filter:blur(12px);
+        }
+
+        .footer-actions{
+            margin-left:auto;
+            gap:9px;
+        }
+
+        .btn,
+        .icon-btn,
+        .draft-toast-btn,
+        .po-confirm-btn,
+        .stock-warning-btn{
+            min-height:48px;
+            border-radius:16px;
+            font-weight:900;
+            letter-spacing:.2px;
+            text-transform:none;
+        }
+
+        .icon-btn{
+            flex:0 0 50px !important;
+            width:50px !important;
+            min-width:50px;
+            height:50px;
+            border:0;
+            border-radius:18px;
+            box-shadow:0 5px 14px rgba(23,33,47,.18);
+        }
+
+        .icon-btn-report{ background:#0b57d0; }
+        .icon-btn-new{ background:#5f35b1; }
+        .icon-btn-reset{ background:#5f6b7a; }
+        .icon-btn-save{ background:#0b8043; }
+
+        .btn-save{
+            background:var(--android-success);
+            color:#fff;
+        }
+
+        .draft-status{
+            color:var(--android-muted) !important;
+            font-size:11px !important;
+        }
+
+        .draft-toast,
+        .history-panel,
+        .stock-warning-box,
+        .po-confirm-box,
+        .report-viewer-card{
+            border-radius:24px;
+            box-shadow:0 18px 42px rgba(23,33,47,.24);
+        }
+
+        .stock-warning-box{
+            background:#fff;
+            border:1px solid #f2b8b5;
+            color:var(--android-text);
+        }
+
+        .stock-warning-box h3{
+            color:var(--android-danger);
+        }
+
+        .stock-warning-box p{
+            color:#5f2a27;
+        }
+
+        .po-confirm-box{
+            background:#fff;
+            border:1px solid #a8dabb;
+            color:var(--android-text);
+        }
+
+        .po-confirm-box h3{
+            color:var(--android-success);
+        }
+
+        .po-confirm-box p{
+            color:#24513a;
+        }
+
+        .po-confirm-btn.yes{
+            background:var(--android-success);
+            color:#fff;
+        }
+
+        .po-confirm-btn.no{
+            background:#eef2f7;
+            color:var(--android-text);
+            border:1px solid var(--android-outline);
+        }
+
+        .landing-toggle-slider{
+            width:48px;
+            height:28px;
+            background:#9aa5b1;
+        }
+
+        .landing-toggle-slider::after{
+            width:22px;
+            height:22px;
+        }
+
+        .landing-toggle input:checked + .landing-toggle-slider{
+            background:var(--android-primary);
+        }
+
+        .landing-toggle input:checked + .landing-toggle-slider::after{
+            transform:translateX(20px);
+        }
+
+        .landing-toggle-text{
+            color:var(--android-text);
+        }
+
+        @media (max-width:700px){
+            body{
+                font-size:13px;
+            }
+
+            .container{
+                height:100dvh;
+            }
+
+            .header-section{
+                display:grid;
+                grid-auto-flow:column;
+                grid-auto-columns:max-content;
+                align-items:end;
+                padding:10px 10px 12px;
+            }
+
+            .form-control{
+                height:44px;
+                min-height:44px;
+                font-size:14px;
+            }
+
+            .w-xs{ width:72px; }
+            .w-sm{ width:116px; }
+            .w-md{ width:150px; }
+            .w-lg{ width:198px; }
+            .w-xl{ width:238px; }
+
+            .grand-total-box{
+                min-width:152px;
+                padding:8px 14px;
+            }
+
+            .grand-total-box div{
+                font-size:23px;
+            }
+
+            .items-container{
+                margin:8px;
+                border-radius:18px;
+            }
+
+            table{
+                min-width:930px;
+            }
+
+            th{
+                height:40px;
+                font-size:10px;
+                padding:7px 6px;
+            }
+
+            td input,
+            td select{
+                min-height:48px;
+                font-size:14px;
+            }
+
+            #bill_table .name-inp{
+                font-size:15px;
+                font-weight:900;
+            }
+
+            .footer-section{
+                justify-content:center;
+                padding:9px 10px calc(9px + env(safe-area-inset-bottom));
+            }
+
+            .footer-actions{
+                width:100%;
+                justify-content:space-around;
+                margin-left:0;
+            }
+
+            .icon-btn{
+                flex-basis:52px !important;
+                width:52px !important;
+                height:52px;
+                border-radius:19px;
+            }
+
+            .icon-btn::after{
+                display:none;
+            }
+
+            .history-panel{
+                left:8px;
+                right:8px;
+                bottom:78px;
+                width:calc(100vw - 16px);
+                max-height:38vh;
+            }
+
+            .draft-toast{
+                right:8px;
+                bottom:82px;
+                width:min(320px, calc(100vw - 16px));
+            }
+
+            .autocomplete-list{
+                max-width:calc(100vw - 16px);
+            }
+
+            #reader{
+                position:fixed;
+                left:10px;
+                right:10px;
+                top:74px;
+                width:auto !important;
+                z-index:120000;
+                border-radius:22px !important;
+                box-shadow:0 18px 44px rgba(23,33,47,.28);
+            }
+        }
     </style>
 </head>
 <body>
@@ -1082,10 +1762,10 @@
 <div class="container">
     <div class="header-section">
         <div class="form-group">
-            <label>Type</label>
+            <label id="bill_mode_mobile_trigger" style="user-select:none;touch-action:manipulation;">Type</label>
             <select id="doc_type" class="form-control w-sm">
                 <option value="sales">SALES</option>
-                <option value="sales_pack">BILL</option>
+                <option value="sales_pack" hidden>BILL</option>
                 <option value="quotation">QUOTATION</option>
                 <option value="sales_order">SALES ORDER</option>
             </select>
@@ -1190,6 +1870,15 @@
             <div id="display_balance_qty">-</div>
         </div>
 
+        <div class="form-group landing-toggle-group" id="landing_toggle_group" style="display:none;">
+            <label for="landing_toggle">Landing</label>
+            <label class="landing-toggle" title="Show or hide landing column">
+                <input type="checkbox" id="landing_toggle" checked>
+                <span class="landing-toggle-slider" aria-hidden="true"></span>
+                <span class="landing-toggle-text" id="landing_toggle_text">ON</span>
+            </label>
+        </div>
+
         <div class="form-group" id="remark_group">
             <label>Remark</label>
             <input type="text" id="quotation_remark" class="form-control w-xl" placeholder="Quotation remark">
@@ -1205,7 +1894,7 @@
     <div id="display_total_before_gst">₹0.00</div>
 </div>
 
-        <div class="grand-total-box">
+        <div class="grand-total-box" id="grand_total_box" style="touch-action:manipulation;user-select:none;-webkit-user-select:none;">
             <span>GRAND TOTAL</span>
             <div id="display_grand_total">₹0.00</div>
         </div>
@@ -1224,7 +1913,7 @@
                     <th class="col-price">Price+GST</th>
                     <th class="col-disc">Disc %</th>
                     <th class="col-landing landing-col">Landing</th>
-                    <th class="col-gst">GST%</th>
+                    <th class="col-gst" title="For new quotation/sales-order items, press Ctrl+Shift+G to edit GST">GST%</th>
                     <th class="col-tot">Total</th>
                     <th class="col-act"></th>
                 </tr>
@@ -1254,44 +1943,33 @@
             Profit: ₹<span id="display_profit">0.00</span>
         </div>
 
-        <button class="btn"
-                style="background:#2563eb;color:white;"
-                onclick="window.open('report.html','_blank')">
-            SALES REPORT
-        </button>
-
         <div id="draft_status_text" style="align-self:center;color:#22c55e;font-weight:800;font-size:12px;padding:8px 10px;border:1px solid rgba(34,197,94,.45);border-radius:6px;background:rgba(20,83,45,.35);">Auto Backup ON</div>
 
-        <button id="gemini_voice_btn" class="btn" style="color:white; background:#166534; display:none;" type="button" onclick="toggleGeminiVoiceBilling()">GEMINI VOICE</button>
-        <select id="voice_billing_lang" class="form-control" style="width:180px; display:none; margin-left:8px;" onchange="updateVoiceLanguage()" title="Voice language">
-            <option value="en-IN">English</option>
-            <option value="ml-IN">Malayalam</option>
-        </select>
-        <div id="voice_billing_status" class="voice-status" style="display:none;">VOICE READY</div>
-        <button id="voice_debug_toggle" class="btn" style="margin-left:8px; background:transparent; color:#94a3b8;" type="button" onclick="toggleVoiceDebug()">Toggle Voice Debug</button>
-        <div id="voice_debug_overlay" style="position:fixed; right:12px; bottom:84px; z-index:1200; background:rgba(0,0,0,0.75); color:#fff; padding:8px 10px; border-radius:8px; font-size:12px; display:none; max-width:420px; box-shadow:0 6px 18px rgba(0,0,0,0.4);">
-            <div style="font-weight:700; margin-bottom:6px;">Voice Debug</div>
-            <div id="voice_debug_raw" style="opacity:0.95;">Heard: -</div>
-            <div id="voice_debug_qty" style="opacity:0.85;">Qty: -</div>
-            <div id="voice_debug_cleaned" style="opacity:0.85;">Cleaned: -</div>
-            <div id="voice_debug_match" style="opacity:0.85;">Match: -</div>
-            <div id="voice_debug_score" style="opacity:0.75;">Score: -</div>
-            <div id="voice_debug_alts" style="opacity:0.75; font-size:12px; margin-top:6px;">Alts: -</div>
-            <div id="voice_debug_candidates" style="opacity:0.75; font-size:11px; margin-top:6px; max-height:180px; overflow-y:auto; font-family:monospace; white-space:pre-wrap; word-break:break-word; border-top:1px solid rgba(255,255,255,0.2); padding-top:6px;">Candidates: -</div>
-            <div id="voice_debug_stock_count" style="opacity:0.75; margin-top:6px; font-size:11px;">Stock: loading...</div>
+        <div class="footer-actions" aria-label="Billing actions">
+            <button type="button" class="btn icon-btn icon-btn-report" data-tooltip="Sales report" aria-label="Open sales report" title="Sales report" onclick="openReportPanel()">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/></svg>
+            </button>
+            <button type="button" class="btn icon-btn icon-btn-new" data-tooltip="Open second billing page" aria-label="Open second billing page" title="Open second billing page" onclick="openSecondBillingPage()">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+            <button type="button" class="btn icon-btn icon-btn-reset" data-tooltip="Reset / new bill" aria-label="Reset and start a new bill" title="Reset / new bill" onclick="resetCurrentBill()">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+            </button>
+            <button type="button" id="btn_save" class="btn icon-btn icon-btn-save" data-tooltip="Print & save" aria-label="Print and save" title="Print & save" onclick="saveAndPrint()" tabindex="100">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/><path d="M18 12h.01"/></svg>
+            </button>
         </div>
-        <button class="btn" style="color: #64748b; background:transparent;" onclick="disableAutoBackupAndClearDraft('New bill - draft cleared'); location.reload();">Reset / New Bill</button>
-        <button id="btn_save" class="btn btn-save" onclick="saveAndPrint()" tabindex="100">PRINT & SAVE</button>
     </div>
 </div>
 
-<div id="voice_prompt_overlay" class="voice-prompt-overlay" aria-live="polite"></div>
-<div id="voice_match_panel" class="voice-match-panel" aria-live="polite">
-    <div class="voice-match-head">
-        <span id="voice_match_title">Select Matched Item</span>
-        <button type="button" class="voice-match-close" onclick="hideVoiceCandidateSelection()">×</button>
+<div id="report_viewer" class="report-viewer" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="report_viewer_title" onclick="if(event.target === this) closeReportPanel()">
+    <div class="report-viewer-card">
+        <div class="report-viewer-header">
+            <span id="report_viewer_title">Sales Report</span>
+            <button type="button" class="report-viewer-close" aria-label="Close sales report" title="Close report" onclick="closeReportPanel()">&times;</button>
+        </div>
+        <iframe id="report_frame" title="Sales report" loading="lazy"></iframe>
     </div>
-    <div id="voice_match_list" class="voice-match-list"></div>
 </div>
 
 <div id="profit_trigger"
@@ -1358,6 +2036,17 @@
     </div>
 </div>
 
+<div id="po_confirm_overlay" class="po-confirm-overlay" tabindex="-1" aria-hidden="true">
+    <div class="po-confirm-box" role="alertdialog" aria-modal="true" aria-labelledby="po_confirm_title" aria-describedby="po_confirm_message">
+        <h3 id="po_confirm_title">MAKE PURCHASE ORDER?</h3>
+        <p id="po_confirm_message"></p>
+        <div class="po-confirm-actions">
+            <button type="button" class="po-confirm-btn no" id="po_confirm_no_btn">NO</button>
+            <button type="button" class="po-confirm-btn yes" id="po_confirm_yes_btn">YES, MAKE PO</button>
+        </div>
+    </div>
+</div>
+
 <script>
     // --- 1. SUPABASE CONNECTION ---
     const sb = window.sbcc; // supabase client from supabaseClient.js
@@ -1376,10 +2065,13 @@
     let stockLoaded = false;
     let currentUserRole = "";
     let canSeeLandingColumn = false;
+    let landingColumnEnabled = true;
     let isSalesOrderConversionMode = false;
     let salesOrderAdvancePaid = 0;
+    let purchaseOrderPromptOpen = false;
+    let purchaseOrderPromptResolver = null;
+    let purchaseOrderPromptReturnFocus = null;
 
-        
 
     // --- BELOW LANDING SECRET UNLOCK ---
     // Normal save blocks 0 price and below-landing sales.
@@ -1389,16 +2081,71 @@
 
     // --- GEOAPIFY ADDRESS AUTOCOMPLETE ---
     const GEOAPIFY_API_KEY = "990205e0a84c4f7ea549a0485e60ceab";
+    const ADDRESS_SEARCH_CENTER = { lon: 76.9366, lat: 8.5241 }; // Thiruvananthapuram / Trivandrum
+    const ADDRESS_SEARCH_LIMIT = 12;
+    const TRIVANDRUM_PLACE_TERMS = [
+        "thiruvananthapuram", "trivandrum", "tvm", "neyyattinkara", "attingal", "kazhakkoottam",
+        "kattakada", "nedumangad", "varkala", "kovalam", "balaramapuram", "vizhinjam",
+        "peroorkada", "pattom", "kesavadasapuram", "sreekaryam", "technopark", "venjaramoodu",
+        "poojappura", "vellayambalam", "palayam", "east fort", "kollam", "parassala"
+    ];
     let geoapifyAddressTimer = null;
 
 
     // --- AUTO BACKUP / RECOVERY DRAFT MODE ---
-    const BILL_DRAFT_KEY = "vajra_billing_unsaved_draft_v2";
+    // A plus-button workspace gets its own draft, so two bills cannot overwrite each other.
+    const BILL_WORKSPACE_ID = new URLSearchParams(window.location.search).get("workspace") || "";
+    const BILL_DRAFT_KEY = "vajra_billing_unsaved_draft_v2" + (BILL_WORKSPACE_ID ? `_${BILL_WORKSPACE_ID}` : "");
+    const LANDING_COLUMN_PREF_KEY = "vajra_billing_show_landing_column";
     const BILL_DRAFT_MAX_AGE_MS = 24 * 60 * 60 * 1000; // keep draft for 24 hours
     let autoBackupReady = false;
     let autoBackupTimer = null;
     let restoringDraft = false;
     let autoBackupPaused = false;
+
+    let reportReturnFocus = null;
+
+    function openReportPanel(){
+        const viewer = document.getElementById("report_viewer");
+        const frame = document.getElementById("report_frame");
+        reportReturnFocus = document.activeElement;
+        if(!frame.getAttribute("src")) frame.src = "report.html";
+        viewer.classList.add("open");
+        viewer.setAttribute("aria-hidden", "false");
+        viewer.querySelector(".report-viewer-close")?.focus();
+    }
+
+    function closeReportPanel(){
+        const viewer = document.getElementById("report_viewer");
+        viewer.classList.remove("open");
+        viewer.setAttribute("aria-hidden", "true");
+        reportReturnFocus?.focus?.();
+    }
+
+    function openSecondBillingPage(){
+        const secondPageUrl = new URL(window.location.pathname, window.location.origin);
+        secondPageUrl.searchParams.set("workspace", `${Date.now()}`);
+        window.open(secondPageUrl.href, "_blank", "noopener");
+    }
+
+    function resetCurrentBill(){
+        disableAutoBackupAndClearDraft("New bill - draft cleared");
+        window.location.reload();
+    }
+
+    function setSaveButtonLabel(label){
+        const btn = document.getElementById("btn_save");
+        if(!btn) return;
+        btn.dataset.tooltip = label;
+        btn.title = label;
+        btn.setAttribute("aria-label", label);
+    }
+
+    document.addEventListener("keydown", event => {
+        if(event.key === "Escape" && document.getElementById("report_viewer")?.classList.contains("open")){
+            closeReportPanel();
+        }
+    });
 
     function getInputValue(id){
         return document.getElementById(id)?.value || "";
@@ -1571,6 +2318,10 @@
         try{
             const h = draft.header || {};
 
+            if(h.doc_type === 'sales_pack'){
+                unlockBillMode({ selectMode: false, notify: false });
+            }
+
             setInputValue('doc_type', h.doc_type || 'sales');
             setInputValue('bill_series', h.series || getInputValue('bill_series'));
             setInputValue('bill_number', h.bill_number || getInputValue('bill_number'));
@@ -1654,22 +2405,9 @@
         const draft = readSavedBillDraft();
         if(!draft || !billDraftHasData(draft)) return false;
 
-        const savedTime = formatDraftSavedTime(draft.saved_at);
-        const rowCount = Array.isArray(draft.rows) ? draft.rows.length : 0;
-        const customer = draft.header?.customer_name || draft.header?.customer_mobile || "customer not entered";
-        const total = draft.totals?.grand_total || "₹0.00";
         const toast = ensureDraftRestoreToast();
 
         toast.innerHTML = `
-            <div class="draft-toast-head">
-                <div class="draft-toast-title">💬 Unsaved bill found</div>
-                <button type="button" class="draft-toast-close" title="Ignore">×</button>
-            </div>
-            <div class="draft-toast-body">
-                <div><b>Customer:</b> ${escapeHtml(customer)}</div>
-                <div><b>Items:</b> ${rowCount} &nbsp; <b>Total:</b> ${escapeHtml(total)}</div>
-                <div><b>Saved:</b> ${escapeHtml(savedTime)}</div>
-            </div>
             <div class="draft-toast-actions">
                 <button type="button" class="draft-toast-btn draft-toast-restore">RESTORE DRAFT</button>
                 <button type="button" class="draft-toast-btn draft-toast-ignore">IGNORE</button>
@@ -1677,7 +2415,6 @@
             </div>
         `;
 
-        toast.querySelector(".draft-toast-close")?.addEventListener("click", hideDraftRestoreToast);
         toast.querySelector(".draft-toast-ignore")?.addEventListener("click", hideDraftRestoreToast);
 
         toast.querySelector(".draft-toast-restore")?.addEventListener("click", () => {
@@ -1737,1104 +2474,6 @@
         });
     }
 
-    const voiceBillingState = {
-        lastTranscript: "",
-        lang: 'en-IN',
-        pendingSelection: false,
-        pendingQty: 1,
-        pendingCandidates: [],
-        lastCandidates: [],
-        geminiAudioContext: null,
-        geminiAudioProcessor: null,
-        geminiAudioSource: null,
-        geminiStream: null,
-        geminiChunks: [],
-        geminiRecording: false,
-        geminiSampleRate: 44100,
-        geminiTimer: null
-    };
-
-    function speakBillingMessage(message, lang = 'en-IN') {
-        if (!window.speechSynthesis) return;
-        try {
-            const utterance = new SpeechSynthesisUtterance(String(message));
-            utterance.lang = lang;
-            window.speechSynthesis.cancel();
-            window.speechSynthesis.speak(utterance);
-        } catch (_) {
-        }
-    }
-
-    function updateVoiceLanguage() {
-        const select = document.getElementById('voice_billing_lang');
-        if (!select) return;
-        voiceBillingState.lang = select.value || 'en-IN';
-        setVoiceStatus(voiceBillingState.lang === 'ml-IN' ? 'MALAYALAM MODE' : 'ENGLISH MODE');
-    }
-
-    function isIPhoneSafari() {
-        const ua = navigator.userAgent || "";
-        return /iP(hone|od|ad)/.test(ua) && /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS/.test(ua);
-    }
-
-    function setVoiceStatus(text, warning = false) {
-        const statusEl = document.getElementById('voice_billing_status');
-        if(!statusEl) return;
-        statusEl.style.display = 'block';
-        statusEl.textContent = String(text || '').toUpperCase();
-        statusEl.style.color = warning ? '#fca5a5' : '#7dd3fc';
-    }
-
-    function showVoicePrompt(message, type = 'info', duration = 2200) {
-        const overlay = document.getElementById('voice_prompt_overlay');
-        if (!overlay) return;
-        overlay.className = `voice-prompt-overlay ${type}`;
-        overlay.innerHTML = `<div>${escapeHtml(String(message))}</div>`;
-        overlay.style.display = 'block';
-        clearTimeout(voiceBillingState.promptTimer);
-        voiceBillingState.promptTimer = setTimeout(() => {
-            overlay.style.display = 'none';
-        }, duration);
-    }
-
-    let voiceDebugVisible = true;
-
-    function toggleVoiceDebug() {
-        voiceDebugVisible = !voiceDebugVisible;
-        const wrap = document.getElementById('voice_debug_overlay');
-        if (wrap) wrap.style.display = voiceDebugVisible ? '' : 'none';
-        const btn = document.getElementById('voice_debug_toggle');
-        if (btn) btn.textContent = voiceDebugVisible ? 'Hide Voice Debug' : 'Show Voice Debug';
-    }
-
-    function updateVoiceDebug({ raw, qty, cleaned, match, score, alts, candidates, confidence } = {}) {
-        try {
-            const wrap = document.getElementById('voice_debug_overlay');
-            if (!wrap) return;
-            wrap.style.display = voiceDebugVisible ? '' : 'none';
-            const rawEl = document.getElementById('voice_debug_raw');
-            const qtyEl = document.getElementById('voice_debug_qty');
-            const cleanEl = document.getElementById('voice_debug_cleaned');
-            const matchEl = document.getElementById('voice_debug_match');
-            const scoreEl = document.getElementById('voice_debug_score');
-            const altsEl = document.getElementById('voice_debug_alts');
-            const candEl = document.getElementById('voice_debug_candidates');
-            const confEl = document.getElementById('voice_debug_confidence');
-            if (rawEl && typeof raw !== 'undefined') rawEl.textContent = `Heard: ${String(raw || '-').slice(0,120)}`;
-            if (qtyEl && typeof qty !== 'undefined') qtyEl.textContent = `Qty: ${qty}`;
-            if (cleanEl && typeof cleaned !== 'undefined') cleanEl.textContent = `Cleaned: ${String(cleaned || '-').slice(0,120)}`;
-            if (matchEl && typeof match !== 'undefined') matchEl.textContent = `Match: ${match || '-'}`;
-            if (scoreEl && typeof score !== 'undefined') scoreEl.textContent = `Score: ${typeof score === 'number' ? score.toFixed(1) : score || '-'}`;
-            if (confEl && typeof confidence !== 'undefined') confEl.textContent = `Confidence: ${typeof confidence === 'number' ? confidence.toFixed(1) + '%' : '-'}`;
-            if (altsEl && typeof alts !== 'undefined') altsEl.textContent = `Alts: ${Array.isArray(alts) ? alts.slice(0,3).join(' | ') : (alts || '-')}`;
-            if (candEl && typeof candidates !== 'undefined') {
-                if (Array.isArray(candidates) && candidates.length) {
-                    voiceBillingState.lastCandidates = candidates;
-                    const candText = candidates.map((c, i) => {
-                        const candScore = Number(c.score);
-                        const scoreText = Number.isFinite(candScore) ? candScore.toFixed(1) : '-';
-                        return `${i+1}. [${scoreText}] ${(c.name || c.code || '-').slice(0,80)}`;
-                    }).join('\n');
-                    candEl.textContent = `Top Candidates:\n${candText}`;
-                } else {
-                    voiceBillingState.lastCandidates = [];
-                    candEl.textContent = `Candidates: -`;
-                }
-            }
-        } catch (e) { console.error(e); }
-    }
-
-    function normalizeVoiceCandidate(candidate) {
-        if (!candidate) return null;
-        const item = candidate.item || candidate;
-        const code = item.item_code || item.code;
-        const fullItem = getDepartmentFilteredStockData().find(x =>
-            String(x.item_code || '').trim().toUpperCase() === String(code || '').trim().toUpperCase()
-        ) || item;
-        const name = fullItem.item_name || item.item_name || item.name;
-        if (!code && !name) return null;
-
-        return {
-            code: fullItem.item_code || code,
-            name,
-            score: candidate.score || item.score || 0,
-            item: fullItem
-        };
-    }
-
-    function showVoiceCandidateSelection(candidates, qty = 1, query = '') {
-        const panel = document.getElementById('voice_match_panel');
-        const list = document.getElementById('voice_match_list');
-        const title = document.getElementById('voice_match_title');
-        if (!panel || !list) return;
-
-        const normalizedCandidates = (Array.isArray(candidates) ? candidates : [])
-            .map(normalizeVoiceCandidate)
-            .filter(Boolean)
-            .slice(0, 20);
-
-        if (!normalizedCandidates.length) {
-            hideVoiceCandidateSelection();
-            return;
-        }
-
-        voiceBillingState.pendingSelection = true;
-        voiceBillingState.pendingQty = qty || 1;
-        voiceBillingState.pendingCandidates = normalizedCandidates;
-
-        if (title) title.textContent = `Select Item - Qty ${voiceBillingState.pendingQty}`;
-
-        list.innerHTML = '';
-        normalizedCandidates.forEach((candidate, index) => {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'voice-match-option';
-            btn.dataset.code = candidate.code || '';
-            btn.innerHTML = `
-                <span class="voice-match-name">${index + 1}. ${escapeHtml(candidate.name || candidate.code)}</span>
-                <span class="voice-match-meta">Code: ${escapeHtml(candidate.code || '-')} | Score: ${escapeHtml(candidate.score || '-')}</span>
-            `;
-            btn.addEventListener('click', () => selectVoiceCandidate(candidate.code));
-            list.appendChild(btn);
-        });
-
-        panel.classList.add('show');
-        setVoiceStatus(`SELECT MATCHED ITEM (${normalizedCandidates.length})`);
-        showVoicePrompt(`Select matched item for: ${query || voiceBillingState.lastTranscript || ''}`, 'info', 4500);
-
-        setTimeout(() => {
-            list.querySelector('.voice-match-option')?.focus();
-        }, 0);
-    }
-
-    function hideVoiceCandidateSelection() {
-        const panel = document.getElementById('voice_match_panel');
-        const list = document.getElementById('voice_match_list');
-        if (panel) panel.classList.remove('show');
-        if (list) list.innerHTML = '';
-        voiceBillingState.pendingSelection = false;
-        voiceBillingState.pendingCandidates = [];
-    }
-
-    function selectVoiceCandidate(code) {
-        const candidate = voiceBillingState.pendingCandidates.find(x => String(x.code || '') === String(code || ''));
-        const item = getDepartmentFilteredStockData().find(x =>
-            String(x.item_code || '').trim().toUpperCase() === String(code || '').trim().toUpperCase()
-        ) || candidate?.item;
-        if (!item) return;
-
-        const qty = voiceBillingState.pendingQty || 1;
-        hideVoiceCandidateSelection();
-        addItemByVoice(item, qty);
-    }
-
-    function initializeVoiceBilling() {
-        const btn = document.getElementById('gemini_voice_btn');
-        const langSelect = document.getElementById('voice_billing_lang');
-        if (!btn) return;
-
-        const canRecord = !!(navigator.mediaDevices?.getUserMedia && getAudioContextClass());
-        btn.style.display = canRecord ? '' : 'none';
-        if (canRecord && langSelect) {
-            langSelect.style.display = 'inline-block';
-            langSelect.value = voiceBillingState.lang;
-        }
-
-        setVoiceStatus(canRecord ? 'GEMINI VOICE READY' : 'VOICE NOT SUPPORTED', !canRecord);
-    }
-
-    function getGeminiVoiceEndpoint() {
-        const configuredUrl = window.GEMINI_VOICE_API_URL || localStorage.getItem('GEMINI_VOICE_API_URL');
-        if (configuredUrl) return configuredUrl;
-
-        if (window.location.protocol === 'http:' || window.location.protocol === 'https:') {
-            const isLocalHost = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
-            const apiOrigin = isLocalHost && window.location.port && window.location.port !== '3000'
-                ? `${window.location.protocol}//${window.location.hostname}:3000`
-                : window.location.origin;
-            return `${apiOrigin}/api/gemini-voice`;
-        }
-
-        return 'http://localhost:3000/api/gemini-voice';
-    }
-
-    function getAudioContextClass() {
-        return window.AudioContext || window.webkitAudioContext;
-    }
-
-    function encodePcmWav(chunks, sampleRate) {
-        const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
-        const samples = new Float32Array(totalLength);
-        let offset = 0;
-
-        chunks.forEach(chunk => {
-            samples.set(chunk, offset);
-            offset += chunk.length;
-        });
-
-        const buffer = new ArrayBuffer(44 + samples.length * 2);
-        const view = new DataView(buffer);
-
-        writeAscii(view, 0, 'RIFF');
-        view.setUint32(4, 36 + samples.length * 2, true);
-        writeAscii(view, 8, 'WAVE');
-        writeAscii(view, 12, 'fmt ');
-        view.setUint32(16, 16, true);
-        view.setUint16(20, 1, true);
-        view.setUint16(22, 1, true);
-        view.setUint32(24, sampleRate, true);
-        view.setUint32(28, sampleRate * 2, true);
-        view.setUint16(32, 2, true);
-        view.setUint16(34, 16, true);
-        writeAscii(view, 36, 'data');
-        view.setUint32(40, samples.length * 2, true);
-
-        let dataOffset = 44;
-        for (let i = 0; i < samples.length; i++) {
-            const sample = Math.max(-1, Math.min(1, samples[i]));
-            view.setInt16(dataOffset, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
-            dataOffset += 2;
-        }
-
-        return new Blob([buffer], { type: 'audio/wav' });
-    }
-
-    function writeAscii(view, offset, text) {
-        for (let i = 0; i < text.length; i++) {
-            view.setUint8(offset + i, text.charCodeAt(i));
-        }
-    }
-
-    function blobToBase64(blob) {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(String(reader.result || '').split(',')[1] || '');
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-        });
-    }
-
-    async function toggleGeminiVoiceBilling() {
-        if (voiceBillingState.geminiRecording) {
-            stopGeminiVoiceRecording();
-            return;
-        }
-
-        await startGeminiVoiceRecording();
-    }
-
-    async function startGeminiVoiceRecording() {
-        const btn = document.getElementById('gemini_voice_btn');
-        const AudioContextClass = getAudioContextClass();
-        if (!navigator.mediaDevices?.getUserMedia || !AudioContextClass) {
-            showVoicePrompt('Audio recording is not supported in this browser', 'error', 3500);
-            return;
-        }
-
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            const audioContext = new AudioContextClass();
-            if (audioContext.state === 'suspended') {
-                await audioContext.resume();
-            }
-            const source = audioContext.createMediaStreamSource(stream);
-            const processor = audioContext.createScriptProcessor(4096, 1, 1);
-
-            voiceBillingState.geminiStream = stream;
-            voiceBillingState.geminiAudioContext = audioContext;
-            voiceBillingState.geminiAudioSource = source;
-            voiceBillingState.geminiAudioProcessor = processor;
-            voiceBillingState.geminiChunks = [];
-            voiceBillingState.geminiRecording = true;
-            voiceBillingState.geminiSampleRate = audioContext.sampleRate || 44100;
-
-            processor.onaudioprocess = (event) => {
-                if (!voiceBillingState.geminiRecording) return;
-                const input = event.inputBuffer.getChannelData(0);
-                voiceBillingState.geminiChunks.push(new Float32Array(input));
-            };
-
-            source.connect(processor);
-            processor.connect(audioContext.destination);
-
-            if (btn) btn.textContent = 'STOP GEMINI';
-            setVoiceStatus('GEMINI LISTENING...');
-            showVoicePrompt('Gemini voice recording... press STOP GEMINI when done', 'info', 3500);
-
-            clearTimeout(voiceBillingState.geminiTimer);
-            voiceBillingState.geminiTimer = null;
-        } catch (err) {
-            console.error(err);
-            voiceBillingState.geminiRecording = false;
-            cleanupGeminiAudio();
-            if (btn) btn.textContent = 'GEMINI VOICE';
-            showVoicePrompt(`Mic error: ${err.message || err}`, 'error', 4500);
-        }
-    }
-
-    function stopGeminiVoiceRecording() {
-        clearTimeout(voiceBillingState.geminiTimer);
-        if (!voiceBillingState.geminiRecording) return;
-        voiceBillingState.geminiRecording = false;
-        sendGeminiVoiceRecording();
-    }
-
-    function cleanupGeminiAudio() {
-        const processor = voiceBillingState.geminiAudioProcessor;
-        const source = voiceBillingState.geminiAudioSource;
-        const context = voiceBillingState.geminiAudioContext;
-        const stream = voiceBillingState.geminiStream;
-
-        try { if (processor) processor.disconnect(); } catch (_) {}
-        try { if (source) source.disconnect(); } catch (_) {}
-        try { if (context && context.state !== 'closed') context.close(); } catch (_) {}
-        if (stream) stream.getTracks().forEach(track => track.stop());
-
-        voiceBillingState.geminiAudioProcessor = null;
-        voiceBillingState.geminiAudioSource = null;
-        voiceBillingState.geminiAudioContext = null;
-        voiceBillingState.geminiStream = null;
-    }
-
-    async function sendGeminiVoiceRecording() {
-        const btn = document.getElementById('gemini_voice_btn');
-        const chunks = voiceBillingState.geminiChunks || [];
-        const sampleRate = voiceBillingState.geminiSampleRate || 44100;
-
-        voiceBillingState.geminiRecording = false;
-        voiceBillingState.geminiChunks = [];
-        cleanupGeminiAudio();
-        if (btn) btn.textContent = 'GEMINI VOICE';
-
-        if (!chunks.length) {
-            showVoicePrompt('No voice captured', 'error', 3000);
-            return;
-        }
-
-        try {
-            setVoiceStatus('GEMINI TRANSCRIBING...');
-            const blob = encodePcmWav(chunks, sampleRate);
-            const audioBase64 = await blobToBase64(blob);
-
-            const response = await fetch(getGeminiVoiceEndpoint(), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    audioBase64,
-                    mimeType: blob.type,
-                    languageCode: voiceBillingState.lang || 'en-IN'
-                })
-            });
-
-            const data = await response.json().catch(() => ({}));
-            if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
-
-            const alternatives = Array.isArray(data.alternatives)
-                ? data.alternatives.map(x => x.transcript).filter(Boolean)
-                : [];
-            const transcript = data.transcript || alternatives[0] || '';
-
-            voiceBillingState.lastTranscript = transcript;
-            updateVoiceDebug({ raw: transcript, alts: alternatives.length ? alternatives : (transcript ? [transcript] : []) });
-
-            if (!transcript) {
-                showVoicePrompt('Gemini did not hear an item', 'error', 3500);
-                setVoiceStatus('GEMINI NO MATCH');
-                return;
-            }
-
-            showVoicePrompt(`Heard: ${transcript}`, 'info', 2200);
-            processVoiceCommand(transcript, alternatives.length ? alternatives : [transcript]);
-        } catch (err) {
-            console.error(err);
-            updateVoiceDebug({ raw: `GEMINI ERROR: ${err.message || err}` });
-            setVoiceStatus('GEMINI VOICE ERROR', true);
-            showVoicePrompt(`Gemini voice error: ${err.message || err}`, 'error', 5000);
-        }
-    }
-
-    function parseSpokenQuantity(text) {
-        if (!text) return null;
-        const numberWords = {
-            zero:0, one:1, two:2, three:3, four:4, five:5, six:6, seven:7, eight:8, nine:9, ten:10,
-            eleven:11, twelve:12, thirteen:13, fourteen:14, fifteen:15, sixteen:16, seventeen:17, eighteen:18, nineteen:19, twenty:20,
-            thirty:30, forty:40, fifty:50, sixty:60, seventy:70, eighty:80, ninety:90, hundred:100, dozen:12,
-            'പൂജ്യം':0, 'ശൂന്യം':0, 'ഒന്ന്':1, 'ഒരു':1, 'രണ്ട്':2, 'രണ്ടു':2, 'മൂന്ന്':3, 'മൂന്നു':3, 'നാല്':4, 'അഞ്ച്':5, 'ആറ്':6, 'ഏഴ്':7,
-            'എട്ട്':8, 'ഒമ്പത്':9, 'പത്ത്':10, 'പതിനൊന്ന്':11, 'പന്ത്രണ്ട്':12, 'പതിന്മൂന്ന്':13, 'പതിനാല്':14, 'പതിനഞ്ച്':15, 'പതിനാറു':16,
-            'പതിനേഴു':17, 'പതിനെട്ട്':18, 'പത്തൊമ്പത്':19, 'ഇരുപത്':20, 'മുപ്പത്':30, 'നാല്‍പത്':40, 'നാല്പത്':40, 'അമ്പത്':50, 'അറുപത്':60,
-            'എഴുപത്':70, 'എൺപത്':80, 'എണ്‍പത്':80, 'തൊണ്ണൂറ്':90, 'നൂറ്':100
-        };
-
-        let quantity = null;
-        const lower = String(text || '').toLowerCase();
-
-        const explicitMatch = lower.match(/\b(?:qty|quantity|x|times|pcs?|pieces?|packets?|packet|nos?|no\.?|pieces?|എണ്ണം|എന്ത്|എനിക്ക്)\s*(?:of\s*)?(\d+(?:\.\d+)?)/);
-        if (explicitMatch) {
-            quantity = parseFloat(explicitMatch[1]);
-        }
-
-        if (quantity === null) {
-            const numericMatch = lower.match(/(\d+(?:\.\d+)?)(?:\s*(?:pcs?|pieces?|qty|quantity|x|times|packets?|packet|nos?|no\.?|kg|kgs?|g|grams?|gram|ltr|litre|litres?|liter|liters|bottle|bottles|എണ്ണം))/);
-            if (numericMatch) {
-                quantity = parseFloat(numericMatch[1]);
-            }
-        }
-
-        if (quantity === null) {
-            const words = lower.match(/\b(?:hundred|ninety|eighty|seventy|sixty|fifty|forty|thirty|twenty|nineteen|eighteen|seventeen|sixteen|fifteen|fourteen|thirteen|twelve|eleven|ten|nine|eight|seven|six|five|four|three|two|one|zero|dozen|പൂജ്യം|ശൂന്യം|ഒന്ന്|ഒരു|രണ്ട്|രണ്ടു|മൂന്ന്|മൂന്നു|നാല്|അഞ്ച്|ആറ്|ഏഴ്|എട്ട്|ഒമ്പത്|പത്ത്|പതിനൊന്ന്|പന്ത്രണ്ട്|പതിന്മൂന്ന്|പതിനാല്|പതിനഞ്ച്|പതിനാറു|പതിനേഴു|പതിനെട്ട്|പത്തൊമ്പത്|ഇരുപത്|മുപ്പത്|നാല്‍പത്|നാല്പത്|അമ്പത്|അറുപത്|എഴുപത്|എൺപത്|എണ്‍പത്|തൊണ്ണൂറ്|നൂറ്)\b/g);
-            if (words && words.length) {
-                let total = 0;
-                let lastValue = 0;
-                for (const word of words) {
-                    const value = numberWords[word];
-                    if (value === 100) {
-                        if (lastValue === 0) lastValue = 1;
-                        lastValue *= 100;
-                    } else {
-                        total += lastValue;
-                        lastValue = value;
-                    }
-                }
-                quantity = total + lastValue;
-            }
-        }
-
-        if (quantity === null) {
-            const tokens = lower.trim().split(/\s+/);
-            const firstToken = tokens[0];
-            const afterFirst = tokens.slice(1).join(' ');
-            const quantityIndicator = /\b(?:qty|quantity|x|times|pcs?|pieces?|packets?|packet|nos?|no\.?|kg|kgs?|g|grams?|gram|ltr|litre|kilogram|gram|liter|piece|unit)\b/;
-
-            if (/^\d+(?:\.\d+)?$/.test(firstToken) && (quantityIndicator.test(afterFirst) || afterFirst === '')) {
-                quantity = parseFloat(firstToken);
-            } else if (numberWords[firstToken] !== undefined && (quantityIndicator.test(afterFirst) || tokens.length > 1)) {
-                quantity = numberWords[firstToken];
-            }
-        }
-
-        return Number.isFinite(quantity) ? Math.max(quantity, 0) : null;
-    }
-
-    function cleanEnglishVoiceItemQuery(text) {
-        if (!text) return '';
-        let result = String(text).toLowerCase();
-        result = result.replace(/\b(?:qty|quantity|x|times|pcs?|pieces?|packets?|packet|nos?|no\.?)\s*(?:of\s*)?(\d+(?:\.\d+)?)(?:\s*(?:kg|kgs?|g|grams?|gram|ltr|litre|litres?|liter|liters|bottle|bottles))?\b/g, ' ');
-        result = result.replace(/\b(\d+(?:\.\d+)?)\s*(?:pcs?|pieces?|qty|quantity|x|times|packets?|packet|nos?|no\.?|kg|kgs?|g|grams?|gram|ltr|litre|litres?|liter|liters|bottle|bottles)\b/g, ' ');
-        result = result.replace(/\b(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|dozen)\b\s*(?:pcs?|pieces?|qty|quantity|x|times|packets?|packet|nos?|no\.?|kg|kgs?|g|grams?|gram|ltr|litre|litres?|liter|liters|bottle|bottles)\b/g, ' ');
-        result = result.replace(/\b(?:\d+(?:\.\d+)?|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|dozen)\s*(?:kg|kgs?|g|grams?|gram|ltr|litre|litres?|liter|liters|bottle|bottles)\b/g, ' ');
-        result = result.replace(/\b(add|put|include|sell|order|bill|please|take|give|want|need|for|of|with|qty|quantity|pieces?|pcs?|piece|packet|pack|nos?|no\.?|times?|each|every)\b/g, ' ');
-        result = result.replace(/\s+/g, ' ').trim();
-        return result;
-    }
-
-    function getVoiceResponseMessage(type, itemName, qty) {
-        if (voiceBillingState.lang === 'ml-IN') {
-            if (type === 'added') return `കൂട്ടിയത് ${itemName} ${qty} എണ്ണം`;
-            if (type === 'updated') return `നവീകരിച്ചത് ${itemName} ${qty} എണ്ണം`;
-            if (type === 'missing') return `ഇനം കണ്ടെത്താനായില്ല ${itemName}`;
-        }
-
-        if (type === 'added') return `ADDED ${itemName} ×${qty}`;
-        if (type === 'updated') return `UPDATED ${itemName} ×${qty}`;
-        if (type === 'missing') return `ITEM NOT FOUND: ${itemName}`;
-        return String(itemName || '');
-    }
-
-    const malayalamItemAliases = {
-        'പായസം': 'payasam',
-        'സോപ്പ്': 'soap',
-        'ഷാംപൂ': 'shampoo',
-        'ടൂത്ത് പാസ്റ്റ്': 'toothpaste',
-        'വാഷിംഗ് പൗഡർ': 'washing powder',
-        'കപ്പ് ചായ': 'cup tea',
-        'ചക്കര പൊടി': 'sugar powder',
-        'രണ്ട് കൂടിയുള്ള ബീറ്റർ': 'mixer grinder'
-    };
-
-    function normalizeMalayalamText(value) {
-        return String(value || "")
-            .toLowerCase()
-            .replace(/[^a-z0-9\u0d00-\u0d7f]+/g, " ")
-            .replace(/\s+/g, " ")
-            .trim();
-    }
-
-    function escapeRegExp(value) {
-        return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    }
-
-    function translateMalayalamItemQuery(query) {
-        const normalized = normalizeMalayalamText(query);
-        if (!normalized) return null;
-
-        let translated = normalized;
-        const aliases = Object.entries(malayalamItemAliases).sort((a, b) => b[0].length - a[0].length);
-        for (const [alias, replacement] of aliases) {
-            const pattern = new RegExp(`\\b${escapeRegExp(alias)}\\b`, 'g');
-            translated = translated.replace(pattern, replacement);
-        }
-
-        if (translated !== normalized) {
-            return translated.replace(/\s+/g, ' ').trim();
-        }
-
-        return null;
-    }
-
-    function normalizeVoiceItemText(text) {
-        if (!text) return "";
-        let result = text.toLowerCase();
-        result = result.replace(/\b(add|put|include|sell|order|bill|please|take|give|want|need|for|of|with|qty|quantity|pieces?|pcs?|piece|packet|pack|nos?|no\.?|times?|times|each|every|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|dozen)\b/g, ' ');
-        result = result.replace(/[^a-z0-9\u0d00-\u0d7f\s]/g, ' ');
-        result = result.replace(/\s+/g, ' ').trim();
-        return result;
-    }
-
-    function normalizeVoiceSearchToken(token) {
-        const synonyms = {
-            polly: 'poly',
-            poli: 'poly',
-            koli: 'poly',
-            koi: 'poly',
-            cab: 'cab',
-            polycab: 'polycab',
-            hathyra: 'athira',
-            hathira: 'athira',
-            hattira: 'athira',
-            athyra: 'athira',
-            athira: 'athira',
-            thira: 'athira',
-            tira: 'athira',
-            toll: 'toll',
-            tol: 'toll',
-            tula: 'toll',
-            tulla: 'toll',
-            terra: 'toll',
-            mol: 'module',
-            modle: 'module',
-            moduel: 'module',
-            module: 'module',
-            kl: 'kela',
-            kaila: 'kela',
-            kella: 'kela',
-            kela: 'kela',
-            chandra: 'chandra',
-            tm: '20mm'
-        };
-        const normalized = normalizeSearchText(token);
-        return synonyms[normalized] || normalized;
-    }
-
-    function getVoiceSearchTerms(query) {
-        const baseTerms = normalizeSearchText(query).split(' ').filter(Boolean).map(normalizeVoiceSearchToken).filter(Boolean);
-        const terms = [...baseTerms];
-        const spokenNumbers = {
-            one: '1',
-            two: '2',
-            three: '3',
-            four: '4',
-            five: '5',
-            six: '6',
-            seven: '7',
-            eight: '8',
-            nine: '9',
-            ten: '10',
-            twelve: '12',
-            fifteen: '15',
-            sixteen: '16',
-            twenty: '20',
-            twentyfive: '25',
-            thirtytwo: '32',
-            forty: '40',
-            fifty: '50',
-            sixtythree: '63'
-        };
-
-        for (let i = 0; i < baseTerms.length - 1; i++) {
-            terms.push(baseTerms[i] + baseTerms[i + 1]);
-
-            const joined = baseTerms[i] + baseTerms[i + 1];
-            if (spokenNumbers[joined]) {
-                terms.push(spokenNumbers[joined]);
-            }
-
-            if (baseTerms[i + 1] === 'mm' && spokenNumbers[baseTerms[i]]) {
-                terms.push(`${spokenNumbers[baseTerms[i]]}mm`);
-            }
-        }
-
-        return Array.from(new Set(terms));
-    }
-
-    function getVoiceFuzzyAutoSelectThreshold(query) {
-        const baseTermCount = normalizeSearchText(query).split(' ').filter(Boolean).length;
-        if (baseTermCount <= 1) return 45;
-        return Math.min(140, Math.max(60, baseTermCount * 25));
-    }
-
-    function isVoiceNumericTerm(term) {
-        return /\d/.test(String(term || ''));
-    }
-
-    function isVoiceProductTypeTerm(term) {
-        return /^(plate|box|coupler|socket|bend|tee|elbow|pipe|wire|cable|switch|module|metal|pgf)$/i.test(String(term || ''));
-    }
-
-    // Levenshtein distance for fuzzy matching (handle speech recognition mishearings)
-    function levenshteinDistance(a, b) {
-        if (a.length === 0) return b.length;
-        if (b.length === 0) return a.length;
-        const matrix = [];
-        for (let i = 0; i <= b.length; i++) {
-            matrix[i] = [i];
-        }
-        for (let j = 0; j <= a.length; j++) {
-            matrix[0][j] = j;
-        }
-        for (let i = 1; i <= b.length; i++) {
-            for (let j = 1; j <= a.length; j++) {
-                if (b.charAt(i - 1) === a.charAt(j - 1)) {
-                    matrix[i][j] = matrix[i - 1][j - 1];
-                } else {
-                    matrix[i][j] = Math.min(
-                        matrix[i - 1][j - 1] + 1,
-                        matrix[i][j - 1] + 1,
-                        matrix[i - 1][j] + 1
-                    );
-                }
-            }
-        }
-        return matrix[b.length][a.length];
-    }
-
-    // Fuzzy search for items with phonetically similar terms
-    function searchStockWithFuzzy(query, field, maxDistance = 2) {
-        if (!query) return [];
-        const normalizedQuery = normalizeSearchText(query);
-        if (!normalizedQuery) return [];
-        const terms = getVoiceSearchTerms(normalizedQuery);
-        const scored = getDepartmentFilteredStockData().map(item => {
-            const codeRaw = String(item.item_code || '');
-            const nameRaw = String(item.item_name || '');
-            const barcodeRaw = String(item.barcode || '');
-            const code = normalizeSearchText(codeRaw);
-            const name = normalizeSearchText(nameRaw);
-            const barcode = normalizeSearchText(barcodeRaw);
-            let searchablePrimary = field === 'item_code' ? code : name;
-            let searchableSecondary = field === 'item_code' ? name : code;
-            const compactPrimary = searchablePrimary.replace(/\s+/g, '');
-            const compactSecondary = searchableSecondary.replace(/\s+/g, '');
-            const compactAll = (code + name + barcode).replace(/\s+/g, '');
-            let score = 0;
-            // Try fuzzy matching on terms that don't have exact matches
-            for (const t of terms) {
-                const hasDigit = isVoiceNumericTerm(t);
-                const isProductType = isVoiceProductTypeTerm(t);
-
-                if (searchablePrimary.includes(t)) {
-                    score += hasDigit ? 100 : (isProductType ? 70 : 40);
-                } else if (searchableSecondary.includes(t)) {
-                    score += hasDigit ? 90 : (isProductType ? 60 : 35);
-                } else if (compactPrimary.includes(t) || compactSecondary.includes(t) || compactAll.includes(t)) {
-                    score += hasDigit ? 90 : (isProductType ? 58 : 34);
-                } else if (hasDigit) {
-                    score -= 55;
-                } else if (isProductType) {
-                    score -= 35;
-                } else {
-                    // Fuzzy: find the closest word in the item name
-                    const nameWords = searchablePrimary.split(' ');
-                    let closestDistance = Infinity;
-                    for (const word of nameWords) {
-                        const dist = levenshteinDistance(t, word);
-                        if (dist < closestDistance) closestDistance = dist;
-                    }
-                    if (closestDistance <= maxDistance) {
-                        score += Math.max(1, 20 - closestDistance * 5); // penalize by distance
-                    }
-                }
-            }
-            if (score <= 0) return null;
-
-            if (terms.length > 1 && terms.some(t => compactPrimary.includes(t) || compactSecondary.includes(t))) {
-                score += 12;
-            }
-
-            return { item, score };
-        }).filter(Boolean);
-        scored.sort((a, b) => b.score - a.score);
-        return scored;
-    }
-
-    function findVoiceItem(query) {
-        if (!query) return null;
-
-        let queryToSearch = query;
-        if (voiceBillingState.lang === 'ml-IN') {
-            const translated = translateMalayalamItemQuery(query);
-            if (translated) queryToSearch = translated;
-        }
-
-        const cleanedQuery = voiceBillingState.lang === 'en-IN' ? cleanEnglishVoiceItemQuery(queryToSearch) : queryToSearch;
-        const normalized = normalizeSearchText(cleanedQuery || queryToSearch);
-        if (!normalized) return null;
-
-        let scoredMatches = searchStockWithScore(normalized, 'item_name');
-        if (scoredMatches.length) {
-            const top = scoredMatches[0];
-            const topCands = scoredMatches.slice(0,5).map(x => ({ score: x.score, name: x.item.item_name, code: x.item.item_code }));
-            try { updateVoiceDebug({ match: (top.item.item_name || top.item.item_code), score: top.score, candidates: topCands }); } catch (e) {}
-            return top.item;
-        }
-
-        // If no exact match, try fuzzy matching for speech recognition mishearings
-        const fuzzyMatches = searchStockWithFuzzy(normalized, 'item_name', 2);
-        if (fuzzyMatches.length) {
-            const topCands = fuzzyMatches.slice(0,5).map(x => ({ score: x.score, name: x.item.item_name, code: x.item.item_code }));
-            if (fuzzyMatches[0].score >= getVoiceFuzzyAutoSelectThreshold(normalized)) {
-                try { updateVoiceDebug({ match: (fuzzyMatches[0].item.item_name || fuzzyMatches[0].item.item_code), score: fuzzyMatches[0].score, candidates: topCands }); } catch (e) {}
-                return fuzzyMatches[0].item;
-            } else {
-                // Show candidates even if no confident match
-                try { updateVoiceDebug({ candidates: topCands }); } catch (e) {}
-                return null;
-            }
-        }
-
-        // fallback: try the original text if cleaning removed meaningful item numbers
-        if (cleanedQuery && cleanedQuery !== queryToSearch) {
-            const fallback = normalizeSearchText(queryToSearch);
-            if (fallback && fallback !== normalized) {
-                const fb = searchStockWithScore(fallback, 'item_name');
-                if (fb.length) {
-                    const top = fb[0];
-                    const topCands = fb.slice(0,5).map(x => ({ score: x.score, name: x.item.item_name, code: x.item.item_code }));
-                    try { updateVoiceDebug({ match: (top.item.item_name || top.item.item_code), score: top.score, candidates: topCands }); } catch (e) {}
-                    return top.item;
-                }
-                // Try fuzzy if no exact match on fallback
-                const fbFuzzy = searchStockWithFuzzy(fallback, 'item_name', 2);
-                if (fbFuzzy.length && fbFuzzy[0].score >= getVoiceFuzzyAutoSelectThreshold(fallback)) {
-                    const topCands = fbFuzzy.slice(0,5).map(x => ({ score: x.score, name: x.item.item_name, code: x.item.item_code }));
-                    try { updateVoiceDebug({ match: (fbFuzzy[0].item.item_name || fbFuzzy[0].item.item_code), score: fbFuzzy[0].score, candidates: topCands }); } catch (e) {}
-                    return fbFuzzy[0].item;
-                }
-            }
-        }
-
-        // fallback: remove a leading spoken quantity token if query begins with one
-        const leadingRemoval = queryToSearch.replace(/^[\s]*(?:\d+(?:\.\d+)?|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|dozen)(?:\s+(?:kg|kgs?|g|grams?|gram|ltr|litre|litres?|liter|liters|pcs?|pieces?|packet|pack|bottle|bottles))?\s+/i, '').trim();
-        if (leadingRemoval && leadingRemoval !== queryToSearch) {
-            const leadingNormalized = normalizeSearchText(leadingRemoval);
-            if (leadingNormalized) {
-                const lr = searchStockWithScore(leadingNormalized, 'item_name');
-                if (lr.length) {
-                    const top = lr[0];
-                    const topCands = lr.slice(0,5).map(x => ({ score: x.score, name: x.item.item_name, code: x.item.item_code }));
-                    try { updateVoiceDebug({ match: (top.item.item_name || top.item.item_code), score: top.score, candidates: topCands }); } catch (e) {}
-                    return top.item;
-                }
-            }
-        }
-
-        const legacyMatches = searchStock(normalized, 'item_name');
-        if (legacyMatches.length) {
-            const topCands = legacyMatches.slice(0,5).map(x => ({ score: 50, name: x.item_name, code: x.item_code }));
-            try { updateVoiceDebug({ match: (legacyMatches[0].item_name || legacyMatches[0].item_code), score: 50, candidates: topCands }); } catch (e) {}
-            return legacyMatches[0];
-        }
-
-        const exactCode = getDepartmentFilteredStockData().find(item => normalizeSearchText(item.item_code || '') === normalized || normalizeSearchText(item.barcode || '') === normalized);
-        if (exactCode) return exactCode;
-
-        const tokens = normalized.split(' ').filter(Boolean);
-        let best = null;
-        let bestScore = 0;
-
-        getDepartmentFilteredStockData().forEach(item => {
-            const code = normalizeSearchText(item.item_code || '');
-            const name = normalizeSearchText(item.item_name || '');
-            const barcode = normalizeSearchText(item.barcode || '');
-            let score = 0;
-
-            if (name === normalized) score += 200;
-            if (code === normalized) score += 180;
-            if (barcode === normalized) score += 170;
-            if (name.startsWith(normalized)) score += 120;
-            if (code.startsWith(normalized)) score += 110;
-            if (barcode.startsWith(normalized)) score += 100;
-
-            tokens.forEach(token => {
-                if (name.includes(token)) score += 20;
-                if (code.includes(token)) score += 15;
-                if (barcode.includes(token)) score += 18;
-            });
-
-            if (tokens.every(token => name.includes(token))) score += 40;
-            if (tokens.every(token => code.includes(token))) score += 30;
-            if (tokens.every(token => barcode.includes(token))) score += 35;
-
-                if (score > bestScore) {
-                bestScore = score;
-                best = item;
-            }
-        });
-
-        // Always show top candidates, even if below threshold
-        if (best && bestScore > 0) {
-            const topCands = [{ score: bestScore, name: best.item_name, code: best.item_code }];
-            try { updateVoiceDebug({ candidates: topCands }); } catch (e) {}
-        }
-        if (bestScore >= 40) {
-            try { updateVoiceDebug({ match: (best.item_name || best.item_code), score: bestScore }); } catch (e) {}
-            return best;
-        }
-
-        const partialCandidates = searchStockWithFuzzy(normalized, 'item_name', 3).slice(0, 5);
-        if (partialCandidates.length) {
-            try {
-                updateVoiceDebug({
-                    candidates: partialCandidates.map(x => ({ score: x.score, name: x.item.item_name, code: x.item.item_code }))
-                });
-            } catch (e) {}
-        }
-
-        return null;
-    }
-
-    function getExistingRowByCode(code) {
-        if (!code) return null;
-        const normalizedCode = String(code || '').trim().toUpperCase();
-        return Array.from(document.querySelectorAll('#bill_body tr.item-row')).find(row => {
-            const rowCode = String(row.querySelector('.code-inp')?.value || '').trim().toUpperCase();
-            return rowCode === normalizedCode;
-        }) || null;
-    }
-
-    function addVoiceToRow(row, qty) {
-        if (!row) return;
-        const qtyInput = row.querySelector('.qty-inp');
-        const existingQty = parseFloat(qtyInput.value || 0) || 0;
-        qtyInput.value = (existingQty + qty).toFixed(2).replace(/\.00$/, '');
-        calcForward(parseInt(row.querySelector('.qty-inp')?.dataset.rid || row.id.replace('row_', ''), 10));
-        applyItemRestriction(row);
-        if (validateSalesRowQty(row, { showWarning: false, showMinimumWarning: false })) {
-            maybeShowMinimumQtyWarning(row, { showWarning: true, once: true });
-        }
-    }
-
-    async function addItemByVoice(item, qty) {
-        if (!item) return;
-        if (qty == null || qty <= 0) qty = 1;
-
-        const existingRow = getExistingRowByCode(item.item_code);
-        if (existingRow) {
-            addVoiceToRow(existingRow, qty);
-            const message = getVoiceResponseMessage('updated', item.item_name, qty);
-            setVoiceStatus(message);
-            showVoicePrompt(message, 'success', 2800);
-            speakBillingMessage(message, voiceBillingState.lang);
-            calcTotal();
-            return;
-        }
-
-        addNewRow(false);
-        const row = document.querySelector('#bill_body tr:last-child');
-        if (!row) return;
-
-        const rowId = parseInt(row.id.replace('row_', ''), 10);
-        const filled = await fillItem(rowId, item);
-        if (!filled) {
-            row.remove();
-            calcTotal();
-            return;
-        }
-        const qtyInput = row.querySelector('.qty-inp');
-        qtyInput.value = qty.toFixed(2).replace(/\.00$/, '');
-        calcForward(rowId);
-        applyItemRestriction(row);
-        if (validateSalesRowQty(row, { showWarning: false, showMinimumWarning: false })) {
-            maybeShowMinimumQtyWarning(row, { showWarning: true, once: true });
-        }
-        calcTotal();
-        const message = getVoiceResponseMessage('added', item.item_name, qty);
-        setVoiceStatus(message);
-        showVoicePrompt(message, 'success', 2800);
-        speakBillingMessage(message, voiceBillingState.lang);
-    }
-
-    function processVoiceCommand(rawText, alternatives = []) {
-        if (!rawText) return;
-        hideVoiceCandidateSelection();
-        voiceBillingState.lastCandidates = [];
-        const qty = parseSpokenQuantity(rawText) || 1;
-        const itemQuery = voiceBillingState.lang === 'en-IN'
-            ? cleanEnglishVoiceItemQuery(rawText) || rawText
-            : normalizeVoiceItemText(rawText) || rawText;
-
-                // update debug overlay with parsed quantity and cleaned query
-                updateVoiceDebug({ cleaned: itemQuery, qty });
-
-        if (!itemQuery) {
-            setVoiceStatus('PLEASE SAY ITEM NAME', true);
-            return;
-        }
-
-        let item = findVoiceItem(itemQuery);
-        updateVoiceDebug({ match: item ? (item.item_name || item.item_code) : null });
-        if (item || voiceBillingState.lastCandidates.length) {
-            const candidates = voiceBillingState.lastCandidates.length
-                ? voiceBillingState.lastCandidates
-                : [{ item, score: 999, name: item.item_name, code: item.item_code }];
-            showVoiceCandidateSelection(candidates, qty, itemQuery);
-            return;
-        }
-        if (!stockLoaded) {
-            const msg = 'STOCK NOT LOADED - Check Supabase Auth / Network';
-            console.warn(msg);
-            setVoiceStatus(msg, true);
-            showVoicePrompt(msg, 'error', 4000);
-            // continue to allow fallback search attempt
-        }
-
-        // If no match, try alternatives provided by the voice transcription engine
-        if (!item && Array.isArray(alternatives) && alternatives.length) {
-            for (const alt of alternatives.slice(0,3)) {
-                if (!alt) continue;
-                const altQuery = voiceBillingState.lang === 'en-IN' ? cleanEnglishVoiceItemQuery(alt) || alt : normalizeVoiceItemText(alt) || alt;
-                updateVoiceDebug({ cleaned: altQuery });
-                const altItem = findVoiceItem(altQuery);
-                if (altItem) {
-                    item = altItem;
-                    try { updateVoiceDebug({ match: item.item_name || item.item_code }); } catch (e) {}
-                    break;
-                }
-                if (voiceBillingState.lastCandidates.length) break;
-            }
-        }
-
-        if (item || voiceBillingState.lastCandidates.length) {
-            const candidates = voiceBillingState.lastCandidates.length
-                ? voiceBillingState.lastCandidates
-                : [{ item, score: 999, name: item.item_name, code: item.item_code }];
-            showVoiceCandidateSelection(candidates, qty, itemQuery);
-            return;
-        }
-
-        if (!item) {
-            const msg = getVoiceResponseMessage('missing', rawText, '');
-            setVoiceStatus(msg, true);
-            showVoicePrompt(msg, 'error', 3800);
-            speakBillingMessage(msg, voiceBillingState.lang);
-            return;
-        }
-
-        addItemByVoice(item, qty);
-    }
-
-    function isDesktopBrowser() {
-        const ua = navigator.userAgent || '';
-        return !/\b(iPhone|iPad|Android|Mobile|Silk|Kindle|BlackBerry|Opera Mini|IEMobile|CriOS|FxiOS|EdgiOS|OPiOS)\b/i.test(ua);
-    }
-
-    function downloadTextFile(filename, text, mimeType = 'text/plain;charset=utf-8') {
-        const blob = new Blob([text], { type: mimeType });
-        const url = URL.createObjectURL(blob);
-        const anchor = document.createElement('a');
-        anchor.href = url;
-        anchor.download = filename;
-        document.body.appendChild(anchor);
-        anchor.click();
-        document.body.removeChild(anchor);
-        URL.revokeObjectURL(url);
-    }
-
-    function getBillDownloadContent({ docType, billNo, head, items, total, paidAmount, balanceAmount, paymentType, roundOff }) {
-        const rows = items.map((item, idx) => {
-            const quantity = parseFloat(item.quantity || 0) || 0;
-            const price = parseFloat(item.sales_price_gst || 0) || 0;
-            const lineTotal = (quantity * price).toFixed(2);
-            return `
-                <tr>
-                    <td>${idx + 1}</td>
-                    <td>${escapeHtml(item.item_name || item.item_code || 'UNKNOWN')}</td>
-                    <td>${escapeHtml(item.item_code || '')}</td>
-                    <td style="text-align:right;">${quantity.toFixed(2)}</td>
-                    <td style="text-align:right;">₹${price.toFixed(2)}</td>
-                    <td style="text-align:right;">₹${lineTotal}</td>
-                </tr>`;
-        }).join('');
-
-        const headerHtml = `
-            <tr><td><strong>Bill No</strong></td><td>${escapeHtml(String(billNo))}</td></tr>
-            <tr><td><strong>Date</strong></td><td>${escapeHtml(String(head.date || ''))}</td></tr>
-            <tr><td><strong>Customer</strong></td><td>${escapeHtml(head.name || '-')}${head.mob ? ` (${escapeHtml(head.mob)})` : ''}</td></tr>
-            ${head.addr ? `<tr><td><strong>Address</strong></td><td>${escapeHtml(head.addr)}</td></tr>` : ''}
-            ${head.gst ? `<tr><td><strong>GST</strong></td><td>${escapeHtml(head.gst)}</td></tr>` : ''}
-            ${head.remark ? `<tr><td><strong>Remark</strong></td><td>${escapeHtml(head.remark)}</td></tr>` : ''}
-            <tr><td><strong>Payment Type</strong></td><td>${escapeHtml(paymentType)}</td></tr>
-            <tr><td><strong>Paid Amount</strong></td><td>₹${paidAmount.toFixed(2)}</td></tr>
-            <tr><td><strong>Balance</strong></td><td>₹${balanceAmount.toFixed(2)}</td></tr>
-            <tr><td><strong>Round Off</strong></td><td>₹${roundOff.toFixed(2)}</td></tr>
-        `;
-
-        return `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<title>VAJRA ${escapeHtml(docType.toUpperCase())} ${escapeHtml(String(billNo))}</title>
-<style>
-    body { font-family: Arial, sans-serif; margin: 20px; color: #111; background: #f8fafc; }
-    .wrapper { max-width: 900px; margin: auto; padding: 20px; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; }
-    h1 { font-size: 20px; margin-bottom: 8px; }
-    h2 { font-size: 16px; margin: 10px 0 8px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-    td, th { padding: 8px 10px; border: 1px solid #cbd5e1; }
-    th { background: #f1f5f9; text-align: left; }
-    .right { text-align: right; }
-    .summary td { border: none; padding: 4px 10px; }
-</style>
-</head>
-<body>
-<div class="wrapper">
-    <h1>VAJRA LIGHTS - ${escapeHtml(docType.toUpperCase())}</h1>
-    <h2>Bill #${escapeHtml(String(billNo))}</h2>
-    <table class="summary">
-        ${headerHtml}
-    </table>
-    <table>
-        <thead>
-            <tr>
-                <th>#</th>
-                <th>Item</th>
-                <th>Code</th>
-                <th class="right">Qty</th>
-                <th class="right">Price</th>
-                <th class="right">Total</th>
-            </tr>
-        </thead>
-        <tbody>
-            ${rows}
-        </tbody>
-        <tfoot>
-            <tr>
-                <td colspan="5" class="right"><strong>Grand Total</strong></td>
-                <td class="right"><strong>₹${total.toFixed(2)}</strong></td>
-            </tr>
-        </tfoot>
-    </table>
-</div>
-</body>
-</html>`;
-    }
-
-    function downloadSavedBillCopy({ docType, billNo, head, items, total, paidAmount, balanceAmount, paymentType, roundOff }) {
-        if (!isDesktopBrowser()) return;
-        const filename = `VAJRA-${docType}-${billNo}-${new Date().toISOString().slice(0,10)}.html`;
-        const content = getBillDownloadContent({ docType, billNo, head, items, total, paidAmount, balanceAmount, paymentType, roundOff });
-        downloadTextFile(filename, content, 'text/html;charset=utf-8');
-    }
-
     // --- 3. INITIALIZATION ---
 
     async function loadCurrentUserRole() {
@@ -2867,10 +2506,55 @@
         }
     }
 
+    function loadLandingColumnPreference() {
+        try {
+            landingColumnEnabled = localStorage.getItem(LANDING_COLUMN_PREF_KEY) !== "0";
+        } catch (err) {
+            landingColumnEnabled = true;
+        }
+    }
+
+    function isLandingColumnVisible() {
+        return canSeeLandingColumn && landingColumnEnabled;
+    }
+
+    function syncLandingToggleControl() {
+        const group = document.getElementById("landing_toggle_group");
+        const toggle = document.getElementById("landing_toggle");
+        const text = document.getElementById("landing_toggle_text");
+
+        if (group) {
+            group.style.display = canSeeLandingColumn ? "flex" : "none";
+        }
+        if (toggle) {
+            toggle.checked = landingColumnEnabled;
+            toggle.disabled = !canSeeLandingColumn;
+        }
+        if (text) {
+            text.textContent = landingColumnEnabled ? "ON" : "OFF";
+        }
+    }
+
     function applyLandingColumnVisibility(root = document) {
-        const hidden = !canSeeLandingColumn;
+        const hidden = !isLandingColumnVisible();
         root.querySelectorAll('.landing-col').forEach(el => {
             el.classList.toggle('landing-col-hidden', hidden);
+        });
+        syncLandingToggleControl();
+    }
+
+    function setupLandingColumnToggle() {
+        const toggle = document.getElementById("landing_toggle");
+        if (!toggle) return;
+
+        toggle.addEventListener("change", () => {
+            landingColumnEnabled = toggle.checked;
+            try {
+                localStorage.setItem(LANDING_COLUMN_PREF_KEY, landingColumnEnabled ? "1" : "0");
+            } catch (err) {}
+            applyLandingColumnVisibility();
+            hidePurchaseHistory();
+            lastHistoryKey = "";
         });
     }
 
@@ -2889,25 +2573,65 @@
         }
     }
 
+    function unlockBillMode({ selectMode = true, notify = true } = {}){
+        const docTypeSelect = document.getElementById("doc_type");
+        if(!docTypeSelect) return;
+
+        let billOption = docTypeSelect.querySelector('option[value="sales_pack"]');
+        const wasHidden = !billOption || billOption.hidden;
+
+        if(!billOption){
+            billOption = document.createElement("option");
+            billOption.value = "sales_pack";
+            billOption.textContent = "BILL";
+
+            const quotationOption = docTypeSelect.querySelector('option[value="quotation"]');
+            if(quotationOption){
+                docTypeSelect.insertBefore(billOption, quotationOption);
+            } else {
+                docTypeSelect.appendChild(billOption);
+            }
+        }
+
+        billOption.hidden = false;
+
+        if(selectMode){
+            docTypeSelect.value = "sales_pack";
+            docTypeSelect.dispatchEvent(new Event("change"));
+        }
+
+        if(notify && wasHidden){
+            alert("Bill mode unlocked");
+        }
+    }
+
     window.onload = async () => {
         setupDate();
         await loadBillSeries();
         await fetchNextBillNumber();
         await loadCurrentUserRole();
+        loadLandingColumnPreference();
         await loadStockData();
         applyLandingColumnVisibility();
         toggleRemarkField();
         syncPaymentUI();
 
         bindPaymentEvents();
+        setupLandingColumnToggle();
         initAddressGeoapify();
         setupBelowLandingSecretUnlock();
+        setupMobileProfitGestures();
+        setupMobileBillModeUnlock();
 
         const params = new URLSearchParams(window.location.search);
         const convertId = params.get("convert");
         const convertSO = params.get("convert_so");
         const editId = params.get("edit");
         const editType = params.get("type");
+
+        if(editType === "sales_pack"){
+            unlockBillMode({ selectMode: false, notify: false });
+        }
 
         if(editId){
             isSalesOrderConversionMode = false;
@@ -2928,7 +2652,6 @@
         }
 
         initAutoBackupDraftMode();
-        initializeVoiceBilling();
         if(!editId && !convertId && !convertSO){
             showRestoreDraftPromptIfNeeded();
         }
@@ -2951,15 +2674,15 @@
 
             if(type==="quotation"){
                 document.title="VAJRA LIGHTS - Quotation";
-                document.getElementById("btn_save").innerText="SAVE & PRINT QUOTATION";
+                setSaveButtonLabel("Save & print quotation");
             }
             else if(type==="sales_order"){
                 document.title="VAJRA LIGHTS - Sales Order";
-                document.getElementById("btn_save").innerText="SAVE & PRINT SALES ORDER";
+                setSaveButtonLabel("Save & print sales order");
             }
             else{
                 document.title="VAJRA LIGHTS - Billing Software";
-                document.getElementById("btn_save").innerText="PRINT & SAVE";
+                setSaveButtonLabel("Print & save");
                 sm.value="";
             }
 
@@ -3160,6 +2883,171 @@
         return Math.max(0, maxQty - remaining);
     }
 
+    function getQuickPurchaseOrderQtyForRow(row){
+        const maxQty = getMaximumQtyForRow(row);
+        const remainingAfterSale = getRemainingStockAfterSale(row);
+        if(maxQty <= 0) return 0;
+        return Math.max(0, maxQty - remainingAfterSale);
+    }
+
+    function closePurchaseOrderPrompt(answer){
+        const overlay = document.getElementById('po_confirm_overlay');
+        if(overlay){
+            overlay.classList.remove('show');
+            overlay.setAttribute('aria-hidden', 'true');
+        }
+
+        purchaseOrderPromptOpen = false;
+        const resolver = purchaseOrderPromptResolver;
+        purchaseOrderPromptResolver = null;
+
+        if(typeof resolver === "function"){
+            resolver(!!answer);
+        }
+    }
+
+    function askPurchaseOrderPrompt(row, orderQty){
+        const overlay = document.getElementById('po_confirm_overlay');
+        const msg = document.getElementById('po_confirm_message');
+        if(!overlay || !msg) return Promise.resolve(false);
+
+        const code = (row.querySelector('.code-inp')?.value || '').trim();
+        const name = (row.querySelector('.name-inp')?.value || '').trim();
+        const minQty = getMinimumQtyForRow(row);
+        const maxQty = getMaximumQtyForRow(row);
+        const remaining = getRemainingStockAfterSale(row);
+
+        msg.textContent = [
+            `${name || code} stock will go below minimum qty.`,
+            `Balance after sale: ${remaining}`,
+            `Minimum qty: ${minQty}`,
+            `Maximum qty: ${maxQty}`,
+            `Purchase order qty: ${orderQty}`,
+            '',
+            'Do you want to make a purchase order for this item?'
+        ].join('\n');
+
+        purchaseOrderPromptOpen = true;
+        purchaseOrderPromptReturnFocus = row.querySelector('.qty-inp') || null;
+        overlay.classList.add('show');
+        overlay.setAttribute('aria-hidden', 'false');
+        hideAllItemDropdowns();
+
+        setTimeout(() => {
+            document.getElementById('po_confirm_yes_btn')?.focus();
+        }, 0);
+
+        return new Promise(resolve => {
+            purchaseOrderPromptResolver = resolve;
+        });
+    }
+
+    async function getNextQuickPONumber(){
+        try{
+            const { data, error } = await sb.rpc("generate_po_number");
+            if(error) throw error;
+            return data || "";
+        }catch(err){
+            console.warn("PO number generation failed:", err);
+            const stamp = new Date();
+            const ymd = stamp.toISOString().slice(0,10).replace(/-/g, "");
+            const hms = String(stamp.getHours()).padStart(2, "0") + String(stamp.getMinutes()).padStart(2, "0") + String(stamp.getSeconds()).padStart(2, "0");
+            return `AUTO-PO-${ymd}-${hms}`;
+        }
+    }
+
+    async function createQuickPurchaseOrderForRow(row, orderQty){
+        const rawItem = getRowRawItem(row) || {};
+        const itemCode = (row.querySelector('.code-inp')?.value || rawItem.item_code || "").trim();
+        const itemName = (row.querySelector('.name-inp')?.value || rawItem.item_name || "").trim();
+        if(!itemCode && !itemName) throw new Error("Item is required for purchase order.");
+        if(orderQty <= 0) throw new Error("Purchase order qty is 0 because maximum qty is not greater than minimum qty.");
+
+        const poNumber = await getNextQuickPONumber();
+        const today = new Date().toISOString().split("T")[0];
+        const {data: authData} = await sb.auth.getUser();
+        const createdBy = authData?.user?.email || "";
+        const docType = document.getElementById("doc_type")?.value === "sales_pack" ? "BILL" : "SALES";
+        const saleNo = `${document.getElementById("bill_series")?.value || ""}-${document.getElementById("bill_number")?.value || ""}`.replace(/^-|-$/g, "");
+        const remark = `AUTO PO FROM ${docType}${saleNo ? " " + saleNo : ""} - MINIMUM STOCK REORDER`;
+
+        const headerBase = {
+            po_number: poNumber,
+            order_date: today,
+            supplier_name: "AUTO REORDER",
+            supplier_gst: "",
+            supplier_mobile: "",
+            supplier_address: "",
+            remark,
+            status: "PENDING",
+            created_by: createdBy
+        };
+
+        let headerRes = await sb.from("purchase_order_details").insert([headerBase]).select().single();
+        if(headerRes.error && String(headerRes.error.message || "").includes("supplier_mobile")){
+            const { supplier_mobile, ...withoutMobile } = headerBase;
+            headerRes = await sb.from("purchase_order_details").insert([withoutMobile]).select().single();
+        }
+        if(headerRes.error) throw headerRes.error;
+
+        const price = parseFloat(rawItem.landing ?? rawItem.purchase_price_gst ?? rawItem.purchase_price ?? 0) || 0;
+        const itemPayload = {
+            purchase_order_id: headerRes.data.id,
+            item_code: itemCode,
+            item_name: itemName,
+            is_new_item: false,
+            quantity: orderQty,
+            received_qty: 0,
+            price,
+            remark: `AUTO REORDER: MAX ${getMaximumQtyForRow(row)} - REMAINING AFTER SALE ${getRemainingStockAfterSale(row)}`,
+            status: "PENDING"
+        };
+
+        const { error: itemErr } = await sb.from("purchase_order_item_details").insert([itemPayload]);
+        if(itemErr) throw itemErr;
+
+        return headerRes.data;
+    }
+
+    async function maybePromptQuickPurchaseOrder(row){
+        if(!row || !isMinimumQtyWarningMode()) return false;
+        const rawItem = getRowRawItem(row);
+        if(!rawItem) return false;
+
+        const code = (row.querySelector('.code-inp')?.value || '').trim();
+        const name = (row.querySelector('.name-inp')?.value || '').trim();
+        const qty = getQtyInputValue(row);
+        const minQty = getMinimumQtyForRow(row);
+        const maxQty = getMaximumQtyForRow(row);
+        const remaining = getRemainingStockAfterSale(row);
+        const orderQty = getQuickPurchaseOrderQtyForRow(row);
+
+        if((!code && !name) || qty <= 0 || minQty <= 0 || maxQty <= 0 || remaining >= minQty || orderQty <= 0){
+            return false;
+        }
+
+        const promptKey = `${code}|${name}|${qty}|${remaining}|${minQty}|${maxQty}|${orderQty}`;
+        if(row.dataset.quickPoPromptKey === promptKey || row.dataset.quickPoCreatedKey === promptKey){
+            return false;
+        }
+
+        row.dataset.quickPoPromptKey = promptKey;
+        const makePO = await askPurchaseOrderPrompt(row, orderQty);
+        if(!makePO) return true;
+
+        try{
+            const po = await createQuickPurchaseOrderForRow(row, orderQty);
+            row.dataset.quickPoCreatedKey = promptKey;
+            updateDraftStatus(`PO ${po.po_number || po.id} created`);
+            alert(`Purchase Order created successfully.\nPO No: ${po.po_number || po.id}\nItem: ${name || code}\nQty: ${orderQty}`);
+        }catch(err){
+            console.error("Quick purchase order failed:", err);
+            alert("Purchase Order could not be created: " + (err.message || err));
+        }
+
+        return true;
+    }
+
     function maybeShowMinimumQtyWarning(row, opts = {}){
         if(!row || !isMinimumQtyWarningMode()) return false;
         const rawItem = getRowRawItem(row);
@@ -3341,7 +3229,7 @@
         return Math.max(0, total - advance - receipt);
     }
 
-    function applySalesOrderConversionPaidAmount(totalAmount = getCurrentRoundedGrandTotal()) {
+    function applySalesOrderConversionPaidAmount(totalAmount = getCurrentRoundedGrandTotal(), forceSetAmount = false) {
         if (!isSalesOrderConversionMode) return;
 
         const paymentTypeEl = document.getElementById("payment_type");
@@ -3355,8 +3243,10 @@
 
         if (paidAmountEl) {
             const receiptAmount = getSalesOrderConversionReceiptAmount(totalAmount);
-            paidAmountEl.value = receiptAmount.toFixed(2);
-            paidAmountEl.readOnly = true;
+            if (forceSetAmount || paidAmountEl.dataset.salesOrderReceiptEdited !== "1") {
+                paidAmountEl.value = receiptAmount.toFixed(2);
+            }
+            paidAmountEl.readOnly = false;
             paidAmountEl.disabled = false;
             paidAmountEl.placeholder = "Bill Total - Advance";
             paidAmountEl.title = `Advance credit receipt amount. Bill Total - Sales Order Advance = ₹${receiptAmount.toFixed(2)} (Advance: ₹${(parseFloat(salesOrderAdvancePaid || 0) || 0).toFixed(2)})`;
@@ -3481,6 +3371,12 @@
             paidAmountEl.disabled = true;
         } else if (isSalesOrderConversionMode) {
             applySalesOrderConversionPaidAmount(total);
+            const maxReceipt = getSalesOrderConversionReceiptAmount(total);
+            let paid = getMoneyValue(paidAmountEl.value);
+
+            if (paid < 0) paid = 0;
+            if (paid > maxReceipt) paid = maxReceipt;
+            paidAmountEl.value = paid.toFixed(2);
         } else {
             paidAmountEl.disabled = false;
             paidAmountEl.readOnly = false;
@@ -3498,7 +3394,9 @@
         }
 
         const paidAmount = getMoneyValue(paidAmountEl.value);
-        const balanceAmount = Math.max(0, total - paidAmount);
+        const balanceAmount = isSalesOrderConversionMode
+            ? getSalesOrderConversionBalanceAmount(total, paidAmount)
+            : Math.max(0, total - paidAmount);
         balanceText.innerText = "₹" + balanceAmount.toFixed(2);
 
         // Hide Credit Paid / Paid Amount and Balance box for CASH bills.
@@ -3541,10 +3439,37 @@
         if (paidAmountEl && !paidAmountEl.dataset.boundCreditFix) {
             paidAmountEl.addEventListener("input", () => {
                 const total = getCurrentRoundedGrandTotal();
+                const isConversionReceipt = isSalesOrderConversionMode;
+                if (isConversionReceipt) {
+                    paidAmountEl.dataset.salesOrderReceiptEdited = "1";
+                }
                 let paid = getMoneyValue(paidAmountEl.value);
+                const maxPaid = isConversionReceipt
+                    ? getSalesOrderConversionReceiptAmount(total)
+                    : total;
 
                 if (paid < 0) paid = 0;
-                if (paid > total) paid = total;
+                if (paid > maxPaid) paid = maxPaid;
+
+                if (isConversionReceipt) {
+                    if (getMoneyValue(paidAmountEl.value) > maxPaid || getMoneyValue(paidAmountEl.value) < 0) {
+                        paidAmountEl.value = paid.toFixed(2);
+                    }
+
+                    const balanceText = document.getElementById("display_balance_amount");
+                    if (balanceText) {
+                        balanceText.innerText = "â‚¹" + getSalesOrderConversionBalanceAmount(total, paid).toFixed(2);
+                    }
+                    if (balanceText) {
+                        balanceText.innerText = "\u20B9" + getSalesOrderConversionBalanceAmount(total, paid).toFixed(2);
+                    }
+
+                    closeStockWarning();
+                    document.querySelectorAll("#bill_body tr").forEach(row => {
+                        applyItemRestriction(row);
+                    });
+                    return;
+                }
 
                 paidAmountEl.value = paid ? paid.toFixed(2) : "0.00";
                 syncPaymentUI(true);
@@ -3683,7 +3608,6 @@ const stockSelect = 'item_code,item_name,barcode,price1,price2,price3,landing,ba
 
         if (error) {
             console.error("Error loading stock:", error);
-            try { updateVoiceDebug({ raw: `STOCK LOAD ERROR: ${error?.message || error}` }); } catch (e) {}
             alert(`Stock loading failed near row ${from + 1}. Please reload once.`);
             return;
         }
@@ -3716,16 +3640,11 @@ const stockSelect = 'item_code,item_name,barcode,price1,price2,price3,landing,ba
     stockLoaded = true;
 
     console.log("Total Stock Items Loaded:", stockData.length);
-    // Also reflect stock count in debug overlay when available
-    try {
-        const el = document.getElementById('voice_debug_stock_count');
-        if (el) el.textContent = `Stock: ${stockData.length} items`;
-    } catch (e) { }
 }
     function normalizeSearchText(value) {
         return String(value || "")
             .toLowerCase()
-            .replace(/[^a-z0-9\u0d00-\u0d7f]+/g, " ")
+            .replace(/[^a-z0-9]+/g, " ")
             .replace(/\s+/g, " ")
             .trim();
     }
@@ -3815,63 +3734,6 @@ const stockSelect = 'item_code,item_name,barcode,price1,price2,price3,landing,ba
         return scored.slice(0, 40).map(x => x.item);
     }
 
-    // Returns array of {item, score} for richer debugging
-    function searchStockWithScore(query, field) {
-        if (!query) return [];
-
-        const normalizedQuery = normalizeSearchText(query);
-        if (!normalizedQuery) return [];
-
-        const terms = normalizedQuery.split(" ").filter(Boolean);
-
-        const scored = getDepartmentFilteredStockData().map(item => {
-            const codeRaw = String(item.item_code || "");
-            const nameRaw = String(item.item_name || "");
-            const barcodeRaw = String(item.barcode || "");
-
-            const code = normalizeSearchText(codeRaw);
-            const name = normalizeSearchText(nameRaw);
-            const barcode = normalizeSearchText(barcodeRaw);
-
-            let searchablePrimary = field === "item_code" ? code : name;
-            let searchableSecondary = field === "item_code" ? name : code;
-
-            const matched =
-                terms.every(t => searchablePrimary.includes(t)) ||
-                terms.every(t => searchableSecondary.includes(t)) ||
-                terms.every(t => (code + " " + name + " " + barcode).includes(t));
-
-            if (!matched) return null;
-
-            let score = 0;
-
-            if (searchablePrimary === normalizedQuery) score += 1000;
-            if (searchableSecondary === normalizedQuery) score += 900;
-            if (barcode === normalizedQuery) score += 850;
-
-            if (searchablePrimary.startsWith(normalizedQuery)) score += 700;
-            if (searchableSecondary.startsWith(normalizedQuery)) score += 650;
-            if (barcode.startsWith(normalizedQuery)) score += 600;
-
-            if (code.startsWith(normalizedQuery)) score += 600;
-            if (name.startsWith(normalizedQuery)) score += 550;
-
-            for (const t of terms) {
-                if (code.includes(t)) score += 40;
-                if (name.includes(t)) score += 40;
-                if (barcode.includes(t)) score += 35;
-            }
-
-            score -= Math.abs(name.length - normalizedQuery.length) * 0.1;
-
-            return { item, score };
-        }).filter(Boolean);
-
-        scored.sort((a, b) => b.score - a.score || String(a.item.item_name || "").localeCompare(String(b.item.item_name || "")));
-
-        return scored;
-    }
-
 
     function escapeHtml(value){
         return String(value ?? "")
@@ -3889,8 +3751,10 @@ const stockSelect = 'item_code,item_name,barcode,price1,price2,price3,landing,ba
 
         let selectedIndex = -1;
         let places = [];
+        let addressSearchRequestId = 0;
 
         function closeList(){
+            addressSearchRequestId++;
             list.style.display = "none";
             list.removeAttribute("data-open");
             list.innerHTML = "";
@@ -3918,10 +3782,84 @@ const stockSelect = 'item_code,item_name,barcode,price1,price2,price3,landing,ba
             input.focus();
         }
 
+        function normalizePlaceText(value){
+            return String(value || "")
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, " ")
+                .replace(/\s+/g, " ")
+                .trim();
+        }
+
+        function getPlaceSearchText(feature){
+            const p = feature?.properties || {};
+            return normalizePlaceText([
+                p.name,
+                p.address_line1,
+                p.address_line2,
+                p.formatted,
+                p.city,
+                p.county,
+                p.state,
+                p.postcode
+            ].filter(Boolean).join(" "));
+        }
+
+        function scorePlaceForAddressSearch(feature, rawQuery){
+            const p = feature?.properties || {};
+            const searchText = getPlaceSearchText(feature);
+            const query = normalizePlaceText(rawQuery);
+            const queryTokens = query.split(" ").filter(Boolean);
+            let score = 0;
+
+            if(searchText === query) score += 1200;
+            if(searchText.startsWith(query)) score += 900;
+            if(searchText.includes(query)) score += 650;
+
+            queryTokens.forEach(token => {
+                if(!token) return;
+                if(searchText.split(" ").some(word => word.startsWith(token))) score += 80;
+                else if(searchText.includes(token)) score += 35;
+            });
+
+            const state = normalizePlaceText(p.state);
+            const city = normalizePlaceText([p.city, p.county, p.address_line2, p.formatted].filter(Boolean).join(" "));
+
+            if(TRIVANDRUM_PLACE_TERMS.some(term => city.includes(term))) score += 400;
+            if(city.includes("thiruvananthapuram") || city.includes("trivandrum")) score += 350;
+            if(state.includes("kerala")) score += 180;
+
+            const lon = Number(feature?.geometry?.coordinates?.[0]);
+            const lat = Number(feature?.geometry?.coordinates?.[1]);
+            if(Number.isFinite(lon) && Number.isFinite(lat)){
+                const distanceScore = Math.max(0, 180 - (Math.abs(lat - ADDRESS_SEARCH_CENTER.lat) + Math.abs(lon - ADDRESS_SEARCH_CENTER.lon)) * 80);
+                score += distanceScore;
+            }
+
+            score += Number(p.rank?.confidence || 0) * 40;
+            return score;
+        }
+
+        function sortAddressPlaces(features, rawQuery){
+            return [...features].sort((a, b) => {
+                const scoreDiff = scorePlaceForAddressSearch(b, rawQuery) - scorePlaceForAddressSearch(a, rawQuery);
+                if(scoreDiff) return scoreDiff;
+                return getPlaceSearchText(a).localeCompare(getPlaceSearchText(b));
+            });
+        }
+
         async function searchAddress(value){
             if(!GEOAPIFY_API_KEY || GEOAPIFY_API_KEY === "YOUR_API_KEY") return;
+            const requestId = ++addressSearchRequestId;
 
-            const url = `https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(value)}&filter=countrycode:in&limit=5&format=geojson&apiKey=${encodeURIComponent(GEOAPIFY_API_KEY)}`;
+            const params = new URLSearchParams({
+                text: value,
+                filter: "countrycode:in",
+                bias: `proximity:${ADDRESS_SEARCH_CENTER.lon},${ADDRESS_SEARCH_CENTER.lat}`,
+                limit: String(ADDRESS_SEARCH_LIMIT),
+                format: "geojson",
+                apiKey: GEOAPIFY_API_KEY
+            });
+            const url = `https://api.geoapify.com/v1/geocode/autocomplete?${params.toString()}`;
 
             try{
                 list.innerHTML = `<div class="autocomplete-item">Searching address...</div>`;
@@ -3933,7 +3871,8 @@ const stockSelect = 'item_code,item_name,barcode,price1,price2,price3,landing,ba
                 if(!response.ok) throw new Error(`Geoapify HTTP ${response.status}`);
 
                 const data = await response.json();
-                places = Array.isArray(data.features) ? data.features : [];
+                if(requestId !== addressSearchRequestId) return;
+                places = Array.isArray(data.features) ? sortAddressPlaces(data.features, value) : [];
                 selectedIndex = places.length ? 0 : -1;
 
                 if(!places.length){
@@ -4029,7 +3968,15 @@ const stockSelect = 'item_code,item_name,barcode,price1,price2,price3,landing,ba
     const customerNameInput = document.getElementById('cust_name');
     const nameList = document.getElementById('name_suggestions');
     let custTimer;
+    let customerSearchRequestId = 0;
     let selectedCustomerFromDropdown = false;
+    const customerNetPurchaseCache = new Map();
+    const customerNetPurchaseFormatter = new Intl.NumberFormat('en-IN', {
+        style: 'currency',
+        currency: 'INR',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+    });
 
     function cleanCustomerSearch(value){
         return String(value || "")
@@ -4072,6 +4019,100 @@ const stockSelect = 'item_code,item_name,barcode,price1,price2,price3,landing,ba
         updateCustomerRemarkHighlight();
     }
 
+    function customerMobileKey(value){
+        return String(value || '').replace(/\D/g, '');
+    }
+
+    function customerAmount(value){
+        const amount = Number(value);
+        return Number.isFinite(amount) ? amount : 0;
+    }
+
+    function isAcceptedCustomerReturn(row){
+        return row?.is_accepted === true || String(row?.approval_status || '').trim().toLowerCase() === 'approved';
+    }
+
+    async function fetchAllCustomerAmountRows(table, columns, mobiles, configureQuery){
+        const pageSize = 1000;
+        const rows = [];
+
+        for(let from = 0; ; from += pageSize){
+            let query = sb
+                .from(table)
+                .select(columns)
+                .in('customer_mobile', mobiles)
+                .order('id', { ascending: true })
+                .range(from, from + pageSize - 1);
+
+            if(configureQuery) query = configureQuery(query);
+
+            const { data, error } = await query;
+            if(error) throw error;
+
+            const page = data || [];
+            rows.push(...page);
+            if(page.length < pageSize) break;
+        }
+
+        return rows;
+    }
+
+    async function addCustomerNetPurchaseAmounts(customers){
+        const list = customers || [];
+        const mobiles = [...new Set(list.map(c => String(c.mobile || '').trim()).filter(Boolean))];
+        const missingMobiles = mobiles.filter(mobile => !customerNetPurchaseCache.has(customerMobileKey(mobile)));
+
+        if(missingMobiles.length){
+            try{
+                const [salesRows, returnRows] = await Promise.all([
+                    fetchAllCustomerAmountRows(
+                        'sales_details',
+                        'customer_mobile, invoice_amount, status',
+                        missingMobiles,
+                        query => query.or('status.is.null,status.neq.CANCELLED')
+                    ),
+                    fetchAllCustomerAmountRows(
+                        'sales_return_details',
+                        'customer_mobile, total_return_amount, approval_status, is_accepted',
+                        missingMobiles
+                    )
+                ]);
+
+                const billTotals = new Map();
+                const returnTotals = new Map();
+
+                salesRows.forEach(row => {
+                    const key = customerMobileKey(row.customer_mobile);
+                    const amount = customerAmount(row.invoice_amount);
+                    billTotals.set(key, (billTotals.get(key) || 0) + amount);
+                });
+
+                returnRows.forEach(row => {
+                    if(!isAcceptedCustomerReturn(row)) return;
+                    const key = customerMobileKey(row.customer_mobile);
+                    const amount = customerAmount(row.total_return_amount);
+                    returnTotals.set(key, (returnTotals.get(key) || 0) + amount);
+                });
+
+                missingMobiles.forEach(mobile => {
+                    const key = customerMobileKey(mobile);
+                    customerNetPurchaseCache.set(key, (billTotals.get(key) || 0) - (returnTotals.get(key) || 0));
+                });
+            }catch(error){
+                console.warn('Customer net purchase total load error:', error);
+                missingMobiles.forEach(mobile => {
+                    const key = customerMobileKey(mobile);
+                    if(!customerNetPurchaseCache.has(key)) customerNetPurchaseCache.set(key, 0);
+                });
+            }
+        }
+
+        return list.map(customer => ({
+            ...customer,
+            net_purchase_amount: customerNetPurchaseCache.get(customerMobileKey(customer.mobile)) ?? 0
+        }));
+    }
+
     function renderCustomerSuggestions(input, list, data){
         if(!list) return;
 
@@ -4082,6 +4123,7 @@ const stockSelect = 'item_code,item_name,barcode,price1,price2,price3,landing,ba
 <table class="autocomplete-table">
 <tr>
 <th>Mobile</th>
+<th>Net Purchased</th>
 <th>Name</th>
 <th>Address</th>
 <th>GST</th>
@@ -4095,6 +4137,7 @@ ${data.map((c, idx) => {
     return `
 <tr class="autocomplete-row ${rowClass}" data-idx="${idx}" title="${escapeHtml(rowTitle)}">
 <td>${escapeHtml(c.mobile || '')}</td>
+<td><span class="customer-net-purchase ${Number(c.net_purchase_amount || 0) < 0 ? 'negative' : ''}">${customerNetPurchaseFormatter.format(Number(c.net_purchase_amount) || 0)}</span></td>
 <td>${escapeHtml(c.name || '')}</td>
 <td>${escapeHtml(c.address || '')}</td>
 <td>${escapeHtml(c.gst_number || '')}${hasGst ? '<span class="gst-badge">GST</span>' : ''}</td>
@@ -4206,6 +4249,7 @@ ${data.map((c, idx) => {
 
         input.addEventListener('input', (e) => {
             clearTimeout(custTimer);
+            const requestId = ++customerSearchRequestId;
             const val = cleanCustomerSearch(e.target.value);
 
             if(e.target.id === 'cust_mobile'){
@@ -4245,7 +4289,10 @@ ${data.map((c, idx) => {
                     return;
                 }
 
-                renderCustomerSuggestions(input, list, data || []);
+                if(requestId !== customerSearchRequestId) return;
+                const customers = await addCustomerNetPurchaseAmounts(data || []);
+                if(requestId !== customerSearchRequestId) return;
+                renderCustomerSuggestions(input, list, customers);
             }, 250);
         });
 
@@ -4475,7 +4522,7 @@ ${data.map((c, idx) => {
             <input type="text" class="landing-inp" data-rid="${rId}" readonly tabindex="-1" style="color:#facc15;font-weight:bold;">
         </td>
         <td class="col-gst">
-            <input type="text" class="row-inp gst-inp" data-rid="${rId}" readonly tabindex="-1" style="color:#64748b">
+            <input type="number" class="row-inp gst-inp" data-rid="${rId}" min="0" max="100" step="0.01" readonly tabindex="-1" title="For new quotation/sales-order items, press Ctrl+Shift+G to edit GST" style="color:#64748b">
         </td>
         <td class="col-tot">
             <input type="text" class="row-inp total-inp" data-rid="${rId}" readonly tabindex="-1" style="font-weight:bold">
@@ -4545,6 +4592,7 @@ ${data.map((c, idx) => {
         const priceGstInp = row.querySelector('.price-gst-inp');
         const discInp = row.querySelector('.disc-inp');
         const landingInp = row.querySelector('.landing-inp');
+        const gstInp = row.querySelector('.gst-inp');
 
         [codeInp, nameInp, qtyInp, typeInp, priceInp, priceGstInp, discInp].forEach(el => {
             el.addEventListener("focus", () => triggerPurchaseHistory(row));
@@ -4603,7 +4651,7 @@ ${data.map((c, idx) => {
                     <th>P1</th>
                     <th>P2</th>
                     <th>P3</th>
-                    ${canSeeLandingColumn ? '<th>Landing</th>' : ''}
+                    ${isLandingColumnVisible() ? '<th>Landing</th>' : ''}
                     </tr>
                     `;
 
@@ -4619,7 +4667,7 @@ ${data.map((c, idx) => {
                         <td>₹${item.price1 || 0}</td>
                         <td>₹${item.price2 || 0}</td>
                         <td>₹${item.price3 || 0}</td>
-                        ${canSeeLandingColumn ? `<td>₹${item.landing || 0}</td>` : ''}
+                        ${isLandingColumnVisible() ? `<td>₹${item.landing || 0}</td>` : ''}
                         </tr>
                         `;
                     });
@@ -4730,6 +4778,40 @@ ${data.map((c, idx) => {
         discInp.addEventListener('input', () => calcForward(id));
         priceInp.addEventListener('input', () => calcForward(id));
         priceGstInp.addEventListener('input', () => calcReverse(id));
+        gstInp.addEventListener('input', () => calcForward(id));
+        gstInp.addEventListener('keydown', (e) => {
+            if(e.key !== 'Enter' && e.key !== 'Escape') return;
+
+            e.preventDefault();
+            e.stopImmediatePropagation();
+
+            if(e.key === 'Escape'){
+                gstInp.value = gstInp._gstOriginalValue || '';
+                calcForward(id);
+            }
+
+            const returnFocus = gstInp._gstReturnFocus;
+            gstInp.blur();
+
+            if(returnFocus && returnFocus.isConnected){
+                returnFocus.focus();
+                if(typeof returnFocus.select === 'function') returnFocus.select();
+            }
+        });
+        gstInp.addEventListener('blur', () => {
+            const gst = parseFloat(gstInp.value);
+
+            if(gstInp.value !== '' && (!Number.isFinite(gst) || gst < 0 || gst > 100)){
+                gstInp.value = '';
+                calcForward(id);
+                alert('GST must be between 0 and 100.');
+            }
+
+            gstInp.readOnly = true;
+            gstInp.tabIndex = -1;
+            gstInp.style.color = '#64748b';
+            gstInp.style.background = '';
+        });
         typeInp.addEventListener('change', () => {
             updatePriceFromType(id);
             applyItemRestriction(row);
@@ -4737,18 +4819,6 @@ ${data.map((c, idx) => {
     }
 
     async function fillItem(id, item) {
-        const resolvedItem = item && item.item_code
-            ? getDepartmentFilteredStockData().find(x =>
-                String(x.item_code || '').trim().toUpperCase() === String(item.item_code || '').trim().toUpperCase()
-            ) || item
-            : item;
-        item = resolvedItem;
-        if (!item || !item.item_code || !item.item_name) {
-            console.error('Invalid item selected', item);
-            showVoicePrompt('Selected item data is incomplete. Please choose another match.', 'error', 4000);
-            return false;
-        }
-
         const row = document.getElementById(`row_${id}`);
 
         row.querySelectorAll('.autocomplete-list').forEach(list => {
@@ -4822,7 +4892,6 @@ ${data.map((c, idx) => {
         if(isMinimumQtyWarningMode()){
             maybeShowMinimumQtyWarning(row, { showWarning: false, once: true });
         }
-        return true;
     }
 
     function calcProfit() {
@@ -5026,15 +5095,81 @@ function calcTotal() {
     const trigger = document.getElementById('profit_trigger');
     const profitBox = document.getElementById('profit_box');
 
+    function toggleProfitBox(){
+        if(!profitBox) return;
+
+        if(profitBox.style.display === 'none'){
+            calcProfit();
+            profitBox.style.display = 'block';
+        } else {
+            profitBox.style.display = 'none';
+        }
+    }
+
     if (trigger) {
-        trigger.addEventListener('dblclick', () => {
-            if (profitBox.style.display === 'none') {
-                calcProfit();
-                profitBox.style.display = 'block';
-            } else {
-                profitBox.style.display = 'none';
+        trigger.addEventListener('dblclick', toggleProfitBox);
+    }
+
+    function setupMobileProfitGestures(){
+        const gestureArea = document.getElementById('grand_total_box');
+        if(!gestureArea || gestureArea.dataset.mobileProfitBound === '1') return;
+
+        gestureArea.dataset.mobileProfitBound = '1';
+        let pressTimer = null;
+        let longPressTriggered = false;
+        let lastTapTime = 0;
+        let startX = 0;
+        let startY = 0;
+
+        const cancelPress = () => {
+            clearTimeout(pressTimer);
+            pressTimer = null;
+        };
+
+        gestureArea.addEventListener('pointerdown', (e) => {
+            if(e.pointerType !== 'touch' && e.pointerType !== 'pen') return;
+
+            startX = e.clientX;
+            startY = e.clientY;
+            longPressTriggered = false;
+            cancelPress();
+
+            pressTimer = setTimeout(() => {
+                longPressTriggered = true;
+                lastTapTime = 0;
+                unlockBelowLandingTemporarily();
+                if(navigator.vibrate) navigator.vibrate(120);
+            }, 4000);
+        });
+
+        gestureArea.addEventListener('pointermove', (e) => {
+            if(Math.abs(e.clientX - startX) > 12 || Math.abs(e.clientY - startY) > 12){
+                cancelPress();
             }
         });
+
+        gestureArea.addEventListener('pointerup', (e) => {
+            if(e.pointerType !== 'touch' && e.pointerType !== 'pen') return;
+
+            cancelPress();
+            if(longPressTriggered){
+                longPressTriggered = false;
+                return;
+            }
+
+            const now = Date.now();
+            if(now - lastTapTime <= 350){
+                e.preventDefault();
+                lastTapTime = 0;
+                toggleProfitBox();
+                if(navigator.vibrate) navigator.vibrate(40);
+            } else {
+                lastTapTime = now;
+            }
+        });
+
+        gestureArea.addEventListener('pointercancel', cancelPress);
+        gestureArea.addEventListener('pointerleave', cancelPress);
     }
 
     function setupBelowLandingSecretUnlock() {
@@ -5077,6 +5212,44 @@ function calcTotal() {
                 longPressTriggered = false;
             }
         }, true);
+    }
+
+    function setupMobileBillModeUnlock() {
+        const triggerArea = document.getElementById("bill_mode_mobile_trigger");
+        if (!triggerArea || triggerArea.dataset.billModeUnlockBound === "1") return;
+
+        triggerArea.dataset.billModeUnlockBound = "1";
+        let pressTimer = null;
+        let startX = 0;
+        let startY = 0;
+
+        const cancelPress = () => {
+            clearTimeout(pressTimer);
+            pressTimer = null;
+        };
+
+        triggerArea.addEventListener("pointerdown", (e) => {
+            if (e.pointerType !== "touch" && e.pointerType !== "pen") return;
+
+            startX = e.clientX;
+            startY = e.clientY;
+            cancelPress();
+            pressTimer = setTimeout(() => {
+                unlockBillMode();
+                if (navigator.vibrate) navigator.vibrate(100);
+            }, 3000);
+        });
+
+        triggerArea.addEventListener("pointermove", (e) => {
+            if (Math.abs(e.clientX - startX) > 12 || Math.abs(e.clientY - startY) > 12) {
+                cancelPress();
+            }
+        });
+
+        triggerArea.addEventListener("pointerup", cancelPress);
+        triggerArea.addEventListener("pointercancel", cancelPress);
+        triggerArea.addEventListener("pointerleave", cancelPress);
+        triggerArea.addEventListener("contextmenu", (e) => e.preventDefault());
     }
 
     function handleListNav(e, list, callback) {
@@ -5260,7 +5433,7 @@ function calcTotal() {
         targetInput.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     }
 
-    document.getElementById('bill_body').addEventListener('keydown', function(e){
+    document.getElementById('bill_body').addEventListener('keydown', async function(e){
         if(stockWarningOpen && (e.key === 'Enter' || e.key === 'Escape' || e.key === 'NumpadEnter')){
             e.preventDefault();
             e.stopImmediatePropagation();
@@ -5268,8 +5441,44 @@ function calcTotal() {
             return;
         }
 
+        if(purchaseOrderPromptOpen){
+            if(e.key === 'Escape'){
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                closePurchaseOrderPrompt(false);
+            }
+            return;
+        }
+
         const input = e.target.closest('.row-inp');
         if(!input) return;
+
+        if(e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'g'){
+            const docType = getCurrentDocType();
+            const row = input.closest('tr');
+
+            if((docType === 'quotation' || docType === 'sales_order') && row){
+                const code = row.querySelector('.code-inp')?.value || '';
+
+                // Stock items keep their saved GST. Only ad-hoc items can override it.
+                if(!isValidStockItem(code)){
+                    const gstInput = row.querySelector('.gst-inp');
+                    if(gstInput){
+                        e.preventDefault();
+                        e.stopImmediatePropagation();
+                        gstInput.readOnly = false;
+                        gstInput.tabIndex = 0;
+                        gstInput.style.color = '#111827';
+                        gstInput.style.background = '#fef3c7';
+                        gstInput._gstOriginalValue = gstInput.value;
+                        gstInput._gstReturnFocus = input;
+                        gstInput.focus();
+                        gstInput.select();
+                    }
+                }
+            }
+            return;
+        }
 
         const allowedKeys = ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Enter'];
         if(!allowedKeys.includes(e.key)) return;
@@ -5318,14 +5527,22 @@ function calcTotal() {
             input.classList.contains('qty-inp')
         ){
             if(isSalesMode()){
-                const ok = validateSalesRowQty(row);
+                const ok = validateSalesRowQty(row, { showMinimumWarning: false });
                 if(!ok){
                     e.preventDefault();
                     e.stopImmediatePropagation();
                     return;
                 }
-            } else if(isMinimumQtyWarningMode()){
-                maybeShowMinimumQtyWarning(row, { showWarning: true, once: true });
+            }
+
+            if(isMinimumQtyWarningMode()){
+                e.preventDefault();
+                e.stopImmediatePropagation();
+
+                maybeShowMinimumQtyWarning(row, { showWarning: false, once: true });
+                await maybePromptQuickPurchaseOrder(row);
+                handleExcelNav(e);
+                return;
             }
         }
 
@@ -5656,7 +5873,7 @@ function calcTotal() {
         saveBillDraftNow(true);
 
         btn.disabled = true;
-        btn.innerText = "SAVING...";
+        setSaveButtonLabel("Saving...");
 
         try {
             const {
@@ -5708,8 +5925,8 @@ function calcTotal() {
             let paidAmount = parseFloat(document.getElementById("paid_amount")?.value) || 0;
 
             if (isSalesOrderConversionMode) {
-                // ADVANCE CREDIT: receipt amount = current converted bill total - sales order advance.
-                paidAmount = getSalesOrderConversionReceiptAmount(roundedTotal);
+                // ADVANCE CREDIT: default receipt is bill total - sales order advance, but user can edit it.
+                paidAmount = Math.max(0, Math.min(getSalesOrderConversionReceiptAmount(roundedTotal), paidAmount));
                 const paidAmountEl = document.getElementById("paid_amount");
                 if (paidAmountEl) paidAmountEl.value = paidAmount.toFixed(2);
             } else {
@@ -5832,7 +6049,7 @@ function calcTotal() {
                     customer_mobile: head.mob,
                     gst_number: head.gst,
                     total_amount: roundedTotal,
-                    remark: document.getElementById("quotation_remark")?.value || "",
+                    remark: document.getElementById("quotation_remark")?.value.trim() || "",
                     salesman: document.getElementById("salesman").value || "",
                     created_by: createdBy
                 };
@@ -5884,6 +6101,11 @@ function calcTotal() {
             else if (docType === "sales_order") headerTable = "sales_order_details";
             else headerTable = "sales_details";
 
+            // Final schema guard at the database boundary. Sales-order addresses
+            // live in customers; sales_order_details has no address column.
+            const headerWriteData = { ...insertData };
+            if (headerTable === "sales_order_details") delete headerWriteData.address;
+
             let sale;
 
             if (editingId) {
@@ -5898,7 +6120,7 @@ function calcTotal() {
 
                     const { data, error } = await sb
                         .from("sales_details")
-                        .update(insertData)
+                        .update(headerWriteData)
                         .eq("id", pack.sales_id)
                         .select()
                         .maybeSingle();
@@ -5908,7 +6130,7 @@ function calcTotal() {
                 } else {
                     const { data, error } = await sb
                         .from(headerTable)
-                        .update(insertData)
+                        .update(headerWriteData)
                         .eq("id", editingId)
                         .select()
                         .maybeSingle();
@@ -5919,7 +6141,7 @@ function calcTotal() {
             } else {
                 const { data, error } = await sb
                     .from(headerTable)
-                    .insert([insertData])
+                    .insert([headerWriteData])
                     .select()
                     .maybeSingle();
 
@@ -6056,30 +6278,28 @@ function calcTotal() {
 
             alert(`Bill #${nextBillNo} Saved Successfully!`);
 
-            downloadSavedBillCopy({
-                docType,
-                billNo: nextBillNo,
-                head,
-                items: itemsToValidate,
-                total: roundedTotal,
-                paidAmount,
-                balanceAmount,
-                paymentType,
-                roundOff
-            });
+            const printDepartment = encodeURIComponent(document.getElementById("department_filter")?.value || "");
+            const printDepartmentQuery = printDepartment ? `&department=${printDepartment}` : "";
 
             if (docType === "sales_pack") {
-                window.open(`print.html?type=sales_pack&id=${packingId}`, "_blank");
+                window.open(`print.html?type=sales_pack&id=${packingId}${printDepartmentQuery}`, "_blank");
             }
             else {
-                window.open(`print.html?type=${docType}&id=${saleId}`, "_blank");
+                window.open(`print.html?type=${docType}&id=${saleId}${printDepartmentQuery}`, "_blank");
             }
 
-            if (docType === "sales" && window.loadedQuotationId) {
-                await sb
+            // A quotation is converted when it becomes Sales, Bill, or a Sales Order.
+            // The report uses this flag to colour the original quotation green.
+            if (["sales", "sales_pack", "sales_order"].includes(docType) && window.loadedQuotationId) {
+                const { error: quotationUpdateError } = await sb
                     .from("quotation_details")
                     .update({ converted: true })
                     .eq("id", window.loadedQuotationId);
+
+                if (quotationUpdateError) {
+                    console.error("Quotation converted flag update failed:", quotationUpdateError);
+                    throw quotationUpdateError;
+                }
 
                 window.loadedQuotationId = null;
             }
@@ -6107,17 +6327,21 @@ function calcTotal() {
                 salesOrderAdvancePaid = 0;
             }
 
-            window.location.replace(window.location.pathname + "?fresh=" + Date.now());
+            const freshUrl = new URL(window.location.pathname, window.location.origin);
+            freshUrl.searchParams.set("fresh", `${Date.now()}`);
+            if(BILL_WORKSPACE_ID) freshUrl.searchParams.set("workspace", BILL_WORKSPACE_ID);
+            window.location.replace(freshUrl.href);
 
         } catch (e) {
             console.error(e);
             alert("Error: " + (e.message || e));
         } finally {
             btn.disabled = false;
-            btn.innerText =
-                docType === "quotation" ? "SAVE & PRINT QUOTATION" :
-                docType === "sales_order" ? "SAVE & PRINT SALES ORDER" :
-                "PRINT & SAVE";
+            setSaveButtonLabel(
+                docType === "quotation" ? "Save & print quotation" :
+                docType === "sales_order" ? "Save & print sales order" :
+                "Print & save"
+            );
         }
     }
 
@@ -6184,6 +6408,7 @@ function calcTotal() {
             paymentTypeEl.dataset.justChangedToCredit = "0";
         }
         if (paidAmountEl) {
+            paidAmountEl.dataset.salesOrderReceiptEdited = "0";
             paidAmountEl.disabled = false;
             paidAmountEl.placeholder = "Bill Total - Advance";
         }
@@ -6203,6 +6428,16 @@ function calcTotal() {
             document.getElementById("cust_mobile").value = head.customer_mobile || "";
             document.getElementById("cust_gst").value = head.gst_number || "";
             document.getElementById("cust_address").value = head.address || "";
+
+            if (!document.getElementById("cust_address").value && head.customer_mobile) {
+                const { data: customer } = await sb
+                    .from("customers")
+                    .select("address")
+                    .eq("mobile", head.customer_mobile)
+                    .limit(1)
+                    .maybeSingle();
+                document.getElementById("cust_address").value = customer?.address || "";
+            }
             salesOrderAdvancePaid = parseFloat(head.advance_amount ?? head.paid_amount ?? 0) || 0;
         } else {
             salesOrderAdvancePaid = 0;
@@ -6254,7 +6489,7 @@ function calcTotal() {
         });
 
         calcTotal();
-        applySalesOrderConversionPaidAmount();
+        applySalesOrderConversionPaidAmount(getCurrentRoundedGrandTotal(), true);
         syncPaymentUI(true);
         alert(`Sales Order loaded. Advance paid: ₹${salesOrderAdvancePaid.toFixed(2)}. Payment Type is ADVANCE CREDIT and receipt amount is Current Bill Total - Advance.`);
     }
@@ -6346,6 +6581,18 @@ function calcTotal() {
             document.getElementById("cust_mobile").value = qHead.customer_mobile || "";
             document.getElementById("cust_gst").value = qHead.gst_number || "";
             document.getElementById("cust_address").value = qHead.address || "";
+
+            // quotation_details has no address column in the current schema.
+            // The customer master is the source of truth for quotation addresses.
+            if (!document.getElementById("cust_address").value && qHead.customer_mobile) {
+                const { data: customer } = await sb
+                    .from("customers")
+                    .select("address")
+                    .eq("mobile", qHead.customer_mobile)
+                    .limit(1)
+                    .maybeSingle();
+                document.getElementById("cust_address").value = customer?.address || "";
+            }
         }
 
         const {data,error}=await sb
@@ -6518,6 +6765,30 @@ barcodeInput.addEventListener("keydown", async function (e) {
             }
 
             head = data;
+
+            // A packing header intentionally stores only packing-specific fields.
+            // Customer address and payment details live on its linked sales header.
+            if (data.sales_id) {
+                const { data: linkedSale, error: linkedSaleError } = await sb
+                    .from("sales_details")
+                    .select("*")
+                    .eq("id", data.sales_id)
+                    .maybeSingle();
+
+                if (linkedSaleError) {
+                    console.warn("Unable to load linked sales details for bill edit:", linkedSaleError);
+                } else if (linkedSale) {
+                    head = {
+                        ...linkedSale,
+                        ...data,
+                        address: data.address || linkedSale.address || "",
+                        payment_type: data.payment_type || linkedSale.payment_type || "CASH",
+                        paid_amount: data.paid_amount ?? linkedSale.paid_amount ?? 0,
+                        balance_amount: data.balance_amount ?? linkedSale.balance_amount ?? 0,
+                        department_filter: data.department_filter || linkedSale.department_filter || ""
+                    };
+                }
+            }
         }
         else{
             const {data, error} = await sb
@@ -6550,6 +6821,42 @@ barcodeInput.addEventListener("keydown", async function (e) {
         document.getElementById("cust_address").value = head.address || "";
         document.getElementById("cust_gst").value = head.gst_number || "";
 
+        // Customer remarks are maintained on the customer master rather than
+        // every historical document header.
+        const customerRemarkEl = document.getElementById("cust_remark");
+        if (customerRemarkEl && head.customer_mobile) {
+            const { data: savedCustomer, error: customerError } = await sb
+                .from("customers")
+                .select("*")
+                .eq("mobile", head.customer_mobile)
+                .maybeSingle();
+            if (!customerError && savedCustomer) {
+                customerRemarkEl.value = savedCustomer.customer_remark || "";
+                if (!document.getElementById("cust_address").value) {
+                    document.getElementById("cust_address").value = savedCustomer.address || "";
+                }
+            }
+        }
+
+        const seriesEl = document.getElementById("bill_series");
+        if (seriesEl && head.series_code) {
+            seriesEl.value = head.series_code;
+        }
+
+        const salesmanEl = document.getElementById("salesman");
+        if (salesmanEl) {
+            const savedSalesman = String(head.salesman || "").trim().toUpperCase();
+            if (savedSalesman && !Array.from(salesmanEl.options).some(option => option.value === savedSalesman)) {
+                salesmanEl.add(new Option(savedSalesman, savedSalesman));
+            }
+            salesmanEl.value = savedSalesman;
+        }
+
+        const savedDepartment = String(head.department_filter || "").trim().toUpperCase();
+        if (savedDepartment) {
+            document.getElementById("department_filter").value = savedDepartment;
+        }
+
         if (document.getElementById("quotation_remark")) {
             document.getElementById("quotation_remark").value = type === "quotation" ? (head.remark || "") : "";
         }
@@ -6557,35 +6864,46 @@ barcodeInput.addEventListener("keydown", async function (e) {
 
         const paymentTypeEl = document.getElementById("payment_type");
         const paidAmountEl = document.getElementById("paid_amount");
+        const savedPaymentType = type === "sales_order"
+            ? "CREDIT"
+            : String(head.payment_type || "CASH").toUpperCase();
+        const savedPaidValue = type === "sales_order"
+            ? (parseFloat(head.advance_amount ?? 0) || 0)
+            : (parseFloat(head.paid_amount ?? 0) || 0);
+
+        // Editing a converted Sales Order must retain the exact saved receipt.
+        // Reconstruct its original advance from total - receipt - balance so the
+        // existing ADVANCE CREDIT calculations remain correct if items are edited.
+        isSalesOrderConversionMode = savedPaymentType === "ADVANCE CREDIT";
+        if (isSalesOrderConversionMode) {
+            const savedTotal = parseFloat(head.invoice_amount ?? head.total_amount ?? head.packing_amount ?? 0) || 0;
+            const savedPaid = parseFloat(head.paid_amount ?? 0) || 0;
+            const savedBalance = parseFloat(head.balance_amount ?? 0) || 0;
+            salesOrderAdvancePaid = Math.max(0, savedTotal - savedPaid - savedBalance);
+        } else {
+            salesOrderAdvancePaid = 0;
+        }
+
+        updateAdvanceCreditOptionVisibility();
         if (paymentTypeEl) {
-            paymentTypeEl.value = type === "sales_order" ? "CREDIT" : String(head.payment_type || "CASH").toUpperCase();
+            paymentTypeEl.value = savedPaymentType;
             paymentTypeEl.dataset.justChangedToCredit = "0";
         }
         if (paidAmountEl) {
-            let paidValue = 0;
-            if (type === "sales_order") {
-                paidValue = parseFloat(head.advance_amount ?? 0) || 0;
-            } else {
-                paidValue = parseFloat(head.paid_amount ?? 0) || 0;
-            }
-            paidAmountEl.value = paidValue.toFixed(2);
+            paidAmountEl.value = savedPaidValue.toFixed(2);
+            paidAmountEl.dataset.salesOrderReceiptEdited = isSalesOrderConversionMode ? "1" : "0";
         }
 
-        const rawDate =
-            head.bill_date ||
-            head.quotation_date ||
-            head.order_date ||
-            head.packing_date ||
-            null;
+        const rawDate = type === "sales_pack"
+            ? (head.packing_date || head.bill_date || null)
+            : (head.bill_date || head.quotation_date || head.order_date || head.packing_date || null);
 
         document.getElementById("bill_date").value =
             rawDate ? rawDate.split("T")[0] : "";
 
-        document.getElementById("bill_number").value =
-            head.sales_number ||
-            head.packing_number ||
-            head.quotation_number ||
-            head.order_number || "";
+        document.getElementById("bill_number").value = type === "sales_pack"
+            ? (head.packing_number || head.sales_number || "")
+            : (head.sales_number || head.quotation_number || head.order_number || head.packing_number || "");
 
         document.getElementById("bill_body").innerHTML="";
         currentRowId=0;
@@ -6681,9 +6999,28 @@ barcodeInput.addEventListener("keydown", async function (e) {
 
         calcTotal();
 
+        // calcForward/calcTotal run while each item is being hydrated. During
+        // those partial totals syncPaymentUI can temporarily clamp an advance
+        // or receipt. Restore the database value after the complete bill total
+        // is available so edit mode shows exactly what was saved.
+        if (paidAmountEl) {
+            paidAmountEl.value = savedPaidValue.toFixed(2);
+            paidAmountEl.dataset.salesOrderReceiptEdited = isSalesOrderConversionMode ? "1" : "0";
+        }
+
         if(type === "sales_pack"){
-            document.getElementById("salesman").value = head.salesman || "VAJRA";
             document.getElementById("salesman").disabled=true;
+        }
+
+        // Older rows may not have department_filter. Recover the most accurate
+        // value possible from their saved items' current stock departments.
+        if (!savedDepartment) {
+            const itemDepartments = [...new Set((items || [])
+                .map(item => stockMap.get(String(item.item_code || "").trim().toUpperCase())?.department)
+                .map(normalizeDepartment)
+                .filter(Boolean))];
+            document.getElementById("department_filter").value = itemDepartments.length === 1 ? itemDepartments[0] : "";
+            document.querySelectorAll("#bill_body tr").forEach(row => applyItemRestriction(row));
         }
 
         syncPaymentUI(true);
@@ -6784,6 +7121,9 @@ async function handleBarcodeValue(code) {
 }    
     const stockWarningOverlay = document.getElementById('stock_warning_overlay');
     const stockWarningOkBtn = document.getElementById('stock_warning_ok_btn');
+    const poConfirmOverlay = document.getElementById('po_confirm_overlay');
+    const poConfirmYesBtn = document.getElementById('po_confirm_yes_btn');
+    const poConfirmNoBtn = document.getElementById('po_confirm_no_btn');
 
     if(stockWarningOkBtn){
         stockWarningOkBtn.addEventListener('click', closeStockWarning);
@@ -6797,7 +7137,39 @@ async function handleBarcodeValue(code) {
         });
     }
 
+    if(poConfirmYesBtn){
+        poConfirmYesBtn.addEventListener('click', () => closePurchaseOrderPrompt(true));
+    }
+
+    if(poConfirmNoBtn){
+        poConfirmNoBtn.addEventListener('click', () => closePurchaseOrderPrompt(false));
+    }
+
+    if(poConfirmOverlay){
+        poConfirmOverlay.addEventListener('mousedown', (e) => {
+            if(e.target === poConfirmOverlay){
+                closePurchaseOrderPrompt(false);
+            }
+        });
+    }
+
     document.addEventListener('keydown', (e) => {
+        if(e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'p'){
+            e.preventDefault();
+            e.stopPropagation();
+            unlockBillMode();
+            return;
+        }
+
+        if(purchaseOrderPromptOpen){
+            if(e.key === 'Escape'){
+                e.preventDefault();
+                e.stopPropagation();
+                closePurchaseOrderPrompt(false);
+            }
+            return;
+        }
+
         if(!stockWarningOpen) return;
         if(e.key === 'Enter' || e.key === 'Escape' || e.key === 'NumpadEnter'){
             e.preventDefault();

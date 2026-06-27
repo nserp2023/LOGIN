@@ -416,6 +416,9 @@
             max-height: 300px;
             overflow-y: auto;
             overflow-x: auto;
+            overscroll-behavior: contain;
+            touch-action: pan-x pan-y;
+            -webkit-overflow-scrolling: touch;
             z-index: 100;
             display: none;
         }
@@ -426,6 +429,21 @@
             border-collapse: collapse;
             font-size: 13px;
             font-weight: bold;
+        }
+
+        .autocomplete-list .autocomplete-table{
+            min-width: max(760px, 100%);
+        }
+
+        .autocomplete-list .autocomplete-table th,
+        .autocomplete-list .autocomplete-table td{
+            white-space: nowrap;
+        }
+
+        .autocomplete-list .autocomplete-table th:first-child,
+        .autocomplete-list .autocomplete-table td:first-child{
+            min-width: 360px;
+            max-width: none;
         }
 
         .autocomplete-table th{
@@ -4722,7 +4740,7 @@ ${data.map((c, idx) => {
             </div>
         </td>
         <td class="col-qty">
-            <input type="number" class="row-inp qty-inp" data-rid="${rId}" data-navcol="2" value="1" step="0.01" style="text-align:center">
+            <input type="number" class="row-inp qty-inp" data-rid="${rId}" data-navcol="2" value="1" step="0.01" inputmode="decimal" enterkeyhint="next" autocomplete="off" style="text-align:center">
         </td>
         <td class="col-type">
             <select class="row-inp type-inp" data-rid="${rId}" data-navcol="3">
@@ -4733,13 +4751,13 @@ ${data.map((c, idx) => {
             </select>
         </td>
         <td class="col-price">
-            <input type="number" class="row-inp price-inp" data-rid="${rId}" data-navcol="4" step="0.01">
+            <input type="number" class="row-inp price-inp" data-rid="${rId}" data-navcol="4" step="0.01" inputmode="decimal" enterkeyhint="next" autocomplete="off">
         </td>
         <td class="col-price">
-            <input type="number" class="row-inp price-gst-inp" data-rid="${rId}" data-navcol="5" step="0.01">
+            <input type="number" class="row-inp price-gst-inp" data-rid="${rId}" data-navcol="5" step="0.01" inputmode="decimal" enterkeyhint="next" autocomplete="off">
         </td>
         <td class="col-disc">
-            <input type="number" class="row-inp disc-inp" data-rid="${rId}" data-navcol="6" step="0.01" value="0" min="0" max="100">
+            <input type="number" class="row-inp disc-inp" data-rid="${rId}" data-navcol="6" step="0.01" value="0" min="0" max="100" inputmode="decimal" enterkeyhint="next" autocomplete="off">
         </td>
         <td class="col-landing landing-col">
             <input type="text" class="landing-inp" data-rid="${rId}" readonly tabindex="-1" style="color:#facc15;font-weight:bold;">
@@ -4755,6 +4773,7 @@ ${data.map((c, idx) => {
         </td>
         `;
         tbody.appendChild(row);
+        applyRowKeyboardHints(row);
         applyLandingColumnVisibility(row);
 
         const qtyInput = row.querySelector('.qty-inp');
@@ -4881,16 +4900,16 @@ ${data.map((c, idx) => {
                     matches.forEach((item, idx) => {
                         html += `
                         <tr class="autocomplete-row" data-idx="${idx}">
-                        <td>${item.item_name}</td>
-                        <td>${item.item_code}</td>
-                        <td>${item.department || 'ALL'}</td>
-                        <td>${item.balance || 0}</td>
-                        <td>${item.minimum_qty || 0}</td>
-                        <td>${item.maximum_qty || 0}</td>
-                        <td>₹${item.price1 || 0}</td>
-                        <td>₹${item.price2 || 0}</td>
-                        <td>₹${item.price3 || 0}</td>
-                        ${isLandingColumnVisible() ? `<td>₹${item.landing || 0}</td>` : ''}
+                        <td>${escapeHtml(item.item_name || '')}</td>
+                        <td>${escapeHtml(item.item_code || '')}</td>
+                        <td>${escapeHtml(item.department || 'ALL')}</td>
+                        <td>${escapeHtml(item.balance || 0)}</td>
+                        <td>${escapeHtml(item.minimum_qty || 0)}</td>
+                        <td>${escapeHtml(item.maximum_qty || 0)}</td>
+                        <td>₹${escapeHtml(item.price1 || 0)}</td>
+                        <td>₹${escapeHtml(item.price2 || 0)}</td>
+                        <td>₹${escapeHtml(item.price3 || 0)}</td>
+                        ${isLandingColumnVisible() ? `<td>₹${escapeHtml(item.landing || 0)}</td>` : ''}
                         </tr>
                         `;
                     });
@@ -4900,6 +4919,8 @@ ${data.map((c, idx) => {
                     list.innerHTML = html;
                     list.style.display = "block";
                     list.setAttribute("data-open","true");
+                    list.scrollLeft = 0;
+                    adjustDropdownPosition(inp, list);
 
                     list.querySelectorAll(".autocomplete-row").forEach((tr, i) => {
                         tr.onclick = () => {
@@ -5504,7 +5525,7 @@ function calcTotal() {
 
         if(items[idx]){
             items[idx].classList.add('selected');
-            items[idx].scrollIntoView({block:'nearest'});
+            items[idx].scrollIntoView({block:'nearest', inline:'nearest'});
         }
 
         return true;
@@ -5520,6 +5541,21 @@ function calcTotal() {
             row.querySelector('.price-gst-inp'),
             row.querySelector('.disc-inp')
         ].filter(Boolean);
+    }
+
+    function applyRowKeyboardHints(row){
+        if(!row) return;
+
+        row.querySelectorAll('.code-inp, .name-inp').forEach(input => {
+            input.setAttribute('enterkeyhint', 'next');
+            input.setAttribute('autocomplete', 'off');
+        });
+
+        row.querySelectorAll('.qty-inp, .price-inp, .price-gst-inp, .disc-inp').forEach(input => {
+            input.setAttribute('inputmode', 'decimal');
+            input.setAttribute('enterkeyhint', 'next');
+            input.setAttribute('autocomplete', 'off');
+        });
     }
 
     function handleExcelNav(e){
@@ -7492,10 +7528,13 @@ async function handleBarcodeValue(code) {
 
         document.querySelectorAll(decimalInputs).forEach(input => {
             input.setAttribute('inputmode', 'decimal');
+            input.setAttribute('enterkeyhint', input.id === 'paid_amount' ? 'done' : 'next');
         });
 
         document.getElementById('cust_mobile')?.setAttribute('inputmode', 'tel');
+        document.getElementById('cust_mobile')?.setAttribute('enterkeyhint', 'next');
         document.getElementById('barcode_scan')?.setAttribute('inputmode', 'none');
+        document.getElementById('barcode_scan')?.setAttribute('enterkeyhint', 'done');
     }
 
     function setupMobileFocusPolish(){

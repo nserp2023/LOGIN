@@ -1496,6 +1496,7 @@
             border:1px solid var(--android-outline);
             box-shadow:0 12px 34px rgba(23,33,47,.20);
             overflow:auto;
+            z-index:130000;
         }
 
         .autocomplete-item{
@@ -1865,11 +1866,6 @@
                 min-width:720px;
             }
 
-            #bill_table th,
-            #bill_table td{
-                contain:paint;
-            }
-
             #bill_table .col-idx{
                 position:sticky;
                 left:0;
@@ -1979,6 +1975,7 @@
 
             .autocomplete-list{
                 max-height:min(48dvh, 360px);
+                z-index:130000;
             }
         }
     </style>

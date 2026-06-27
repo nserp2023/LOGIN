@@ -662,7 +662,8 @@ async function insertSalesReturnHead(payload) {
         (msg.includes("return_payment_type") ||
          msg.includes("settlement_mode") ||
          msg.includes("cash_refund_amount") ||
-         msg.includes("credit_adjustment_amount"));
+         msg.includes("credit_adjustment_amount") ||
+         msg.includes("is_accepted"));
 
     if (!isMissingColumn) return { data: null, error };
 
@@ -671,6 +672,7 @@ async function insertSalesReturnHead(payload) {
     delete safePayload.settlement_mode;
     delete safePayload.cash_refund_amount;
     delete safePayload.credit_adjustment_amount;
+    delete safePayload.is_accepted;
 
     return await sb
         .from("sales_return_details")
@@ -1525,7 +1527,8 @@ async function saveReturn() {
             return_payment_type: settlementMode,
             settlement_mode: settlementMode,
             cash_refund_amount: settlementMode === "CASH" ? totalReturn : 0,
-            credit_adjustment_amount: settlementMode === "CREDIT" ? totalReturn : 0
+            credit_adjustment_amount: settlementMode === "CREDIT" ? totalReturn : 0,
+            is_accepted: false
         };
 
         const { data: retHead, error } = await insertSalesReturnHead(returnPayload);

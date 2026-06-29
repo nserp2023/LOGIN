@@ -2013,6 +2013,7 @@
       const returnRows = await safeSelectToday("sales_return_details", "return_date", "*");
       const salesRows = await filterRowsWithItems(rawSalesRows, "sales_item_details", "sales_id");
       const packRows = await filterRowsWithItems(rawPackRows, "sales_packing_item_details", "packing_id");
+      const rawSalesIds = new Set(rawSalesRows.map(row => String(row.id || "")));
       const validSalesIds = new Set(salesRows.map(row => String(row.id || "")));
       const autoSalesReceiptTypes = new Set([
         "sales_credit",
@@ -2044,6 +2045,7 @@
         if(isCancelledRow(row)) return;
 
         const linkedSalesId = String(row.sales_id || "");
+        if(linkedSalesId && !rawSalesIds.has(linkedSalesId)) return;
         if(linkedSalesId && salesIds.has(linkedSalesId)) return;
 
         const paymentType = normalizePaymentType(row.payment_type);

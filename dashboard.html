@@ -1982,11 +1982,43 @@
       }
     }
 
+    async function filterRowsWithItems(rows, itemTable, idField){
+      const validRows = Array.isArray(rows) ? rows : [];
+      const ids = validRows.map(row => row?.id).filter(id => id !== null && id !== undefined && id !== "");
+      if(!ids.length) return [];
+
+      try{
+        const { data, error } = await sb
+          .from(itemTable)
+          .select(idField)
+          .in(idField, ids);
+
+        if(error) throw error;
+
+        const idsWithItems = new Set((data || [])
+          .map(row => String(row?.[idField] || ""))
+          .filter(Boolean));
+
+        return validRows.filter(row => idsWithItems.has(String(row.id || "")));
+      }catch(err){
+        console.warn(`Dashboard could not verify ${itemTable}.${idField}:`, err.message || err);
+        return validRows;
+      }
+    }
+
     async function getDirectDashboardSummary(){
-      const salesRows = await safeSelectToday("sales_details", "bill_date", "*");
-      const packRows = await safeSelectToday("sales_packing_details", "packing_date", "*");
+      const rawSalesRows = await safeSelectToday("sales_details", "bill_date", "*");
+      const rawPackRows = await safeSelectToday("sales_packing_details", "packing_date", "*");
       const cashRows = await safeSelectToday("cash_transactions", "txn_date", "*");
       const returnRows = await safeSelectToday("sales_return_details", "return_date", "*");
+      const salesRows = await filterRowsWithItems(rawSalesRows, "sales_item_details", "sales_id");
+      const packRows = await filterRowsWithItems(rawPackRows, "sales_packing_item_details", "packing_id");
+      const validSalesIds = new Set(salesRows.map(row => String(row.id || "")));
+      const autoSalesReceiptTypes = new Set([
+        "sales_credit",
+        "sales_pack_credit",
+        "sales_order_conversion_receipt"
+      ]);
 
       let today_cash_sales = 0;
       let today_credit_sales = 0;
@@ -2032,13 +2064,19 @@
       cashRows.forEach(row => {
         const txnType = String(row.txn_type || "").trim().toLowerCase();
         const status = String(row.approval_status || "").trim().toLowerCase();
+        const refType = String(row.reference_type || "").trim().toLowerCase();
+        const refId = String(row.reference_id || "");
         const amount = Number(row.amount || 0) || 0;
+        const isOrphanAutoSalesReceipt = txnType === "receipt"
+          && autoSalesReceiptTypes.has(refType)
+          && refId
+          && !validSalesIds.has(refId);
 
         // ADVANCE CREDIT converted-bill balance amount is saved as a normal approved receipt.
         // So it affects Today's Balance through today_receipt, not by adding the bill total into cash sales.
-        if(txnType === "receipt" && status === "approved") today_receipt += amount;
+        if(txnType === "receipt" && status === "approved" && !isOrphanAutoSalesReceipt) today_receipt += amount;
         if(txnType === "payment" && status === "approved") today_payment += amount;
-        if(status === "pending" && (txnType === "payment" || isSalesOrderAdvanceCashTxn(row))) pending_payments += 1;
+        if(status === "pending" && !isOrphanAutoSalesReceipt && (txnType === "payment" || isSalesOrderAdvanceCashTxn(row))) pending_payments += 1;
       });
 
       let today_sales_return = 0;

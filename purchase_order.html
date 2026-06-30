@@ -224,6 +224,10 @@ const fmt2 = v => Number(v || 0).toFixed(2);
 const money = v => "₹" + fmt2(v);
 function clean(v){return String(v || "").trim();}
 function norm(v){return String(v || "").toLowerCase().replace(/[^a-z0-9]+/g," ").replace(/\s+/g," ").trim();}
+function parseStockBalance(v){
+  const parsed = parseFloat(v);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
 function esc(v){return String(v ?? "").replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));}
 
 let loadedPOId = null;
@@ -339,47 +343,37 @@ function mergeStockItems(items){
 
   (items || []).forEach(raw => {
     const item = {...raw};
-    if((item.balance == null || item.balance === "") && item.quantity != null) item.balance = item.quantity;
-    if(item.balance == null || item.balance === "") item.balance = 0;
+    item.balance = parseStockBalance(item.balance);
 
-    const key = clean(item.item_code || item.barcode || item.item_name).toUpperCase();
+    const key = clean(item.item_code).toUpperCase();
     if(!key) return;
 
-    const existing = byKey.get(key) || {};
-    const merged = {...existing};
-    Object.entries(item).forEach(([field, value]) => {
-      if(value !== undefined && value !== null && value !== "") merged[field] = value;
-    });
-    byKey.set(key, merged);
+    byKey.set(key, item);
   });
 
   return Array.from(byKey.values());
 }
 
 async function loadStockData(){
-  const sources = [];
-  const errors = [];
-
   try{
-    sources.push(...await fetchPagedStockItems("stock_items"));
-  }catch(error){
-    errors.push({source:"stock_items", error});
-  }
-
-  try{
-    sources.push(...await fetchPagedStockItems("stock_balance_view", "item_code,item_name,barcode,balance,quantity,department"));
-  }catch(error){
-    errors.push({source:"stock_balance_view", error});
-  }
-
-  if(!sources.length && errors.length){
-    console.error("Stock loading failed:", errors);
-    setStatus("Stock loading failed: " + (errors[0].error?.message || errors[0].error), true);
+    const stockSelect = "item_code,item_name,barcode,price1,price2,price3,landing,balance,gst_percent,hsn_code,department,minimum_qty,maximum_qty";
+    const sources = await fetchPagedStockItems("stock_balance_view", stockSelect);
+    stockData = mergeStockItems(sources);
     return;
+  }catch(error){
+    console.warn("Stock balance view could not be loaded, trying stock_items fallback:", error);
   }
 
-  if(errors.length) console.warn("Some stock sources could not be loaded:", errors);
-  stockData = mergeStockItems(sources);
+  try{
+    const fallback = await fetchPagedStockItems("stock_items");
+    stockData = mergeStockItems(fallback.map(item => ({
+      ...item,
+      balance: item.balance ?? item.quantity
+    })));
+  }catch(error){
+    console.error("Stock loading failed:", error);
+    setStatus("Stock loading failed: " + (error?.message || error), true);
+  }
 }
 
 async function loadLastPrices(){

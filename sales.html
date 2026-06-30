@@ -5374,7 +5374,7 @@ ${data.map((c, idx) => {
             </div>
         </td>
         <td class="col-qty">
-            <input type="number" class="row-inp qty-inp" data-rid="${rId}" data-navcol="2" value="1" step="0.01" inputmode="decimal" enterkeyhint="next" autocomplete="off" style="text-align:center">
+            <input type="text" class="row-inp qty-inp" data-rid="${rId}" data-navcol="2" value="1" inputmode="decimal" enterkeyhint="next" autocomplete="off" pattern="[0-9]*[.]?[0-9]*" style="text-align:center">
         </td>
         <td class="col-type">
             <select class="row-inp type-inp" data-rid="${rId}" data-navcol="3">
@@ -5642,6 +5642,7 @@ ${data.map((c, idx) => {
         attachSearch(nameInp, `list_name_${id}`, 'item_name');
 
         qtyInp.addEventListener('input', () => {
+            sanitizeDecimalInput(qtyInp);
             calcForward(id);
             applyItemRestriction(row);
             if(validateSalesRowQty(row, { showWarning: false, showMinimumWarning: false })){
@@ -6190,6 +6191,20 @@ function calcTotal() {
             input.setAttribute('enterkeyhint', 'next');
             input.setAttribute('autocomplete', 'off');
         });
+    }
+
+    function sanitizeDecimalInput(input){
+        if(!input) return;
+
+        const value = input.value || "";
+        const normalized = value.replace(/,/g, ".");
+        const cleaned = normalized
+            .replace(/[^\d.]/g, "")
+            .replace(/(\..*)\./g, "$1");
+
+        if(input.value !== cleaned){
+            input.value = cleaned;
+        }
     }
 
     function handleExcelNav(e){

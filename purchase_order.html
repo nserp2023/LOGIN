@@ -312,15 +312,74 @@ function bindHeaderEvents(){
   byId("supplierGst").addEventListener("input", e => searchSupplier(e.target, "gst_number"));
 }
 
-async function loadStockData(){
+async function fetchPagedStockItems(source, selectCols = "*"){
   let all = [], from = 0, size = 1000, keep = true;
   while(keep){
-    const {data, error} = await sb.from("stock_balance_view").select("item_code,item_name,balance").range(from, from + size - 1);
-    if(error){ console.error(error); setStatus("Stock loading failed: " + error.message, true); break; }
-    if(data && data.length){ all = all.concat(data); from += size; if(data.length < size) keep = false; }
-    else keep = false;
+    let query = sb.from(source).select(selectCols);
+    if(source === "stock_items" || source === "stock_balance_view"){
+      query = query.order("item_code", { ascending:true, nullsFirst:false });
+    }
+
+    const {data, error} = await query.range(from, from + size - 1);
+    if(error) throw error;
+
+    if(data && data.length){
+      all = all.concat(data);
+      from += size;
+      if(data.length < size) keep = false;
+    }else{
+      keep = false;
+    }
   }
-  stockData = all;
+  return all;
+}
+
+function mergeStockItems(items){
+  const byKey = new Map();
+
+  (items || []).forEach(raw => {
+    const item = {...raw};
+    if((item.balance == null || item.balance === "") && item.quantity != null) item.balance = item.quantity;
+    if(item.balance == null || item.balance === "") item.balance = 0;
+
+    const key = clean(item.item_code || item.barcode || item.item_name).toUpperCase();
+    if(!key) return;
+
+    const existing = byKey.get(key) || {};
+    const merged = {...existing};
+    Object.entries(item).forEach(([field, value]) => {
+      if(value !== undefined && value !== null && value !== "") merged[field] = value;
+    });
+    byKey.set(key, merged);
+  });
+
+  return Array.from(byKey.values());
+}
+
+async function loadStockData(){
+  const sources = [];
+  const errors = [];
+
+  try{
+    sources.push(...await fetchPagedStockItems("stock_items"));
+  }catch(error){
+    errors.push({source:"stock_items", error});
+  }
+
+  try{
+    sources.push(...await fetchPagedStockItems("stock_balance_view", "item_code,item_name,barcode,balance,quantity,department"));
+  }catch(error){
+    errors.push({source:"stock_balance_view", error});
+  }
+
+  if(!sources.length && errors.length){
+    console.error("Stock loading failed:", errors);
+    setStatus("Stock loading failed: " + (errors[0].error?.message || errors[0].error), true);
+    return;
+  }
+
+  if(errors.length) console.warn("Some stock sources could not be loaded:", errors);
+  stockData = mergeStockItems(sources);
 }
 
 async function loadLastPrices(){
@@ -422,15 +481,18 @@ function searchStock(query){
   const scored = stockData.map(item => {
     const codeRaw = String(item.item_code || "");
     const nameRaw = String(item.item_name || "");
-    const code = norm(codeRaw), name = norm(nameRaw), both = code + " " + name;
+    const barcodeRaw = String(item.barcode || "");
+    const code = norm(codeRaw), name = norm(nameRaw), barcode = norm(barcodeRaw), both = code + " " + name + " " + barcode;
     const matched = terms.every(t => both.includes(t));
     if(!matched) return null;
     let score = 0;
     if(code === q) score += 1000;
     if(name === q) score += 950;
+    if(barcode === q) score += 900;
     if(code.startsWith(q)) score += 800;
     if(name.startsWith(q)) score += 750;
-    for(const t of terms){ if(code.includes(t)) score += 45; if(name.includes(t)) score += 40; }
+    if(barcode.startsWith(q)) score += 700;
+    for(const t of terms){ if(code.includes(t)) score += 45; if(name.includes(t)) score += 40; if(barcode.includes(t)) score += 35; }
     score -= Math.abs(name.length - q.length) * 0.05;
     return {item, score};
   }).filter(Boolean);

@@ -588,7 +588,7 @@
       <div class="panel-head">
         <div class="panel-title">
           <h2>Purchase Items</h2>
-          <small>Item code and item name search use stock_balance_view</small>
+          <small>Item code and item name search use stock items</small>
         </div>
       </div>
 
@@ -827,7 +827,7 @@
         .trim();
     }
 
-    async function loadStockData() {
+    async function fetchPagedStockItems(tableName) {
       let allItems = [];
       let from = 0;
       let pageSize = 1000;
@@ -835,14 +835,13 @@
 
       while (fetchMore) {
         const { data, error } = await sb
-          .from("stock_balance_view")
+          .from(tableName)
           .select("*")
+          .order("item_code", { ascending: true, nullsFirst: false })
           .range(from, from + pageSize - 1);
 
         if (error) {
-          console.error("Error loading stock:", error);
-          alert("Error loading stock items. Check console.");
-          break;
+          throw error;
         }
 
         if (data && data.length > 0) {
@@ -854,10 +853,72 @@
         }
       }
 
-      stockData = allItems.map(item => ({
+      return allItems;
+    }
+
+    function normalizeStockItem(item) {
+      const normalized = {
         ...item,
         department: String(item.department || "").toUpperCase()
-      }));
+      };
+
+      if ((normalized.balance === undefined || normalized.balance === null) && normalized.quantity !== undefined) {
+        normalized.balance = normalized.quantity;
+      }
+
+      return normalized;
+    }
+
+    function mergeStockItems(items) {
+      const byCode = new Map();
+
+      items.forEach(rawItem => {
+        const item = normalizeStockItem(rawItem);
+        const key = String(item.item_code || item.barcode || item.item_name || "").trim().toUpperCase();
+        if (!key) return;
+
+        const existing = byCode.get(key) || {};
+        const merged = { ...existing };
+
+        Object.entries(item).forEach(([field, value]) => {
+          if (value !== undefined && value !== null && value !== "") {
+            merged[field] = value;
+          }
+        });
+
+        byCode.set(key, merged);
+      });
+
+      return [...byCode.values()];
+    }
+
+    async function loadStockData() {
+      const sources = [];
+      const errors = [];
+
+      try {
+        sources.push(...await fetchPagedStockItems("stock_items"));
+      } catch (error) {
+        errors.push({ source: "stock_items", error });
+      }
+
+      try {
+        sources.push(...await fetchPagedStockItems("stock_balance_view"));
+      } catch (error) {
+        errors.push({ source: "stock_balance_view", error });
+      }
+
+      if (!sources.length && errors.length) {
+        console.error("Error loading stock:", errors);
+        alert("Error loading stock items. Check console.");
+        return;
+      }
+
+      if (errors.length) {
+        console.warn("Some stock sources could not be loaded:", errors);
+      }
+
+      stockData = mergeStockItems(sources);
     }
 
     function searchStock(query, field, selectedDepartment = "") {

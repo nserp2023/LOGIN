@@ -2407,6 +2407,229 @@
                 border:4px solid #00a884;
             }
         }
+
+        /* Final sales screen polish: compact WhatsApp-style billing surface */
+        :root{
+            --wa-green:#075e54;
+            --wa-green-2:#008069;
+            --wa-action:#00a884;
+            --wa-chat:#efeae2;
+            --wa-panel:#f0f2f5;
+            --wa-bubble:#d9fdd3;
+            --wa-line:#d1d7db;
+            --wa-text:#111b21;
+            --wa-muted:#667781;
+        }
+
+        body{
+            background:
+                radial-gradient(circle at 18px 24px, rgba(17,27,33,.055) 1.2px, transparent 2px) 0 0 / 44px 44px,
+                linear-gradient(135deg, rgba(255,255,255,.2) 25%, transparent 25%) 0 0 / 28px 28px,
+                var(--wa-chat) !important;
+            color:var(--wa-text);
+        }
+
+        .container{
+            background:rgba(239,234,226,.98) !important;
+        }
+
+        .header-section{
+            z-index:12000;
+            background:linear-gradient(180deg, #0a6b5f, var(--wa-green)) !important;
+            border-bottom:1px solid rgba(0,0,0,.14) !important;
+            box-shadow:0 2px 10px rgba(17,27,33,.18) !important;
+            padding:7px 10px !important;
+            gap:8px !important;
+            align-items:center !important;
+        }
+
+        .header-section::before{
+            background:rgba(255,255,255,.15) !important;
+            color:#ffffff !important;
+            border-radius:999px !important;
+            box-shadow:inset 0 0 0 1px rgba(255,255,255,.16) !important;
+        }
+
+        .form-group label{
+            color:rgba(255,255,255,.82) !important;
+            font-size:10px !important;
+            letter-spacing:0 !important;
+        }
+
+        .form-control{
+            height:30px !important;
+            min-height:30px !important;
+            border:0 !important;
+            border-radius:999px !important;
+            background:#ffffff !important;
+            color:var(--wa-text) !important;
+            box-shadow:0 1px 3px rgba(17,27,33,.18) !important;
+            padding:5px 10px !important;
+        }
+
+        .form-control:focus{
+            box-shadow:0 0 0 2px rgba(0,168,132,.38), 0 1px 4px rgba(17,27,33,.18) !important;
+        }
+
+        .items-container{
+            position:relative;
+            z-index:1;
+            padding:8px 10px !important;
+            background:
+                radial-gradient(circle at 14px 18px, rgba(17,27,33,.05) 1.2px, transparent 2px) 0 0 / 48px 48px,
+                radial-gradient(circle at 38px 31px, rgba(0,128,105,.05) 1.2px, transparent 2px) 0 0 / 62px 62px,
+                var(--wa-chat) !important;
+        }
+
+        #bill_table{
+            border-spacing:0 5px !important;
+        }
+
+        #bill_table thead{
+            z-index:25;
+        }
+
+        #bill_table th{
+            height:28px !important;
+            padding:5px 7px !important;
+            background:var(--wa-green) !important;
+            color:#e9f7ef !important;
+            border:0 !important;
+        }
+
+        #bill_body tr.item-row{
+            filter:drop-shadow(0 1px 1px rgba(17,27,33,.12));
+            transition:filter .15s ease, transform .15s ease;
+        }
+
+        #bill_body tr.item-row > td{
+            padding:0 !important;
+            background:var(--wa-bubble) !important;
+            border:0 !important;
+            border-bottom:1px solid rgba(17,27,33,.05) !important;
+        }
+
+        #bill_body tr.item-row:nth-child(even) > td{
+            background:#ffffff !important;
+        }
+
+        #bill_body tr.item-row > td:first-child{
+            border-radius:8px 0 0 8px !important;
+        }
+
+        #bill_body tr.item-row > td:last-child{
+            border-radius:0 8px 8px 0 !important;
+        }
+
+        td input,
+        td select{
+            min-height:30px !important;
+            height:30px !important;
+            padding:4px 5px !important;
+            color:var(--wa-text) !important;
+            font-size:12.5px !important;
+            font-weight:700 !important;
+            background:transparent !important;
+            box-shadow:none !important;
+        }
+
+        td input:focus,
+        td select:focus{
+            background:rgba(255,255,255,.72) !important;
+            color:var(--wa-text) !important;
+            box-shadow:inset 0 0 0 2px var(--wa-action) !important;
+        }
+
+        #bill_body tr.item-row.active-bill-row{
+            transform:translateY(-1px);
+            filter:drop-shadow(0 3px 8px rgba(0,128,105,.25));
+        }
+
+        #bill_body tr.item-row.active-bill-row > td{
+            background:#c7f4ad !important;
+            border-bottom:1px solid rgba(0,168,132,.4) !important;
+        }
+
+        .col-idx{
+            color:var(--wa-green-2) !important;
+            font-weight:900 !important;
+        }
+
+        .col-act button{
+            width:28px !important;
+            height:28px !important;
+            border-radius:999px !important;
+            line-height:1 !important;
+        }
+
+        .autocomplete-list{
+            position:fixed;
+            z-index:30000 !important;
+            border:0 !important;
+            border-radius:12px !important;
+            background:#ffffff !important;
+            box-shadow:0 12px 32px rgba(17,27,33,.28) !important;
+            max-height:min(320px, calc(100dvh - 20px));
+        }
+
+        .autocomplete-table th{
+            background:#f0f2f5 !important;
+            color:#3b4a54 !important;
+            border-color:#e9edef !important;
+        }
+
+        .autocomplete-table td{
+            color:var(--wa-text) !important;
+            border-color:#e9edef !important;
+            padding:5px 7px !important;
+        }
+
+        .autocomplete-row.selected,
+        .autocomplete-row.selected td,
+        .autocomplete-item.selected,
+        .autocomplete-item:hover{
+            background:var(--wa-green-2) !important;
+            color:#ffffff !important;
+        }
+
+        .grand-total-box{
+            border-radius:11px !important;
+            box-shadow:0 1px 4px rgba(17,27,33,.2) !important;
+        }
+
+        .footer-section{
+            background:var(--wa-panel) !important;
+            border-top:1px solid var(--wa-line) !important;
+            box-shadow:0 -2px 8px rgba(17,27,33,.12) !important;
+            padding:8px 14px !important;
+        }
+
+        .icon-btn,
+        .btn{
+            border-radius:999px !important;
+        }
+
+        @media (max-width:700px){
+            .header-section{
+                max-height:36dvh !important;
+                padding:7px 8px !important;
+            }
+
+            .items-container{
+                padding:7px !important;
+            }
+
+            #bill_table{
+                border-spacing:0 4px !important;
+            }
+
+            td input,
+            td select{
+                min-height:34px !important;
+                height:34px !important;
+                font-size:13px !important;
+            }
+        }
     </style>
 </head>
 <body>
@@ -5576,34 +5799,32 @@ ${data.map((c, idx) => {
     }
 
     function adjustDropdownPosition(input, list){
+        if(!input || !list) return;
+
         const rect = input.getBoundingClientRect();
-        const spaceBelow = window.innerHeight - rect.bottom;
-        const dropdownHeight = 220;
         const margin = 10;
+        const maxHeight = Math.min(320, window.innerHeight - (margin * 2));
+        const preferredWidth = Math.max(rect.width, list.scrollWidth || rect.width);
+        const width = Math.min(preferredWidth, window.innerWidth - (margin * 2));
+        const spaceBelow = window.innerHeight - rect.bottom - margin;
+        const spaceAbove = rect.top - margin;
+        const openUp = spaceBelow < 220 && spaceAbove > spaceBelow;
+        const availableHeight = Math.max(140, Math.min(maxHeight, openUp ? spaceAbove : spaceBelow));
+        const top = openUp
+            ? Math.max(margin, rect.top - availableHeight - 6)
+            : Math.min(window.innerHeight - margin - availableHeight, rect.bottom + 6);
+        const left = Math.min(
+            Math.max(margin, rect.left),
+            Math.max(margin, window.innerWidth - margin - width)
+        );
 
-        if(spaceBelow < dropdownHeight){
-            list.style.top = "auto";
-            list.style.bottom = "100%";
-        } else {
-            list.style.top = "100%";
-            list.style.bottom = "auto";
-        }
-
-        list.style.left = "0";
+        list.style.position = "fixed";
+        list.style.top = `${top}px`;
+        list.style.bottom = "auto";
+        list.style.left = `${left}px`;
         list.style.right = "auto";
-
-        requestAnimationFrame(() => {
-            const listRect = list.getBoundingClientRect();
-
-            if(listRect.right > window.innerWidth - margin){
-                const shiftLeft = listRect.right - (window.innerWidth - margin);
-                list.style.left = `-${shiftLeft}px`;
-            }
-
-            if(listRect.left < margin){
-                list.style.left = `${margin - rect.left}px`;
-            }
-        });
+        list.style.width = `${width}px`;
+        list.style.maxHeight = `${availableHeight}px`;
     }
 
     function repositionVisibleDropdowns(){
@@ -5614,6 +5835,8 @@ ${data.map((c, idx) => {
                 input = mobileInput;
             } else if(list.id === 'name_suggestions'){
                 input = customerNameInput;
+            } else if(list.id === 'gst_suggestions'){
+                input = gstInput;
             } else if(list.id && list.id.startsWith('list_code_')){
                 const rid = list.id.replace('list_code_', '');
                 input = document.querySelector(`.code-inp[data-rid="${rid}"]`);
@@ -5970,14 +6193,15 @@ function calcTotal() {
     }
 
     function handleExcelNav(e){
+        const navKey = e.key === 'NumpadEnter' ? 'Enter' : e.key;
         const allowedKeys = ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Enter'];
-        if(!allowedKeys.includes(e.key)) return;
+        if(!allowedKeys.includes(navKey)) return;
 
         const currentInput = e.target.closest('.row-inp');
         if(!currentInput) return;
 
         if (
-    e.key === 'Enter' &&
+    navKey === 'Enter' &&
     currentInput.classList.contains('name-inp') &&
     !currentInput.value.trim()
 ) {
@@ -6004,11 +6228,11 @@ function calcTotal() {
         let currentCol = parseInt(currentInput.dataset.navcol, 10);
         if(Number.isNaN(currentCol)) return;
 
-        if(currentInput.type === "number" && (e.key === 'ArrowUp' || e.key === 'ArrowDown')){
+        if(currentInput.type === "number" && (navKey === 'ArrowUp' || navKey === 'ArrowDown')){
             e.preventDefault();
         }
 
-        if(e.key === 'Enter' && currentInput.classList.contains('disc-inp') && !e.shiftKey){
+        if(navKey === 'Enter' && currentInput.classList.contains('disc-inp') && !e.shiftKey){
             e.preventDefault();
             e.stopImmediatePropagation();
 
@@ -6030,20 +6254,20 @@ function calcTotal() {
         let targetRowIndex = rowIndex;
         let targetCol = currentCol;
 
-        if(e.key === 'ArrowUp'){
+        if(navKey === 'ArrowUp'){
             targetRowIndex--;
         }
-        else if(e.key === 'ArrowDown'){
+        else if(navKey === 'ArrowDown'){
             targetRowIndex++;
         }
-        else if(e.key === 'ArrowLeft' || (e.key === 'Enter' && e.shiftKey)){
+        else if(navKey === 'ArrowLeft' || (navKey === 'Enter' && e.shiftKey)){
             targetCol--;
         }
-        else if(e.key === 'ArrowRight' || e.key === 'Enter'){
+        else if(navKey === 'ArrowRight' || navKey === 'Enter'){
             targetCol++;
         }
 
-        if(e.key === 'Enter' && !e.shiftKey && currentInput.classList.contains('qty-inp')){
+        if(navKey === 'Enter' && !e.shiftKey && currentInput.classList.contains('qty-inp')){
             targetCol = 4;
         }
 
@@ -6055,7 +6279,7 @@ function calcTotal() {
         if(targetRowIndex < 0) return;
 
         if(targetRowIndex >= rows.length){
-            if(e.key === 'ArrowRight' || e.key === 'Enter'){
+            if(navKey === 'ArrowRight' || navKey === 'Enter'){
                 addNewRow();
 
                 setTimeout(() => {
@@ -6414,14 +6638,21 @@ function calcTotal() {
         const salesBody = document.getElementById("history_sales_body");
         const packBody = document.getElementById("history_pack_body");
 
-        panel.style.display = "block";
+        panel.style.display = "none";
         salesWrap.style.display = "none";
         packWrap.style.display = "none";
-        salesBody.innerHTML = `<tr><td colspan="5" class="history-empty">Loading...</td></tr>`;
+        salesBody.innerHTML = "";
         packBody.innerHTML = "";
 
         if(docType === "sales"){
             const salesRows = await loadSalesHistory(customerMobile, itemCode, itemName);
+            if(lastHistoryKey !== key) return;
+            if(!salesRows.length){
+                hidePurchaseHistory();
+                return;
+            }
+
+            panel.style.display = "block";
             salesWrap.style.display = "block";
             salesBody.innerHTML = buildHistoryRows(salesRows);
         }
@@ -6431,11 +6662,21 @@ function calcTotal() {
                 loadSalesHistory(customerMobile, itemCode, itemName),
                 loadSalesPackHistory(customerMobile, itemCode, itemName)
             ]);
+            if(lastHistoryKey !== key) return;
+            if(!salesRows.length && !packRows.length){
+                hidePurchaseHistory();
+                return;
+            }
 
-            salesWrap.style.display = "block";
-            packWrap.style.display = "block";
-            salesBody.innerHTML = buildHistoryRows(salesRows);
-            packBody.innerHTML = buildHistoryRows(packRows);
+            panel.style.display = "block";
+            if(salesRows.length){
+                salesWrap.style.display = "block";
+                salesBody.innerHTML = buildHistoryRows(salesRows);
+            }
+            if(packRows.length){
+                packWrap.style.display = "block";
+                packBody.innerHTML = buildHistoryRows(packRows);
+            }
         }
     }
 

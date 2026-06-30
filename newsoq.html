@@ -5238,14 +5238,21 @@ function calcTotal() {
         const salesBody = document.getElementById("history_sales_body");
         const packBody = document.getElementById("history_pack_body");
 
-        panel.style.display = "block";
+        panel.style.display = "none";
         salesWrap.style.display = "none";
         packWrap.style.display = "none";
-        salesBody.innerHTML = `<tr><td colspan="5" class="history-empty">Loading...</td></tr>`;
+        salesBody.innerHTML = "";
         packBody.innerHTML = "";
 
         if(docType === "sales"){
             const salesRows = await loadSalesHistory(customerMobile, itemCode, itemName);
+            if(lastHistoryKey !== key) return;
+            if(!salesRows.length){
+                hidePurchaseHistory();
+                return;
+            }
+
+            panel.style.display = "block";
             salesWrap.style.display = "block";
             salesBody.innerHTML = buildHistoryRows(salesRows);
         }
@@ -5255,11 +5262,21 @@ function calcTotal() {
                 loadSalesHistory(customerMobile, itemCode, itemName),
                 loadSalesPackHistory(customerMobile, itemCode, itemName)
             ]);
+            if(lastHistoryKey !== key) return;
+            if(!salesRows.length && !packRows.length){
+                hidePurchaseHistory();
+                return;
+            }
 
-            salesWrap.style.display = "block";
-            packWrap.style.display = "block";
-            salesBody.innerHTML = buildHistoryRows(salesRows);
-            packBody.innerHTML = buildHistoryRows(packRows);
+            panel.style.display = "block";
+            if(salesRows.length){
+                salesWrap.style.display = "block";
+                salesBody.innerHTML = buildHistoryRows(salesRows);
+            }
+            if(packRows.length){
+                packWrap.style.display = "block";
+                packBody.innerHTML = buildHistoryRows(packRows);
+            }
         }
     }
 

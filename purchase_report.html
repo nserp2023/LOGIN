@@ -261,6 +261,7 @@ button:hover {
 <table>
 <thead>
 <tr>
+<th>Purchase No</th>
 <th>Invoice No</th>
 <th>Date</th>
 <th>Supplier</th>
@@ -435,7 +436,7 @@ async function loadPurchase() {
     }
 
     if(!data || !data.length){
-        body.innerHTML = '<tr><td colspan="7">No purchase records found.</td></tr>';
+        body.innerHTML = '<tr><td colspan="8">No purchase records found.</td></tr>';
         statusBox.textContent = 'No records found.';
         return;
     }
@@ -475,7 +476,8 @@ async function loadPurchase() {
 
         body.innerHTML += `
 <tr onclick="toggleDetails(${p.id})" class="${hasProblem ? 'problem-row' : ''}">
-    <td>${safeText(p.invoice_number || p.purchase_number || '')}</td>
+    <td>${safeText(p.purchase_number || '')}</td>
+    <td>${safeText(p.invoice_number || '')}</td>
     <td>${safeText(p.bill_date || '')}</td>
     <td>${safeText(p.supplier_name || '')}</td>
     <td>${warningHtml}</td>
@@ -493,7 +495,7 @@ async function loadPurchase() {
 </tr>
 
 <tr id="details-${p.id}" style="display:none;">
-    <td colspan="7">
+    <td colspan="8">
         <div id="items-${p.id}" data-warning="${safeText(warnings.join(', '))}">Loading...</div>
     </td>
 </tr>
@@ -502,7 +504,7 @@ async function loadPurchase() {
 
     body.innerHTML += `
 <tr class="total-row">
-    <td colspan="4">TOTAL PURCHASE</td>
+    <td colspan="5">TOTAL PURCHASE</td>
     <td class="right">₹${money(totalSum)}</td>
     <td colspan="2"></td>
 </tr>`;

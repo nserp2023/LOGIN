@@ -62,6 +62,10 @@ table {
     border-collapse: collapse;
 }
 
+.items-table {
+    table-layout: fixed;
+}
+
 th, td {
     border: 1px solid #000;
     padding: 6px;
@@ -80,6 +84,18 @@ th {
 
 .center {
     text-align: center;
+}
+
+.col-no { width: 6%; }
+.col-code { width: 13%; }
+.col-desc { width: 45%; }
+.col-qty { width: 7%; }
+.col-price { width: 9.66%; }
+
+.price-cell,
+.qty-cell,
+.code-cell {
+    white-space: nowrap;
 }
 
 .info-table td {
@@ -186,16 +202,16 @@ th {
 
     <br>
 
-    <table>
+    <table class="items-table">
         <thead>
             <tr>
-                <th style="width:45px;">No</th>
-                <th style="width:120px;">Code</th>
-                <th>Description</th>
-                <th style="width:80px;">Qty</th>
-                <th style="width:90px;">Price 1</th>
-                <th style="width:90px;">Price 2</th>
-                <th style="width:90px;">Price 3</th>
+                <th class="col-no">No</th>
+                <th class="col-code">Code</th>
+                <th class="col-desc">Description</th>
+                <th class="col-qty">Qty</th>
+                <th class="col-price">Price 1</th>
+                <th class="col-price">Price 2</th>
+                <th class="col-price">Price 3</th>
             </tr>
         </thead>
         <tbody id="items_body"></tbody>
@@ -288,12 +304,12 @@ async function loadDetails() {
         body.innerHTML += `
         <tr>
             <td class="center">${count++}</td>
-            <td>${safeText(i.item_code)}</td>
+            <td class="code-cell">${safeText(i.item_code)}</td>
             <td>${safeText(i.item_name)}</td>
-            <td class="center">${qty || 0}</td>
-            <td class="right-align">${money(i.price1)}</td>
-            <td class="right-align">${money(i.price2)}</td>
-            <td class="right-align">${money(i.price3)}</td>
+            <td class="center qty-cell">${qty || 0}</td>
+            <td class="right-align price-cell">${money(i.price1)}</td>
+            <td class="right-align price-cell">${money(i.price2)}</td>
+            <td class="right-align price-cell">${money(i.price3)}</td>
         </tr>`;
     });
 

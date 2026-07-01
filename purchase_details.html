@@ -174,11 +174,6 @@ th {
 
     <table class="info-table">
         <tr>
-            <td style="width:60%;">
-                <b>Supplier:</b> <span id="supplier_name"></span><br>
-                <b>GST No:</b> <span id="supplier_gst"></span><br>
-                <b>Address:</b> <span id="supplier_address"></span>
-            </td>
             <td class="right-align">
                 <b>Invoice No:</b> <span id="invoice_no"></span><br>
                 <b>Purchase No:</b> <span id="purchase_no"></span><br>
@@ -195,10 +190,12 @@ th {
         <thead>
             <tr>
                 <th style="width:45px;">No</th>
-                <th style="width:90px;">HSN</th>
                 <th style="width:120px;">Code</th>
                 <th>Description</th>
                 <th style="width:80px;">Qty</th>
+                <th style="width:90px;">Price 1</th>
+                <th style="width:90px;">Price 2</th>
+                <th style="width:90px;">Price 3</th>
             </tr>
         </thead>
         <tbody id="items_body"></tbody>
@@ -220,6 +217,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 function safeText(v) {
     return v === null || v === undefined ? '' : String(v);
+}
+
+function money(v) {
+    const n = Number(v || 0);
+    return Number.isFinite(n) ? n.toFixed(2) : '0.00';
 }
 
 function showWarning(msg) {
@@ -260,9 +262,6 @@ async function loadDetails() {
         return;
     }
 
-    document.getElementById("supplier_name").innerText = safeText(header.supplier_name);
-    document.getElementById("supplier_gst").innerText = safeText(header.supplier_gst || header.gst_number);
-    document.getElementById("supplier_address").innerText = safeText(header.supplier_address || header.address);
     document.getElementById("invoice_no").innerText = safeText(header.invoice_number || header.purchase_number);
     document.getElementById("purchase_no").innerText = safeText(header.purchase_number);
     document.getElementById("purchase_date").innerText = safeText(pickDate(header));
@@ -274,7 +273,7 @@ async function loadDetails() {
         showWarning("No item found in this purchase bill. Please check this bill.");
         body.innerHTML = `
             <tr class="empty-row">
-                <td colspan="5">No items found in this purchase bill</td>
+                <td colspan="7">No items found in this purchase bill</td>
             </tr>`;
         return;
     }
@@ -289,10 +288,12 @@ async function loadDetails() {
         body.innerHTML += `
         <tr>
             <td class="center">${count++}</td>
-            <td>${safeText(i.hsn_code)}</td>
             <td>${safeText(i.item_code)}</td>
             <td>${safeText(i.item_name)}</td>
             <td class="center">${qty || 0}</td>
+            <td class="right-align">${money(i.price1)}</td>
+            <td class="right-align">${money(i.price2)}</td>
+            <td class="right-align">${money(i.price3)}</td>
         </tr>`;
     });
 

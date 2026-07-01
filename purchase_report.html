@@ -364,6 +364,47 @@ function buildPurchaseWarnings(p, items, itemLoadError){
     return warnings;
 }
 
+function chunkArray(arr, size){
+    const chunks = [];
+    for (let i = 0; i < arr.length; i += size) {
+        chunks.push(arr.slice(i, i + size));
+    }
+    return chunks;
+}
+
+async function fetchPurchaseItemsForReport(purchaseIds){
+    const rows = [];
+    const pageSize = 1000;
+    const idChunks = chunkArray(purchaseIds, 100);
+
+    for (const ids of idChunks) {
+        let from = 0;
+
+        while (true) {
+            const to = from + pageSize - 1;
+            const { data, error } = await sb
+                .from('purchase_item_details')
+                .select('purchase_id,item_code,item_name,quantity,price,purchase_price,purchase_price_gst')
+                .in('purchase_id', ids)
+                .range(from, to);
+
+            if (error) {
+                throw error;
+            }
+
+            rows.push(...(data || []));
+
+            if (!data || data.length < pageSize) {
+                break;
+            }
+
+            from += pageSize;
+        }
+    }
+
+    return rows;
+}
+
 async function loadPurchase() {
     const from = document.getElementById('from_date').value;
     const to = document.getElementById('to_date').value;
@@ -404,20 +445,16 @@ async function loadPurchase() {
     let itemLoadError = null;
 
     if (purchaseIds.length) {
-        const { data: allItems, error: itemError } = await sb
-            .from('purchase_item_details')
-            .select('purchase_id,item_code,item_name,quantity,price,purchase_price,purchase_price_gst')
-            .in('purchase_id', purchaseIds);
-
-        if (itemError) {
-            console.error(itemError);
-            itemLoadError = itemError;
-        } else {
+        try {
+            const allItems = await fetchPurchaseItemsForReport(purchaseIds);
             (allItems || []).forEach(item => {
                 const key = item.purchase_id;
                 if (!itemsByPurchase[key]) itemsByPurchase[key] = [];
                 itemsByPurchase[key].push(item);
             });
+        } catch (itemError) {
+            console.error(itemError);
+            itemLoadError = itemError;
         }
     }
 

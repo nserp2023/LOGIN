@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Safe Bulk Sales Edit - VAJRA</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabaseClient.js"></script>
+  <script src="page_permissions.js"></script>
   <style>
     :root{
       --bg:#eef2f7;
@@ -211,12 +213,7 @@
   </div>
 
 <script>
-  // ==============================
-  //  SET YOUR SUPABASE VALUES HERE
-  // ==============================
-  const supabaseUrl = "https://kzxwjujjvnehhthazicc.supabase.co";
-  const supabaseKey = "sb_publishable_Iu3sQGl9gq_VsVYxR3j_7g_SLvgqp_9";
-  const sb = supabase.createClient(supabaseUrl, supabaseKey);
+  const sb = window.sbcc; // supabase client from supabaseClient.js
 
   let loadedBills = [];
   let allItems = [];
@@ -1125,10 +1122,36 @@
   els.cancelSaveBtn.addEventListener('click', closeConfirmModal);
   els.confirmSaveBtn.addEventListener('click', confirmSaveNow);
 
-  setTodayDefaults();
-  loadSalesmen();
-  loadAllItems();
-  renderAll();
+  function setActionButtonsDisabled(disabled){
+    [els.loadBtn, els.applyPriceBtn, els.adjustBtn, els.saveBtn].forEach(btn => {
+      btn.disabled = disabled;
+    });
+  }
+
+  async function initPage(){
+    setTodayDefaults();
+    renderAll();
+    setActionButtonsDisabled(true);
+
+    if(!sb){
+      showMessage('Supabase client is not initialized. Please check supabaseClient.js.', 'error');
+      return;
+    }
+
+    if(typeof requirePageAccess === 'function'){
+      const ok = await requirePageAccess('sales_edit');
+      if(!ok) return;
+    }
+
+    setActionButtonsDisabled(false);
+
+    await Promise.all([
+      loadSalesmen(),
+      loadAllItems()
+    ]);
+  }
+
+  initPage();
 </script>
 </body>
 </html>

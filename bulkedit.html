@@ -175,6 +175,7 @@
           <div class="field"><label>&nbsp;</label><button class="btn-blue" id="loadBtn">LOAD BILLS</button></div>
           <div class="field"><label>&nbsp;</label><button class="btn-dark" id="applyPriceBtn">APPLY PRICE</button></div>
           <div class="field"><label>&nbsp;</label><button class="btn-amber" id="adjustBtn">ADJUST QTY</button></div>
+          <div class="field"><label>&nbsp;</label><button class="btn-red" id="clearAllZeroBtn">REMOVE ZERO ROWS</button></div>
           <div class="field"><label>&nbsp;</label><button class="btn-green" id="saveBtn">REVIEW & SAVE</button></div>
         </div>
 
@@ -184,6 +185,7 @@
           <div class="stat"><div class="k">New Total</div><div class="v" id="statTotal">₹ 0.00</div></div>
           <div class="stat"><div class="k">Changed Rows</div><div class="v" id="statChanged">0</div></div>
           <div class="stat"><div class="k">Zero Qty Rows</div><div class="v" id="statZero">0</div></div>
+          <div class="stat"><div class="k">Empty Bills</div><div class="v" id="statEmpty">0</div></div>
           <div class="stat"><div class="k">New Rows</div><div class="v" id="statNew">0</div></div>
         </div>
       </div>
@@ -224,6 +226,7 @@
     loadBtn: document.getElementById('loadBtn'),
     applyPriceBtn: document.getElementById('applyPriceBtn'),
     adjustBtn: document.getElementById('adjustBtn'),
+    clearAllZeroBtn: document.getElementById('clearAllZeroBtn'),
     saveBtn: document.getElementById('saveBtn'),
     billsRoot: document.getElementById('billsRoot'),
     messageBox: document.getElementById('messageBox'),
@@ -233,6 +236,7 @@
     statTotal: document.getElementById('statTotal'),
     statChanged: document.getElementById('statChanged'),
     statZero: document.getElementById('statZero'),
+    statEmpty: document.getElementById('statEmpty'),
     statNew: document.getElementById('statNew'),
     confirmModal: document.getElementById('confirmModal'),
     confirmBody: document.getElementById('confirmBody'),
@@ -477,8 +481,18 @@
     return bill.items.reduce((sum, item) => sum + (n(item.quantity) * n(item.price_gst)), 0);
   }
 
+  function hasLiveItems(bill){
+    return !!bill && bill.items.some(item => n(item.quantity) > 0);
+  }
+
+  function emptyBillNumbers(){
+    return loadedBills
+      .filter(bill => !hasLiveItems(bill))
+      .map(bill => `${bill.series_code || ''}-${bill.sales_number || ''}`);
+  }
+
   function getAllStats(){
-    let itemCount = 0, total = 0, zeroCount = 0, changedCount = 0, originalTotal = 0, newCount = 0;
+    let itemCount = 0, total = 0, zeroCount = 0, changedCount = 0, originalTotal = 0, newCount = 0, emptyCount = 0;
     loadedBills.forEach(bill => {
       itemCount += bill.items.length;
       total += recalcBillTotal(bill);
@@ -486,8 +500,9 @@
       zeroCount += bill.items.filter(x => n(x.quantity) <= 0).length;
       changedCount += bill.items.filter(isChanged).length;
       newCount += bill.items.filter(x => !!x.is_new).length;
+      if(!hasLiveItems(bill)) emptyCount++;
     });
-    return { billCount: loadedBills.length, itemCount, total, zeroCount, changedCount, originalTotal, newCount };
+    return { billCount: loadedBills.length, itemCount, total, zeroCount, changedCount, originalTotal, newCount, emptyCount };
   }
 
   function statusTag(balance){
@@ -503,6 +518,7 @@
     els.statTotal.textContent = money(stats.total);
     els.statChanged.textContent = String(stats.changedCount);
     els.statZero.textContent = String(stats.zeroCount);
+    els.statEmpty.textContent = String(stats.emptyCount);
     els.statNew.textContent = String(stats.newCount);
 
     if(!loadedBills.length){
@@ -512,7 +528,11 @@
     }
 
     const diff = stats.total - stats.originalTotal;
-    els.summaryStrip.textContent = `${stats.billCount} bill(s), ${stats.itemCount} row(s), new rows: ${stats.newCount}, changed rows: ${stats.changedCount}, zero qty rows: ${stats.zeroCount}, total difference: ${money(diff)}.`;
+    const emptyBills = emptyBillNumbers();
+    els.summaryStrip.textContent = `${stats.billCount} bill(s), ${stats.itemCount} row(s), new rows: ${stats.newCount}, changed rows: ${stats.changedCount}, zero qty rows: ${stats.zeroCount}, empty bills: ${stats.emptyCount}, total difference: ${money(diff)}.`;
+    if(emptyBills.length){
+      els.summaryStrip.textContent += ` Empty bills: ${emptyBills.join(', ')}.`;
+    }
 
     els.billsRoot.innerHTML = loadedBills.map((bill, billIndex) => {
       const total = recalcBillTotal(bill);
@@ -520,6 +540,7 @@
       const zeroRows = bill.items.filter(x => n(x.quantity) <= 0).length;
       const changedRows = bill.items.filter(isChanged).length;
       const billDiff = total - n(bill.original_total);
+      const isEmptyBill = liveRows === 0;
 
       return `
         <div class="bill-card">
@@ -536,10 +557,16 @@
               <div class="amt">${money(total)}</div>
               <div class="note">Old: ${money(bill.original_total)} | Diff: ${money(billDiff)}</div>
               <div class="note">Live: ${liveRows} | Zero: ${zeroRows} | Changed: ${changedRows}</div>
+              ${isEmptyBill ? '<div class="note danger-text">NO ITEMS - add replacement item before saving</div>' : ''}
             </div>
           </div>
 
           <div class="bill-body">
+            ${isEmptyBill ? `
+              <div class="msg error">
+                This bill has no valid item rows after zero-quantity cleanup. It will be skipped during save unless you add at least one replacement item.
+              </div>
+            ` : ''}
             <div class="bill-tools">
               <div class="item-search-wrap">
                 <input class="item-search" placeholder="Search item code / barcode / item name to add replacement item..."
@@ -728,12 +755,48 @@
     if(removed > 0){
       dirty = true;
       renderAll();
-      showMessage(`${removed} zero quantity row(s) removed from ${bill.series_code}-${bill.sales_number}. Add replacement item if needed before saving.`, 'info');
+      const emptyBills = emptyBillNumbers();
+      const emptyNote = emptyBills.length ? ` Empty bill(s) now: ${emptyBills.join(', ')}.` : '';
+      showMessage(`${removed} zero quantity row(s) removed from ${bill.series_code}-${bill.sales_number}. Add replacement item if needed before saving.${emptyNote}`, emptyBills.length ? 'warn' : 'info');
     }else{
       showMessage('No zero quantity rows found in this bill.', 'info');
     }
   }
   window.clearZeroRows = clearZeroRows;
+
+  function clearAllZeroRows(){
+    clearMessage();
+    if(!loadedBills.length){
+      showMessage('Load bills first.', 'warn');
+      return;
+    }
+
+    const zeroCount = loadedBills.reduce((sum, bill) => sum + bill.items.filter(item => n(item.quantity) <= 0).length, 0);
+    if(!zeroCount){
+      showMessage('No zero quantity rows found in loaded bills.', 'info');
+      return;
+    }
+
+    const ok = confirm(`Remove ${zeroCount} zero quantity row(s) from all loaded bills? This will not save until Review & Save.`);
+    if(!ok) return;
+
+    let removed = 0;
+    loadedBills.forEach(bill => {
+      const before = bill.items.length;
+      bill.items = bill.items.filter(item => n(item.quantity) > 0);
+      removed += before - bill.items.length;
+    });
+
+    dirty = true;
+    renderAll();
+
+    const emptyBills = emptyBillNumbers();
+    if(emptyBills.length){
+      showMessage(`${removed} zero quantity row(s) removed from all bills. ${emptyBills.length} bill(s) now have no items: ${emptyBills.join(', ')}. Add replacement items before saving, or they will be skipped.`, 'warn');
+    }else{
+      showMessage(`${removed} zero quantity row(s) removed from all loaded bills. No empty bills found.`, 'success');
+    }
+  }
 
   function removeRow(billIndex, itemIndex){
     const bill = loadedBills[billIndex];
@@ -1144,12 +1207,13 @@
   els.loadBtn.addEventListener('click', loadBills);
   els.applyPriceBtn.addEventListener('click', applyPriceType);
   els.adjustBtn.addEventListener('click', adjustQuantities);
+  els.clearAllZeroBtn.addEventListener('click', clearAllZeroRows);
   els.saveBtn.addEventListener('click', reviewAndSave);
   els.cancelSaveBtn.addEventListener('click', closeConfirmModal);
   els.confirmSaveBtn.addEventListener('click', confirmSaveNow);
 
   function setActionButtonsDisabled(disabled){
-    [els.loadBtn, els.applyPriceBtn, els.adjustBtn, els.saveBtn].forEach(btn => {
+    [els.loadBtn, els.applyPriceBtn, els.adjustBtn, els.clearAllZeroBtn, els.saveBtn].forEach(btn => {
       btn.disabled = disabled;
     });
   }

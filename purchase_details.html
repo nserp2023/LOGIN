@@ -62,10 +62,6 @@ table {
     border-collapse: collapse;
 }
 
-.items-table {
-    table-layout: fixed;
-}
-
 th, td {
     border: 1px solid #000;
     padding: 6px;
@@ -84,18 +80,6 @@ th {
 
 .center {
     text-align: center;
-}
-
-.col-no { width: 6%; }
-.col-code { width: 13%; }
-.col-desc { width: 45%; }
-.col-qty { width: 7%; }
-.col-price { width: 9.66%; }
-
-.price-cell,
-.qty-cell,
-.code-cell {
-    white-space: nowrap;
 }
 
 .info-table td {
@@ -177,8 +161,7 @@ th {
     <div class="header-center">
         <h2>VAJRA LIGHTS AND ELECTRICALS</h2>
         <div class="sub">
-            KATHAKONAM KATTACAD (HO: S N TRADERS KATTACADA)<br>
-            Email: vajralightsandelectricals.sha@gmail.com<br>
+            KAITHAKONAM KATTAKADA (HO: S N TRADERS KATTAKADA)<br>
             Phone: 8606808063, 9495160771<br>
             GSTIN: 32APBPM5593H1ZT
         </div>
@@ -190,6 +173,11 @@ th {
 
     <table class="info-table">
         <tr>
+            <td style="width:60%;">
+                <b>Supplier:</b> <span id="supplier_name"></span><br>
+                <b>GST No:</b> <span id="supplier_gst"></span><br>
+                <b>Address:</b> <span id="supplier_address"></span>
+            </td>
             <td class="right-align">
                 <b>Invoice No:</b> <span id="invoice_no"></span><br>
                 <b>Purchase No:</b> <span id="purchase_no"></span><br>
@@ -202,16 +190,14 @@ th {
 
     <br>
 
-    <table class="items-table">
+    <table>
         <thead>
             <tr>
-                <th class="col-no">No</th>
-                <th class="col-code">Code</th>
-                <th class="col-desc">Description</th>
-                <th class="col-qty">Qty</th>
-                <th class="col-price">Price 1</th>
-                <th class="col-price">Price 2</th>
-                <th class="col-price">Price 3</th>
+                <th style="width:45px;">No</th>
+                <th style="width:90px;">HSN</th>
+                <th style="width:120px;">Code</th>
+                <th>Description</th>
+                <th style="width:80px;">Qty</th>
             </tr>
         </thead>
         <tbody id="items_body"></tbody>
@@ -233,11 +219,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 function safeText(v) {
     return v === null || v === undefined ? '' : String(v);
-}
-
-function money(v) {
-    const n = Number(v || 0);
-    return Number.isFinite(n) ? n.toFixed(2) : '0.00';
 }
 
 function showWarning(msg) {
@@ -278,6 +259,9 @@ async function loadDetails() {
         return;
     }
 
+    document.getElementById("supplier_name").innerText = safeText(header.supplier_name);
+    document.getElementById("supplier_gst").innerText = safeText(header.supplier_gst || header.gst_number);
+    document.getElementById("supplier_address").innerText = safeText(header.supplier_address || header.address);
     document.getElementById("invoice_no").innerText = safeText(header.invoice_number || header.purchase_number);
     document.getElementById("purchase_no").innerText = safeText(header.purchase_number);
     document.getElementById("purchase_date").innerText = safeText(pickDate(header));
@@ -289,7 +273,7 @@ async function loadDetails() {
         showWarning("No item found in this purchase bill. Please check this bill.");
         body.innerHTML = `
             <tr class="empty-row">
-                <td colspan="7">No items found in this purchase bill</td>
+                <td colspan="5">No items found in this purchase bill</td>
             </tr>`;
         return;
     }
@@ -304,12 +288,10 @@ async function loadDetails() {
         body.innerHTML += `
         <tr>
             <td class="center">${count++}</td>
-            <td class="code-cell">${safeText(i.item_code)}</td>
+            <td>${safeText(i.hsn_code)}</td>
+            <td>${safeText(i.item_code)}</td>
             <td>${safeText(i.item_name)}</td>
-            <td class="center qty-cell">${qty || 0}</td>
-            <td class="right-align price-cell">${money(i.price1)}</td>
-            <td class="right-align price-cell">${money(i.price2)}</td>
-            <td class="right-align price-cell">${money(i.price3)}</td>
+            <td class="center">${qty || 0}</td>
         </tr>`;
     });
 

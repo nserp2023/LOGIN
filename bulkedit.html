@@ -167,14 +167,9 @@
             </select>
           </div>
           <div class="field">
-            <label>Price Type</label>
+            <label>Apply Rate</label>
             <select id="priceTypeSelect">
-              <option value="price1_gst">PRICE 1 + GST</option>
-              <option value="price2_gst">PRICE 2 + GST</option>
-              <option value="price3_gst" selected>PRICE 3 + GST</option>
-              <option value="price1">PRICE 1</option>
-              <option value="price2">PRICE 2</option>
-              <option value="price3">PRICE 3</option>
+              <option value="purchase_gst" selected>PURCHASE + GST</option>
             </select>
           </div>
           <div class="field"><label>&nbsp;</label><button class="btn-blue" id="loadBtn">LOAD BILLS</button></div>
@@ -253,8 +248,29 @@
   function fmt(v){ return n(v).toFixed(2); }
   function money(v){ return '₹ ' + n(v).toFixed(2); }
   function esc(v){ return String(v ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+  function calcPriceGst(price, gstPercent){
+    return n(price) * (1 + (n(gstPercent) / 100));
+  }
+  function calcBaseFromGst(priceGst, gstPercent){
+    const divisor = 1 + (n(gstPercent) / 100);
+    return divisor ? n(priceGst) / divisor : n(priceGst);
+  }
+  function purchaseGstRate(item){
+    return n(item.purchase_price_gst || item.landing || 0);
+  }
+  function setItemPriceGst(item, priceGst){
+    item.price_gst = n(priceGst);
+    item.price = calcBaseFromGst(item.price_gst, item.gst_percent);
+  }
+  function setItemBasePrice(item, price){
+    item.price = n(price);
+    item.price_gst = calcPriceGst(item.price, item.gst_percent);
+  }
   function isChanged(item){
-    return !!item.is_new || Math.abs(n(item.quantity) - n(item.old_quantity)) > 0.0001 || Math.abs(n(item.price) - n(item.old_price)) > 0.0001;
+    return !!item.is_new ||
+      Math.abs(n(item.quantity) - n(item.old_quantity)) > 0.0001 ||
+      Math.abs(n(item.price) - n(item.old_price)) > 0.0001 ||
+      Math.abs(n(item.price_gst) - n(item.old_price_gst)) > 0.0001;
   }
 
   function showMessage(text, type=''){
@@ -316,7 +332,7 @@
   async function loadAllItems(){
     const { data, error } = await sb
       .from('stock_balance_view')
-      .select('item_code,item_name,barcode,hsn_code,gst_percent,department,balance,landing,price1,price1_gst,price2,price2_gst,price3,price3_gst')
+      .select('item_code,item_name,barcode,hsn_code,gst_percent,department,balance,purchase_price_gst,landing')
       .order('item_name', { ascending:true })
       .limit(20000);
 
@@ -334,13 +350,8 @@
       gst_percent: n(x.gst_percent),
       department: x.department || '',
       balance_qty: n(x.balance),
-      landing: n(x.landing),
-      price1: n(x.price1),
-      price1_gst: n(x.price1_gst),
-      price2: n(x.price2),
-      price2_gst: n(x.price2_gst),
-      price3: n(x.price3),
-      price3_gst: n(x.price3_gst)
+      purchase_price_gst: n(x.purchase_price_gst),
+      landing: n(x.landing)
     }));
   }
 
@@ -400,9 +411,10 @@
         };
       }
 
-      const oldPrice = n(row.price);
+      const oldPrice = n(row.sales_price ?? row.price);
+      const oldPriceGst = n(row.sales_price_gst || row.price_gst || calcPriceGst(oldPrice, row.gst_percent));
       const oldQty = n(row.quantity);
-      grouped[sid].original_total += oldQty * oldPrice;
+      grouped[sid].original_total += oldQty * oldPriceGst;
 
       grouped[sid].items.push({
         item_id: row.item_id,
@@ -412,16 +424,14 @@
         old_quantity: oldQty,
         price: oldPrice,
         old_price: oldPrice,
+        price_gst: oldPriceGst,
+        old_price_gst: oldPriceGst,
+        discount_percent: n(row.discount_percent),
         gst_percent: n(row.gst_percent),
         hsn_code: row.hsn_code || '',
         balance_qty: n(row.balance_qty),
+        purchase_price_gst: n(row.purchase_price_gst),
         landing: n(row.landing),
-        price1: n(row.price1),
-        price1_gst: n(row.price1_gst),
-        price2: n(row.price2),
-        price2_gst: n(row.price2_gst),
-        price3: n(row.price3),
-        price3_gst: n(row.price3_gst),
         is_new: false
       });
     });
@@ -448,23 +458,23 @@
       return;
     }
 
-    const key = els.priceTypeSelect.value;
-    const ok = confirm('Apply selected price type to all loaded item rows? This will mark price changes but will not save until Review & Save.');
+    const ok = confirm('Apply Purchase + GST rate to all loaded item rows? This updates Price + GST and derives the base Price, but will not save until Review & Save.');
     if(!ok) return;
 
     loadedBills.forEach(bill => {
       bill.items.forEach(item => {
-        item.price = n(item[key]);
+        const nextPriceGst = getPriceForItem(item);
+        if(nextPriceGst > 0) setItemPriceGst(item, nextPriceGst);
       });
     });
 
     dirty = true;
     renderAll();
-    showMessage('Selected price type applied internally. Only old price and new price are shown for safety.', 'info');
+    showMessage('Purchase + GST rate applied. Base Price and Price + GST are both shown like the sales page.', 'info');
   }
 
   function recalcBillTotal(bill){
-    return bill.items.reduce((sum, item) => sum + (n(item.quantity) * n(item.price)), 0);
+    return bill.items.reduce((sum, item) => sum + (n(item.quantity) * n(item.price_gst)), 0);
   }
 
   function getAllStats(){
@@ -554,6 +564,8 @@
                     <th>GST %</th>
                     <th>Old Price</th>
                     <th>New Price</th>
+                    <th>Old Price + GST</th>
+                    <th>New Price + GST</th>
                     <th>Amount</th>
                     <th>Remove</th>
                   </tr>
@@ -567,7 +579,7 @@
                       changed ? 'row-changed' : '',
                       item.is_new ? 'row-new' : ''
                     ].join(' ');
-                    const amt = n(item.quantity) * n(item.price);
+                    const amt = n(item.quantity) * n(item.price_gst);
 
                     return `
                       <tr class="${rowClass}">
@@ -590,6 +602,12 @@
                                  type="number" min="0" step="0.01" value="${fmt(item.price)}"
                                  data-bill="${billIndex}" data-item="${itemIndex}" data-field="price">
                         </td>
+                        <td class="num">${fmt(item.old_price_gst)}</td>
+                        <td>
+                          <input class="cell-input num ${Math.abs(n(item.price_gst)-n(item.old_price_gst)) > 0.0001 ? 'changed' : ''}"
+                                 type="number" min="0" step="0.01" value="${fmt(item.price_gst)}"
+                                 data-bill="${billIndex}" data-item="${itemIndex}" data-field="price_gst">
+                        </td>
                         <td class="num">${fmt(amt)}</td>
                         <td class="center"><button class="remove-btn" onclick="removeRow(${billIndex},${itemIndex})">REMOVE</button></td>
                       </tr>
@@ -602,7 +620,7 @@
 
           <div class="bill-footer">
             <div class="mini">Bill total: <b>${money(total)}</b></div>
-            <div class="mini">Only important columns are shown. Price type columns are hidden but used internally.</div>
+            <div class="mini">Price is before GST. Price + GST is the sales rate used for totals.</div>
           </div>
         </div>
       `;
@@ -610,7 +628,7 @@
   }
 
   function getPriceForItem(item){
-    return n(item[els.priceTypeSelect.value] || item.price3_gst || item.price3 || item.price1_gst || item.price1 || 0);
+    return purchaseGstRate(item);
   }
 
   function searchItems(q){
@@ -640,7 +658,7 @@
     box.innerHTML = matches.map((it, idx) => `
       <div class="suggest-item ${idx === selectedIndex ? 'active' : ''}" data-suggest-bill="${billIndex}" data-suggest-index="${idx}">
         <b>${esc(it.item_code)} - ${esc(it.item_name)}</b>
-        <div>Bal: ${fmt(it.balance_qty)} | GST: ${fmt(it.gst_percent)}% | Selected Price: ${fmt(getPriceForItem(it))} | ${esc(it.department || '')}</div>
+        <div>Bal: ${fmt(it.balance_qty)} | GST: ${fmt(it.gst_percent)}% | Purchase + GST: ${fmt(getPriceForItem(it))} | ${esc(it.department || '')}</div>
       </div>
     `).join('');
     box.classList.remove('hidden');
@@ -657,36 +675,30 @@
     const existing = bill.items.find(x => !x.is_new && String(x.item_code || '').trim() === String(item.item_code || '').trim() && n(x.quantity) <= 0);
     if(existing){
       existing.quantity = 1;
-      existing.price = getPriceForItem(item);
       existing.gst_percent = n(item.gst_percent);
       existing.hsn_code = item.hsn_code || '';
       existing.balance_qty = n(item.balance_qty);
+      existing.purchase_price_gst = n(item.purchase_price_gst);
       existing.landing = n(item.landing);
-      existing.price1 = n(item.price1);
-      existing.price1_gst = n(item.price1_gst);
-      existing.price2 = n(item.price2);
-      existing.price2_gst = n(item.price2_gst);
-      existing.price3 = n(item.price3);
-      existing.price3_gst = n(item.price3_gst);
+      setItemPriceGst(existing, getPriceForItem(item));
     } else {
+      const priceGst = getPriceForItem(item);
       bill.items.push({
         item_id: null,
         item_code: item.item_code || '',
         item_name: item.item_name || '',
         quantity: 1,
         old_quantity: 0,
-        price: getPriceForItem(item),
+        price: calcBaseFromGst(priceGst, item.gst_percent),
         old_price: 0,
+        price_gst: priceGst,
+        old_price_gst: 0,
+        discount_percent: 0,
         gst_percent: n(item.gst_percent),
         hsn_code: item.hsn_code || '',
         balance_qty: n(item.balance_qty),
+        purchase_price_gst: n(item.purchase_price_gst),
         landing: n(item.landing),
-        price1: n(item.price1),
-        price1_gst: n(item.price1_gst),
-        price2: n(item.price2),
-        price2_gst: n(item.price2_gst),
-        price3: n(item.price3),
-        price3_gst: n(item.price3_gst),
         is_new: true
       });
     }
@@ -751,7 +763,14 @@
     let val = n(input.value);
     if(val < 0) val = 0;
 
-    loadedBills[billIndex].items[itemIndex][field] = val;
+    const item = loadedBills[billIndex].items[itemIndex];
+    if(field === 'price'){
+      setItemBasePrice(item, val);
+    }else if(field === 'price_gst'){
+      setItemPriceGst(item, val);
+    }else{
+      item[field] = val;
+    }
     dirty = true;
 
     if(renderAfter) renderAll();
@@ -934,7 +953,8 @@
             itemName: item.item_name,
             itemCode: item.item_code,
             qty: n(item.quantity),
-            price: n(item.price)
+            price: n(item.price),
+            priceGst: n(item.price_gst)
           });
         }
 
@@ -948,6 +968,8 @@
             newQty: n(item.quantity),
             oldPrice: n(item.old_price),
             newPrice: n(item.price),
+            oldPriceGst: n(item.old_price_gst),
+            newPriceGst: n(item.price_gst),
             isNew: !!item.is_new
           });
         }
@@ -957,6 +979,9 @@
           item_name: item.item_name || '',
           quantity: n(item.quantity),
           price: n(item.price),
+          sales_price: n(item.price),
+          sales_price_gst: n(item.price_gst),
+          discount_percent: n(item.discount_percent),
           gst_percent: n(item.gst_percent),
           hsn_code: item.hsn_code || ''
         });
@@ -988,7 +1013,8 @@
       <li>
         <b>${esc(r.billNo)}</b> — ${esc(r.itemCode)} ${esc(r.itemName)} ${r.isNew ? '<span class="tag tag-new">NEW</span>' : ''}<br>
         Qty: ${fmt(r.oldQty)} → <b>${fmt(r.newQty)}</b>,
-        Price: ${fmt(r.oldPrice)} → <b>${fmt(r.newPrice)}</b>
+        Price: ${fmt(r.oldPrice)} -> <b>${fmt(r.newPrice)}</b>,
+        Price + GST: ${fmt(r.oldPriceGst)} -> <b>${fmt(r.newPriceGst)}</b>
       </li>
     `).join('');
 

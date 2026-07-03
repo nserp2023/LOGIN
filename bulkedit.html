@@ -162,8 +162,8 @@
           </div>
           <div class="field">
             <label>Salesman</label>
-            <select id="salesmanSelect">
-              <option value="">ALL SALESMEN</option>
+            <select id="salesmanSelect" disabled>
+              <option value="VAJRA" selected>VAJRA</option>
             </select>
           </div>
           <div class="field">
@@ -311,28 +311,6 @@
     els.toDate.value = today;
   }
 
-  async function loadSalesmen(){
-    const { data, error } = await sb
-      .from('sales_details')
-      .select('salesman')
-      .not('salesman','is',null)
-      .neq('salesman','');
-
-    if(error){
-      showMessage('Could not load salesman list: ' + error.message, 'warn');
-      return;
-    }
-
-    const names = [...new Set((data || []).map(r => (r.salesman || '').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
-    els.salesmanSelect.innerHTML = '<option value="">ALL SALESMEN</option>';
-    names.forEach(name => {
-      const op = document.createElement('option');
-      op.value = name;
-      op.textContent = name;
-      els.salesmanSelect.appendChild(op);
-    });
-  }
-
   async function loadAllItems(){
     const { data, error } = await sb
       .from('stock_balance_view')
@@ -369,7 +347,7 @@
 
     const fromDate = els.fromDate.value;
     const toDate = els.toDate.value;
-    const salesman = els.salesmanSelect.value;
+    const salesman = 'VAJRA';
 
     if(!fromDate || !toDate){
       showMessage('Please select From Date and To Date.', 'warn');
@@ -385,7 +363,7 @@
     const { data, error } = await sb.rpc('get_bulk_sales_bills', {
       p_from_date: fromDate,
       p_to_date: toDate,
-      p_salesman: salesman || null
+      p_salesman: salesman
     });
 
     setBusy(els.loadBtn, 'LOADING...', false);
@@ -1235,10 +1213,8 @@
 
     setActionButtonsDisabled(false);
 
-    await Promise.all([
-      loadSalesmen(),
-      loadAllItems()
-    ]);
+    els.salesmanSelect.value = 'VAJRA';
+    await loadAllItems();
   }
 
   initPage();

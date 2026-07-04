@@ -308,12 +308,12 @@
             display: none !important;
         }
 
-        .landing-toggle-group {
+        .compact-toggle-group {
             min-width: 96px;
             align-items: center;
         }
 
-        .landing-toggle {
+        .compact-toggle {
             display: inline-flex;
             align-items: center;
             gap: 8px;
@@ -322,13 +322,13 @@
             user-select: none;
         }
 
-        .landing-toggle input {
+        .compact-toggle input {
             position: absolute;
             opacity: 0;
             pointer-events: none;
         }
 
-        .landing-toggle-slider {
+        .compact-toggle-slider {
             position: relative;
             width: 44px;
             height: 24px;
@@ -338,7 +338,7 @@
             box-shadow: inset 0 0 0 1px rgba(255,255,255,.22);
         }
 
-        .landing-toggle-slider::after {
+        .compact-toggle-slider::after {
             content: "";
             position: absolute;
             width: 18px;
@@ -351,15 +351,15 @@
             box-shadow: 0 1px 4px rgba(0,0,0,.35);
         }
 
-        .landing-toggle input:checked + .landing-toggle-slider {
+        .compact-toggle input:checked + .compact-toggle-slider {
             background: #16a34a;
         }
 
-        .landing-toggle input:checked + .landing-toggle-slider::after {
+        .compact-toggle input:checked + .compact-toggle-slider::after {
             transform: translateX(20px);
         }
 
-        .landing-toggle-text {
+        .compact-toggle-text {
             color: #ffffff;
             font-size: 12px;
             font-weight: 900;
@@ -1368,12 +1368,21 @@
             <div id="display_balance_qty">-</div>
         </div>
 
-        <div class="form-group landing-toggle-group" id="landing_toggle_group" style="display:none;">
+        <div class="form-group compact-toggle-group" id="landing_toggle_group" style="display:none;">
             <label for="landing_toggle">Landing</label>
-            <label class="landing-toggle" title="Show or hide landing column">
+            <label class="compact-toggle" title="Show or hide landing column">
                 <input type="checkbox" id="landing_toggle" checked>
-                <span class="landing-toggle-slider" aria-hidden="true"></span>
-                <span class="landing-toggle-text" id="landing_toggle_text">ON</span>
+                <span class="compact-toggle-slider" aria-hidden="true"></span>
+                <span class="compact-toggle-text" id="landing_toggle_text">ON</span>
+            </label>
+        </div>
+
+        <div class="form-group compact-toggle-group" id="history_toggle_group">
+            <label for="history_toggle">History</label>
+            <label class="compact-toggle" title="Show or hide customer item history">
+                <input type="checkbox" id="history_toggle" checked>
+                <span class="compact-toggle-slider" aria-hidden="true"></span>
+                <span class="compact-toggle-text" id="history_toggle_text">ON</span>
             </label>
         </div>
 
@@ -1564,6 +1573,7 @@
     let currentUserRole = "";
     let canSeeLandingColumn = false;
     let landingColumnEnabled = true;
+    let historyEnabled = true;
     let isSalesOrderConversionMode = false;
     let salesOrderAdvancePaid = 0;
     let purchaseOrderPromptOpen = false;
@@ -1595,6 +1605,7 @@
     const BILL_WORKSPACE_ID = new URLSearchParams(window.location.search).get("workspace") || "";
     const BILL_DRAFT_KEY = "vajra_billing_unsaved_draft_v2" + (BILL_WORKSPACE_ID ? `_${BILL_WORKSPACE_ID}` : "");
     const LANDING_COLUMN_PREF_KEY = "vajra_billing_show_landing_column";
+    const HISTORY_PANEL_PREF_KEY = "vajra_billing_show_history_panel";
     const BILL_DRAFT_MAX_AGE_MS = 24 * 60 * 60 * 1000; // keep draft for 24 hours
     let autoBackupReady = false;
     let autoBackupTimer = null;
@@ -2012,8 +2023,28 @@
         }
     }
 
+    function loadHistoryPanelPreference() {
+        try {
+            historyEnabled = localStorage.getItem(HISTORY_PANEL_PREF_KEY) !== "0";
+        } catch (err) {
+            historyEnabled = true;
+        }
+    }
+
     function isLandingColumnVisible() {
         return canSeeLandingColumn && landingColumnEnabled;
+    }
+
+    function syncHistoryToggleControl() {
+        const toggle = document.getElementById("history_toggle");
+        const text = document.getElementById("history_toggle_text");
+
+        if (toggle) {
+            toggle.checked = historyEnabled;
+        }
+        if (text) {
+            text.textContent = historyEnabled ? "ON" : "OFF";
+        }
     }
 
     function syncLandingToggleControl() {
@@ -2054,6 +2085,23 @@
             hidePurchaseHistory();
             lastHistoryKey = "";
         });
+    }
+
+    function setupHistoryPanelToggle() {
+        const toggle = document.getElementById("history_toggle");
+        if (!toggle) return;
+
+        toggle.addEventListener("change", () => {
+            historyEnabled = toggle.checked;
+            try {
+                localStorage.setItem(HISTORY_PANEL_PREF_KEY, historyEnabled ? "1" : "0");
+            } catch (err) {}
+            syncHistoryToggleControl();
+            if (!historyEnabled) {
+                hidePurchaseHistory();
+            }
+        });
+        syncHistoryToggleControl();
     }
 
     function toggleRemarkField(){
@@ -2109,13 +2157,16 @@
         await fetchNextBillNumber();
         await loadCurrentUserRole();
         loadLandingColumnPreference();
+        loadHistoryPanelPreference();
         await loadStockData();
         applyLandingColumnVisibility();
+        syncHistoryToggleControl();
         toggleRemarkField();
         syncPaymentUI();
 
         bindPaymentEvents();
         setupLandingColumnToggle();
+        setupHistoryPanelToggle();
         initAddressGeoapify();
         setupBelowLandingSecretUnlock();
         setupMobileProfitGestures();
@@ -5207,6 +5258,11 @@ function calcTotal() {
     }
 
     async function showPurchaseHistoryForRow(row){
+        if(!historyEnabled){
+            hidePurchaseHistory();
+            return;
+        }
+
         const docType = document.getElementById("doc_type").value;
 
         if(docType !== "sales" && docType !== "sales_pack"){
@@ -5282,6 +5338,10 @@ function calcTotal() {
 
     function triggerPurchaseHistory(row){
         clearTimeout(historyTimer);
+        if(!historyEnabled){
+            hidePurchaseHistory();
+            return;
+        }
 
         historyTimer = setTimeout(() => {
             showPurchaseHistoryForRow(row);

@@ -1219,7 +1219,8 @@
             const basePrice = parseFloat(i.price || 0);
             const disc = parseFloat(i.discount_percent || 0);
             const price = basePrice - (basePrice * disc / 100);
-            const total = parseFloat(i.sales_price_gst || 0) * qty;
+            const priceWithGst = parseFloat(i.sales_price_gst || i.price_gst || i.price || i.sales_price || 0);
+            const total = priceWithGst * qty;
 
             html += `
             <tr class="${isMissing ? 'missing-item-cell' : ''}">

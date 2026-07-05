@@ -301,6 +301,44 @@
     }
   }
 
+  async function cleanupBulkEditStockReversals(bills){
+    const salesIds = [...new Set((bills || [])
+      .map(bill => n(bill.sales_id))
+      .filter(Boolean))];
+
+    if(!salesIds.length) return { removed: 0 };
+
+    let removed = 0;
+    for(let i = 0; i < salesIds.length; i += 100){
+      const ids = salesIds.slice(i, i + 100);
+      const { data: reversalRows, error: selectError } = await sb
+        .from('stock_ledger')
+        .select('id,qty_in,qty_out')
+        .in('reference_id', ids)
+        .eq('txn_type', 'SALE_DELETE_REVERSAL');
+
+      if(selectError) throw selectError;
+
+      const reversalIds = (reversalRows || [])
+        .filter(row => n(row.qty_in) > n(row.qty_out))
+        .map(row => row.id)
+        .filter(Boolean);
+
+      if(!reversalIds.length) continue;
+
+      const { data, error } = await sb
+        .from('stock_ledger')
+        .delete()
+        .in('id', reversalIds)
+        .select('id');
+
+      if(error) throw error;
+      removed += (data || []).length;
+    }
+
+    return { removed };
+  }
+
   function setTodayDefaults(){
     const now = new Date();
     const yyyy = now.getFullYear();
@@ -1243,9 +1281,10 @@
 
     els.confirmSaveBtn.disabled = true;
     els.confirmSaveBtn.textContent = 'SAVING...';
+    const savedPayload = pendingPayload;
 
     const { data, error } = await sb.rpc('save_bulk_sales_edit', {
-      p_bills: pendingPayload
+      p_bills: savedPayload
     });
 
     els.confirmSaveBtn.textContent = 'SAVE NOW';
@@ -1257,11 +1296,23 @@
       return;
     }
 
+    let cleanupNote = '';
+    try{
+      const cleanup = await cleanupBulkEditStockReversals(savedPayload);
+      if(cleanup.removed){
+        cleanupNote = ` Removed ${cleanup.removed} duplicate stock reversal row(s).`;
+      }
+    }catch(cleanupError){
+      console.warn('Bulk edit stock reversal cleanup failed:', cleanupError);
+      cleanupNote = ' Stock reversal cleanup failed: ' + cleanupError.message;
+    }
+
     closeConfirmModal();
     dirty = false;
 
     let msg = 'Bulk save completed successfully.';
     if(data && data.message) msg = data.message;
+    msg += cleanupNote;
     showMessage(msg, 'success');
 
     await loadBills();

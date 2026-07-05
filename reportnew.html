@@ -409,7 +409,8 @@ async function toggleDetails(id){
     data.forEach(i => {
         const qty = parseFloat(i.quantity || 0);
         const price = parseFloat(i.price || 0);
-        const total = (parseFloat(i.sales_price_gst || 0) * qty);
+        const priceWithGst = parseFloat(i.sales_price_gst || i.price_gst || i.price || i.sales_price || 0);
+        const total = priceWithGst * qty;
 
         html += `
         <tr>

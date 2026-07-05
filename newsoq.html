@@ -1618,7 +1618,7 @@
         const viewer = document.getElementById("report_viewer");
         const frame = document.getElementById("report_frame");
         reportReturnFocus = document.activeElement;
-        if(!frame.getAttribute("src")) frame.src = "report.html";
+        frame.src = `report.html?fresh=${Date.now()}`;
         viewer.classList.add("open");
         viewer.setAttribute("aria-hidden", "false");
         viewer.querySelector(".report-viewer-close")?.focus();

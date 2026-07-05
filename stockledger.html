@@ -1010,6 +1010,7 @@ function applyFilters(){
                       </select>
                       <button class="expand-btn" onclick="applyDetailDateFilter('${key}')">Filter</button>
                       <button class="expand-btn" onclick="toggleSort('${key}')">Old/New</button>
+                      <button class="expand-btn" onclick="repairBulkEditReversals('${key}')">Repair Stock</button>
                     </div>
                   </div>
                   <div class="mini-table-wrap" id="groupWrap_${esc(rawKey)}">
@@ -1526,6 +1527,59 @@ function applyFilters(){
       applyDetailDateFilter(itemCode);
     }
     window.toggleSort = toggleSort;
+
+    async function repairBulkEditReversals(itemCode){
+      const ok = confirm(`Remove duplicate positive bulk-edit stock reversal rows for ${itemCode}?\n\nThis only deletes stock_ledger rows where txn_type is SALE_DELETE_REVERSAL and qty_in is greater than qty_out for this item.`);
+      if(!ok) return;
+
+      const groupedWrap = document.getElementById(`groupWrap_${itemCode}`);
+      if(groupedWrap){
+        groupedWrap.innerHTML = `<div class="loading">Repairing stock movement...</div>`;
+      }
+
+      const { data: reversalRows, error: selectError } = await sb
+        .from('stock_ledger')
+        .select('id,qty_in,qty_out')
+        .eq('item_code', itemCode)
+        .eq('txn_type', 'SALE_DELETE_REVERSAL');
+
+      if(selectError){
+        alert('Repair failed: ' + selectError.message);
+        if(groupedWrap) groupedWrap.innerHTML = `<div class="empty">Repair failed: ${esc(selectError.message)}</div>`;
+        return;
+      }
+
+      const reversalIds = (reversalRows || [])
+        .filter(row => toNum(row.qty_in) > toNum(row.qty_out))
+        .map(row => row.id)
+        .filter(Boolean);
+
+      let data = [];
+      if(reversalIds.length){
+        const deleteRes = await sb
+          .from('stock_ledger')
+          .delete()
+          .in('id', reversalIds)
+          .select('id');
+
+        if(deleteRes.error){
+          alert('Repair failed: ' + deleteRes.error.message);
+          if(groupedWrap) groupedWrap.innerHTML = `<div class="empty">Repair failed: ${esc(deleteRes.error.message)}</div>`;
+          return;
+        }
+
+        data = deleteRes.data || [];
+      }
+
+      delete detailsCache[itemCode];
+      await loadStockReport();
+
+      const removed = (data || []).length;
+      alert(`Repair complete. Removed ${removed} duplicate reversal row(s).`);
+
+      setTimeout(() => toggleDetails(itemCode), 100);
+    }
+    window.repairBulkEditReversals = repairBulkEditReversals;
 
     async function toggleDetails(itemCode){
       const safeId = `details_${itemCode}`;

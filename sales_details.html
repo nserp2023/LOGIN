@@ -137,6 +137,15 @@ const saleId = urlParams.get('id');
 
 document.addEventListener("DOMContentLoaded", loadDetails);
 
+function num(value) {
+    const n = parseFloat(value);
+    return Number.isFinite(n) ? n : 0;
+}
+
+function getItemRateWithGst(item) {
+    return num(item.sales_price_gst || item.price_gst || item.price || item.sales_price);
+}
+
 async function loadDetails() {
 
     if (!saleId) return;
@@ -177,7 +186,8 @@ async function loadDetails() {
     // Fill Items
     items.forEach(i => {
 
-        const amount = parseFloat(i.sales_price || 0);
+        const qty = num(i.quantity);
+        const amount = qty * getItemRateWithGst(i);
         total += amount;
 
         body.innerHTML += `
@@ -186,8 +196,8 @@ async function loadDetails() {
             <td>${i.hsn_code || ''}</td>
             <td>${i.item_code || ''}</td>
             <td>${i.item_name || ''}</td>
-            <td>${i.quantity || 0}</td>
-            <td>${parseFloat(i.price || 0).toFixed(2)}</td>
+            <td>${qty}</td>
+            <td>${num(i.price || i.sales_price).toFixed(2)}</td>
             <td>${i.gst_percent || 0}%</td>
             <td>${amount.toFixed(2)}</td>
         </tr>`;

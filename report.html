@@ -1147,6 +1147,9 @@
 
     async function toggleDetails(id){
         const type = document.getElementById("report_type").value;
+        const cfg = getCurrentTypeConfig();
+        const headerRow = findReportRow(id);
+        const headerTotal = parseFloat(headerRow?.[cfg.amountField] || 0) || 0;
 
         let table = "sales_item_details";
         let idField = "sales_id";
@@ -1210,6 +1213,8 @@
         </tr>
         `;
 
+        let itemSubtotal = 0;
+
         data.forEach(i => {
             const isMissing =
                 !String(i.item_code || '').trim() ||
@@ -1221,6 +1226,7 @@
             const price = basePrice - (basePrice * disc / 100);
             const priceWithGst = parseFloat(i.sales_price_gst || i.price_gst || i.price || i.sales_price || 0);
             const total = priceWithGst * qty;
+            itemSubtotal += total;
 
             html += `
             <tr class="${isMissing ? 'missing-item-cell' : ''}">
@@ -1232,6 +1238,22 @@
             </tr>
             `;
         });
+
+        const roundOff = headerTotal - itemSubtotal;
+        html += `
+            <tr class="total-row">
+                <td colspan="4">ITEM SUBTOTAL</td>
+                <td>â‚¹${itemSubtotal.toFixed(2)}</td>
+            </tr>
+            <tr class="total-row">
+                <td colspan="4">ROUND OFF / HEADER ADJUSTMENT</td>
+                <td>â‚¹${roundOff.toFixed(2)}</td>
+            </tr>
+            <tr class="total-row">
+                <td colspan="4">BILL TOTAL</td>
+                <td>â‚¹${headerTotal.toFixed(2)}</td>
+            </tr>
+        `;
 
         html += "</table></div>";
         container.innerHTML = html;

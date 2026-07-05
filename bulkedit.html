@@ -1120,6 +1120,8 @@
 
         if(!groups[code]){
           groups[code] = { balance: n(item.balance_qty), rows: [] };
+        }else{
+          groups[code].balance = Math.min(n(groups[code].balance), n(item.balance_qty));
         }
 
         groups[code].rows.push({
@@ -1133,12 +1135,16 @@
 
     let adjustedRows = 0;
     let touchedItems = 0;
+    const adjustmentDetails = [];
+    const unresolved = [];
 
     Object.keys(groups).forEach(code => {
       const group = groups[code];
       if(n(group.balance) >= 0) return;
 
       let shortage = Math.abs(n(group.balance));
+      const originalShortage = shortage;
+      let itemReduced = 0;
       touchedItems++;
 
       group.rows.sort((a,b) => {
@@ -1156,14 +1162,30 @@
         if(reducible > 0){
           item.quantity = currentQty - reducible;
           shortage -= reducible;
+          itemReduced += reducible;
           adjustedRows++;
         }
       }
+
+      if(itemReduced > 0){
+        adjustmentDetails.push(`${code}: -${fmt(itemReduced)}`);
+      }
+      if(shortage > 0.0001){
+        unresolved.push(`${code}: ${fmt(shortage)} still negative from ${fmt(originalShortage)}`);
+      }
     });
 
-    dirty = true;
+    dirty = adjustedRows > 0;
     renderAll();
-    showMessage(`Adjustment complete. Changed ${adjustedRows} row(s) across ${touchedItems} item group(s). You may add replacement items before saving.`, 'success');
+    if(!adjustedRows){
+      showMessage('No negative-stock rows could be adjusted from the loaded bills.', 'info');
+      return;
+    }
+
+    const detailText = adjustmentDetails.slice(0, 6).join(', ');
+    const moreText = adjustmentDetails.length > 6 ? `, +${adjustmentDetails.length - 6} more` : '';
+    const unresolvedText = unresolved.length ? ` Unresolved: ${unresolved.join(', ')}.` : '';
+    showMessage(`Adjustment complete. Changed ${adjustedRows} row(s) across ${touchedItems} negative item group(s). ${detailText}${moreText}.${unresolvedText} Review & Save will save only bills that changed.`, unresolved.length ? 'warn' : 'success');
   }
 
   function buildPayloadAndReview(){

@@ -174,6 +174,7 @@
           </div>
           <div class="field"><label>&nbsp;</label><button class="btn-blue" id="loadBtn">LOAD BILLS</button></div>
           <div class="field"><label>&nbsp;</label><button class="btn-dark" id="applyPriceBtn">APPLY PRICE</button></div>
+          <div class="field"><label>&nbsp;</label><button class="btn-amber" id="adjustBtn">STOCK ADJUST</button></div>
           <div class="field"><label>&nbsp;</label><button class="btn-red" id="clearAllZeroBtn">REMOVE ZERO ROWS</button></div>
           <div class="field"><label>&nbsp;</label><button class="btn-green" id="saveBtn">REVIEW & SAVE</button></div>
         </div>
@@ -224,6 +225,7 @@
     priceTypeSelect: document.getElementById('priceTypeSelect'),
     loadBtn: document.getElementById('loadBtn'),
     applyPriceBtn: document.getElementById('applyPriceBtn'),
+    adjustBtn: document.getElementById('adjustBtn'),
     clearAllZeroBtn: document.getElementById('clearAllZeroBtn'),
     saveBtn: document.getElementById('saveBtn'),
     billsRoot: document.getElementById('billsRoot'),
@@ -957,6 +959,16 @@
   }
   window.removeRow = removeRow;
 
+  function showSqlStockAdjustInfo(){
+    clearMessage();
+    if(!loadedBills.length){
+      showMessage('Load bills first. Stock adjustment is handled by SQL during Review & Save.', 'warn');
+      return;
+    }
+
+    showMessage('Stock adjustment is SQL-only now. This page will not change stock or auto-reduce quantities. Review & Save will send the bill rows to save_bulk_sales_edit, and your SQL will handle stock.', 'info');
+  }
+
   function updateFieldFromInput(input, renderAfter=false){
     const billIndex = Number(input.dataset.bill);
     const itemIndex = Number(input.dataset.item);
@@ -1296,13 +1308,14 @@
 
   els.loadBtn.addEventListener('click', loadBills);
   els.applyPriceBtn.addEventListener('click', applyPriceType);
+  els.adjustBtn.addEventListener('click', showSqlStockAdjustInfo);
   els.clearAllZeroBtn.addEventListener('click', clearAllZeroRows);
   els.saveBtn.addEventListener('click', reviewAndSave);
   els.cancelSaveBtn.addEventListener('click', closeConfirmModal);
   els.confirmSaveBtn.addEventListener('click', confirmSaveNow);
 
   function setActionButtonsDisabled(disabled){
-    [els.loadBtn, els.applyPriceBtn, els.clearAllZeroBtn, els.saveBtn].forEach(btn => {
+    [els.loadBtn, els.applyPriceBtn, els.adjustBtn, els.clearAllZeroBtn, els.saveBtn].forEach(btn => {
       btn.disabled = disabled;
     });
   }

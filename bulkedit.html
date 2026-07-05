@@ -1443,7 +1443,9 @@
     msg += syncNote + cleanupNote;
     showMessage(msg, 'success');
 
-    await loadBills();
+    setTimeout(() => {
+      window.location.reload();
+    }, 900);
   }
 
   window.addEventListener('beforeunload', (e) => {

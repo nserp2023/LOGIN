@@ -829,6 +829,21 @@ body.compact-columns table{
       });
     }
 
+    function parseLedgerDate(value){
+      if(!value) return null;
+      if(typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)){
+        const [y, m, d] = value.split('-').map(Number);
+        return new Date(y, m - 1, d);
+      }
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? null : date;
+    }
+
+    function ledgerDateMs(value){
+      const date = parseLedgerDate(value);
+      return date ? date.getTime() : 0;
+    }
+
     function getReorderInfo(row){
       const stock = toNum(row.balance);
       const min = toNum(row.minimum_qty);
@@ -1025,26 +1040,66 @@ function applyFilters(){
           .filter(v => v !== null && v !== undefined && v !== '')
       )];
 
+      const salesItemRows = [];
+      let salesItemError = null;
+      let salesItemFrom = 0;
+      const salesItemPageSize = 1000;
+      let salesItemMore = true;
+
+      while(salesItemMore){
+        const { data, error } = await sb
+          .from('sales_item_details')
+          .select('sales_id,item_code,item_name,quantity')
+          .eq('item_code', itemCode)
+          .gt('quantity', 0)
+          .range(salesItemFrom, salesItemFrom + salesItemPageSize - 1);
+
+        if(error){
+          salesItemError = error;
+          break;
+        }
+
+        if(data && data.length){
+          salesItemRows.push(...data);
+          salesItemFrom += salesItemPageSize;
+          salesItemMore = data.length === salesItemPageSize;
+        }else{
+          salesItemMore = false;
+        }
+      }
+
+      if(salesItemError){
+        console.warn('Current sales item movement load failed:', salesItemError);
+      }
+
+      const salesItemIds = [...new Set(
+        salesItemRows
+          .map(r => r.sales_id)
+          .filter(v => v !== null && v !== undefined && v !== '')
+      )];
+
+      const linkedReferenceIds = [...new Set([...referenceIds, ...salesItemIds])];
+
       let salesMap = {};
       let purchaseMap = {};
       let salesReturnMap = {};
 
-      if(referenceIds.length){
+      if(linkedReferenceIds.length){
         const [salesRes, purchaseRes, salesReturnRes] = await Promise.all([
           sb
             .from('sales_details')
-            .select('id, sales_number, series_code, customer_name, customer_mobile, bill_date, created_by')
-            .in('id', referenceIds),
+            .select('id, sales_number, series_code, customer_name, customer_mobile, bill_date, created_by, status')
+            .in('id', linkedReferenceIds),
 
           sb
             .from('purchase_details')
             .select('id, purchase_number, supplier_name, invoice_number, bill_date')
-            .in('id', referenceIds),
+            .in('id', linkedReferenceIds),
 
           sb
             .from('sales_return_details')
             .select('id, return_number, customer_name, customer_mobile, return_date, original_sales_id')
-            .in('id', referenceIds)
+            .in('id', linkedReferenceIds)
         ]);
 
         (salesRes.data || []).forEach(r => {
@@ -1060,8 +1115,33 @@ function applyFilters(){
         });
       }
 
+      const isSalesMovement = (row) => {
+        const refId = String(row.reference_id ?? '');
+        const txnType = String(row.txn_type || '').toUpperCase();
+        if(txnType.includes('RETURN')) return false;
+        if(txnType.includes('PURCHASE')) return false;
+        if(txnType.includes('SALE')) return true;
+        return !!salesMap[refId] && Number(row.final_effect || 0) < 0;
+      };
+
+      const nonSalesGrouped = grouped.filter(row => !isSalesMovement(row));
+      const liveSalesRows = salesItemRows.map(row => {
+        const sales = salesMap[String(row.sales_id)] || {};
+        if(String(sales.status || '').toUpperCase() === 'CANCELLED') return null;
+        return {
+          item_code: row.item_code || itemCode,
+          item_name: row.item_name || '',
+          reference_id: row.sales_id,
+          txn_type: 'SALE',
+          final_effect: -Math.abs(Number(row.quantity || 0)),
+          last_updated: sales.bill_date || ''
+        };
+      }).filter(Boolean);
+
+      const mergedGrouped = [...nonSalesGrouped, ...liveSalesRows];
+
       detailsCache[itemCode] = {
-        grouped,
+        grouped: mergedGrouped,
         groupedError: groupedRes.error,
         salesMap,
         purchaseMap,
@@ -1089,6 +1169,7 @@ function applyFilters(){
       let billedBy = "";
       let partyName = "";
       let mobile = "";
+      let documentDate = "";
 
       if (txnType.includes('RETURN')) {
         type = "SALES RETURN";
@@ -1111,21 +1192,29 @@ function applyFilters(){
         billedBy = sales.created_by || "";
         partyName = sales.customer_name || "";
         mobile = sales.customer_mobile || "";
+        documentDate = sales.bill_date || "";
       }
       else if(type === "PURCHASE" && purchase){
         billNo = purchase.purchase_number || "";
         billedBy = "";
         partyName = purchase.supplier_name || "";
         mobile = "";
+        documentDate = purchase.bill_date || "";
       }
       else if(type === "SALES RETURN" && salesReturn){
         billNo = `${salesReturn.return_number || ''}`;
         billedBy = "";
         partyName = salesReturn.customer_name || "";
         mobile = salesReturn.customer_mobile || "";
+        documentDate = salesReturn.return_date || "";
       }
 
-      return { type, billNo, billedBy, partyName, mobile };
+      return { type, billNo, billedBy, partyName, mobile, documentDate };
+    }
+
+    function getMovementDate(row, meta = null){
+      const movementMeta = meta || row._meta || {};
+      return movementMeta.documentDate || row.bill_date || row.transaction_date || row.last_updated || "";
     }
 
     function populateStaffFilter(itemCode, rows, extra = {}){
@@ -1181,17 +1270,17 @@ function applyFilters(){
       const staffVal = staffEl?.value || "";
 
       let filtered = [...(rows || [])].filter(r => {
-        const d = new Date(r.last_updated);
+        const meta = getMovementMeta(r, extra);
+        const d = parseLedgerDate(getMovementDate(r, meta));
         const effect = Number(r.final_effect || 0);
 
         // Ultra clean ledger: hide useless zero movement rows.
         if(effect === 0) return false;
 
-        if(fromVal && d < fromVal) return false;
-        if(toVal && d > toVal) return false;
+        if(fromVal && d && d < fromVal) return false;
+        if(toVal && d && d > toVal) return false;
 
         if(staffVal){
-          const meta = getMovementMeta(r, extra);
           if(meta.billedBy !== staffVal) return false;
         }
 
@@ -1199,9 +1288,11 @@ function applyFilters(){
       });
 
       filtered.sort((a, b) => {
+        const aMeta = getMovementMeta(a, extra);
+        const bMeta = getMovementMeta(b, extra);
         return isAsc
-          ? new Date(a.last_updated) - new Date(b.last_updated)
-          : new Date(b.last_updated) - new Date(a.last_updated);
+          ? ledgerDateMs(getMovementDate(a, aMeta)) - ledgerDateMs(getMovementDate(b, bMeta))
+          : ledgerDateMs(getMovementDate(b, bMeta)) - ledgerDateMs(getMovementDate(a, aMeta));
       });
 
       let running = 0;
@@ -1235,8 +1326,8 @@ function applyFilters(){
       const profitPerUnit = Math.max(0, salePrice - landing);
       const estimatedProfit = profitPerUnit * totalOut;
 
-      const firstDate = withBalance.length ? new Date(withBalance[withBalance.length - 1].last_updated) : null;
-      const lastDate = withBalance.length ? new Date(withBalance[0].last_updated) : null;
+      const firstDate = withBalance.length ? parseLedgerDate(getMovementDate(withBalance[withBalance.length - 1])) : null;
+      const lastDate = withBalance.length ? parseLedgerDate(getMovementDate(withBalance[0])) : null;
       const dateDays = (firstDate && lastDate)
         ? Math.max(1, Math.ceil(Math.abs(lastDate - firstDate) / 86400000) + 1)
         : 1;
@@ -1353,7 +1444,7 @@ function applyFilters(){
 
               return `
                 <tr>
-                  <td>${esc(fmtDate(r.last_updated))}</td>
+                  <td>${esc(fmtDate(getMovementDate(r, meta)))}</td>
                   <td><span class="type-badge ${visual.cls}">${visual.icon} ${esc(meta.type)}</span>${abnormal ? '<span class="risk-badge">RISK</span>' : ''}</td>
                   <td class="mono">${esc(meta.billNo)}</td>
                   <td>${billedByHtml}</td>
@@ -1378,14 +1469,15 @@ function applyFilters(){
         canvas._chartInstance.destroy();
       }
 
-      const ordered = [...rows].sort((a,b)=>new Date(a.last_updated) - new Date(b.last_updated));
+      const ordered = [...rows].sort((a,b)=>ledgerDateMs(getMovementDate(a)) - ledgerDateMs(getMovementDate(b)));
       let running = 0;
       const labels = [];
       const data = [];
 
       ordered.forEach(r => {
         running += Number(r.final_effect || 0);
-        labels.push(new Date(r.last_updated).toLocaleDateString('en-IN'));
+        const d = parseLedgerDate(getMovementDate(r));
+        labels.push(d ? d.toLocaleDateString('en-IN') : '');
         data.push(Number(running.toFixed(2)));
       });
 

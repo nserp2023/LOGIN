@@ -959,14 +959,94 @@
   }
   window.removeRow = removeRow;
 
-  function showSqlStockAdjustInfo(){
+  function adjustQuantities(){
     clearMessage();
     if(!loadedBills.length){
-      showMessage('Load bills first. Stock adjustment is handled by SQL during Review & Save.', 'warn');
+      showMessage('Load bills first.', 'warn');
       return;
     }
 
-    showMessage('Stock adjustment is SQL-only now. This page will not change stock or auto-reduce quantities. Review & Save will send the bill rows to save_bulk_sales_edit, and your SQL will handle stock.', 'info');
+    const ok = confirm('Adjust negative-stock item quantities on this page? This only changes the pending bill quantity. Stock will be updated only by SQL during Review & Save.');
+    if(!ok) return;
+
+    const groups = {};
+
+    loadedBills.forEach((bill, billIndex) => {
+      bill.items.forEach((item, itemIndex) => {
+        const code = String(item.item_code || '').trim();
+        if(!code || n(item.balance_qty) >= 0) return;
+
+        if(!groups[code]){
+          groups[code] = { balance: n(item.balance_qty), rows: [] };
+        }else{
+          groups[code].balance = Math.min(n(groups[code].balance), n(item.balance_qty));
+        }
+
+        groups[code].rows.push({
+          billIndex,
+          itemIndex,
+          billDate: bill.bill_date || '',
+          salesId: n(bill.sales_id)
+        });
+      });
+    });
+
+    let adjustedRows = 0;
+    let touchedItems = 0;
+    const adjustmentDetails = [];
+    const unresolved = [];
+
+    Object.keys(groups).forEach(code => {
+      const group = groups[code];
+      const shortage = Math.abs(n(group.balance));
+      if(shortage <= 0.0001) return;
+      touchedItems++;
+
+      let remaining = shortage;
+      let itemReduced = 0;
+
+      group.rows.sort((a,b) => {
+        if(a.billDate === b.billDate) return b.salesId - a.salesId;
+        return String(b.billDate).localeCompare(String(a.billDate));
+      });
+
+      for(const row of group.rows){
+        if(remaining <= 0.0001) break;
+        const item = loadedBills[row.billIndex]?.items?.[row.itemIndex];
+        if(!item) continue;
+
+        const currentQty = n(item.quantity);
+        if(currentQty <= 0) continue;
+
+        const reducible = Math.min(currentQty, remaining);
+        if(reducible > 0){
+          item.quantity = round2(currentQty - reducible);
+          remaining = round2(remaining - reducible);
+          itemReduced = round2(itemReduced + reducible);
+          adjustedRows++;
+        }
+      }
+
+      if(itemReduced > 0){
+        adjustmentDetails.push(`${code}: -${fmt(itemReduced)}`);
+      }
+      if(remaining > 0.0001){
+        unresolved.push(`${code}: ${fmt(remaining)} still negative from ${fmt(shortage)}`);
+      }
+    });
+
+    if(!adjustedRows){
+      showMessage('No negative-stock quantities could be adjusted from the loaded bills.', 'info');
+      return;
+    }
+
+    dirty = true;
+    renderAll();
+
+    const detailText = adjustmentDetails.slice(0, 6).join(', ');
+    const moreText = adjustmentDetails.length > 6 ? `, +${adjustmentDetails.length - 6} more` : '';
+    const unresolvedText = unresolved.length ? ` Unresolved: ${unresolved.join(', ')}.` : '';
+    showMessage(`Stock adjust prepared. Changed ${adjustedRows} row(s) across ${touchedItems} item group(s). ${detailText}${moreText}.${unresolvedText} Review & Save will send these quantities to SQL.`, unresolved.length ? 'warn' : 'success');
   }
 
   function updateFieldFromInput(input, renderAfter=false){
@@ -1082,9 +1162,35 @@
 
     loadedBills.forEach(bill => {
       const liveItems = [];
+      const removedItems = [];
       let billChanged = false;
 
       bill.items.forEach(item => {
+        const qty = round2(item.quantity);
+        const price = round2(item.price);
+        const priceGst = round2(item.price_gst);
+        const discountPercent = round2(item.discount_percent);
+        const gstPercent = round2(item.gst_percent);
+        const stockDelta = round2(n(item.old_quantity) - qty);
+        const basePayloadItem = {
+          item_id: item.item_id ?? null,
+          item_code: item.item_code || '',
+          item_name: item.item_name || '',
+          quantity: qty,
+          old_quantity: round2(item.old_quantity),
+          price,
+          old_price: round2(item.old_price),
+          price_gst: priceGst,
+          old_price_gst: round2(item.old_price_gst),
+          sales_price: price,
+          sales_price_gst: priceGst,
+          discount_percent: discountPercent,
+          gst_percent: gstPercent,
+          hsn_code: item.hsn_code || '',
+          stock_delta: stockDelta,
+          is_new: !!item.is_new
+        };
+
         if(n(item.quantity) <= 0){
           zeroRows.push({
             billNo: `${bill.series_code || ''}-${bill.sales_number || ''}`,
@@ -1093,6 +1199,7 @@
             oldQty: n(item.old_quantity)
           });
           if(n(item.old_quantity) > 0 || item.is_new) billChanged = true;
+          removedItems.push(basePayloadItem);
           return;
         }
 
@@ -1124,24 +1231,7 @@
           });
         }
 
-        const qty = round2(item.quantity);
-        const price = round2(item.price);
-        const priceGst = round2(item.price_gst);
-        const discountPercent = round2(item.discount_percent);
-        const gstPercent = round2(item.gst_percent);
-
-        liveItems.push({
-          item_code: item.item_code || '',
-          item_name: item.item_name || '',
-          quantity: qty,
-          price,
-          price_gst: priceGst,
-          sales_price: price,
-          sales_price_gst: priceGst,
-          discount_percent: discountPercent,
-          gst_percent: gstPercent,
-          hsn_code: item.hsn_code || ''
-        });
+        liveItems.push(basePayloadItem);
       });
 
       if(!liveItems.length){
@@ -1160,6 +1250,7 @@
         sales_id: n(bill.sales_id),
         invoice_amount: invoiceAmount,
         round_off: invoiceAmount - exactTotal,
+        removed_items: removedItems,
         items: liveItems
       });
     });
@@ -1183,7 +1274,7 @@
     els.confirmBody.innerHTML = `
       <div class="msg warn">
         <b>Please check carefully before saving.</b><br>
-        This will update loaded sales bills through RPC <b>save_bulk_sales_edit</b>. Your SQL function must delete/replace item rows and recalculate sales totals safely.
+        This will update the sales bill header and replace sales item rows. Stock movement must come from your existing database triggers/SQL, not from this page.
       </div>
 
       <ul class="review-list">
@@ -1235,6 +1326,60 @@
     pendingPayload = null;
   }
 
+  async function saveBulkEditDirectly(bills){
+    let savedBills = 0;
+    let savedRows = 0;
+
+    for(const bill of (bills || [])){
+      const salesId = n(bill.sales_id);
+      const items = Array.isArray(bill.items) ? bill.items : [];
+      if(!salesId || !items.length) continue;
+
+      const headerPayload = {
+        invoice_amount: round2(bill.invoice_amount),
+        round_off: round2(bill.round_off)
+      };
+
+      const { error: headError } = await sb
+        .from('sales_details')
+        .update(headerPayload)
+        .eq('id', salesId);
+
+      if(headError) throw headError;
+
+      const { error: deleteError } = await sb
+        .from('sales_item_details')
+        .delete()
+        .eq('sales_id', salesId);
+
+      if(deleteError) throw deleteError;
+
+      const itemRows = items.map(item => ({
+        sales_id: salesId,
+        item_code: item.item_code || '',
+        item_name: item.item_name || '',
+        quantity: round2(item.quantity),
+        price: round2(item.price),
+        sales_price: round2(item.sales_price ?? item.price),
+        sales_price_gst: round2(item.sales_price_gst ?? item.price_gst),
+        discount_percent: round2(item.discount_percent),
+        gst_percent: round2(item.gst_percent),
+        hsn_code: item.hsn_code || ''
+      }));
+
+      const { error: insertError } = await sb
+        .from('sales_item_details')
+        .insert(itemRows);
+
+      if(insertError) throw insertError;
+
+      savedBills++;
+      savedRows += itemRows.length;
+    }
+
+    return { savedBills, savedRows };
+  }
+
   async function reviewAndSave(){
     clearMessage();
 
@@ -1274,15 +1419,19 @@
     els.confirmSaveBtn.textContent = 'SAVING...';
     const savedPayload = pendingPayload;
 
-    const { data, error } = await sb.rpc('save_bulk_sales_edit', {
-      p_bills: savedPayload
-    });
+    let data = null;
+    let error = null;
+    try{
+      data = await saveBulkEditDirectly(savedPayload);
+    }catch(saveError){
+      error = saveError;
+    }
 
     els.confirmSaveBtn.textContent = 'SAVE NOW';
 
     if(error){
       els.confirmSaveBtn.disabled = false;
-      showMessage('Save failed: ' + error.message + '. Please confirm RPC save_bulk_sales_edit supports added replacement items and recalculates stock/totals.', 'error');
+      showMessage('Save failed: ' + error.message + '. No HTML stock calculation was run. Please check sales item table permissions/triggers.', 'error');
       closeConfirmModal();
       return;
     }
@@ -1291,7 +1440,7 @@
     dirty = false;
 
     let msg = 'Bulk save completed successfully.';
-    if(data && data.message) msg = data.message;
+    if(data && data.savedBills !== undefined) msg = `Bulk save completed successfully. Saved ${data.savedBills} bill(s), ${data.savedRows} item row(s).`;
     showMessage(msg, 'success');
 
     setTimeout(() => {
@@ -1308,7 +1457,7 @@
 
   els.loadBtn.addEventListener('click', loadBills);
   els.applyPriceBtn.addEventListener('click', applyPriceType);
-  els.adjustBtn.addEventListener('click', showSqlStockAdjustInfo);
+  els.adjustBtn.addEventListener('click', adjustQuantities);
   els.clearAllZeroBtn.addEventListener('click', clearAllZeroRows);
   els.saveBtn.addEventListener('click', reviewAndSave);
   els.cancelSaveBtn.addEventListener('click', closeConfirmModal);

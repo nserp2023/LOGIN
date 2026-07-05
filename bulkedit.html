@@ -174,7 +174,6 @@
           </div>
           <div class="field"><label>&nbsp;</label><button class="btn-blue" id="loadBtn">LOAD BILLS</button></div>
           <div class="field"><label>&nbsp;</label><button class="btn-dark" id="applyPriceBtn">APPLY PRICE</button></div>
-          <div class="field"><label>&nbsp;</label><button class="btn-amber" id="adjustBtn">ADJUST QTY</button></div>
           <div class="field"><label>&nbsp;</label><button class="btn-red" id="clearAllZeroBtn">REMOVE ZERO ROWS</button></div>
           <div class="field"><label>&nbsp;</label><button class="btn-green" id="saveBtn">REVIEW & SAVE</button></div>
         </div>
@@ -225,7 +224,6 @@
     priceTypeSelect: document.getElementById('priceTypeSelect'),
     loadBtn: document.getElementById('loadBtn'),
     applyPriceBtn: document.getElementById('applyPriceBtn'),
-    adjustBtn: document.getElementById('adjustBtn'),
     clearAllZeroBtn: document.getElementById('clearAllZeroBtn'),
     saveBtn: document.getElementById('saveBtn'),
     billsRoot: document.getElementById('billsRoot'),
@@ -301,53 +299,6 @@
       button.textContent = button.dataset.oldText || button.textContent;
       button.disabled = false;
     }
-  }
-
-  async function syncBulkEditedSalesItemFields(bills){
-    let updated = 0;
-
-    for(const bill of (bills || [])){
-      const salesId = n(bill.sales_id);
-      if(!salesId || !Array.isArray(bill.items)) continue;
-
-      for(const item of bill.items){
-        const itemCode = String(item.item_code || '').trim();
-        if(!itemCode) continue;
-
-        const payload = {
-          price: round2(item.price),
-          sales_price: round2(item.sales_price ?? item.price),
-          sales_price_gst: round2(item.sales_price_gst ?? item.price_gst),
-          discount_percent: round2(item.discount_percent),
-          gst_percent: round2(item.gst_percent),
-          hsn_code: item.hsn_code || ''
-        };
-
-        const buildQuery = () => sb
-          .from('sales_item_details')
-          .update(payload)
-          .eq('sales_id', salesId)
-          .eq('item_code', itemCode);
-
-        const itemName = String(item.item_name || '').trim();
-        let query = buildQuery();
-        if(itemName) query = query.eq('item_name', itemName);
-
-        let { data, error } = await query.select('id');
-        if(error) throw error;
-
-        if(itemName && (!data || !data.length)){
-          const fallback = await buildQuery().select('id');
-          data = fallback.data;
-          error = fallback.error;
-          if(error) throw error;
-        }
-
-        updated += (data || []).length;
-      }
-    }
-
-    return { updated };
   }
 
   function setTodayDefaults(){
@@ -1109,100 +1060,6 @@
     }
   });
 
-  function adjustQuantities(){
-    clearMessage();
-    if(!loadedBills.length){
-      showMessage('Load bills first.', 'warn');
-      return;
-    }
-
-    const ok = confirm('Adjust negative-stock items by reducing latest bill quantities first? This will not save until Review & Save.');
-    if(!ok) return;
-
-    const groups = {};
-
-    loadedBills.forEach((bill, billIndex) => {
-      bill.items.forEach((item, itemIndex) => {
-        const code = (item.item_code || '').trim();
-        if(!code) return;
-        if(n(item.balance_qty) >= 0) return;
-
-        if(!groups[code]){
-          groups[code] = { balance: n(item.balance_qty), rows: [] };
-        }else{
-          groups[code].balance = Math.min(n(groups[code].balance), n(item.balance_qty));
-        }
-
-        groups[code].rows.push({
-          billIndex,
-          itemIndex,
-          billDate: bill.bill_date || '',
-          salesId: n(bill.sales_id)
-        });
-      });
-    });
-
-    let adjustedRows = 0;
-    let touchedItems = 0;
-    const adjustmentDetails = [];
-    const unresolved = [];
-
-    Object.keys(groups).forEach(code => {
-      const group = groups[code];
-      if(n(group.balance) >= 0) return;
-
-      const originalShortage = Math.abs(n(group.balance));
-      const alreadyReduced = group.rows.reduce((sum, row) => {
-        const item = loadedBills[row.billIndex]?.items?.[row.itemIndex];
-        if(!item || item.is_new) return sum;
-        return sum + Math.max(0, n(item.old_quantity) - n(item.quantity));
-      }, 0);
-      let shortage = Math.max(0, originalShortage - alreadyReduced);
-      let itemReduced = 0;
-      if(shortage <= 0.0001) return;
-      touchedItems++;
-
-      group.rows.sort((a,b) => {
-        if(a.billDate === b.billDate) return b.salesId - a.salesId;
-        return String(b.billDate).localeCompare(String(a.billDate));
-      });
-
-      for(const row of group.rows){
-        if(shortage <= 0) break;
-        const item = loadedBills[row.billIndex].items[row.itemIndex];
-        const currentQty = n(item.quantity);
-        if(currentQty <= 0) continue;
-
-        const reducible = Math.min(currentQty, shortage);
-        if(reducible > 0){
-          item.quantity = currentQty - reducible;
-          shortage -= reducible;
-          itemReduced += reducible;
-          adjustedRows++;
-        }
-      }
-
-      if(itemReduced > 0){
-        adjustmentDetails.push(`${code}: -${fmt(itemReduced)}`);
-      }
-      if(shortage > 0.0001){
-        unresolved.push(`${code}: ${fmt(shortage)} still negative from ${fmt(originalShortage)}`);
-      }
-    });
-
-    dirty = adjustedRows > 0;
-    renderAll();
-    if(!adjustedRows){
-      showMessage('No negative-stock rows could be adjusted from the loaded bills.', 'info');
-      return;
-    }
-
-    const detailText = adjustmentDetails.slice(0, 6).join(', ');
-    const moreText = adjustmentDetails.length > 6 ? `, +${adjustmentDetails.length - 6} more` : '';
-    const unresolvedText = unresolved.length ? ` Unresolved: ${unresolved.join(', ')}.` : '';
-    showMessage(`Adjustment complete. Changed ${adjustedRows} row(s) across ${touchedItems} negative item group(s). ${detailText}${moreText}.${unresolvedText} Review & Save will save only bills that changed.`, unresolved.length ? 'warn' : 'success');
-  }
-
   function buildPayloadAndReview(){
     const skippedBills = [];
     const zeroRows = [];
@@ -1418,23 +1275,11 @@
       return;
     }
 
-    let syncNote = '';
-    try{
-      const sync = await syncBulkEditedSalesItemFields(savedPayload);
-      if(sync.updated){
-        syncNote = ` Synced ${sync.updated} sales item row(s).`;
-      }
-    }catch(syncError){
-      console.warn('Bulk edit sales item field sync failed:', syncError);
-      syncNote = ' Sales item field sync failed: ' + syncError.message;
-    }
-
     closeConfirmModal();
     dirty = false;
 
     let msg = 'Bulk save completed successfully.';
     if(data && data.message) msg = data.message;
-    msg += syncNote;
     showMessage(msg, 'success');
 
     setTimeout(() => {
@@ -1451,14 +1296,13 @@
 
   els.loadBtn.addEventListener('click', loadBills);
   els.applyPriceBtn.addEventListener('click', applyPriceType);
-  els.adjustBtn.addEventListener('click', adjustQuantities);
   els.clearAllZeroBtn.addEventListener('click', clearAllZeroRows);
   els.saveBtn.addEventListener('click', reviewAndSave);
   els.cancelSaveBtn.addEventListener('click', closeConfirmModal);
   els.confirmSaveBtn.addEventListener('click', confirmSaveNow);
 
   function setActionButtonsDisabled(disabled){
-    [els.loadBtn, els.applyPriceBtn, els.adjustBtn, els.clearAllZeroBtn, els.saveBtn].forEach(btn => {
+    [els.loadBtn, els.applyPriceBtn, els.clearAllZeroBtn, els.saveBtn].forEach(btn => {
       btn.disabled = disabled;
     });
   }

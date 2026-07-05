@@ -249,6 +249,7 @@
     const x = Number(v);
     return Number.isFinite(x) ? x : 0;
   }
+  function round2(v){ return Math.round((n(v) + Number.EPSILON) * 100) / 100; }
   function fmt(v){ return n(v).toFixed(2); }
   function money(v){ return '₹ ' + n(v).toFixed(2); }
   function esc(v){ return String(v ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
@@ -339,6 +340,53 @@
     return { removed };
   }
 
+  async function syncBulkEditedSalesItemFields(bills){
+    let updated = 0;
+
+    for(const bill of (bills || [])){
+      const salesId = n(bill.sales_id);
+      if(!salesId || !Array.isArray(bill.items)) continue;
+
+      for(const item of bill.items){
+        const itemCode = String(item.item_code || '').trim();
+        if(!itemCode) continue;
+
+        const payload = {
+          price: round2(item.price),
+          sales_price: round2(item.sales_price ?? item.price),
+          sales_price_gst: round2(item.sales_price_gst ?? item.price_gst),
+          discount_percent: round2(item.discount_percent),
+          gst_percent: round2(item.gst_percent),
+          hsn_code: item.hsn_code || ''
+        };
+
+        const buildQuery = () => sb
+          .from('sales_item_details')
+          .update(payload)
+          .eq('sales_id', salesId)
+          .eq('item_code', itemCode);
+
+        const itemName = String(item.item_name || '').trim();
+        let query = buildQuery();
+        if(itemName) query = query.eq('item_name', itemName);
+
+        let { data, error } = await query.select('id');
+        if(error) throw error;
+
+        if(itemName && (!data || !data.length)){
+          const fallback = await buildQuery().select('id');
+          data = fallback.data;
+          error = fallback.error;
+          if(error) throw error;
+        }
+
+        updated += (data || []).length;
+      }
+    }
+
+    return { updated };
+  }
+
   function setTodayDefaults(){
     const now = new Date();
     const yyyy = now.getFullYear();
@@ -410,6 +458,61 @@
         landing: n(x.landing)
       }))
       .filter(x => n(x.balance_qty) > 0);
+  }
+
+  function salesItemKey(salesId, itemCode, itemName){
+    return [
+      String(salesId || '').trim(),
+      String(itemCode || '').trim().toUpperCase(),
+      String(itemName || '').trim().toUpperCase()
+    ].join('|');
+  }
+
+  async function hydrateSalesItemFields(bills){
+    const salesIds = [...new Set((bills || []).map(b => n(b.sales_id)).filter(Boolean))];
+    if(!salesIds.length) return;
+
+    const rows = [];
+    for(let i = 0; i < salesIds.length; i += 100){
+      const ids = salesIds.slice(i, i + 100);
+      const { data, error } = await sb
+        .from('sales_item_details')
+        .select('id,sales_id,item_code,item_name,price,sales_price,sales_price_gst,discount_percent,gst_percent,hsn_code')
+        .in('sales_id', ids);
+
+      if(error){
+        console.warn('Could not hydrate sales item fields:', error);
+        return;
+      }
+
+      rows.push(...(data || []));
+    }
+
+    const byId = new Map();
+    const byKey = new Map();
+    rows.forEach(row => {
+      if(row.id !== null && row.id !== undefined) byId.set(String(row.id), row);
+      byKey.set(salesItemKey(row.sales_id, row.item_code, row.item_name), row);
+    });
+
+    bills.forEach(bill => {
+      bill.items.forEach(item => {
+        const row = byId.get(String(item.item_id || '')) ||
+          byKey.get(salesItemKey(bill.sales_id, item.item_code, item.item_name));
+        if(!row) return;
+
+        const price = round2(row.sales_price ?? row.price ?? item.price);
+        const priceGst = round2(row.sales_price_gst ?? item.price_gst);
+
+        item.price = price;
+        item.old_price = price;
+        item.price_gst = priceGst;
+        item.old_price_gst = priceGst;
+        item.discount_percent = round2(row.discount_percent);
+        item.gst_percent = round2(row.gst_percent ?? item.gst_percent);
+        item.hsn_code = row.hsn_code || item.hsn_code || '';
+      });
+    });
   }
 
   async function loadBills(){
@@ -496,6 +599,13 @@
     loadedBills = Object.values(grouped).sort((a,b)=> {
       if(a.bill_date === b.bill_date) return n(a.sales_number) - n(b.sales_number);
       return String(a.bill_date).localeCompare(String(b.bill_date));
+    });
+
+    await hydrateSalesItemFields(loadedBills);
+    loadedBills.forEach(bill => {
+      bill.original_total = bill.items.reduce((sum, item) => {
+        return sum + (n(item.old_quantity) * n(item.old_price_gst));
+      }, 0);
     });
 
     dirty = false;
@@ -1145,15 +1255,22 @@
           });
         }
 
+        const qty = round2(item.quantity);
+        const price = round2(item.price);
+        const priceGst = round2(item.price_gst);
+        const discountPercent = round2(item.discount_percent);
+        const gstPercent = round2(item.gst_percent);
+
         liveItems.push({
           item_code: item.item_code || '',
           item_name: item.item_name || '',
-          quantity: n(item.quantity),
-          price: n(item.price),
-          sales_price: n(item.price),
-          sales_price_gst: n(item.price_gst),
-          discount_percent: n(item.discount_percent),
-          gst_percent: n(item.gst_percent),
+          quantity: qty,
+          price,
+          price_gst: priceGst,
+          sales_price: price,
+          sales_price_gst: priceGst,
+          discount_percent: discountPercent,
+          gst_percent: gstPercent,
           hsn_code: item.hsn_code || ''
         });
       });
@@ -1296,6 +1413,17 @@
       return;
     }
 
+    let syncNote = '';
+    try{
+      const sync = await syncBulkEditedSalesItemFields(savedPayload);
+      if(sync.updated){
+        syncNote = ` Synced ${sync.updated} sales item row(s).`;
+      }
+    }catch(syncError){
+      console.warn('Bulk edit sales item field sync failed:', syncError);
+      syncNote = ' Sales item field sync failed: ' + syncError.message;
+    }
+
     let cleanupNote = '';
     try{
       const cleanup = await cleanupBulkEditStockReversals(savedPayload);
@@ -1312,7 +1440,7 @@
 
     let msg = 'Bulk save completed successfully.';
     if(data && data.message) msg = data.message;
-    msg += cleanupNote;
+    msg += syncNote + cleanupNote;
     showMessage(msg, 'success');
 
     await loadBills();

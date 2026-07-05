@@ -250,6 +250,7 @@
     return Number.isFinite(x) ? x : 0;
   }
   function round2(v){ return Math.round((n(v) + Number.EPSILON) * 100) / 100; }
+  function roundInvoiceTotal(v){ return Math.round(n(v)); }
   function fmt(v){ return n(v).toFixed(2); }
   function money(v){ return '₹ ' + n(v).toFixed(2); }
   function esc(v){ return String(v ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
@@ -565,9 +566,10 @@
 
     await hydrateSalesItemFields(loadedBills);
     loadedBills.forEach(bill => {
-      bill.original_total = bill.items.reduce((sum, item) => {
+      bill.original_exact_total = bill.items.reduce((sum, item) => {
         return sum + (n(item.old_quantity) * n(item.old_price_gst));
       }, 0);
+      bill.original_total = roundInvoiceTotal(bill.original_exact_total);
     });
 
     dirty = false;
@@ -603,6 +605,10 @@
   }
 
   function recalcBillTotal(bill){
+    return roundInvoiceTotal(recalcBillExactTotal(bill));
+  }
+
+  function recalcBillExactTotal(bill){
     return bill.items.reduce((sum, item) => sum + (n(item.quantity) * n(item.price_gst)), 0);
   }
 
@@ -661,6 +667,8 @@
 
     els.billsRoot.innerHTML = loadedBills.map((bill, billIndex) => {
       const total = recalcBillTotal(bill);
+      const exactTotal = recalcBillExactTotal(bill);
+      const roundOff = total - exactTotal;
       const liveRows = bill.items.filter(x => n(x.quantity) > 0).length;
       const zeroRows = bill.items.filter(x => n(x.quantity) <= 0).length;
       const changedRows = bill.items.filter(isChanged).length;
@@ -681,6 +689,7 @@
             <div class="bill-total">
               <div class="amt">${money(total)}</div>
               <div class="note">Old: ${money(bill.original_total)} | Diff: ${money(billDiff)}</div>
+              <div class="note">Item subtotal: ${money(exactTotal)} | Round off: ${money(roundOff)}</div>
               <div class="note">Live: ${liveRows} | Zero: ${zeroRows} | Changed: ${changedRows}</div>
               ${isEmptyBill ? '<div class="note danger-text">NO ITEMS - add replacement item before saving</div>' : ''}
             </div>
@@ -1275,8 +1284,13 @@
 
       changedBills.push(`${bill.series_code || ''}-${bill.sales_number || ''}`);
 
+      const exactTotal = recalcBillExactTotal(bill);
+      const invoiceAmount = roundInvoiceTotal(exactTotal);
+
       payload.push({
         sales_id: n(bill.sales_id),
+        invoice_amount: invoiceAmount,
+        round_off: invoiceAmount - exactTotal,
         items: liveItems
       });
     });

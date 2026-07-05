@@ -1142,9 +1142,15 @@
       const group = groups[code];
       if(n(group.balance) >= 0) return;
 
-      let shortage = Math.abs(n(group.balance));
-      const originalShortage = shortage;
+      const originalShortage = Math.abs(n(group.balance));
+      const alreadyReduced = group.rows.reduce((sum, row) => {
+        const item = loadedBills[row.billIndex]?.items?.[row.itemIndex];
+        if(!item || item.is_new) return sum;
+        return sum + Math.max(0, n(item.old_quantity) - n(item.quantity));
+      }, 0);
+      let shortage = Math.max(0, originalShortage - alreadyReduced);
       let itemReduced = 0;
+      if(shortage <= 0.0001) return;
       touchedItems++;
 
       group.rows.sort((a,b) => {

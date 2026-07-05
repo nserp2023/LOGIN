@@ -324,17 +324,19 @@
       return;
     }
 
-    allItems = (data || []).map(x => ({
-      item_code: x.item_code || '',
-      item_name: x.item_name || '',
-      barcode: x.barcode || '',
-      hsn_code: x.hsn_code || '',
-      gst_percent: n(x.gst_percent),
-      department: x.department || '',
-      balance_qty: n(x.balance),
-      purchase_price_gst: n(x.purchase_price_gst),
-      landing: n(x.landing)
-    }));
+    allItems = (data || [])
+      .map(x => ({
+        item_code: x.item_code || '',
+        item_name: x.item_name || '',
+        barcode: x.barcode || '',
+        hsn_code: x.hsn_code || '',
+        gst_percent: n(x.gst_percent),
+        department: x.department || '',
+        balance_qty: n(x.balance),
+        purchase_price_gst: n(x.purchase_price_gst),
+        landing: n(x.landing)
+      }))
+      .filter(x => n(x.balance_qty) > 0);
   }
 
   async function loadBills(){
@@ -636,16 +638,71 @@
     return purchaseGstRate(item);
   }
 
+  function normalizeSearchText(value){
+    return String(value || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
   function searchItems(q){
-    const s = String(q || '').trim().toLowerCase();
-    if(s.length < 1) return [];
+    const normalizedQuery = normalizeSearchText(q);
+    if(!normalizedQuery) return [];
 
-    const words = s.split(/\s+/).filter(Boolean);
+    const terms = normalizedQuery.split(' ').filter(Boolean);
 
-    return allItems.filter(it => {
-      const hay = `${it.item_code} ${it.barcode} ${it.item_name} ${it.department}`.toLowerCase();
-      return words.every(w => hay.includes(w));
-    }).slice(0, 40);
+    const scored = allItems
+      .filter(it => n(it.balance_qty) > 0)
+      .map(it => {
+        const codeRaw = String(it.item_code || '');
+        const nameRaw = String(it.item_name || '');
+        const barcodeRaw = String(it.barcode || '');
+        const deptRaw = String(it.department || '');
+
+        const code = normalizeSearchText(codeRaw);
+        const name = normalizeSearchText(nameRaw);
+        const barcode = normalizeSearchText(barcodeRaw);
+        const dept = normalizeSearchText(deptRaw);
+        const combined = `${code} ${name} ${barcode} ${dept}`;
+
+        const matched =
+          terms.every(t => code.includes(t)) ||
+          terms.every(t => name.includes(t)) ||
+          terms.every(t => barcode.includes(t)) ||
+          terms.every(t => combined.includes(t));
+
+        if(!matched) return null;
+
+        let score = 0;
+
+        if(code === normalizedQuery) score += 1000;
+        if(name === normalizedQuery) score += 900;
+        if(barcode === normalizedQuery) score += 850;
+
+        if(code.startsWith(normalizedQuery)) score += 700;
+        if(name.startsWith(normalizedQuery)) score += 650;
+        if(barcode.startsWith(normalizedQuery)) score += 600;
+
+        for(const t of terms){
+          if(code.includes(t)) score += 40;
+          if(name.includes(t)) score += 40;
+          if(barcode.includes(t)) score += 35;
+          if(dept.includes(t)) score += 10;
+        }
+
+        score -= Math.abs(name.length - normalizedQuery.length) * 0.1;
+
+        return { item: it, score };
+      })
+      .filter(Boolean);
+
+    scored.sort((a, b) => {
+      if(b.score !== a.score) return b.score - a.score;
+      return String(a.item.item_name || '').localeCompare(String(b.item.item_name || ''));
+    });
+
+    return scored.slice(0, 40).map(x => x.item);
   }
 
   function renderSuggestBox(billIndex, matches, selectedIndex=0){
@@ -655,7 +712,7 @@
     activeSuggest = { billIndex, selectedIndex, matches };
 
     if(!matches.length){
-      box.innerHTML = '<div class="suggest-item"><b>No matching item found</b><div>Check spelling/item code/barcode.</div></div>';
+      box.innerHTML = '<div class="suggest-item"><b>No matching stocked item found</b><div>Only items with balance stock above 0 are shown.</div></div>';
       box.classList.remove('hidden');
       return;
     }

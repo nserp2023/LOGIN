@@ -174,7 +174,7 @@
           </div>
           <div class="field"><label>&nbsp;</label><button class="btn-blue" id="loadBtn">LOAD BILLS</button></div>
           <div class="field"><label>&nbsp;</label><button class="btn-dark" id="applyPriceBtn">APPLY PRICE</button></div>
-          <div class="field"><label>&nbsp;</label><button class="btn-amber" id="adjustBtn">STOCK ADJUST</button></div>
+          <div class="field"><label>&nbsp;</label><button class="btn-amber" id="adjustBtn" type="button" onclick="adjustQuantities()">STOCK ADJUST</button></div>
           <div class="field"><label>&nbsp;</label><button class="btn-red" id="clearAllZeroBtn">REMOVE ZERO ROWS</button></div>
           <div class="field"><label>&nbsp;</label><button class="btn-green" id="saveBtn">REVIEW & SAVE</button></div>
         </div>
@@ -970,11 +970,13 @@
     if(!ok) return;
 
     const groups = {};
+    let negativeRowsFound = 0;
 
     loadedBills.forEach((bill, billIndex) => {
       bill.items.forEach((item, itemIndex) => {
         const code = String(item.item_code || '').trim();
         if(!code || n(item.balance_qty) >= 0) return;
+        negativeRowsFound++;
 
         if(!groups[code]){
           groups[code] = { balance: n(item.balance_qty), rows: [] };
@@ -990,6 +992,11 @@
         });
       });
     });
+
+    if(!negativeRowsFound){
+      showMessage('No negative-stock rows are loaded on this page. If you see negative stock elsewhere, click LOAD BILLS again and make sure the uploaded page is the latest bulkedit.html.', 'info');
+      return;
+    }
 
     let adjustedRows = 0;
     let touchedItems = 0;
@@ -1048,6 +1055,7 @@
     const unresolvedText = unresolved.length ? ` Unresolved: ${unresolved.join(', ')}.` : '';
     showMessage(`Stock adjust prepared. Changed ${adjustedRows} row(s) across ${touchedItems} item group(s). ${detailText}${moreText}.${unresolvedText} Review & Save will send these quantities to SQL.`, unresolved.length ? 'warn' : 'success');
   }
+  window.adjustQuantities = adjustQuantities;
 
   function updateFieldFromInput(input, renderAfter=false){
     const billIndex = Number(input.dataset.bill);
@@ -1457,7 +1465,6 @@
 
   els.loadBtn.addEventListener('click', loadBills);
   els.applyPriceBtn.addEventListener('click', applyPriceType);
-  els.adjustBtn.addEventListener('click', adjustQuantities);
   els.clearAllZeroBtn.addEventListener('click', clearAllZeroRows);
   els.saveBtn.addEventListener('click', reviewAndSave);
   els.cancelSaveBtn.addEventListener('click', closeConfirmModal);

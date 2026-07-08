@@ -4,6 +4,7 @@ import path from "path";
 import os from "os";
 import axios from "axios";
 import FormData from "form-data";
+import lamejs from "lamejs";
 import puppeteer from "puppeteer";
 import dotenv from "dotenv";
 import { createClient } from "@supabase/supabase-js";
@@ -29,6 +30,8 @@ const PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID;
 const APP_BASE_URL = process.env.APP_BASE_URL || "http://localhost:5500";
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_VOICE_MODEL = process.env.GEMINI_VOICE_MODEL || "gemini-3.5-flash";
+const GEMINI_TTS_MODEL = process.env.GEMINI_TTS_MODEL || "gemini-3.1-flash-tts-preview";
+const GEMINI_TTS_VOICE = process.env.GEMINI_TTS_VOICE || "Aoede";
 const GEMINI_IMAGE_MODEL = process.env.GEMINI_IMAGE_MODEL || "gemini-2.5-flash";
 const GEMINI_CATALOG_FALLBACK_MODEL = process.env.GEMINI_CATALOG_FALLBACK_MODEL || "gemini-3.1-flash-lite";
 const GEMINI_IMAGE_GENERATION_MODEL = process.env.GEMINI_IMAGE_GENERATION_MODEL || "gemini-3.1-flash-image";
@@ -136,6 +139,54 @@ function formatNumber(raw) {
     return num;
 }
 
+function wavBufferFromPcm(pcmBuffer, channels = 1, sampleRate = 24000, bitsPerSample = 16) {
+    const header = Buffer.alloc(44);
+    const byteRate = sampleRate * channels * bitsPerSample / 8;
+    const blockAlign = channels * bitsPerSample / 8;
+
+    header.write("RIFF", 0);
+    header.writeUInt32LE(36 + pcmBuffer.length, 4);
+    header.write("WAVE", 8);
+    header.write("fmt ", 12);
+    header.writeUInt32LE(16, 16);
+    header.writeUInt16LE(1, 20);
+    header.writeUInt16LE(channels, 22);
+    header.writeUInt32LE(sampleRate, 24);
+    header.writeUInt32LE(byteRate, 28);
+    header.writeUInt16LE(blockAlign, 32);
+    header.writeUInt16LE(bitsPerSample, 34);
+    header.write("data", 36);
+    header.writeUInt32LE(pcmBuffer.length, 40);
+
+    return Buffer.concat([header, pcmBuffer]);
+}
+
+function mp3BufferFromPcm(pcmBuffer, channels = 1, sampleRate = 24000, kbps = 64) {
+    const sampleBytes = pcmBuffer.buffer.slice(pcmBuffer.byteOffset, pcmBuffer.byteOffset + pcmBuffer.length);
+    const samples = new Int16Array(sampleBytes, 0, Math.floor(pcmBuffer.length / 2));
+    const encoder = new lamejs.Mp3Encoder(channels, sampleRate, kbps);
+    const chunks = [];
+    const blockSize = 1152;
+
+    for (let i = 0; i < samples.length; i += blockSize) {
+        const block = samples.subarray(i, i + blockSize);
+        const mp3 = encoder.encodeBuffer(block);
+        if (mp3.length) chunks.push(Buffer.from(mp3));
+    }
+
+    const final = encoder.flush();
+    if (final.length) chunks.push(Buffer.from(final));
+    return Buffer.concat(chunks);
+}
+
+function getInteractionAudioData(data) {
+    return data?.output_audio?.data
+        || data?.outputAudio?.data
+        || data?.output?.audio?.data
+        || data?.response?.output_audio?.data
+        || "";
+}
+
 async function requirePrimarySupabaseUser(req, res) {
     const authorization = String(req.headers.authorization || "");
     if (!authorization.startsWith("Bearer ")) {
@@ -241,10 +292,10 @@ async function generatePDF(id, type) {
     return file;
 }
 
-async function uploadMedia(file) {
+async function uploadMedia(file, options = {}) {
     const form = new FormData();
     form.append("messaging_product", "whatsapp");
-    form.append("file", fs.createReadStream(file));
+    form.append("file", fs.createReadStream(file), options);
 
     const res = await axios.post(
         `https://graph.facebook.com/v23.0/${PHONE_NUMBER_ID}/media`,
@@ -368,6 +419,130 @@ app.post("/api/gemini-voice", async (req, res) => {
         console.error("Gemini voice error:", err.response?.data || err.message);
         res.status(500).json({
             error: status ? `Gemini ${status}: ${message}` : message
+        });
+    }
+});
+
+app.post("/api/customer-suggestion-voice", async (req, res) => {
+    try {
+        const { text, customerName } = req.body || {};
+        const script = String(text || "").trim();
+
+        if (!GEMINI_API_KEY) {
+            return res.status(500).json({ error: "GEMINI_API_KEY is missing in .env" });
+        }
+        if (!script) {
+            return res.status(400).json({ error: "Suggestion text is required" });
+        }
+        if (script.length > 5000) {
+            return res.status(400).json({ error: "Suggestion text is too long for voice generation" });
+        }
+
+        const prompt = [
+            "Read the following Malayalam customer suggestion exactly as written.",
+            "Use a warm, clear, professional Indian female sales-assistant voice.",
+            "Speak naturally, politely, and confidently, with a Kerala-friendly Malayalam accent.",
+            "Keep the pace comfortable for a WhatsApp customer voice message.",
+            customerName ? `The customer name is ${String(customerName).slice(0, 120)}.` : "",
+            "",
+            script
+        ].filter(Boolean).join("\n");
+
+        const geminiRes = await axios.post(
+            "https://generativelanguage.googleapis.com/v1beta/interactions",
+            {
+                model: GEMINI_TTS_MODEL,
+                input: prompt,
+                response_format: { type: "audio" },
+                generation_config: {
+                    speech_config: [
+                        { voice: GEMINI_TTS_VOICE }
+                    ]
+                }
+            },
+            {
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-goog-api-key": GEMINI_API_KEY
+                },
+                timeout: 120000,
+                maxBodyLength: Infinity
+            }
+        );
+
+        const audioBase64 = getInteractionAudioData(geminiRes.data);
+        if (!audioBase64) throw new Error("Gemini TTS returned no audio");
+
+        const mp3 = mp3BufferFromPcm(Buffer.from(audioBase64, "base64"));
+        const filename = `vajra-suggestion-${Date.now()}.mp3`;
+        res.setHeader("Content-Type", "audio/mpeg");
+        res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+        res.setHeader("X-TTS-Model", GEMINI_TTS_MODEL);
+        res.setHeader("X-TTS-Voice", GEMINI_TTS_VOICE);
+        res.send(mp3);
+    } catch (err) {
+        const status = err.response?.status;
+        const apiMessage = err.response?.data?.error?.message;
+        const message = apiMessage || err.message || "Customer suggestion voice generation failed";
+        console.error("Customer suggestion TTS error:", err.response?.data || err.message);
+        res.status(status === 429 || status === 503 ? status : 500).json({
+            error: status ? `Gemini ${status}: ${message}` : message,
+            model: GEMINI_TTS_MODEL,
+            voice: GEMINI_TTS_VOICE
+        });
+    }
+});
+
+async function sendAudio(to, mediaId) {
+    return axios.post(
+        `https://graph.facebook.com/v23.0/${PHONE_NUMBER_ID}/messages`,
+        {
+            messaging_product: "whatsapp",
+            to,
+            type: "audio",
+            audio: { id: mediaId }
+        },
+        {
+            headers: {
+                Authorization: `Bearer ${WHATSAPP_TOKEN}`,
+                "Content-Type": "application/json"
+            }
+        }
+    );
+}
+
+app.post("/api/send-whatsapp-audio", async (req, res) => {
+    let tempFile;
+
+    try {
+        const { mobile, audioBase64, mimeType } = req.body || {};
+        if (!WHATSAPP_TOKEN || !PHONE_NUMBER_ID) {
+            return res.status(500).json({ error: "WhatsApp API is not configured on the server" });
+        }
+        if (!mobile || !audioBase64) {
+            return res.status(400).json({ error: "Mobile number and audio are required" });
+        }
+
+        const to = formatNumber(mobile);
+        if (!to) return res.status(400).json({ error: "Invalid mobile number" });
+
+        const isMp3 = String(mimeType || "").includes("mpeg");
+        tempFile = path.join(os.tmpdir(), `vajra-suggestion-${Date.now()}.${isMp3 ? "mp3" : "wav"}`);
+        fs.writeFileSync(tempFile, Buffer.from(String(audioBase64).replace(/^data:audio\/\w+;base64,/, ""), "base64"));
+
+        const mediaId = await uploadMedia(tempFile, {
+            filename: path.basename(tempFile),
+            contentType: isMp3 ? "audio/mpeg" : "audio/wav"
+        });
+        await sendAudio(to, mediaId);
+
+        fs.unlinkSync(tempFile);
+        res.json({ success: true });
+    } catch (err) {
+        console.error("WhatsApp audio error:", err.response?.data || err.message);
+        if (tempFile && fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
+        res.status(500).json({
+            error: err.response?.data?.error?.message || err.message || "WhatsApp audio send failed"
         });
     }
 });

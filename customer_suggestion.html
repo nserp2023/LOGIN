@@ -319,6 +319,14 @@
 <script>
   const sb = window.sbcc;
 
+  function apiEndpoint(path){
+    const isLocal = ["localhost", "127.0.0.1", "::1", ""].includes(window.location.hostname);
+    const apiOrigin = isLocal && window.location.port !== "3000"
+      ? "http://localhost:3000"
+      : window.location.origin;
+    return `${apiOrigin}${path}`;
+  }
+
   const PRODUCT_CATEGORIES = [
     {
       id:"switches",
@@ -608,7 +616,7 @@
       setRecorderButtons(customerId, true);
       setRecorderStatus(customerId, "Generating female AI voice... please wait.", "info");
 
-      const response = await fetch("/api/customer-suggestion-voice", {
+      const response = await fetch(apiEndpoint("/api/customer-suggestion-voice"), {
         method:"POST",
         headers:{ "Content-Type":"application/json" },
         body:JSON.stringify({
@@ -630,7 +638,7 @@
         generated: true
       });
       updateVoicePreview(customerId);
-      setRecorderStatus(customerId, "Female AI voice ready. Preview it, then send or share.", "success");
+      setRecorderStatus(customerId, "Female AI voice ready. Preview it, then open WhatsApp Web.", "success");
     }catch(error){
       console.error(error);
       setRecorderButtons(customerId, false);
@@ -638,48 +646,36 @@
     }
   }
 
-  function blobToBase64(blob){
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result || "").split(",")[1] || "");
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
+  function voiceFileName(customer, recording){
+    const extension = audioExtension(recording.type);
+    const safeName = (customer.name || "customer").replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "customer";
+    return `vajra-${safeName}-voice.${extension}`;
   }
 
-  async function sendVoiceToWhatsApp(customerId){
+  function downloadVoiceFile(customerId){
+    const customer = state.customers.find(c => c.id === customerId);
+    const recording = state.recordings.get(customerId);
+    if(!customer || !recording) return "";
+
+    const link = document.createElement("a");
+    link.href = recording.url;
+    link.download = voiceFileName(customer, recording);
+    link.click();
+    return link.download;
+  }
+
+  function openWhatsAppWebVoice(customerId){
     const customer = state.customers.find(c => c.id === customerId);
     const recording = state.recordings.get(customerId);
     if(!customer || !recording) return;
 
     const mobile = cleanMobile(customer.mobile);
-    if(!mobile){
-      setRecorderStatus(customerId, "This customer has no valid mobile number.", "error");
-      return;
-    }
-
-    try{
-      setRecorderButtons(customerId, true);
-      setRecorderStatus(customerId, "Sending voice audio to WhatsApp...", "info");
-      const audioBase64 = await blobToBase64(recording.blob);
-      const response = await fetch("/api/send-whatsapp-audio", {
-        method:"POST",
-        headers:{ "Content-Type":"application/json" },
-        body:JSON.stringify({
-          mobile,
-          audioBase64,
-          mimeType: recording.type || "audio/mpeg"
-        })
-      });
-
-      if(!response.ok) throw new Error(await responseErrorMessage(response));
-      setRecorderStatus(customerId, "Voice audio sent to WhatsApp successfully.", "success");
-    }catch(error){
-      console.error(error);
-      setRecorderStatus(customerId, "WhatsApp send failed: " + (error.message || "Unknown error"), "error");
-    }finally{
-      setRecorderButtons(customerId, false);
-    }
+    const filename = downloadVoiceFile(customerId);
+    const url = mobile
+      ? `https://web.whatsapp.com/send?phone=91${mobile}`
+      : "https://web.whatsapp.com/";
+    window.open(url, "_blank");
+    setRecorderStatus(customerId, `${filename} downloaded. In WhatsApp Web, open the chat, click Attach, choose this MP3 from Downloads, and send.`, "success");
   }
 
   async function shareVoiceRecording(customerId){
@@ -688,9 +684,7 @@
     if(!customer || !recording) return;
 
     const mobile = cleanMobile(customer.mobile);
-    const extension = audioExtension(recording.type);
-    const safeName = (customer.name || "customer").replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "customer";
-    const file = new File([recording.blob], `vajra-${safeName}-voice.${extension}`, { type: recording.type || "audio/webm" });
+    const file = new File([recording.blob], voiceFileName(customer, recording), { type: recording.type || "audio/mpeg" });
 
     if(navigator.canShare && navigator.canShare({ files:[file] }) && navigator.share){
       try{
@@ -710,12 +704,9 @@
       }
     }
 
-    const link = document.createElement("a");
-    link.href = recording.url;
-    link.download = file.name;
-    link.click();
-    setRecorderStatus(customerId, "Audio downloaded. Attach it in WhatsApp. This browser cannot share audio files directly.", "info");
-    if(mobile) window.open(`https://wa.me/91${mobile}`, "_blank");
+    downloadVoiceFile(customerId);
+    setRecorderStatus(customerId, "Audio downloaded. Attach it in WhatsApp Web from your Downloads folder.", "info");
+    if(mobile) window.open(`https://web.whatsapp.com/send?phone=91${mobile}`, "_blank");
   }
 
   async function copyText(customerId){
@@ -828,7 +819,7 @@
 
       state.customers = customers.sort((a,b) => b.amount - a.amount);
       applyFilters();
-      setStatus(`Loaded ${state.customers.length} customers above ${money(minAmount)}. Use Voice Note to generate a female AI audio message.`, "success");
+      setStatus(`Loaded ${state.customers.length} customers above ${money(minAmount)}. Use Voice Note to generate a female AI MP3, then attach it in WhatsApp Web.`, "success");
     }catch(error){
       console.error(error);
       setStatus("Load failed: " + (error.message || "Unknown error"), "error");
@@ -889,13 +880,13 @@
                   <h3>Voice Note</h3>
                   <div class="actions">
                     <button class="btn-green" id="generateVoice-${customer.id}" type="button" onclick="generateAiVoice('${customer.id}')">Generate Female Voice</button>
-                    <button class="btn-blue" id="sendVoice-${customer.id}" type="button" onclick="sendVoiceToWhatsApp('${customer.id}')" disabled>Send WhatsApp</button>
-                    <button class="btn-blue" id="shareVoice-${customer.id}" type="button" onclick="shareVoiceRecording('${customer.id}')" disabled>Share Voice</button>
+                    <button class="btn-blue" id="sendVoice-${customer.id}" type="button" onclick="openWhatsAppWebVoice('${customer.id}')" disabled>Open WhatsApp Web</button>
+                    <button class="btn-blue" id="shareVoice-${customer.id}" type="button" onclick="shareVoiceRecording('${customer.id}')" disabled>Download MP3</button>
                     <button class="btn-light" id="clearVoice-${customer.id}" type="button" onclick="clearVoiceRecording('${customer.id}')" disabled>Clear</button>
                   </div>
                   <div class="voice-recorder">
                     <audio id="voicePreview-${customer.id}" controls style="display:none"></audio>
-                    <div class="voice-state" id="voiceStatus-${customer.id}">Generate a female AI voice, preview it, then send or share the audio.</div>
+                    <div class="voice-state" id="voiceStatus-${customer.id}">Generate a female AI MP3, preview it, then open WhatsApp Web and attach the downloaded audio.</div>
                   </div>
                 </div>
                 <div class="note-box">
@@ -907,7 +898,7 @@
                     <button class="btn-blue" type="button" onclick="openWhatsApp('${customer.id}')">Open WhatsApp</button>
                     <button class="btn-light" type="button" onclick="copyText('${customer.id}')">Copy Text</button>
                   </div>
-                  <div class="help">Send WhatsApp uses the server WhatsApp API when configured. Share Voice opens the device share sheet or downloads the audio file.</div>
+                  <div class="help">WhatsApp Web does not allow a website to auto-attach local audio. Use Open WhatsApp Web, then attach the downloaded MP3 from Downloads.</div>
                 </div>
               </div>
             </div>

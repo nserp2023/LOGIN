@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+  <link rel="manifest" href="site.webmanifest">
+  <title>Customer Suggestions - VAJRA</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabaseClient.js"></script>
+  <script src="page_permissions.js"></script>
+  <script src="common-ui.js"></script>
+  <style>
+    :root{
+      --bg:#eef2f7;
+      --card:#ffffff;
+      --ink:#111827;
+      --muted:#64748b;
+      --line:#dbe3ef;
+      --blue:#2563eb;
+      --green:#16a34a;
+      --dark:#0f172a;
+      --amber:#d97706;
+      --red:#dc2626;
+      --soft-green:#ecfdf5;
+      --soft-blue:#eff6ff;
+      --soft-amber:#fff7ed;
+      --shadow:0 14px 36px rgba(15,23,42,.10);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      min-height:100vh;
+      font-family:Arial,Helvetica,sans-serif;
+      color:var(--ink);
+      background:
+        linear-gradient(rgba(238,242,247,.94), rgba(238,242,247,.94)),
+        url("background.jpg") center/cover fixed no-repeat;
+    }
+    .page{max-width:1480px;margin:0 auto;padding:18px}
+    .top{
+      background:linear-gradient(135deg,#0f172a,#334155);
+      color:#fff;
+      border-radius:20px;
+      padding:18px 20px;
+      box-shadow:var(--shadow);
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:16px;
+      flex-wrap:wrap;
+    }
+    .top h1{margin:0;font-size:26px;letter-spacing:.2px}
+    .top p{margin:6px 0 0;color:#cbd5e1;font-size:13px;line-height:1.45}
+    .status{
+      margin-top:14px;
+      padding:12px 14px;
+      border-radius:12px;
+      background:#fff;
+      border:1px solid var(--line);
+      box-shadow:var(--shadow);
+      color:var(--muted);
+      font-size:14px;
+      line-height:1.45;
+    }
+    .status.error{background:#fff1f2;color:#991b1b;border-color:#fecdd3}
+    .status.success{background:#ecfdf5;color:#065f46;border-color:#a7f3d0}
+    .status.info{background:#eff6ff;color:#1e40af;border-color:#bfdbfe}
+    .panel{
+      margin-top:14px;
+      background:rgba(255,255,255,.96);
+      border:1px solid var(--line);
+      border-radius:18px;
+      box-shadow:var(--shadow);
+      overflow:hidden;
+    }
+    .panel-body{padding:16px}
+    .filters{
+      display:grid;
+      grid-template-columns:repeat(7,minmax(130px,1fr));
+      gap:12px;
+      align-items:end;
+    }
+    .field label{
+      display:block;
+      margin:0 0 6px;
+      color:var(--muted);
+      font-size:12px;
+      font-weight:800;
+      text-transform:uppercase;
+      letter-spacing:.4px;
+    }
+    input,select,textarea,button{
+      font-family:inherit;
+      font-size:14px;
+    }
+    input,select,textarea{
+      width:100%;
+      border:1px solid var(--line);
+      border-radius:12px;
+      background:#fff;
+      color:var(--ink);
+    }
+    input,select{height:44px;padding:0 12px}
+    textarea{min-height:120px;padding:12px;line-height:1.5;resize:vertical}
+    button{
+      min-height:44px;
+      border:none;
+      border-radius:12px;
+      padding:0 14px;
+      cursor:pointer;
+      font-weight:800;
+      color:#fff;
+      background:var(--dark);
+    }
+    button:disabled{opacity:.55;cursor:not-allowed}
+    .btn-blue{background:var(--blue)}
+    .btn-green{background:var(--green)}
+    .btn-amber{background:var(--amber)}
+    .btn-light{background:#e2e8f0;color:#0f172a}
+    .btn-red{background:var(--red)}
+    .stats{
+      display:grid;
+      grid-template-columns:repeat(4,1fr);
+      gap:12px;
+      margin-top:14px;
+    }
+    .stat{
+      background:#f8fafc;
+      border:1px solid var(--line);
+      border-radius:14px;
+      padding:12px;
+    }
+    .stat span{display:block;color:var(--muted);font-size:12px;font-weight:800;text-transform:uppercase}
+    .stat b{display:block;margin-top:6px;font-size:22px}
+    .table-wrap{overflow:auto}
+    table{width:100%;border-collapse:separate;border-spacing:0;min-width:1180px}
+    th,td{
+      padding:11px 10px;
+      border-bottom:1px solid var(--line);
+      background:#fff;
+      vertical-align:top;
+      font-size:13px;
+    }
+    th{
+      position:sticky;
+      top:0;
+      z-index:2;
+      background:#f8fafc;
+      color:#334155;
+      text-align:left;
+      text-transform:uppercase;
+      letter-spacing:.35px;
+      font-size:12px;
+    }
+    tr:last-child td{border-bottom:none}
+    .money{font-weight:900;white-space:nowrap}
+    .muted{color:var(--muted)}
+    .chips{display:flex;gap:6px;flex-wrap:wrap}
+    .chip{
+      display:inline-flex;
+      align-items:center;
+      min-height:26px;
+      border-radius:999px;
+      padding:4px 9px;
+      font-weight:800;
+      font-size:12px;
+      background:#f1f5f9;
+      color:#334155;
+    }
+    .chip.have{background:var(--soft-green);color:#047857}
+    .chip.miss{background:var(--soft-amber);color:#9a3412}
+    .actions{display:flex;gap:8px;flex-wrap:wrap;min-width:250px}
+    .drawer{
+      display:none;
+      background:#f8fafc;
+      padding:16px;
+      border-top:1px solid var(--line);
+    }
+    .drawer.open{display:block}
+    .drawer-grid{
+      display:grid;
+      grid-template-columns:minmax(320px,1fr) minmax(280px,420px);
+      gap:14px;
+      align-items:start;
+    }
+    .note-box{
+      border:1px solid var(--line);
+      border-radius:14px;
+      background:#fff;
+      padding:14px;
+    }
+    .note-box h3{margin:0 0 10px;font-size:16px}
+    .help{
+      margin-top:10px;
+      padding:10px 12px;
+      border-radius:12px;
+      background:var(--soft-blue);
+      color:#1e40af;
+      font-size:13px;
+      line-height:1.45;
+    }
+    .empty{
+      padding:28px;
+      text-align:center;
+      color:var(--muted);
+      background:#fff;
+      border-radius:0 0 18px 18px;
+    }
+    @media (max-width:1180px){
+      .filters{grid-template-columns:repeat(3,minmax(0,1fr))}
+      .stats{grid-template-columns:repeat(2,1fr)}
+      .drawer-grid{grid-template-columns:1fr}
+    }
+    @media (max-width:720px){
+      .page{padding:10px}
+      .top h1{font-size:22px}
+      .filters,.stats{grid-template-columns:1fr}
+      button{width:100%}
+      .actions{min-width:0}
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="top">
+      <div>
+        <h1>Customer Purchase Suggestions</h1>
+        <p>Find customers with purchases above the selected amount and suggest remaining VAJRA product categories in Malayalam.</p>
+      </div>
+      <button class="btn-light" type="button" onclick="window.location.href='dashboard.html'">Dashboard</button>
+    </div>
+
+    <div id="status" class="status info">Loading page access...</div>
+
+    <div class="panel">
+      <div class="panel-body">
+        <div class="filters">
+          <div class="field">
+            <label>From Date</label>
+            <input type="date" id="fromDate">
+          </div>
+          <div class="field">
+            <label>To Date</label>
+            <input type="date" id="toDate">
+          </div>
+          <div class="field">
+            <label>Minimum Purchase</label>
+            <input type="number" id="minAmount" value="10000" min="0" step="100">
+          </div>
+          <div class="field">
+            <label>Customer Search</label>
+            <input type="text" id="searchBox" placeholder="Name or mobile">
+          </div>
+          <div class="field">
+            <label>Only With Mobile</label>
+            <select id="mobileFilter">
+              <option value="yes" selected>Yes</option>
+              <option value="all">All</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Speech Voice</label>
+            <select id="voiceSelect">
+              <option value="">Auto Malayalam</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>&nbsp;</label>
+            <button class="btn-blue" id="loadBtn" type="button">Load Customers</button>
+          </div>
+        </div>
+
+        <div class="stats">
+          <div class="stat"><span>Eligible Customers</span><b id="statCustomers">0</b></div>
+          <div class="stat"><span>Sales Bills</span><b id="statBills">0</b></div>
+          <div class="stat"><span>Total Value</span><b id="statValue">₹0</b></div>
+          <div class="stat"><span>Suggestions Ready</span><b id="statSuggestions">0</b></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Customer</th>
+              <th>Mobile</th>
+              <th>Total Purchase</th>
+              <th>Bills</th>
+              <th>Purchased</th>
+              <th>Suggest Balance</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="customerBody"></tbody>
+        </table>
+      </div>
+      <div id="emptyState" class="empty">Click Load Customers to begin.</div>
+    </div>
+  </div>
+
+<script>
+  const sb = window.sbcc;
+
+  const PRODUCT_CATEGORIES = [
+    {
+      id:"switches",
+      label:"Electrical Switches",
+      ml:"ഇലക്ട്രിക്കൽ സ്വിച്ചുകൾ",
+      keywords:["switch","modular","plate","socket","fan regulator","regulator","mcb box","bell push"]
+    },
+    {
+      id:"lights",
+      label:"Lights",
+      ml:"ലൈറ്റുകൾ",
+      keywords:["light","lamp","led","bulb","panel","spot","strip","tube","downlight","cob","profile"]
+    },
+    {
+      id:"wires",
+      label:"Wires",
+      ml:"വയറുകൾ",
+      keywords:["wire","cable","flexible","fr","frls","submersible","coaxial","cat6","cat 6"]
+    },
+    {
+      id:"lightning-arrestors",
+      label:"Lightning Arrestors",
+      ml:"ലൈറ്റ്നിംഗ് അറസ്റ്ററുകൾ",
+      keywords:["lightning","arrestor","arrester","la rod","copper bonded","earthing rod"]
+    },
+    {
+      id:"surge-protectors",
+      label:"Surge Protectors",
+      ml:"സർജ് പ്രൊട്ടക്ടറുകൾ",
+      keywords:["surge","spd","protector","protection device"]
+    },
+    {
+      id:"hood-hob",
+      label:"Hood and Hob",
+      ml:"കിച്ചൻ ഹുഡ്, ഹോബ്",
+      keywords:["hood","hob","chimney","cooktop","burner"]
+    },
+    {
+      id:"sanitary",
+      label:"Sanitary Fittings",
+      ml:"സാനിറ്ററി ഫിറ്റിംഗ്സ്",
+      keywords:["sanitary","closet","wash basin","basin","urinal","sink","flush","cistern","seat cover"]
+    },
+    {
+      id:"cp",
+      label:"CP Fittings",
+      ml:"സി.പി ഫിറ്റിംഗ്സ്",
+      keywords:["cp fitting","cp fittings","tap","faucet","mixer","shower","health faucet","angle valve","bib cock","pillar cock"]
+    },
+    {
+      id:"plumbing-pvc",
+      label:"Plumbing PVC Fittings",
+      ml:"പ്ലംബിംഗ് പി.വി.സി ഫിറ്റിംഗ്സ്",
+      keywords:["pvc","cpvc","upvc","pipe","elbow","tee","bend","coupler","socket","valve","plumbing"]
+    },
+    {
+      id:"interlocks",
+      label:"Interlocks",
+      ml:"ഇന്റർലോക്കുകൾ",
+      keywords:["interlock","paver","paving","tile block"]
+    },
+    {
+      id:"stone",
+      label:"Stone",
+      ml:"സ്റ്റോൺ",
+      keywords:["stone","granite","marble","kadappa","laterite","cladding"]
+    },
+    {
+      id:"interior",
+      label:"Interior Decor Items",
+      ml:"ഇന്റീരിയർ ഡെക്കോർ ഐറ്റങ്ങൾ",
+      keywords:["interior","decor","wall panel","wallpaper","blind","curtain","laminate","false ceiling","ceiling","profile light"]
+    }
+  ];
+
+  const state = {
+    customers: [],
+    filtered: [],
+    voices: []
+  };
+
+  const els = {
+    status: document.getElementById("status"),
+    fromDate: document.getElementById("fromDate"),
+    toDate: document.getElementById("toDate"),
+    minAmount: document.getElementById("minAmount"),
+    searchBox: document.getElementById("searchBox"),
+    mobileFilter: document.getElementById("mobileFilter"),
+    voiceSelect: document.getElementById("voiceSelect"),
+    loadBtn: document.getElementById("loadBtn"),
+    body: document.getElementById("customerBody"),
+    empty: document.getElementById("emptyState"),
+    statCustomers: document.getElementById("statCustomers"),
+    statBills: document.getElementById("statBills"),
+    statValue: document.getElementById("statValue"),
+    statSuggestions: document.getElementById("statSuggestions")
+  };
+
+  function money(value){
+    return new Intl.NumberFormat("en-IN", {
+      style:"currency",
+      currency:"INR",
+      maximumFractionDigits:0
+    }).format(Number(value || 0));
+  }
+
+  function esc(value){
+    return String(value ?? "")
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#039;");
+  }
+
+  function cleanMobile(value){
+    let mobile = String(value || "").replace(/\D/g,"");
+    if(mobile.startsWith("91") && mobile.length === 12) mobile = mobile.slice(2);
+    return mobile;
+  }
+
+  function setStatus(message, type = "info"){
+    els.status.textContent = message;
+    els.status.className = `status ${type}`;
+  }
+
+  function normalizeText(value){
+    return String(value || "").toLowerCase().replace(/\s+/g," ").trim();
+  }
+
+  function categoryMatchesItem(category, item){
+    const text = normalizeText(`${item.item_code || ""} ${item.item_name || ""}`);
+    return category.keywords.some(keyword => text.includes(keyword));
+  }
+
+  function detectPurchasedCategoryIds(items){
+    const found = new Set();
+    (items || []).forEach(item => {
+      PRODUCT_CATEGORIES.forEach(category => {
+        if(categoryMatchesItem(category, item)) found.add(category.id);
+      });
+    });
+    return found;
+  }
+
+  function buildMalayalamText(customer){
+    const name = customer.name || "സർ";
+    const missing = customer.missingCategories.map(c => c.ml);
+    if(!missing.length){
+      return `${name}, VAJRA LIGHTS AND ELECTRICALSൽ നിന്ന് വാങ്ങിയതിന് നന്ദി. നിങ്ങളുടെ ആവശ്യത്തിന് വേണ്ട എല്ലാ പ്രധാന ഐറ്റങ്ങളും ഞങ്ങളോടൊപ്പം ലഭ്യമാണ്. കൂടുതൽ സഹായത്തിനായി ഞങ്ങളെ ബന്ധപ്പെടുക.`;
+    }
+
+    const list = missing.join(", ");
+    return `നമസ്കാരം ${name}, VAJRA LIGHTS AND ELECTRICALSൽ നിന്ന് വാങ്ങിയതിന് നന്ദി. നിങ്ങൾ ഇപ്പോൾ വാങ്ങിയ ഐറ്റങ്ങൾ ഒഴികെ, നിങ്ങളുടെ വീടിനും പ്രോജക്ടിനും ആവശ്യമാകാവുന്ന ${list} എന്നിവയും ഞങ്ങളുടെ കടയിൽ ലഭ്യമാണ്. നല്ല ക്വാളിറ്റിയും മികച്ച വിലയും ലഭിക്കും. ആവശ്യമുണ്ടെങ്കിൽ ദയവായി VAJRA LIGHTS AND ELECTRICALSനെ ബന്ധപ്പെടുക. നന്ദി.`;
+  }
+
+  function buildWhatsAppText(customer){
+    const missing = customer.missingCategories.map(c => c.ml).join(", ");
+    return [
+      "നമസ്കാരം,",
+      "",
+      "VAJRA LIGHTS AND ELECTRICALSൽ നിന്ന് വാങ്ങിയതിന് നന്ദി.",
+      missing
+        ? `താങ്കൾക്ക് ആവശ്യമെങ്കിൽ ${missing} എന്നിവയും ഞങ്ങളോടൊപ്പം ലഭ്യമാണ്.`
+        : "താങ്കളുടെ അടുത്ത ആവശ്യങ്ങൾക്കും ഞങ്ങളെ ബന്ധപ്പെടാം.",
+      "",
+      "Quality products, best price, trusted service.",
+      "Contact: 9495160771, 8606808063"
+    ].join("\n");
+  }
+
+  function populateVoices(){
+    if(!("speechSynthesis" in window)) return;
+    state.voices = window.speechSynthesis.getVoices() || [];
+    const previous = els.voiceSelect.value;
+    const mlVoices = state.voices.filter(v => /ml|malayalam|india/i.test(`${v.lang} ${v.name}`));
+    const voices = mlVoices.length ? mlVoices : state.voices;
+    els.voiceSelect.innerHTML = `<option value="">Auto Malayalam</option>` + voices.map(v => {
+      const label = `${v.name} (${v.lang || "unknown"})`;
+      return `<option value="${esc(v.name)}">${esc(label)}</option>`;
+    }).join("");
+    if(previous) els.voiceSelect.value = previous;
+  }
+
+  function speakMalayalam(customerId){
+    const customer = state.customers.find(c => c.id === customerId);
+    if(!customer) return;
+    if(!("speechSynthesis" in window)){
+      alert("This browser does not support speech playback.");
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(buildMalayalamText(customer));
+    utterance.lang = "ml-IN";
+    utterance.rate = 0.92;
+    utterance.pitch = 1;
+
+    const selectedName = els.voiceSelect.value;
+    const selected = state.voices.find(v => v.name === selectedName);
+    const auto = state.voices.find(v => /ml/i.test(v.lang)) || state.voices.find(v => /india|malayalam/i.test(`${v.lang} ${v.name}`));
+    utterance.voice = selected || auto || null;
+    window.speechSynthesis.speak(utterance);
+  }
+
+  function stopVoice(){
+    if("speechSynthesis" in window) window.speechSynthesis.cancel();
+  }
+
+  function openWhatsApp(customerId){
+    const customer = state.customers.find(c => c.id === customerId);
+    if(!customer) return;
+    const mobile = cleanMobile(customer.mobile);
+    const text = encodeURIComponent(buildWhatsAppText(customer));
+    const url = mobile ? `https://wa.me/91${mobile}?text=${text}` : `https://wa.me/?text=${text}`;
+    window.open(url, "_blank");
+  }
+
+  function voiceWhatsApp(customerId){
+    speakMalayalam(customerId);
+    setTimeout(() => openWhatsApp(customerId), 900);
+  }
+
+  async function copyText(customerId){
+    const customer = state.customers.find(c => c.id === customerId);
+    if(!customer) return;
+    await navigator.clipboard.writeText(buildMalayalamText(customer));
+    setStatus("Malayalam suggestion text copied.", "success");
+  }
+
+  function toggleDrawer(customerId){
+    document.querySelectorAll(".drawer").forEach(node => {
+      if(node.id !== `drawer-${customerId}`) node.classList.remove("open");
+    });
+    document.getElementById(`drawer-${customerId}`)?.classList.toggle("open");
+  }
+
+  async function fetchPaged(table, select, applyQuery){
+    const rows = [];
+    const pageSize = 1000;
+    let from = 0;
+
+    while(true){
+      let query = sb.from(table).select(select).range(from, from + pageSize - 1);
+      query = applyQuery ? applyQuery(query) : query;
+      const { data, error } = await query;
+      if(error) throw error;
+      rows.push(...(data || []));
+      if(!data || data.length < pageSize) break;
+      from += pageSize;
+    }
+
+    return rows;
+  }
+
+  async function loadCustomers(){
+    els.loadBtn.disabled = true;
+    setStatus("Loading sales bills and customer items...", "info");
+
+    try{
+      const minAmount = Number(els.minAmount.value || 0) || 0;
+      const fromDate = els.fromDate.value;
+      const toDate = els.toDate.value;
+
+      const sales = await fetchPaged(
+        "sales_details",
+        "id,series_code,sales_number,bill_date,customer_name,customer_mobile,invoice_amount,status",
+        query => {
+          let q = query.order("bill_date", { ascending:false });
+          if(fromDate) q = q.gte("bill_date", fromDate);
+          if(toDate) q = q.lte("bill_date", toDate);
+          return q;
+        }
+      );
+
+      const validSales = sales.filter(row => String(row.status || "").toUpperCase() !== "CANCELLED");
+      const grouped = new Map();
+
+      validSales.forEach(row => {
+        const mobile = cleanMobile(row.customer_mobile);
+        const name = String(row.customer_name || "").trim();
+        const key = mobile || `name:${name.toLowerCase() || row.id}`;
+        if(!grouped.has(key)){
+          grouped.set(key, {
+            id:key.replace(/[^a-zA-Z0-9_-]/g,"_"),
+            name,
+            mobile,
+            amount:0,
+            billCount:0,
+            salesIds:[],
+            billNos:[]
+          });
+        }
+
+        const customer = grouped.get(key);
+        if(name && !customer.name) customer.name = name;
+        customer.amount += Number(row.invoice_amount || 0) || 0;
+        customer.billCount += 1;
+        customer.salesIds.push(Number(row.id));
+        customer.billNos.push(`${row.series_code || ""}${row.series_code ? "-" : ""}${row.sales_number || ""}`);
+      });
+
+      let customers = [...grouped.values()]
+        .filter(customer => customer.amount >= minAmount)
+        .filter(customer => els.mobileFilter.value !== "yes" || customer.mobile);
+
+      const allSalesIds = [...new Set(customers.flatMap(c => c.salesIds).filter(Boolean))];
+      const itemsBySale = new Map();
+
+      for(let i = 0; i < allSalesIds.length; i += 100){
+        const chunk = allSalesIds.slice(i, i + 100);
+        const itemRows = await fetchPaged(
+          "sales_item_details",
+          "sales_id,item_code,item_name",
+          query => query.in("sales_id", chunk)
+        );
+        itemRows.forEach(item => {
+          const saleId = Number(item.sales_id);
+          if(!itemsBySale.has(saleId)) itemsBySale.set(saleId, []);
+          itemsBySale.get(saleId).push(item);
+        });
+      }
+
+      customers = customers.map(customer => {
+        const items = customer.salesIds.flatMap(id => itemsBySale.get(Number(id)) || []);
+        const purchasedIds = detectPurchasedCategoryIds(items);
+        const purchasedCategories = PRODUCT_CATEGORIES.filter(c => purchasedIds.has(c.id));
+        const missingCategories = PRODUCT_CATEGORIES.filter(c => !purchasedIds.has(c.id));
+        return { ...customer, items, purchasedCategories, missingCategories };
+      });
+
+      state.customers = customers.sort((a,b) => b.amount - a.amount);
+      applyFilters();
+      setStatus(`Loaded ${state.customers.length} customers above ${money(minAmount)}. Use Play Voice first, then WhatsApp. WhatsApp Web cannot receive an auto-attached voice note from a browser page.`, "success");
+    }catch(error){
+      console.error(error);
+      setStatus("Load failed: " + (error.message || "Unknown error"), "error");
+    }finally{
+      els.loadBtn.disabled = false;
+    }
+  }
+
+  function applyFilters(){
+    const term = normalizeText(els.searchBox.value);
+    state.filtered = state.customers.filter(customer => {
+      if(!term) return true;
+      return normalizeText(`${customer.name} ${customer.mobile}`).includes(term);
+    });
+    render();
+  }
+
+  function renderChips(categories, cssClass){
+    if(!categories.length) return `<span class="muted">None detected</span>`;
+    return `<div class="chips">${categories.map(c => `<span class="chip ${cssClass}">${esc(c.label)}</span>`).join("")}</div>`;
+  }
+
+  function render(){
+    els.statCustomers.textContent = state.filtered.length;
+    els.statBills.textContent = state.filtered.reduce((sum,c) => sum + c.billCount, 0);
+    els.statValue.textContent = money(state.filtered.reduce((sum,c) => sum + c.amount, 0));
+    els.statSuggestions.textContent = state.filtered.filter(c => c.missingCategories.length).length;
+
+    els.empty.style.display = state.filtered.length ? "none" : "block";
+    els.body.innerHTML = state.filtered.map(customer => {
+      const voiceText = buildMalayalamText(customer);
+      return `
+        <tr>
+          <td><b>${esc(customer.name || "Customer")}</b></td>
+          <td>${esc(customer.mobile || "")}</td>
+          <td class="money">${money(customer.amount)}</td>
+          <td>${customer.billCount}<div class="muted">${esc(customer.billNos.slice(0,3).join(", "))}${customer.billNos.length > 3 ? "..." : ""}</div></td>
+          <td>${renderChips(customer.purchasedCategories, "have")}</td>
+          <td>${renderChips(customer.missingCategories, "miss")}</td>
+          <td>
+            <div class="actions">
+              <button class="btn-green" type="button" onclick="voiceWhatsApp('${customer.id}')">Voice WhatsApp</button>
+              <button class="btn-blue" type="button" onclick="openWhatsApp('${customer.id}')">Text WhatsApp</button>
+              <button class="btn-light" type="button" onclick="toggleDrawer('${customer.id}')">Text</button>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td colspan="7" style="padding:0;background:#f8fafc;">
+            <div class="drawer" id="drawer-${customer.id}">
+              <div class="drawer-grid">
+                <div class="note-box">
+                  <h3>Malayalam Voice Script</h3>
+                  <textarea readonly>${esc(voiceText)}</textarea>
+                  <div class="help">Click Play Voice to hear the Malayalam suggestion. For a WhatsApp voice note, play this audio near the phone/PC microphone and record it in WhatsApp, or paste the text as a message.</div>
+                </div>
+                <div class="note-box">
+                  <h3>Actions</h3>
+                  <div class="actions">
+                    <button class="btn-green" type="button" onclick="voiceWhatsApp('${customer.id}')">Voice WhatsApp</button>
+                    <button class="btn-green" type="button" onclick="speakMalayalam('${customer.id}')">Play Voice</button>
+                    <button class="btn-amber" type="button" onclick="stopVoice()">Stop</button>
+                    <button class="btn-blue" type="button" onclick="openWhatsApp('${customer.id}')">Open WhatsApp</button>
+                    <button class="btn-light" type="button" onclick="copyText('${customer.id}')">Copy Text</button>
+                  </div>
+                  <div class="help">Suggestion excludes detected purchased categories and includes only balance categories.</div>
+                </div>
+              </div>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join("");
+  }
+
+  function setDefaultDates(){
+    const today = new Date();
+    const yearStart = new Date(today.getFullYear(), 0, 1);
+    els.toDate.value = today.toISOString().slice(0,10);
+    els.fromDate.value = yearStart.toISOString().slice(0,10);
+  }
+
+  document.addEventListener("DOMContentLoaded", async () => {
+    setDefaultDates();
+    populateVoices();
+    if("speechSynthesis" in window){
+      window.speechSynthesis.onvoiceschanged = populateVoices;
+    }
+
+    const ok = await requirePageAccess("sales");
+    if(!ok) return;
+
+    setStatus("Ready. Click Load Customers.", "info");
+    els.loadBtn.addEventListener("click", loadCustomers);
+    els.searchBox.addEventListener("input", applyFilters);
+    els.mobileFilter.addEventListener("change", loadCustomers);
+  });
+</script>
+</body>
+</html>

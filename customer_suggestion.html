@@ -174,6 +174,18 @@
     .chip.have{background:var(--soft-green);color:#047857}
     .chip.miss{background:var(--soft-amber);color:#9a3412}
     .actions{display:flex;gap:8px;flex-wrap:wrap;min-width:250px}
+    .voice-recorder{
+      margin-top:12px;
+      display:grid;
+      gap:10px;
+    }
+    .voice-recorder audio{width:100%}
+    .voice-state{
+      min-height:20px;
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.45;
+    }
     .drawer{
       display:none;
       background:#f8fafc;
@@ -385,7 +397,8 @@
   const state = {
     customers: [],
     filtered: [],
-    voices: []
+    voices: [],
+    recordings: new Map()
   };
 
   const els = {
@@ -530,6 +543,181 @@
     setTimeout(() => openWhatsApp(customerId), 900);
   }
 
+  function getRecorderStatus(customerId){
+    return document.getElementById(`voiceStatus-${customerId}`);
+  }
+
+  function setRecorderStatus(customerId, message, type = "info"){
+    const status = getRecorderStatus(customerId);
+    if(!status) return;
+    status.textContent = message;
+    status.style.color = type === "error" ? "var(--red)" : type === "success" ? "var(--green)" : "var(--muted)";
+  }
+
+  function setRecorderButtons(customerId, isRecording){
+    const generateBtn = document.getElementById(`generateVoice-${customerId}`);
+    const shareBtn = document.getElementById(`shareVoice-${customerId}`);
+    const sendBtn = document.getElementById(`sendVoice-${customerId}`);
+    const clearBtn = document.getElementById(`clearVoice-${customerId}`);
+    const hasRecording = state.recordings.has(customerId);
+    if(generateBtn) generateBtn.disabled = isRecording;
+    if(shareBtn) shareBtn.disabled = isRecording || !hasRecording;
+    if(sendBtn) sendBtn.disabled = isRecording || !hasRecording;
+    if(clearBtn) clearBtn.disabled = isRecording || !hasRecording;
+  }
+
+  function updateVoicePreview(customerId){
+    const recording = state.recordings.get(customerId);
+    const audio = document.getElementById(`voicePreview-${customerId}`);
+    if(!audio) return;
+    audio.src = recording ? recording.url : "";
+    audio.style.display = recording ? "block" : "none";
+    setRecorderButtons(customerId, false);
+  }
+
+  function clearVoiceRecording(customerId){
+    const recording = state.recordings.get(customerId);
+    if(recording?.url) URL.revokeObjectURL(recording.url);
+    state.recordings.delete(customerId);
+    updateVoicePreview(customerId);
+    setRecorderStatus(customerId, "Voice note cleared.", "info");
+  }
+
+  function audioExtension(type){
+    if(/wav|wave/.test(type)) return "wav";
+    if(/mpeg|mp3/.test(type)) return "mp3";
+    if(/mp4/.test(type)) return "m4a";
+    if(/ogg/.test(type)) return "ogg";
+    return "webm";
+  }
+
+  async function responseErrorMessage(response){
+    try{
+      const data = await response.clone().json();
+      return data.error || response.statusText;
+    }catch(_){
+      return await response.text() || response.statusText;
+    }
+  }
+
+  async function generateAiVoice(customerId){
+    const customer = state.customers.find(c => c.id === customerId);
+    if(!customer) return;
+
+    try{
+      setRecorderButtons(customerId, true);
+      setRecorderStatus(customerId, "Generating female AI voice... please wait.", "info");
+
+      const response = await fetch("/api/customer-suggestion-voice", {
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body:JSON.stringify({
+          customerName: customer.name || "Customer",
+          text: buildMalayalamText(customer)
+        })
+      });
+
+      if(!response.ok) throw new Error(await responseErrorMessage(response));
+
+      const blob = await response.blob();
+      const previous = state.recordings.get(customerId);
+      if(previous?.url) URL.revokeObjectURL(previous.url);
+      state.recordings.set(customerId, {
+        blob,
+        url: URL.createObjectURL(blob),
+        type: blob.type || "audio/mpeg",
+        createdAt: new Date(),
+        generated: true
+      });
+      updateVoicePreview(customerId);
+      setRecorderStatus(customerId, "Female AI voice ready. Preview it, then send or share.", "success");
+    }catch(error){
+      console.error(error);
+      setRecorderButtons(customerId, false);
+      setRecorderStatus(customerId, "AI voice failed: " + (error.message || "Unknown error"), "error");
+    }
+  }
+
+  function blobToBase64(blob){
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || "").split(",")[1] || "");
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  async function sendVoiceToWhatsApp(customerId){
+    const customer = state.customers.find(c => c.id === customerId);
+    const recording = state.recordings.get(customerId);
+    if(!customer || !recording) return;
+
+    const mobile = cleanMobile(customer.mobile);
+    if(!mobile){
+      setRecorderStatus(customerId, "This customer has no valid mobile number.", "error");
+      return;
+    }
+
+    try{
+      setRecorderButtons(customerId, true);
+      setRecorderStatus(customerId, "Sending voice audio to WhatsApp...", "info");
+      const audioBase64 = await blobToBase64(recording.blob);
+      const response = await fetch("/api/send-whatsapp-audio", {
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body:JSON.stringify({
+          mobile,
+          audioBase64,
+          mimeType: recording.type || "audio/mpeg"
+        })
+      });
+
+      if(!response.ok) throw new Error(await responseErrorMessage(response));
+      setRecorderStatus(customerId, "Voice audio sent to WhatsApp successfully.", "success");
+    }catch(error){
+      console.error(error);
+      setRecorderStatus(customerId, "WhatsApp send failed: " + (error.message || "Unknown error"), "error");
+    }finally{
+      setRecorderButtons(customerId, false);
+    }
+  }
+
+  async function shareVoiceRecording(customerId){
+    const customer = state.customers.find(c => c.id === customerId);
+    const recording = state.recordings.get(customerId);
+    if(!customer || !recording) return;
+
+    const mobile = cleanMobile(customer.mobile);
+    const extension = audioExtension(recording.type);
+    const safeName = (customer.name || "customer").replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "customer";
+    const file = new File([recording.blob], `vajra-${safeName}-voice.${extension}`, { type: recording.type || "audio/webm" });
+
+    if(navigator.canShare && navigator.canShare({ files:[file] }) && navigator.share){
+      try{
+        await navigator.share({
+          files:[file],
+          title:"VAJRA voice suggestion",
+          text:"VAJRA LIGHTS AND ELECTRICALS voice suggestion"
+        });
+        setRecorderStatus(customerId, "Share sheet opened. Choose WhatsApp and send the voice note.", "success");
+        return;
+      }catch(error){
+        if(error.name === "AbortError"){
+          setRecorderStatus(customerId, "Sharing cancelled.", "info");
+          return;
+        }
+        console.error(error);
+      }
+    }
+
+    const link = document.createElement("a");
+    link.href = recording.url;
+    link.download = file.name;
+    link.click();
+    setRecorderStatus(customerId, "Audio downloaded. Attach it in WhatsApp. This browser cannot share audio files directly.", "info");
+    if(mobile) window.open(`https://wa.me/91${mobile}`, "_blank");
+  }
+
   async function copyText(customerId){
     const customer = state.customers.find(c => c.id === customerId);
     if(!customer) return;
@@ -640,7 +828,7 @@
 
       state.customers = customers.sort((a,b) => b.amount - a.amount);
       applyFilters();
-      setStatus(`Loaded ${state.customers.length} customers above ${money(minAmount)}. Use Play Voice first, then WhatsApp. WhatsApp Web cannot receive an auto-attached voice note from a browser page.`, "success");
+      setStatus(`Loaded ${state.customers.length} customers above ${money(minAmount)}. Use Voice Note to generate a female AI audio message.`, "success");
     }catch(error){
       console.error(error);
       setStatus("Load failed: " + (error.message || "Unknown error"), "error");
@@ -682,7 +870,7 @@
           <td>${renderChips(customer.missingCategories, "miss")}</td>
           <td>
             <div class="actions">
-              <button class="btn-green" type="button" onclick="voiceWhatsApp('${customer.id}')">Voice WhatsApp</button>
+              <button class="btn-green" type="button" onclick="toggleDrawer('${customer.id}')">Voice Note</button>
               <button class="btn-blue" type="button" onclick="openWhatsApp('${customer.id}')">Text WhatsApp</button>
               <button class="btn-light" type="button" onclick="toggleDrawer('${customer.id}')">Text</button>
             </div>
@@ -695,18 +883,31 @@
                 <div class="note-box">
                   <h3>Malayalam Voice Script</h3>
                   <textarea readonly>${esc(voiceText)}</textarea>
-                  <div class="help">Click Play Voice to hear the Malayalam suggestion. For a WhatsApp voice note, play this audio near the phone/PC microphone and record it in WhatsApp, or paste the text as a message.</div>
+                  <div class="help">This is the exact Malayalam script used for the generated female AI voice.</div>
                 </div>
                 <div class="note-box">
-                  <h3>Actions</h3>
+                  <h3>Voice Note</h3>
                   <div class="actions">
-                    <button class="btn-green" type="button" onclick="voiceWhatsApp('${customer.id}')">Voice WhatsApp</button>
+                    <button class="btn-green" id="generateVoice-${customer.id}" type="button" onclick="generateAiVoice('${customer.id}')">Generate Female Voice</button>
+                    <button class="btn-blue" id="sendVoice-${customer.id}" type="button" onclick="sendVoiceToWhatsApp('${customer.id}')" disabled>Send WhatsApp</button>
+                    <button class="btn-blue" id="shareVoice-${customer.id}" type="button" onclick="shareVoiceRecording('${customer.id}')" disabled>Share Voice</button>
+                    <button class="btn-light" id="clearVoice-${customer.id}" type="button" onclick="clearVoiceRecording('${customer.id}')" disabled>Clear</button>
+                  </div>
+                  <div class="voice-recorder">
+                    <audio id="voicePreview-${customer.id}" controls style="display:none"></audio>
+                    <div class="voice-state" id="voiceStatus-${customer.id}">Generate a female AI voice, preview it, then send or share the audio.</div>
+                  </div>
+                </div>
+                <div class="note-box">
+                  <h3>Text and Playback</h3>
+                  <div class="actions">
+                    <button class="btn-green" type="button" onclick="voiceWhatsApp('${customer.id}')">Play + Open WhatsApp</button>
                     <button class="btn-green" type="button" onclick="speakMalayalam('${customer.id}')">Play Voice</button>
                     <button class="btn-amber" type="button" onclick="stopVoice()">Stop</button>
                     <button class="btn-blue" type="button" onclick="openWhatsApp('${customer.id}')">Open WhatsApp</button>
                     <button class="btn-light" type="button" onclick="copyText('${customer.id}')">Copy Text</button>
                   </div>
-                  <div class="help">Suggestion excludes detected purchased categories and includes only balance categories.</div>
+                  <div class="help">Send WhatsApp uses the server WhatsApp API when configured. Share Voice opens the device share sheet or downloads the audio file.</div>
                 </div>
               </div>
             </div>
@@ -714,6 +915,7 @@
         </tr>
       `;
     }).join("");
+    state.filtered.forEach(customer => updateVoicePreview(customer.id));
   }
 
   function setDefaultDates(){

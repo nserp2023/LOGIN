@@ -430,7 +430,7 @@
       <h1 class="title">GST REPORT PAGE</h1>
       <div class="sub">
         Monthly accountant-ready GST report with bill-wise GST rate summary, B2B, B2C, purchase register,
-        accepted sales returns with GSTIN, HSN summary, CSV/Excel export, and cancelled-sales audit. Cancelled sales bills are excluded from GST filing totals.
+        all sales returns with GSTIN, HSN summary, CSV/Excel export, and cancelled-sales audit. Cancelled sales bills are excluded from GST filing totals.
       </div>
 
       <div class="filters">
@@ -447,8 +447,8 @@
         <div class="field">
           <label>SALES RETURN</label>
           <select id="returnMode">
-            <option value="accepted">Accepted only</option>
             <option value="all">All returns</option>
+            <option value="accepted">Accepted only</option>
             <option value="pending">Pending only</option>
           </select>
         </div>
@@ -475,7 +475,7 @@
       <div class="status-line">
         <span id="periodLabel">Period: current month</span>
         <span id="loadedLabel">Not loaded yet</span>
-        <span id="returnModeLabel">Returns: accepted only</span>
+        <span id="returnModeLabel">Returns: all returns</span>
       </div>
     </div>
 
@@ -486,7 +486,7 @@
     <div class="print-header">
       <h1>VAJRA LIGHTS - GST Report</h1>
       <div id="printPeriodLabel">Period: current month</div>
-      <div id="printReturnModeLabel">Returns: accepted only</div>
+      <div id="printReturnModeLabel">Returns: all returns</div>
     </div>
 
     <div class="stats">
@@ -542,8 +542,8 @@
       </div>
       <div class="check-card good" id="returnCheckCard">
         <div class="label">RETURN MODE</div>
-        <div class="value" id="checkReturnMode">Accepted only</div>
-        <div class="hint" id="checkReturnModeHint">Only accepted returns reduce GST liability.</div>
+        <div class="value" id="checkReturnMode">All returns</div>
+        <div class="hint" id="checkReturnModeHint">Accepted and pending/not accepted returns are included.</div>
       </div>
     </div>
 
@@ -769,7 +769,7 @@
         </table>
       </div>
       <div class="note">
-  Sales returns follow the selected return mode above. Accepted returns are shown as negative values so your accountant can directly use them as adjustment / credit note style data.
+  Sales returns follow the selected return mode above. All returns are shown as negative values so your accountant can review accepted and pending/not accepted returns together.
 </div>
     </div>
 
@@ -1043,7 +1043,7 @@
     }
 
     function getReturnModeText(){
-      const mode = document.getElementById("returnMode")?.value || "accepted";
+      const mode = document.getElementById("returnMode")?.value || "all";
       if(mode === "all") return "All returns";
       if(mode === "pending") return "Pending only";
       return "Accepted only";
@@ -1139,7 +1139,7 @@
     }
 
     function filterReturnRowsForMode(rows){
-      const mode = document.getElementById("returnMode")?.value || "accepted";
+      const mode = document.getElementById("returnMode")?.value || "all";
       if(mode === "all") return rows;
       return rows.filter(r => {
         if(mode === "pending") return !isAcceptedReturn(r);
@@ -2257,7 +2257,7 @@
       const fromMonth = document.getElementById("fromMonth")?.value || "";
       const toMonth = document.getElementById("toMonth")?.value || "";
       if(!fromMonth || !toMonth) return "";
-      const mode = document.getElementById("returnMode")?.value || "accepted";
+      const mode = document.getElementById("returnMode")?.value || "all";
       return `_${fromMonth}_to_${toMonth}_${mode}_returns`;
     }
 

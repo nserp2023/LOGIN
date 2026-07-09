@@ -73,7 +73,7 @@
 
     .filters{
       display:grid;
-      grid-template-columns:180px 180px minmax(220px,1fr) 170px 150px 150px 120px;
+      grid-template-columns:170px 170px 170px minmax(220px,1fr) repeat(5, minmax(120px, auto));
       gap:10px;
       align-items:end;
     }
@@ -108,16 +108,54 @@
       background:var(--primary);
     }
     button:hover{ background:var(--primary-dark); }
+    button:disabled{
+      background:#94a3b8;
+      cursor:not-allowed;
+    }
     .btn-blue{ background:var(--blue); }
     .btn-blue:hover{ background:#1d4ed8; }
     .btn-orange{ background:var(--orange); }
     .btn-orange:hover{ background:#c2410c; }
     .btn-red{ background:var(--red); }
     .btn-red:hover{ background:#b91c1c; }
+    .btn-light{
+      background:#fff;
+      color:#0f172a;
+      border:1px solid var(--border);
+    }
+    .btn-light:hover{
+      background:#f8fafc;
+    }
+
+    .quick-actions{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      margin-top:12px;
+    }
+    .quick-actions button{
+      height:34px;
+      padding:0 12px;
+      font-size:13px;
+    }
+
+    .status-line{
+      margin-top:12px;
+      color:var(--muted);
+      font-size:13px;
+      font-weight:700;
+      display:flex;
+      gap:12px;
+      flex-wrap:wrap;
+    }
+
+    .print-header{
+      display:none;
+    }
 
     .stats{
       display:grid;
-      grid-template-columns:repeat(5, 1fr);
+      grid-template-columns:repeat(auto-fit, minmax(190px, 1fr));
       gap:12px;
       margin-bottom:14px;
     }
@@ -252,6 +290,41 @@
       margin-bottom:14px;
     }
 
+    .check-grid{
+      display:grid;
+      grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));
+      gap:12px;
+      margin-bottom:14px;
+    }
+
+    .check-card{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:14px;
+    }
+    .check-card .label{
+      color:var(--muted);
+      font-size:12px;
+      font-weight:800;
+      margin-bottom:8px;
+    }
+    .check-card .value{
+      font-size:22px;
+      font-weight:900;
+      line-height:1.2;
+    }
+    .check-card.good{ border-color:#bbf7d0; background:#f0fdf4; }
+    .check-card.warn{ border-color:#fde68a; background:#fffbeb; }
+    .check-card.bad{ border-color:#fecaca; background:#fef2f2; }
+    .check-card .hint{
+      color:#475569;
+      font-size:12px;
+      margin-top:6px;
+      line-height:1.35;
+    }
+
     .card{
       background:var(--card);
       border:1px solid var(--border);
@@ -289,8 +362,6 @@
     }
     .pill.cancelled{ background:#fee2e2; color:#991b1b; }
     .cancelled-text{ color:#991b1b; font-weight:800; }
-
-
     @media (max-width: 1200px){
       .filters{
         grid-template-columns:1fr 1fr;
@@ -320,6 +391,20 @@
       }
       .topbar, .tabs, .section-tools{
         display:none !important;
+      }
+      .print-header{
+        display:block;
+        margin-bottom:10px;
+        padding:10px 0;
+        border-bottom:2px solid #111;
+      }
+      .print-header h1{
+        margin:0 0 4px;
+        font-size:20px;
+      }
+      .print-header div{
+        font-size:12px;
+        font-weight:700;
       }
       .section{
         display:block !important;
@@ -360,6 +445,15 @@
         </div>
 
         <div class="field">
+          <label>SALES RETURN</label>
+          <select id="returnMode">
+            <option value="accepted">Accepted only</option>
+            <option value="all">All returns</option>
+            <option value="pending">Pending only</option>
+          </select>
+        </div>
+
+        <div class="field">
           <label>SEARCH</label>
           <input type="text" id="searchBox" placeholder="Search invoice / party / GSTIN / item / HSN / bill no">
         </div>
@@ -370,10 +464,29 @@
         <button id="exportAllExcelBtn" class="btn-blue">EXPORT ALL EXCEL</button>
         <button id="clearBtn" class="btn-red">CLEAR</button>
       </div>
+
+      <div class="quick-actions">
+        <button type="button" class="btn-light" data-range="current">Current Month</button>
+        <button type="button" class="btn-light" data-range="previous">Previous Month</button>
+        <button type="button" class="btn-light" data-range="fytd">FY To Date</button>
+        <button type="button" class="btn-light" data-range="lastfy">Last FY</button>
+      </div>
+
+      <div class="status-line">
+        <span id="periodLabel">Period: current month</span>
+        <span id="loadedLabel">Not loaded yet</span>
+        <span id="returnModeLabel">Returns: accepted only</span>
+      </div>
     </div>
 
     <div class="audit-note">
-      ✅ GST filing totals exclude CANCELLED sales bills. Use the Cancelled Sales Audit tab only for checking cancelled bills; it is not included in GST totals.
+      [OK] GST filing totals exclude CANCELLED sales bills. Use the Cancelled Sales Audit tab only for checking cancelled bills; it is not included in GST totals.
+    </div>
+
+    <div class="print-header">
+      <h1>VAJRA LIGHTS - GST Report</h1>
+      <div id="printPeriodLabel">Period: current month</div>
+      <div id="printReturnModeLabel">Returns: accepted only</div>
     </div>
 
     <div class="stats">
@@ -394,8 +507,43 @@
         <div class="value" id="statOutputGST">0.00</div>
       </div>
       <div class="stat">
+        <div class="label">INPUT GST</div>
+        <div class="value" id="statInputGST">0.00</div>
+      </div>
+      <div class="stat">
         <div class="label">NET GST LIABILITY</div>
         <div class="value" id="statNetGST">0.00</div>
+      </div>
+      <div class="stat">
+        <div class="label">B2B / B2C BILLS</div>
+        <div class="value" id="statB2Mix">0 / 0</div>
+      </div>
+      <div class="stat">
+        <div class="label">CANCELLED AUDIT VALUE</div>
+        <div class="value" id="statCancelledValue">0.00</div>
+      </div>
+    </div>
+
+    <div class="check-grid">
+      <div class="check-card good" id="gstinCheckCard">
+        <div class="label">GSTIN CHECK</div>
+        <div class="value" id="checkGSTIN">0 issues</div>
+        <div class="hint" id="checkGSTINHint">B2B classification uses GSTIN format validation.</div>
+      </div>
+      <div class="check-card good" id="hsnCheckCard">
+        <div class="label">HSN CHECK</div>
+        <div class="value" id="checkHSN">0 missing</div>
+        <div class="hint">Missing HSN rows can weaken the outward HSN summary.</div>
+      </div>
+      <div class="check-card good" id="roundingCheckCard">
+        <div class="label">GST ROUNDING CHECK</div>
+        <div class="value" id="checkRounding">0 alerts</div>
+        <div class="hint">Flags rows where GST does not match taxable value and rate.</div>
+      </div>
+      <div class="check-card good" id="returnCheckCard">
+        <div class="label">RETURN MODE</div>
+        <div class="value" id="checkReturnMode">Accepted only</div>
+        <div class="hint" id="checkReturnModeHint">Only accepted returns reduce GST liability.</div>
       </div>
     </div>
 
@@ -621,7 +769,7 @@
         </table>
       </div>
       <div class="note">
-  All sales returns are shown here, including accepted and not accepted returns. Sales returns are shown as negative values so your accountant can directly use them as adjustment / credit note style data.
+  Sales returns follow the selected return mode above. Accepted returns are shown as negative values so your accountant can directly use them as adjustment / credit note style data.
 </div>
     </div>
 
@@ -721,6 +869,7 @@
     let b2cRows = [];
     let hsnSummaryRows = [];
     let cancelledSalesRows = [];
+    let isLoadingReport = false;
 
     // =========================
     // INIT
@@ -729,6 +878,9 @@
       setDefaultMonths();
       bindEvents();
       setupTabs();
+      updatePeriodLabel();
+      updateReturnModeLabel();
+      renderQualityChecks();
     });
 
     function bindEvents(){
@@ -738,6 +890,17 @@
       document.getElementById("exportAllBtn").addEventListener("click", () => exportAllReports("csv"));
       document.getElementById("exportAllExcelBtn").addEventListener("click", () => exportAllReports("excel"));
       document.getElementById("searchBox").addEventListener("input", applySearchFilter);
+      document.getElementById("fromMonth").addEventListener("change", updatePeriodLabel);
+      document.getElementById("toMonth").addEventListener("change", updatePeriodLabel);
+      document.getElementById("returnMode").addEventListener("change", () => {
+        updateReturnModeLabel();
+        buildDerivedReports();
+        renderAll();
+        applySearchFilter();
+      });
+      document.querySelectorAll("[data-range]").forEach(btn => {
+        btn.addEventListener("click", () => setQuickRange(btn.dataset.range));
+      });
     }
 
     function setupTabs(){
@@ -760,6 +923,33 @@
       document.getElementById("toMonth").value = val;
     }
 
+    function monthValue(date){
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    }
+
+    function setQuickRange(rangeKey){
+      const today = new Date();
+      let from = new Date(today.getFullYear(), today.getMonth(), 1);
+      let to = new Date(today.getFullYear(), today.getMonth(), 1);
+
+      if(rangeKey === "previous"){
+        from = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        to = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+      }else if(rangeKey === "fytd"){
+        const fyStartYear = today.getMonth() >= 3 ? today.getFullYear() : today.getFullYear() - 1;
+        from = new Date(fyStartYear, 3, 1);
+        to = new Date(today.getFullYear(), today.getMonth(), 1);
+      }else if(rangeKey === "lastfy"){
+        const fyStartYear = today.getMonth() >= 3 ? today.getFullYear() - 1 : today.getFullYear() - 2;
+        from = new Date(fyStartYear, 3, 1);
+        to = new Date(fyStartYear + 1, 2, 1);
+      }
+
+      document.getElementById("fromMonth").value = monthValue(from);
+      document.getElementById("toMonth").value = monthValue(to);
+      updatePeriodLabel();
+    }
+
     // =========================
     // HELPERS
     // =========================
@@ -775,7 +965,7 @@
       document.getElementById(id).textContent = val;
     }
     function isValidGSTIN(gstin){
-      return String(gstin || "").trim().length >= 10;
+      return /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/i.test(String(gstin || "").trim());
     }
     function escapeHtml(text){
       return String(text ?? "")
@@ -823,12 +1013,55 @@
         return null;
       }
 
+      if(fromMonth > toMonth){
+        alert("From month cannot be after To month.");
+        return null;
+      }
+
       const startDate = `${fromMonth}-01`;
       const [y, m] = toMonth.split("-").map(Number);
       const endObj = new Date(y, m, 0);
       const endDate = `${endObj.getFullYear()}-${String(endObj.getMonth()+1).padStart(2,'0')}-${String(endObj.getDate()).padStart(2,'0')}`;
 
       return { startDate, endDate };
+    }
+
+    function formatMonthLabel(monthValueText){
+      if(!monthValueText) return "";
+      const [y, m] = monthValueText.split("-").map(Number);
+      return new Date(y, m - 1, 1).toLocaleDateString("en-IN", { month:"short", year:"numeric" });
+    }
+
+    function updatePeriodLabel(){
+      const fromMonth = document.getElementById("fromMonth")?.value || "";
+      const toMonth = document.getElementById("toMonth")?.value || "";
+      const text = fromMonth && toMonth
+        ? `Period: ${formatMonthLabel(fromMonth)} to ${formatMonthLabel(toMonth)}`
+        : "Period: select month range";
+      setText("periodLabel", text);
+      setText("printPeriodLabel", text);
+    }
+
+    function getReturnModeText(){
+      const mode = document.getElementById("returnMode")?.value || "accepted";
+      if(mode === "all") return "All returns";
+      if(mode === "pending") return "Pending only";
+      return "Accepted only";
+    }
+
+    function updateReturnModeLabel(){
+      const text = `Returns: ${getReturnModeText().toLowerCase()}`;
+      setText("returnModeLabel", text);
+      setText("printReturnModeLabel", text);
+    }
+
+    function setLoadingState(isLoading){
+      isLoadingReport = isLoading;
+      ["loadBtn","clearBtn","exportAllBtn","exportAllExcelBtn"].forEach(id => {
+        const el = document.getElementById(id);
+        if(el) el.disabled = isLoading;
+      });
+      document.getElementById("loadBtn").textContent = isLoading ? "LOADING..." : "LOAD REPORT";
     }
 
     // =========================
@@ -855,14 +1088,21 @@
       setText("statSalesTaxable","0.00");
       setText("statReturnTaxable","0.00");
       setText("statOutputGST","0.00");
+      setText("statInputGST","0.00");
       setText("statNetGST","0.00");
+      setText("statB2Mix","0 / 0");
+      setText("statCancelledValue","0.00");
+      setText("loadedLabel","Not loaded yet");
+      renderQualityChecks();
     }
 
     // =========================
     // LOAD MAIN
     // =========================
     async function loadGSTReport(){
+      if(isLoadingReport) return;
       try{
+        setLoadingState(true);
         clearAll();
         const range = getDateRange();
         if(!range) return;
@@ -874,20 +1114,44 @@
           loadCancelledSales(range.startDate, range.endDate)
         ]);
 
-        salesSummaryRows = groupSalesByBillAndGst(salesItemRows);
-        purchaseSummaryRows = groupPurchaseByBillAndGst(purchaseItemRows);
-        returnSummaryRows = groupReturnByBillAndGst(returnItemRows);
-        b2bRows = groupB2BByBillGstHSN(salesItemRows);
-        b2cRows = salesSummaryRows.filter(r => !isValidGSTIN(r.customer_gst));
-        hsnSummaryRows = generateHSNSummary(salesItemRows);
+        buildDerivedReports();
 
         renderAll();
         renderCancelledSalesTable(cancelledSalesRows);
         applySearchFilter();
+        setText("loadedLabel", `Loaded: ${new Date().toLocaleString("en-IN")}`);
       }catch(err){
         console.error(err);
         alert("Error loading GST report: " + err.message);
+      }finally{
+        setLoadingState(false);
       }
+    }
+
+    function buildDerivedReports(){
+      const returnRows = filterReturnRowsForMode(returnItemRows);
+      salesSummaryRows = groupSalesByBillAndGst(salesItemRows);
+      purchaseSummaryRows = groupPurchaseByBillAndGst(purchaseItemRows);
+      returnSummaryRows = groupReturnByBillAndGst(returnRows);
+      b2bRows = groupB2BByBillGstHSN(salesItemRows);
+      b2cRows = salesSummaryRows.filter(r => !isValidGSTIN(r.customer_gst));
+      hsnSummaryRows = generateHSNSummary(salesItemRows);
+    }
+
+    function filterReturnRowsForMode(rows){
+      const mode = document.getElementById("returnMode")?.value || "accepted";
+      if(mode === "all") return rows;
+      return rows.filter(r => {
+        if(mode === "pending") return !isAcceptedReturn(r);
+        return isAcceptedReturn(r);
+      });
+    }
+
+    function isAcceptedReturn(row){
+      if(row.is_accepted === true) return true;
+      const status = String(row.status || "").trim().toUpperCase();
+      if(status === "ACCEPTED" || status === "APPROVED") return true;
+      return false;
     }
 
     // =========================
@@ -922,7 +1186,9 @@
         const qty = num(it.quantity);
         const rateExcl = num(it.sales_price);
         const rateIncl = num(it.sales_price_gst);
-        const gstPercent = num(it.gst_percent);
+        const gstPercent = normalizeGstPercent(
+          num(it.gst_percent) || deriveGstPercent(rateExcl, rateIncl)
+        );
         const taxable = round2(qty * rateExcl);
         const total = round2(qty * rateIncl);
         const gstValue = round2(total - taxable);
@@ -986,7 +1252,9 @@
         const qty = num(it.quantity);
         const rateExcl = num(it.sales_price);
         const rateIncl = num(it.sales_price_gst);
-        const gstPercent = num(it.gst_percent);
+        const gstPercent = normalizeGstPercent(
+          num(it.gst_percent) || deriveGstPercent(rateExcl, rateIncl)
+        );
         const taxable = round2(qty * rateExcl);
         const total = round2(qty * rateIncl);
         const gstValue = round2(total - taxable);
@@ -1127,6 +1395,7 @@
           customer_name: h.customer_name || "",
           customer_gst: h.gst_number || "",
           status: h.approval_status || (h.is_accepted ? "ACCEPTED" : "PENDING"),
+          is_accepted: h.is_accepted === true,
           hsn_code: it.hsn_code || "",
           item_code: it.item_code || "",
           item_name: it.item_name || "",
@@ -1357,6 +1626,7 @@
       renderGSTRateSummary();
       renderMonthlySummary();
       renderTopStats();
+      renderQualityChecks();
     }
 
     function renderSalesTable(rows){
@@ -1647,13 +1917,66 @@
       const salesTaxable = sumBy(salesSummaryRows, "taxable_value");
       const returnTaxable = sumBy(returnSummaryRows, "taxable_value");
       const outputGST = sumBy(salesSummaryRows, "gst_value");
+      const inputGST = sumBy(purchaseSummaryRows, "gst_value");
       const netGST = round2(sumBy(salesSummaryRows, "gst_value") - sumBy(purchaseSummaryRows, "gst_value") + sumBy(returnSummaryRows, "gst_value"));
+      const cancelledValue = sumBy(cancelledSalesRows, "total_value");
 
       setText("statPurchaseTaxable", fmt(purchaseTaxable));
       setText("statSalesTaxable", fmt(salesTaxable));
       setText("statReturnTaxable", fmt(returnTaxable));
       setText("statOutputGST", fmt(outputGST));
+      setText("statInputGST", fmt(inputGST));
       setText("statNetGST", fmt(netGST));
+      setText("statB2Mix", `${b2bRows.length} / ${b2cRows.length}`);
+      setText("statCancelledValue", fmt(cancelledValue));
+    }
+
+    function setCheckCard(id, severity){
+      const el = document.getElementById(id);
+      if(!el) return;
+      el.classList.remove("good","warn","bad");
+      el.classList.add(severity);
+    }
+
+    function getQualityMetrics(){
+      const invalidGstinRows = salesSummaryRows.filter(r => String(r.customer_gst || "").trim() && !isValidGSTIN(r.customer_gst));
+      const missingHsnRows = salesItemRows.filter(r => !String(r.hsn_code || "").trim());
+      const roundingRows = [...salesItemRows, ...purchaseItemRows, ...returnItemRows].filter(r => {
+        const expected = round2(Math.abs(num(r.taxable_value)) * num(r.gst_percent) / 100);
+        const actual = Math.abs(num(r.gst_value));
+        return num(r.gst_percent) > 0 && Math.abs(expected - actual) > 1;
+      });
+      const acceptedReturns = returnItemRows.filter(isAcceptedReturn).length;
+      const pendingReturns = returnItemRows.length - acceptedReturns;
+
+      return {
+        invalidGstinCount: invalidGstinRows.length,
+        missingHsnCount: missingHsnRows.length,
+        roundingCount: roundingRows.length,
+        acceptedReturns,
+        pendingReturns
+      };
+    }
+
+    function renderQualityChecks(){
+      const metrics = getQualityMetrics();
+      const returnModeText = getReturnModeText();
+
+      setText("checkGSTIN", `${metrics.invalidGstinCount} issue${metrics.invalidGstinCount === 1 ? "" : "s"}`);
+      setText("checkGSTINHint", metrics.invalidGstinCount
+        ? "GSTIN values that fail validation are treated as B2C."
+        : "All GSTIN values used for B2B classification look valid.");
+      setCheckCard("gstinCheckCard", metrics.invalidGstinCount ? "warn" : "good");
+
+      setText("checkHSN", `${metrics.missingHsnCount} missing`);
+      setCheckCard("hsnCheckCard", metrics.missingHsnCount ? "warn" : "good");
+
+      setText("checkRounding", `${metrics.roundingCount} alert${metrics.roundingCount === 1 ? "" : "s"}`);
+      setCheckCard("roundingCheckCard", metrics.roundingCount ? "bad" : "good");
+
+      setText("checkReturnMode", returnModeText);
+      setText("checkReturnModeHint", `${metrics.acceptedReturns} accepted item rows, ${metrics.pendingReturns} pending/not accepted item rows loaded.`);
+      setCheckCard("returnCheckCard", document.getElementById("returnMode")?.value === "all" ? "warn" : "good");
     }
 
     // =========================
@@ -1744,6 +2067,7 @@
               INVOICE_NUMBER: makeInvoiceNumber(r.series_code, r.invoice_number, r.sales_number),
               CUSTOMER: r.customer_name,
               GSTIN: r.customer_gst,
+              HSN: r.hsn_code,
               GST_PERCENT: r.gst_percent,
               TAXABLE_VALUE: r.taxable_value,
               GST_VALUE: r.gst_value,
@@ -1902,10 +2226,11 @@
         alert("No data to export.");
         return;
       }
+      const filename = `${cfg.filename}${getExportPeriodSuffix()}`;
       if(format === "excel"){
-        downloadExcel(cfg.rows, `${cfg.filename}.xlsx`, reportKey);
+        downloadExcel(cfg.rows, `${filename}.xlsx`, reportKey);
       }else{
-        downloadCSVFromObjects(cfg.rows, `${cfg.filename}.csv`);
+        downloadCSVFromObjects(cfg.rows, `${filename}.csv`);
       }
     }
 
@@ -1926,6 +2251,14 @@
         return `"${String(val).replace(/"/g, '""')}"`;
       }).join(","))).join("\n");
       downloadBlob(csv, filename, "text/csv;charset=utf-8;");
+    }
+
+    function getExportPeriodSuffix(){
+      const fromMonth = document.getElementById("fromMonth")?.value || "";
+      const toMonth = document.getElementById("toMonth")?.value || "";
+      if(!fromMonth || !toMonth) return "";
+      const mode = document.getElementById("returnMode")?.value || "accepted";
+      return `_${fromMonth}_to_${toMonth}_${mode}_returns`;
     }
 
     function downloadExcel(rows, filename, sheetName){

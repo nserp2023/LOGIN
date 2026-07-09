@@ -11,7 +11,6 @@
     <script src="supabaseClient.js"></script>
     <script src="page_permissions.js"></script>
     <script src="common-ui.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -372,6 +371,29 @@
     let currentRows = [];
     let packingUnlocked = false;
     let mobileUnlockTimer = null;
+    let html2CanvasLoader = null;
+
+    function ensureHtml2Canvas(){
+        if(typeof window.html2canvas === "function"){
+            return Promise.resolve(window.html2canvas);
+        }
+
+        if(html2CanvasLoader) return html2CanvasLoader;
+
+        html2CanvasLoader = new Promise((resolve, reject) => {
+            const script = document.createElement("script");
+            script.src = "https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js";
+            script.async = true;
+            script.onload = () => resolve(window.html2canvas);
+            script.onerror = () => {
+                html2CanvasLoader = null;
+                reject(new Error("Could not load the bill image tool"));
+            };
+            document.head.appendChild(script);
+        });
+
+        return html2CanvasLoader;
+    }
 
     function normalizeText(v){
         return String(v || "").trim().toLowerCase();
@@ -701,6 +723,7 @@
     }
 
     async function generateBillImageBlob(id){
+        await ensureHtml2Canvas();
         const { type } = getCurrentTypeConfig();
 
         const iframe = document.createElement('iframe');
@@ -739,6 +762,7 @@
 
 
     async function generateSimpleQuotationImageBlob(id){
+        await ensureHtml2Canvas();
         const iframe = document.createElement('iframe');
         iframe.style.position = 'fixed';
         iframe.style.left = '-99999px';
@@ -1070,8 +1094,12 @@
         }
 
         const billIds = rows.map(r => Number(r.id)).filter(Boolean);
-        const billIssueMap = await getBillIssueMap(type, billIds);
-        const billAmountMap = await getBillAmountMap(type, billIds);
+        // These are independent item-table reads. Running them together avoids
+        // paying two full network round trips one after the other.
+        const [billIssueMap, billAmountMap] = await Promise.all([
+            getBillIssueMap(type, billIds),
+            getBillAmountMap(type, billIds)
+        ]);
         if(billIds.length && billAmountMap.size === 0){
             console.warn("Report is using saved header totals because item-row amount recalculation returned no rows.");
         }

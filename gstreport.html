@@ -802,6 +802,18 @@
       return round2(((incl - excl) / excl) * 100);
     }
 
+    function normalizeGstPercent(rate){
+      const value = round2(rate);
+      const standardRates = [0, 0.1, 0.25, 1, 1.5, 3, 5, 6, 12, 18, 28];
+      const nearest = standardRates.reduce((best, current) =>
+        Math.abs(current - value) < Math.abs(best - value) ? current : best
+      );
+
+      // GST-inclusive rates are stored rounded to two decimals. That can make
+      // an 18% rate appear as 17.97, 18.01, etc. Only snap close matches.
+      return Math.abs(nearest - value) <= 0.25 ? nearest : value;
+    }
+
     function getDateRange(){
       const fromMonth = document.getElementById("fromMonth").value;
       const toMonth = document.getElementById("toMonth").value;
@@ -1038,7 +1050,9 @@
         const qty = num(it.quantity);
         const rateExcl = num(it.purchase_price);
         const rateIncl = num(it.purchase_price_gst);
-        const gstPercent = num(it.gst_percent) || deriveGstPercent(rateExcl, rateIncl);
+        const gstPercent = normalizeGstPercent(
+          num(it.gst_percent) || deriveGstPercent(rateExcl, rateIncl)
+        );
         const taxable = round2(qty * rateExcl);
         const total = round2(qty * rateIncl);
         const gstValue = round2(total - taxable);
@@ -1097,7 +1111,9 @@
         const qty = num(it.return_qty);
         const rateExcl = num(it.price);
         const rateIncl = num(it.price_gst);
-        const gstPercent = num(it.gst_percent) || deriveGstPercent(rateExcl, rateIncl);
+        const gstPercent = normalizeGstPercent(
+          num(it.gst_percent) || deriveGstPercent(rateExcl, rateIncl)
+        );
         const taxable = round2(qty * rateExcl);
         const total = round2(qty * rateIncl);
         const gstValue = round2(total - taxable);

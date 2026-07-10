@@ -322,6 +322,24 @@
     <label>To:</label>
     <input type="date" id="to_date">
 
+    <label>Bill No:</label>
+    <input type="search" id="bill_filter" placeholder="Search bill number" autocomplete="off">
+
+    <label>Value From:</label>
+    <input type="number" id="amount_from" placeholder="Minimum value" min="0" step="0.01">
+
+    <label>Value To:</label>
+    <input type="number" id="amount_to" placeholder="Maximum value" min="0" step="0.01">
+
+    <label>Quick Filter:</label>
+    <select id="quick_date_filter">
+        <option value="">Custom / All dates</option>
+        <option value="today">Today</option>
+        <option value="7days">Last 7 days</option>
+        <option value="30days">Last 30 days</option>
+        <option value="month">This month</option>
+    </select>
+
     <label>Series:</label>
     <select id="series_filter">
         <option value="">All</option>
@@ -369,6 +387,7 @@
     const sb = window.sbcc;
     let canEditBills = false;
     let currentRows = [];
+    let reportRequestId = 0;
     let packingUnlocked = false;
     let mobileUnlockTimer = null;
     let html2CanvasLoader = null;
@@ -1016,13 +1035,55 @@
         alert("✅ Follow up saved.");
     }
 
+    function toLocalISODate(date){
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+    }
+
+    function addDaysToISODate(isoDate, days){
+        const [year, month, day] = String(isoDate).split("-").map(Number);
+        const date = new Date(year, month - 1, day);
+        date.setDate(date.getDate() + days);
+        return toLocalISODate(date);
+    }
+
+    function applyQuickDateFilter(){
+        const mode = document.getElementById("quick_date_filter").value;
+        const fromInput = document.getElementById("from_date");
+        const toInput = document.getElementById("to_date");
+        if(!mode) return;
+
+        const today = new Date();
+        const from = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        if(mode === "7days") from.setDate(from.getDate() - 6);
+        if(mode === "30days") from.setDate(from.getDate() - 29);
+        if(mode === "month") from.setDate(1);
+
+        fromInput.value = toLocalISODate(from);
+        toInput.value = toLocalISODate(today);
+        loadReport();
+    }
+
+    function applyCustomDateFilter(){
+        document.getElementById("quick_date_filter").value = "";
+        loadReport();
+    }
+
     async function loadReport() {
+        const requestId = ++reportRequestId;
         const cfg = getCurrentTypeConfig();
         const type = cfg.type;
         toggleRemarkColumn();
 
         const from = document.getElementById('from_date').value;
         const to = document.getElementById('to_date').value;
+        const billFilter = normalizeText(document.getElementById('bill_filter').value);
+        const amountFromValue = document.getElementById('amount_from').value;
+        const amountToValue = document.getElementById('amount_to').value;
+        const amountFrom = amountFromValue === "" ? null : Number(amountFromValue);
+        const amountTo = amountToValue === "" ? null : Number(amountToValue);
         const series = document.getElementById('series_filter').value;
         const customer = document.getElementById('customer_filter').value.trim();
         const mobile = document.getElementById('mobile_filter').value.trim();
@@ -1044,13 +1105,17 @@
             .order(cfg.numberField, { ascending:false });
 
         if(from) query = query.gte(cfg.dateField, from);
-        if(to) query = query.lte(cfg.dateField, to);
+        // Use the start of the following day as an exclusive boundary. This works
+        // for both DATE and TIMESTAMP columns and includes every bill on "To".
+        if(to) query = query.lt(cfg.dateField, addDaysToISODate(to, 1));
         if(series) query = query.eq('series_code', series);
         if(customer) query = query.ilike('customer_name', `%${customer}%`);
         if(mobile) query = query.ilike('customer_mobile', `%${mobile}%`);
         if(gst) query = query.ilike('gst_number', `%${gst}%`);
 
         const { data, error } = await query;
+
+        if(requestId !== reportRequestId) return;
 
         if(error){
             alert(error.message);
@@ -1059,6 +1124,17 @@
         }
 
         let rows = data || [];
+
+        if(billFilter){
+            rows = rows.filter(r => {
+                const number = normalizeText(r[cfg.numberField]);
+                const series = normalizeText(r.series_code);
+                const compactFilter = billFilter.replace(/[\s\-/]/g, "");
+                return number.includes(billFilter) ||
+                    `${series}${number}`.replace(/[\s\-/]/g, "").includes(compactFilter) ||
+                    `${series}-${number}`.includes(billFilter);
+            });
+        }
 
         // Packing headers do not store payment_type; read it from their linked Sales bill.
         if(type === "sales_pack"){
@@ -1100,6 +1176,7 @@
             getBillIssueMap(type, billIds),
             getBillAmountMap(type, billIds)
         ]);
+        if(requestId !== reportRequestId) return;
         if(billIds.length && billAmountMap.size === 0){
             console.warn("Report is using saved header totals because item-row amount recalculation returned no rows.");
         }
@@ -1110,6 +1187,14 @@
             issueReasons: billIssueMap.get(Number(r.id)) || [],
             hasMissingItem: (billIssueMap.get(Number(r.id)) || []).length > 0
         }));
+
+
+        rows = rows.filter(r => {
+            const value = Number(r[cfg.amountField] || 0);
+            if(amountFrom !== null && Number.isFinite(amountFrom) && value < amountFrom) return false;
+            if(amountTo !== null && Number.isFinite(amountTo) && value > amountTo) return false;
+            return true;
+        });
 
         currentRows = rows;
 
@@ -1936,8 +2021,12 @@
         await loadSeries();
         loadReport();
 
-        document.getElementById("from_date").addEventListener("change", loadReport);
-        document.getElementById("to_date").addEventListener("change", loadReport);
+        document.getElementById("from_date").addEventListener("change", applyCustomDateFilter);
+        document.getElementById("to_date").addEventListener("change", applyCustomDateFilter);
+        document.getElementById("bill_filter").addEventListener("input", debounce(loadReport, 180));
+        document.getElementById("amount_from").addEventListener("input", debounce(loadReport, 180));
+        document.getElementById("amount_to").addEventListener("input", debounce(loadReport, 180));
+        document.getElementById("quick_date_filter").addEventListener("change", applyQuickDateFilter);
         document.getElementById("series_filter").addEventListener("change", loadReport);
         document.getElementById("report_type").addEventListener("change", () => {
             toggleRemarkColumn();

@@ -985,6 +985,52 @@
       return round2(arr.reduce((a,b)=>a+num(b[key]), 0));
     }
 
+    const SUPABASE_PAGE_SIZE = 1000;
+    const ID_FILTER_CHUNK_SIZE = 200;
+
+    async function fetchAllPages(buildQuery, pageSize = SUPABASE_PAGE_SIZE){
+      const allRows = [];
+      let from = 0;
+
+      while(true){
+        const { data, error } = await buildQuery().range(from, from + pageSize - 1);
+        if(error) throw error;
+
+        const rows = data || [];
+        allRows.push(...rows);
+
+        if(rows.length < pageSize) break;
+        from += pageSize;
+      }
+
+      return allRows;
+    }
+
+    function chunkArray(values, chunkSize = ID_FILTER_CHUNK_SIZE){
+      const chunks = [];
+      for(let i = 0; i < values.length; i += chunkSize){
+        chunks.push(values.slice(i, i + chunkSize));
+      }
+      return chunks;
+    }
+
+    async function fetchRowsByIdChunks({ table, select, idField, ids, orderField }){
+      const uniqueIds = [...new Set((ids || []).filter(id => id !== null && id !== undefined && id !== ""))];
+      if(!uniqueIds.length) return [];
+
+      const batches = await Promise.all(chunkArray(uniqueIds).map(idBatch =>
+        fetchAllPages(() =>
+          sb
+            .from(table)
+            .select(select)
+            .in(idField, idBatch)
+            .order(orderField || idField, { ascending:true })
+        )
+      ));
+
+      return batches.flat();
+    }
+
     function deriveGstPercent(excl, incl){
       excl = num(excl);
       incl = num(incl);
@@ -1022,8 +1068,10 @@
       const [y, m] = toMonth.split("-").map(Number);
       const endObj = new Date(y, m, 0);
       const endDate = `${endObj.getFullYear()}-${String(endObj.getMonth()+1).padStart(2,'0')}-${String(endObj.getDate()).padStart(2,'0')}`;
+      const nextMonthObj = new Date(y, m, 1);
+      const endExclusiveDate = `${nextMonthObj.getFullYear()}-${String(nextMonthObj.getMonth()+1).padStart(2,'0')}-01`;
 
-      return { startDate, endDate };
+      return { startDate, endDate, endExclusiveDate };
     }
 
     function formatMonthLabel(monthValueText){
@@ -1108,10 +1156,10 @@
         if(!range) return;
 
         await Promise.all([
-          loadSales(range.startDate, range.endDate),
-          loadPurchases(range.startDate, range.endDate),
-          loadSalesReturns(range.startDate, range.endDate),
-          loadCancelledSales(range.startDate, range.endDate)
+          loadSales(range.startDate, range.endExclusiveDate),
+          loadPurchases(range.startDate, range.endExclusiveDate),
+          loadSalesReturns(range.startDate, range.endExclusiveDate),
+          loadCancelledSales(range.startDate, range.endExclusiveDate)
         ]);
 
         buildDerivedReports();
@@ -1158,26 +1206,26 @@
     // SALES LOAD
     // =========================
     async function loadSales(startDate, endDate){
-      const { data: heads, error: hErr } = await sb
-        .from("sales_details")
-        .select("id, sales_number, bill_date, gst_number, customer_name, invoice_number, invoice_date, series_code, status")
-        .gte("bill_date", startDate)
-        .lte("bill_date", endDate)
-        .or("status.is.null,status.neq.CANCELLED")
-        .order("bill_date", { ascending:true });
-
-      if(hErr) throw hErr;
+      const heads = await fetchAllPages(() =>
+        sb
+          .from("sales_details")
+          .select("id, sales_number, bill_date, gst_number, customer_name, invoice_number, invoice_date, series_code, status")
+          .gte("bill_date", startDate)
+          .lt("bill_date", endDate)
+          .or("status.is.null,status.neq.CANCELLED")
+          .order("bill_date", { ascending:true })
+      );
 
       const ids = (heads || []).map(x => x.id);
       if(!ids.length) return;
 
-      const { data: items, error: iErr } = await sb
-        .from("sales_item_details")
-        .select("sales_id, hsn_code, item_code, item_name, quantity, sales_price, sales_price_gst, gst_percent")
-        .in("sales_id", ids)
-        .order("sales_id", { ascending:true });
-
-      if(iErr) throw iErr;
+      const items = await fetchRowsByIdChunks({
+        table: "sales_item_details",
+        select: "sales_id, hsn_code, item_code, item_name, quantity, sales_price, sales_price_gst, gst_percent",
+        idField: "sales_id",
+        ids,
+        orderField: "sales_id"
+      });
 
       const map = new Map((heads || []).map(h => [h.id, h]));
 
@@ -1222,15 +1270,15 @@
     // CANCELLED SALES AUDIT LOAD (NOT USED IN GST TOTALS)
     // =========================
     async function loadCancelledSales(startDate, endDate){
-      const { data: heads, error: hErr } = await sb
-        .from("sales_details")
-        .select("id, sales_number, bill_date, gst_number, customer_name, invoice_number, invoice_date, series_code, status, cancelled_at, cancelled_by, cancel_reason")
-        .gte("bill_date", startDate)
-        .lte("bill_date", endDate)
-        .eq("status", "CANCELLED")
-        .order("bill_date", { ascending:true });
-
-      if(hErr) throw hErr;
+      const heads = await fetchAllPages(() =>
+        sb
+          .from("sales_details")
+          .select("id, sales_number, bill_date, gst_number, customer_name, invoice_number, invoice_date, series_code, status, cancelled_at, cancelled_by, cancel_reason")
+          .gte("bill_date", startDate)
+          .lt("bill_date", endDate)
+          .eq("status", "CANCELLED")
+          .order("bill_date", { ascending:true })
+      );
 
       const ids = (heads || []).map(x => x.id);
       if(!ids.length){
@@ -1238,13 +1286,13 @@
         return;
       }
 
-      const { data: items, error: iErr } = await sb
-        .from("sales_item_details")
-        .select("sales_id, hsn_code, item_code, item_name, quantity, sales_price, sales_price_gst, gst_percent")
-        .in("sales_id", ids)
-        .order("sales_id", { ascending:true });
-
-      if(iErr) throw iErr;
+      const items = await fetchRowsByIdChunks({
+        table: "sales_item_details",
+        select: "sales_id, hsn_code, item_code, item_name, quantity, sales_price, sales_price_gst, gst_percent",
+        idField: "sales_id",
+        ids,
+        orderField: "sales_id"
+      });
 
       const map = new Map((heads || []).map(h => [h.id, h]));
       const tempRows = (items || []).map((it, idx) => {
@@ -1291,25 +1339,25 @@
     // PURCHASE LOAD
     // =========================
     async function loadPurchases(startDate, endDate){
-      const { data: heads, error: hErr } = await sb
-        .from("purchase_details")
-        .select("id, purchase_number, bill_date, gst_number, supplier_name, invoice_number, invoice_date")
-        .gte("bill_date", startDate)
-        .lte("bill_date", endDate)
-        .order("bill_date", { ascending:true });
-
-      if(hErr) throw hErr;
+      const heads = await fetchAllPages(() =>
+        sb
+          .from("purchase_details")
+          .select("id, purchase_number, bill_date, gst_number, supplier_name, invoice_number, invoice_date")
+          .gte("bill_date", startDate)
+          .lt("bill_date", endDate)
+          .order("bill_date", { ascending:true })
+      );
 
       const ids = (heads || []).map(x => x.id);
       if(!ids.length) return;
 
-      const { data: items, error: iErr } = await sb
-        .from("purchase_item_details")
-        .select("purchase_id, hsn_code, item_code, item_name, quantity, purchase_price, purchase_price_gst, gst_percent")
-        .in("purchase_id", ids)
-        .order("purchase_id", { ascending:true });
-
-      if(iErr) throw iErr;
+      const items = await fetchRowsByIdChunks({
+        table: "purchase_item_details",
+        select: "purchase_id, hsn_code, item_code, item_name, quantity, purchase_price, purchase_price_gst, gst_percent",
+        idField: "purchase_id",
+        ids,
+        orderField: "purchase_id"
+      });
 
       const map = new Map((heads || []).map(h => [h.id, h]));
 
@@ -1352,25 +1400,25 @@
     // RETURN LOAD
     // =========================
     async function loadSalesReturns(startDate, endDate){
-      const { data: heads, error: hErr } = await sb
-        .from("sales_return_details")
-        .select("id, return_number, return_date, customer_name, gst_number, approval_status, is_accepted")
-        .gte("return_date", startDate)
-        .lte("return_date", endDate)
-        .order("return_date", { ascending:true });
-
-      if(hErr) throw hErr;
+      const heads = await fetchAllPages(() =>
+        sb
+          .from("sales_return_details")
+          .select("id, return_number, return_date, customer_name, gst_number, approval_status, is_accepted")
+          .gte("return_date", startDate)
+          .lt("return_date", endDate)
+          .order("return_date", { ascending:true })
+      );
 
       const ids = (heads || []).map(x => x.id);
       if(!ids.length) return;
 
-      const { data: items, error: iErr } = await sb
-        .from("sales_return_item_details")
-        .select("return_id, item_code, item_name, sold_qty, return_qty, price, price_gst, hsn_code, gst_percent")
-        .in("return_id", ids)
-        .order("return_id", { ascending:true });
-
-      if(iErr) throw iErr;
+      const items = await fetchRowsByIdChunks({
+        table: "sales_return_item_details",
+        select: "return_id, item_code, item_name, sold_qty, return_qty, price, price_gst, hsn_code, gst_percent",
+        idField: "return_id",
+        ids,
+        orderField: "return_id"
+      });
 
       const map = new Map((heads || []).map(h => [h.id, h]));
 

@@ -552,6 +552,7 @@
         <span>Duplicate invoice is checked before item entry</span>
       </div>
       <div class="page-badges">
+        <div class="badge" id="purchaseDraftStatus" title="Unsaved purchase entries are backed up in this browser">Auto Backup ON</div>
         <div class="badge">Purchase + Stock Update</div>
         <div class="badge">Barcode Enabled</div>
         <div class="badge">Early Duplicate Warning</div>
@@ -670,6 +671,11 @@
     let isKeyboardNavigating = false;
     let stockData = [];
     let duplicateInvoiceFound = false;
+    const PURCHASE_DRAFT_KEY = "vajra_purchase_unsaved_draft_v1";
+    const PURCHASE_DRAFT_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+    let purchaseDraftReady = false;
+    let purchaseDraftTimer = null;
+    let restoringPurchaseDraft = false;
 
     const ITEM_COLUMNS = [
       { key:"hsn", label:"HSN", width:90 },
@@ -1422,6 +1428,15 @@ if (baseLanding > 0) {
       purch.value= prefill.purchase_price ?? "";
       purchG.value= prefill.purchase_price_gst ?? "";
       landing.value= prefill.landing ?? purchG.value ?? "";
+      p1p.value = prefill.price1_percent ?? "";
+      p1.value = prefill.price1 ?? "";
+      p1g.value = prefill.price1_gst ?? "";
+      p2p.value = prefill.price2_percent ?? "";
+      p2.value = prefill.price2 ?? "";
+      p2g.value = prefill.price2_gst ?? "";
+      p3p.value = prefill.price3_percent ?? "";
+      p3.value = prefill.price3 ?? "";
+      p3g.value = prefill.price3_gst ?? "";
 
       [hsn,code,barcode,name,department,qty,price,disc,total,gstp,totalG,purch,purchG,landing,p1p,p1,p1g,p2p,p2,p2g,p3p,p3,p3g]
         .forEach(el=>wrap.appendChild(el));
@@ -1623,6 +1638,132 @@ if (baseLanding > 0) {
       }).filter(it=>it.item_code || it.item_name || it.barcode);
     }
 
+    function updatePurchaseDraftStatus(text){
+      const status = byId("purchaseDraftStatus");
+      if(status) status.textContent = text || "Auto Backup ON";
+    }
+
+    function purchaseDraftHasData(draft){
+      if(!draft) return false;
+      const invoice = draft.invoice || {};
+      const hasHeader = [invoice.gst_number, invoice.supplier_name, invoice.address, invoice.invoice_number]
+        .some(value => String(value || "").trim());
+      const hasItems = Array.isArray(draft.items) && draft.items.some(item =>
+        [item.item_code, item.item_name, item.barcode].some(value => String(value || "").trim())
+      );
+      return hasHeader || hasItems;
+    }
+
+    function savePurchaseDraftNow(){
+      if(!purchaseDraftReady || restoringPurchaseDraft) return;
+      try{
+        const draft = {
+          saved_at: new Date().toISOString(),
+          invoice: collectInvoice(),
+          items: collectItems()
+        };
+        if(!purchaseDraftHasData(draft)){
+          localStorage.removeItem(PURCHASE_DRAFT_KEY);
+          updatePurchaseDraftStatus("Auto Backup ON");
+          return;
+        }
+        localStorage.setItem(PURCHASE_DRAFT_KEY, JSON.stringify(draft));
+        updatePurchaseDraftStatus("Backup saved");
+      }catch(error){
+        console.warn("Purchase auto backup failed:", error);
+        updatePurchaseDraftStatus("Backup unavailable");
+      }
+    }
+
+    function schedulePurchaseDraftSave(){
+      if(!purchaseDraftReady || restoringPurchaseDraft) return;
+      clearTimeout(purchaseDraftTimer);
+      purchaseDraftTimer = setTimeout(savePurchaseDraftNow, 700);
+    }
+
+    function clearPurchaseDraft(statusText = "Saved - backup cleared"){
+      clearTimeout(purchaseDraftTimer);
+      purchaseDraftTimer = null;
+      try{
+        localStorage.removeItem(PURCHASE_DRAFT_KEY);
+      }catch(error){
+        console.warn("Purchase draft clear failed:", error);
+      }
+      updatePurchaseDraftStatus(statusText);
+    }
+
+    function readPurchaseDraft(){
+      try{
+        const raw = localStorage.getItem(PURCHASE_DRAFT_KEY);
+        if(!raw) return null;
+        const draft = JSON.parse(raw);
+        const savedAt = new Date(draft?.saved_at || "").getTime();
+        if(!Number.isFinite(savedAt) || Date.now() - savedAt > PURCHASE_DRAFT_MAX_AGE_MS){
+          clearPurchaseDraft("Old backup removed");
+          return null;
+        }
+        return purchaseDraftHasData(draft) ? draft : null;
+      }catch(error){
+        console.warn("Purchase draft read failed:", error);
+        clearPurchaseDraft("Invalid backup removed");
+        return null;
+      }
+    }
+
+    async function restorePurchaseDraft(draft){
+      if(!draft) return false;
+      restoringPurchaseDraft = true;
+      try{
+        const invoice = draft.invoice || {};
+        const headerFields = {
+          gstNumber: invoice.gst_number,
+          supplierName: invoice.supplier_name,
+          supplierAddress: invoice.address,
+          invoiceNumber: invoice.invoice_number,
+          invoiceDate: invoice.invoice_date,
+          invoiceAmount: invoice.invoice_amount,
+          specialDiscount: invoice.special_discount,
+          roundOff: invoice.round_off,
+          payable: invoice.payable
+        };
+        Object.entries(headerFields).forEach(([id, value]) => {
+          if(byId(id) && value !== undefined && value !== null) byId(id).value = value;
+        });
+
+        byId("items").innerHTML = "";
+        (draft.items || []).forEach(item => newItemRow(item));
+        if(!(draft.items || []).length) newItemRow();
+        await checkDuplicateInvoice();
+        maybeEnableSave();
+        updatePurchaseDraftStatus("Draft restored");
+        return true;
+      }finally{
+        restoringPurchaseDraft = false;
+      }
+    }
+
+    async function initPurchaseAutoBackup(){
+      const draft = readPurchaseDraft();
+      let restored = false;
+      if(draft){
+        const savedTime = new Date(draft.saved_at).toLocaleString("en-IN");
+        if(confirm(`An unsaved purchase backup from ${savedTime} was found. Restore it?`)){
+          restored = await restorePurchaseDraft(draft);
+        }else if(confirm("Delete this saved purchase backup?")){
+          clearPurchaseDraft("Draft deleted");
+        }else{
+          updatePurchaseDraftStatus("Draft available");
+        }
+      }
+
+      purchaseDraftReady = true;
+      document.addEventListener("input", schedulePurchaseDraftSave);
+      document.addEventListener("change", schedulePurchaseDraftSave);
+      window.addEventListener("beforeunload", savePurchaseDraftNow);
+      if(!draft) updatePurchaseDraftStatus("Auto Backup ON");
+      return restored;
+    }
+
     function maybeEnableSave(){
       const inv = collectInvoice();
       const itemGrossTotal = getItemsGrossTotal();
@@ -1819,6 +1960,7 @@ if (baseLanding > 0) {
       }
 
       status.innerHTML = `<span class="ok">Saved successfully.</span>`;
+      clearPurchaseDraft("Saved - backup cleared");
       byId("purchaseNumber").value = await generatePurchaseNumber();
       byId("invoiceNumber").value = "";
       byId("invoiceAmount").value = "";
@@ -1910,7 +2052,8 @@ if (baseLanding > 0) {
       setupColumnControls();
       await initInvoice();
       await loadStockData();
-      newItemRow();
+      const restoredDraft = await initPurchaseAutoBackup();
+      if(!restoredDraft) newItemRow();
       byId("addRowBtn").addEventListener("click", ()=> newItemRow());
       byId("addRowBtnSticky").addEventListener("click", ()=> newItemRow());
       byId("saveBtn").addEventListener("click", saveAll);

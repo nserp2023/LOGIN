@@ -17,6 +17,14 @@ create table if not exists public.bill_edit_grants (
   check (date_from is null or date_to is null or date_from <= date_to)
 );
 
+-- Keep reruns compatible with databases created by an older version of this
+-- script, whose month regular expression rejected valid YYYY-MM values.
+alter table public.bill_edit_grants
+  drop constraint if exists bill_edit_grants_month_value_check;
+alter table public.bill_edit_grants
+  add constraint bill_edit_grants_month_value_check
+  check (month_value is null or month_value ~ '^[0-9]{4}-[0-9]{2}$');
+
 alter table public.bill_edit_grants enable row level security;
 
 drop policy if exists "Admins manage bill edit grants" on public.bill_edit_grants;

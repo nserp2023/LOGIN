@@ -1196,6 +1196,14 @@
             return true;
         });
 
+        // Permanent editors can edit every bill. Other users may edit only rows
+        // covered by an unused one-time bill grant.
+        if (!canEditBills && type === "sales" && typeof getBillEditAccess === "function") {
+            const accessResults = await Promise.all(rows.map(r => getBillEditAccess(r.id)));
+            if(requestId !== reportRequestId) return;
+            rows = rows.map((r, index) => ({ ...r, hasTemporaryEditAccess: !!accessResults[index]?.allowed }));
+        }
+
         currentRows = rows;
 
         const body = document.getElementById('report_body');
@@ -1287,7 +1295,7 @@
 
                 <td><div class="row-actions">
                     ${
-                        canEditBills && s.status !== "CANCELLED"
+                        (canEditBills || s.hasTemporaryEditAccess) && s.status !== "CANCELLED"
                         ? reportIconButton("edit", "Edit bill", `editDoc(${s.id})`, { cssClass:"icon-edit" })
                         : s.status === "CANCELLED"
                             ? reportIconButton("edit", "Cancelled bill", "", { disabled:true, cssClass:"icon-edit" })
@@ -1871,8 +1879,14 @@
             }
         }
 
+        const type = document.getElementById("report_type").value;
+        if (!allowed && type === "sales" && typeof getBillEditAccess === "function") {
+            const temporaryAccess = await getBillEditAccess(id);
+            allowed = !!temporaryAccess.allowed;
+        }
+
         if(!allowed){
-            alert("You do not have permission to edit bills.");
+            alert("You do not have permission to edit this bill, or its one-time permission has already been used.");
             return;
         }
 
@@ -1882,7 +1896,6 @@
             return;
         }
 
-        const type = document.getElementById("report_type").value;
         const pageVersion = Date.now();
 
         if(type === "sales"){

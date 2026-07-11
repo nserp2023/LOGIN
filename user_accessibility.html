@@ -351,15 +351,38 @@
       if (!selectedUser) return;
       const { data, error } = await accessClient.from("bill_edit_grants")
         .select("id,grant_type,series_code,bill_from,bill_to,date_from,date_to,month_value,used_at,created_at")
-        .eq("user_id", selectedUser.id).order("created_at", { ascending:false }).limit(20);
+        .eq("user_id", selectedUser.id).is("used_at", null)
+        .order("created_at", { ascending:false }).limit(20);
       const list = document.getElementById("billGrantList");
       if (error) { list.textContent = "Could not load grants: " + error.message; return; }
       list.innerHTML = (data || []).map(g => {
         const scope = g.grant_type === "month" ? g.month_value :
           g.grant_type === "date_range" ? `${g.date_from} to ${g.date_to}` :
           `${g.series_code ? g.series_code + "-" : ""}${g.bill_from}${g.bill_to && g.bill_to !== g.bill_from ? " to " + g.bill_to : ""}`;
-        return `<div style="padding:8px 0;border-top:1px solid #ddd">${scope} — <strong>${g.used_at ? "USED" : "AVAILABLE"}</strong></div>`;
+        return `<div style="padding:8px 0;border-top:1px solid #ddd;display:flex;align-items:center;justify-content:space-between;gap:12px">
+          <span>${scope} — <strong>AVAILABLE</strong></span>
+          <button type="button" class="btn-danger" onclick="cancelBillGrant(${g.id})">Cancel permission</button>
+        </div>`;
       }).join("") || "No temporary bill permissions.";
+    }
+
+    async function cancelBillGrant(grantId) {
+      if (!selectedUser) return;
+      if (!confirm("Cancel this one-time bill edit permission?")) return;
+
+      const { error } = await accessClient.from("bill_edit_grants")
+        .delete()
+        .eq("id", grantId)
+        .eq("user_id", selectedUser.id)
+        .is("used_at", null);
+
+      if (error) {
+        setStatus("Failed to cancel permission: " + error.message, "err");
+        return;
+      }
+
+      setStatus("One-time bill edit permission cancelled.", "ok");
+      await loadBillGrants();
     }
 
     async function grantOneTimeBillEdit() {

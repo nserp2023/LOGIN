@@ -364,6 +364,7 @@
     let stockData = []; 
     let currentRowId = 0;
     let editSaleId = null;
+    let editGrantId = null;
 
 
     // --- 3. INITIALIZATION ---
@@ -376,6 +377,13 @@ window.onload = async () => {
 editSaleId = params.get("edit");
 
 if (editSaleId) {
+    const access = await getBillEditAccess(editSaleId);
+    if (!access.allowed) {
+        alert("You do not have permission to edit this bill, or the one-time permission has already been used.");
+        window.location.href = "report.html";
+        return;
+    }
+    editGrantId = access.grantId;
     await loadSaleForEdit(editSaleId);
 } else {
     addNewRow();
@@ -956,6 +964,9 @@ const seriesCode = document.getElementById('bill_series').value;
 let nextBillNo;
 
 if (editSaleId) {
+    const access = await getBillEditAccess(editSaleId);
+    if (!access.allowed || (editGrantId && access.grantId !== editGrantId))
+        throw new Error("Your one-time permission for this bill is no longer available.");
     nextBillNo = document.getElementById('bill_number').value;
 } else {
     const { data, error } =
@@ -1080,6 +1091,12 @@ if (itemsToSave.length > 0) {
         .insert(itemsToSave);
 
     if (iErr) throw iErr;
+}
+
+if (editSaleId && editGrantId) {
+    const { data: consumed, error: consumeError } = await sb.rpc("consume_bill_edit_grant", { p_grant_id:editGrantId, p_sale_id:editSaleId });
+    if (consumeError || !consumed) throw consumeError || new Error("Could not consume the one-time edit permission.");
+    editGrantId = null;
 }
 
 

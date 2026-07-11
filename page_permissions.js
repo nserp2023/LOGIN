@@ -140,3 +140,11 @@ function setPermissionUserBadge(roleElementId = "userRoleBadge", welcomeElementI
   if (roleEl) roleEl.innerText = role;
   if (welcomeEl) welcomeEl.innerText = `Welcome, ${username}`;
 }
+
+async function getBillEditAccess(saleId) {
+  if (await hasActionAccess("sales_edit")) return { allowed:true, permanent:true, grantId:null };
+  const { data, error } = await permClient.rpc("get_bill_edit_grant", { p_sale_id:saleId });
+  if (error) { console.error("Bill edit grant check failed:", error); return { allowed:false }; }
+  const row = Array.isArray(data) ? data[0] : data;
+  return { allowed:!!row?.allowed, permanent:false, grantId:row?.grant_id || null };
+}

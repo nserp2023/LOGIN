@@ -161,6 +161,27 @@
     <div id="userInfo" class="user-info">Select a user to view access permissions.</div>
 
     <div id="permissionGrid" class="permission-grid"></div>
+
+    <div class="user-info" style="margin-top:20px">
+      <h3 style="margin-top:0">One-time bill edit permission</h3>
+      <p>Allow the selected user to edit one matching sales bill once. The permission is consumed only after a successful save.</p>
+      <div class="controls">
+        <select id="grantType">
+          <option value="single">Single bill</option>
+          <option value="bill_range">Bill number range</option>
+          <option value="date_range">Bill date / date range</option>
+          <option value="month">Selected month</option>
+        </select>
+        <input id="grantSeries" placeholder="Series (optional)">
+        <input id="grantFromBill" type="number" min="1" placeholder="Bill from">
+        <input id="grantToBill" type="number" min="1" placeholder="Bill up to">
+        <input id="grantFromDate" type="date">
+        <input id="grantToDate" type="date">
+        <input id="grantMonth" type="month">
+        <button class="btn-success" id="grantBillEditBtn">Grant one-time edit</button>
+      </div>
+      <div id="billGrantList"></div>
+    </div>
   </div>
 
   <script>
@@ -287,6 +308,7 @@
       });
 
       renderPermissionGrid(permissionMap);
+      await loadBillGrants();
       setStatus("Permissions loaded.", "ok");
     }
 
@@ -315,8 +337,56 @@
       setStatus("Permissions saved successfully.", "ok");
     }
 
+    function updateGrantFields() {
+      const type = document.getElementById("grantType").value;
+      document.getElementById("grantFromBill").style.display = ["single", "bill_range"].includes(type) ? "" : "none";
+      document.getElementById("grantToBill").style.display = type === "bill_range" ? "" : "none";
+      document.getElementById("grantSeries").style.display = ["single", "bill_range"].includes(type) ? "" : "none";
+      document.getElementById("grantFromDate").style.display = type === "date_range" ? "" : "none";
+      document.getElementById("grantToDate").style.display = type === "date_range" ? "" : "none";
+      document.getElementById("grantMonth").style.display = type === "month" ? "" : "none";
+    }
+
+    async function loadBillGrants() {
+      if (!selectedUser) return;
+      const { data, error } = await accessClient.from("bill_edit_grants")
+        .select("id,grant_type,series_code,bill_from,bill_to,date_from,date_to,month_value,used_at,created_at")
+        .eq("user_id", selectedUser.id).order("created_at", { ascending:false }).limit(20);
+      const list = document.getElementById("billGrantList");
+      if (error) { list.textContent = "Could not load grants: " + error.message; return; }
+      list.innerHTML = (data || []).map(g => {
+        const scope = g.grant_type === "month" ? g.month_value :
+          g.grant_type === "date_range" ? `${g.date_from} to ${g.date_to}` :
+          `${g.series_code ? g.series_code + "-" : ""}${g.bill_from}${g.bill_to && g.bill_to !== g.bill_from ? " to " + g.bill_to : ""}`;
+        return `<div style="padding:8px 0;border-top:1px solid #ddd">${scope} — <strong>${g.used_at ? "USED" : "AVAILABLE"}</strong></div>`;
+      }).join("") || "No temporary bill permissions.";
+    }
+
+    async function grantOneTimeBillEdit() {
+      if (!selectedUser) return alert("Please load a user first.");
+      const type = document.getElementById("grantType").value;
+      const fromBill = Number(document.getElementById("grantFromBill").value) || null;
+      const toBill = type === "single" ? fromBill : (Number(document.getElementById("grantToBill").value) || null);
+      const month = document.getElementById("grantMonth").value || null;
+      const fromDate = document.getElementById("grantFromDate").value || null;
+      const toDate = document.getElementById("grantToDate").value || fromDate;
+      if (["single","bill_range"].includes(type) && (!fromBill || !toBill)) return alert("Enter the bill number(s).");
+      if (type === "date_range" && !fromDate) return alert("Select a bill date.");
+      if (type === "month" && !month) return alert("Select a month.");
+      const { error } = await accessClient.from("bill_edit_grants").insert({
+        user_id:selectedUser.id, granted_by:(await accessClient.auth.getUser()).data.user.id,
+        grant_type:type, series_code:document.getElementById("grantSeries").value.trim() || null,
+        bill_from:fromBill, bill_to:toBill, date_from:fromDate, date_to:toDate, month_value:month
+      });
+      if (error) return setStatus("Failed to grant bill edit: " + error.message, "err");
+      setStatus("One-time bill edit permission granted.", "ok");
+      await loadBillGrants();
+    }
+
     document.getElementById("loadPermissionsBtn").addEventListener("click", loadPermissionsForSelectedUser);
     document.getElementById("savePermissionsBtn").addEventListener("click", savePermissionsForSelectedUser);
+    document.getElementById("grantType").addEventListener("change", updateGrantFields);
+    document.getElementById("grantBillEditBtn").addEventListener("click", grantOneTimeBillEdit);
     document.getElementById("logoutBtn").addEventListener("click", async () => {
       await logoutPermissionUser();
     });
@@ -327,6 +397,7 @@
 
       await loadUsersForSelect();
       renderPermissionGrid({});
+      updateGrantFields();
     })();
   </script>
 </body>

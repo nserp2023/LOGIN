@@ -1567,6 +1567,7 @@
     let currentRowId = 0;
     let editingId = null;
     let editingType = null;
+    let editingBillGrantId = null;
     let historyTimer = null;
     let lastHistoryKey = "";
     let stockLoaded = false;
@@ -2184,6 +2185,15 @@
 
         if(editId){
             isSalesOrderConversionMode = false;
+            if (editType === "sales") {
+                const editAccess = await getBillEditAccess(editId);
+                if (!editAccess.allowed) {
+                    alert("You do not have permission to edit this bill, or the one-time permission has already been used.");
+                    window.location.href = "report.html";
+                    return;
+                }
+                editingBillGrantId = editAccess.grantId;
+            }
             await loadEditDocument(editId, editType);
         }
         else if(convertId){
@@ -5451,6 +5461,13 @@ function calcTotal() {
         setSaveButtonLabel("Saving...");
 
         try {
+            if (editingId && editingType === "sales") {
+                const currentAccess = await getBillEditAccess(editingId);
+                if (!currentAccess.allowed || (editingBillGrantId && currentAccess.grantId !== editingBillGrantId)) {
+                    throw new Error("Your one-time permission for this bill is no longer available.");
+                }
+            }
+
             const {
                 itemsToValidate,
                 packingItemsToValidate
@@ -5844,6 +5861,19 @@ function calcTotal() {
 
             const { error: iErr } = await sb.from(itemTable).insert(itemsToSave);
             if (iErr) throw iErr;
+
+            // Consume a temporary grant only after all edited bill items have
+            // saved successfully. Permanent editors have no grant id.
+            if (editingId && editingType === "sales" && editingBillGrantId) {
+                const { data: consumed, error: consumeError } = await sb.rpc("consume_bill_edit_grant", {
+                    p_grant_id: editingBillGrantId,
+                    p_sale_id: editingId
+                });
+                if (consumeError || !consumed) {
+                    throw consumeError || new Error("Could not consume the one-time bill edit permission.");
+                }
+                editingBillGrantId = null;
+            }
 
             if (!editingId) {
                 document.getElementById('bill_number').value = nextBillNo;

@@ -9,7 +9,7 @@ create table if not exists public.bill_edit_grants (
   bill_to bigint,
   date_from date,
   date_to date,
-  month_value text check (month_value is null or month_value ~ '^\\d{4}-\\d{2}$'),
+  month_value text check (month_value is null or month_value ~ '^[0-9]{4}-[0-9]{2}$'),
   used_at timestamptz,
   used_sale_id bigint,
   created_at timestamptz not null default now(),
@@ -19,6 +19,7 @@ create table if not exists public.bill_edit_grants (
 
 alter table public.bill_edit_grants enable row level security;
 
+drop policy if exists "Admins manage bill edit grants" on public.bill_edit_grants;
 create policy "Admins manage bill edit grants" on public.bill_edit_grants
 for all to authenticated using (
   exists (select 1 from public.user_profiles p where p.id=auth.uid() and upper(p.role) in ('OWNER','ADMIN'))
@@ -26,6 +27,7 @@ for all to authenticated using (
   exists (select 1 from public.user_profiles p where p.id=auth.uid() and upper(p.role) in ('OWNER','ADMIN'))
 );
 
+drop policy if exists "Users read own bill edit grants" on public.bill_edit_grants;
 create policy "Users read own bill edit grants" on public.bill_edit_grants
 for select to authenticated using (user_id=auth.uid());
 

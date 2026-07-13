@@ -1588,6 +1588,11 @@
     let belowLandingUnlocked = false;
     let belowLandingUnlockTimer = null;
 
+    // OWNER / ADMIN can triple-click the visible Profit box to allow one bill
+    // to use more than the available stock. It also expires after 2 minutes.
+    let overStockSaleUnlocked = false;
+    let overStockSaleUnlockTimer = null;
+
     // --- GEOAPIFY ADDRESS AUTOCOMPLETE ---
     const GEOAPIFY_API_KEY = "990205e0a84c4f7ea549a0485e60ceab";
     const ADDRESS_SEARCH_CENTER = { lon: 76.9366, lat: 8.5241 }; // Thiruvananthapuram / Trivandrum
@@ -2170,6 +2175,7 @@
         setupHistoryPanelToggle();
         initAddressGeoapify();
         setupBelowLandingSecretUnlock();
+        setupOverStockSaleSecretUnlock();
         setupMobileProfitGestures();
         setupMobileBillModeUnlock();
 
@@ -2663,6 +2669,11 @@
         // In edit mode, qty 0 is allowed so the old item can be removed from the bill.
         if(qty <= 0) return true;
 
+        if(overStockSaleUnlocked && canUseOverStockSaleUnlock()){
+            maybeShowMinimumQtyWarning(row, { showWarning: false, once: true });
+            return true;
+        }
+
         if(available <= 0){
             if(opts.showWarning !== false){
                 showStockWarning(`${name || code} has no available stock.`, qtyInput);
@@ -2691,6 +2702,46 @@
 
     function canUseBelowLandingUnlock() {
         return currentUserRole === "OWNER" || currentUserRole === "ADMIN";
+    }
+
+    function canUseOverStockSaleUnlock() {
+        return currentUserRole === "OWNER" || currentUserRole === "ADMIN";
+    }
+
+    function lockOverStockSaleMode(statusText = "Over-stock mode OFF") {
+        overStockSaleUnlocked = false;
+        clearTimeout(overStockSaleUnlockTimer);
+        overStockSaleUnlockTimer = null;
+
+        if(profitBox){
+            profitBox.style.boxShadow = "";
+            profitBox.title = "Triple-click to activate admin over-stock sale mode";
+        }
+        document.querySelectorAll('#bill_body tr').forEach(applyItemRestriction);
+        updateDraftStatus(statusText);
+    }
+
+    function unlockOverStockSaleTemporarily() {
+        if(!canUseOverStockSaleUnlock()){
+            showStockWarning("Only OWNER / ADMIN can activate over-stock sale mode.", null, "LOCKED");
+            return;
+        }
+
+        overStockSaleUnlocked = true;
+        clearTimeout(overStockSaleUnlockTimer);
+        overStockSaleUnlockTimer = setTimeout(() => lockOverStockSaleMode(), 2 * 60 * 1000);
+
+        if(profitBox){
+            profitBox.style.boxShadow = "0 0 0 3px #f59e0b, 0 0 18px rgba(245,158,11,.75)";
+            profitBox.title = "OVER-STOCK SALE MODE ACTIVE (2 minutes / one bill)";
+        }
+        document.querySelectorAll('#bill_body tr').forEach(applyItemRestriction);
+        updateDraftStatus("ADMIN OVER-STOCK MODE ON - 2 min");
+        showStockWarning(
+            "Over-stock sale mode is active for 2 minutes or until this bill is saved.\nQuantity may exceed balance stock and the resulting balance may be negative.",
+            null,
+            "ADMIN OVER-STOCK MODE ENABLED"
+        );
     }
 
     function unlockBelowLandingTemporarily() {
@@ -3232,7 +3283,7 @@ const stockSelect = 'item_code,item_name,barcode,price1,price2,price3,landing,ba
     function getDepartmentFilteredStockData() {
         let items = stockData.filter(item => itemMatchesDepartment(item));
 
-        if(isSalesMode()){
+        if(isSalesMode() && !overStockSaleUnlocked){
             items = items.filter(item => parseStockBalance(item.balance) > 0);
         }
 
@@ -4271,7 +4322,7 @@ ${data.map((c, idx) => {
                 i =>
                     normalizeSearchText(i.item_code || "") === code &&
                     itemMatchesDepartment(i) &&
-                    (!isSalesMode() || parseStockBalance(i.balance) > 0)
+                    (!isSalesMode() || overStockSaleUnlocked || parseStockBalance(i.balance) > 0)
             );
 
             if(item){
@@ -4296,7 +4347,7 @@ ${data.map((c, idx) => {
                 i =>
                     normalizeSearchText(i.item_code || "") === code &&
                     itemMatchesDepartment(i) &&
-                    (!isSalesMode() || parseStockBalance(i.balance) > 0)
+                    (!isSalesMode() || overStockSaleUnlocked || parseStockBalance(i.balance) > 0)
             );
 
             if(item){
@@ -4672,6 +4723,34 @@ function calcTotal() {
 
     if (trigger) {
         trigger.addEventListener('dblclick', toggleProfitBox);
+    }
+
+    function setupOverStockSaleSecretUnlock(){
+        if(!profitBox || profitBox.dataset.overStockUnlockBound === '1') return;
+
+        profitBox.dataset.overStockUnlockBound = '1';
+        profitBox.title = 'Triple-click to activate admin over-stock sale mode';
+        let tapCount = 0;
+        let lastTapAt = 0;
+
+        profitBox.addEventListener('click', (e) => {
+            const now = Date.now();
+            tapCount = now - lastTapAt <= 500 ? tapCount + 1 : 1;
+            lastTapAt = now;
+            if(tapCount < 3) return;
+
+            tapCount = 0;
+            e.preventDefault();
+            e.stopPropagation();
+
+            if(overStockSaleUnlocked){
+                lockOverStockSaleMode('ADMIN OVER-STOCK MODE OFF');
+                showStockWarning('Over-stock sale mode has been switched off.', null, 'MODE DISABLED');
+            }else{
+                unlockOverStockSaleTemporarily();
+            }
+            if(navigator.vibrate) navigator.vibrate([60, 40, 60]);
+        });
     }
 
     function setupMobileProfitGestures(){
@@ -5886,6 +5965,10 @@ function calcTotal() {
 
             disableAutoBackupAndClearDraft("Saved - draft cleared");
 
+            if(overStockSaleUnlocked){
+                lockOverStockSaleMode('Saved - admin over-stock mode OFF');
+            }
+
             alert(`Bill #${nextBillNo} Saved Successfully!`);
 
             const printDepartment = encodeURIComponent(document.getElementById("department_filter")?.value || "");
@@ -6116,7 +6199,7 @@ function calcTotal() {
         const hasDeptFilter = !!selectedDept && selectedDept !== "ALL";
         const available = getEffectiveAvailableStockForRow(row);
         const qty = getQtyInputValue(row);
-        const showSalesWarning = isSalesMode() && !!(getRowRawItem(row)) && qty > 0 && (available <= 0 || qty > available);
+        const showSalesWarning = isSalesMode() && !overStockSaleUnlocked && !!(getRowRawItem(row)) && qty > 0 && (available <= 0 || qty > available);
 
         if(showSalesWarning){
             nameInp.style.backgroundColor = "rgba(239, 68, 68, 0.10)";

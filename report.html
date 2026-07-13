@@ -439,6 +439,7 @@
         document: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M8 13h8M8 17h8"/></svg>`,
         print: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6z"/></svg>`,
         packing: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m21 8-9 5-9-5"/><path d="M3 8 12 3l9 5v10l-9 5-9-5Z"/><path d="M12 13v10"/></svg>`,
+        copy: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`,
         edit: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`,
         delete: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2m3 0-1 15H6L5 6M10 11v6M14 11v6"/></svg>`,
         convert: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m17 1 4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="m7 23-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>`
@@ -1294,6 +1295,10 @@
                 </div></td>
 
                 <td><div class="row-actions">
+                    ${type === "sales"
+                        ? reportIconButton("copy", s.status === "CANCELLED" ? "Cancelled bill" : "Make bill again", `makeBillAgain(${s.id})`, { disabled:s.status === "CANCELLED", cssClass:"icon-convert" })
+                        : ""}
+
                     ${
                         (canEditBills || s.hasTemporaryEditAccess) && s.status !== "CANCELLED"
                         ? reportIconButton("edit", "Edit bill", `editDoc(${s.id})`, { cssClass:"icon-edit" })
@@ -1913,6 +1918,16 @@
         if(type === "sales_order"){
             window.location = `newsoq.html?edit=${id}&type=sales_order&v=${pageVersion}`;
         }
+    }
+
+    function makeBillAgain(id){
+        const row = findReportRow(id);
+        if(!row || row.status === "CANCELLED"){
+            alert("Cancelled bill cannot be made again.");
+            return;
+        }
+
+        window.location = `newsoq.html?copy=${id}&type=sales&v=${Date.now()}`;
     }
 
     function convertToSales(id){

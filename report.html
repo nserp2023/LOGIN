@@ -418,6 +418,15 @@
         return String(v || "").trim().toLowerCase();
     }
 
+    function getBillNumberSearchValue(filter){
+        const value = normalizeText(filter);
+        if(/^\d+$/.test(value)) return value;
+
+        // Also support values entered as "A-123", "A/123", "A 123", or "A123".
+        const match = value.match(/(\d+)$/);
+        return match ? match[1] : "";
+    }
+
     function escapeHTML(v){
         return String(v || "")
             .replace(/&/g, "&amp;")
@@ -1105,10 +1114,17 @@
             .select('*')
             .order(cfg.numberField, { ascending:false });
 
-        if(from) query = query.gte(cfg.dateField, from);
-        // Use the start of the following day as an exclusive boundary. This works
-        // for both DATE and TIMESTAMP columns and includes every bill on "To".
-        if(to) query = query.lt(cfg.dateField, addDaysToISODate(to, 1));
+        const billNumberSearch = getBillNumberSearchValue(billFilter);
+        if(billFilter){
+            // Bill lookup is intentionally independent of the report date window,
+            // so a bill from an earlier month can still be found directly.
+            if(billNumberSearch) query = query.eq(cfg.numberField, billNumberSearch);
+        }else{
+            if(from) query = query.gte(cfg.dateField, from);
+            // Use the start of the following day as an exclusive boundary. This works
+            // for both DATE and TIMESTAMP columns and includes every bill on "To".
+            if(to) query = query.lt(cfg.dateField, addDaysToISODate(to, 1));
+        }
         if(series) query = query.eq('series_code', series);
         if(customer) query = query.ilike('customer_name', `%${customer}%`);
         if(mobile) query = query.ilike('customer_mobile', `%${mobile}%`);

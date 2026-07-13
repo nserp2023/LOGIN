@@ -2176,6 +2176,7 @@
         const params = new URLSearchParams(window.location.search);
         const convertId = params.get("convert");
         const convertSO = params.get("convert_so");
+        const copyId = params.get("copy");
         const editId = params.get("edit");
         const editType = params.get("type");
 
@@ -2183,7 +2184,11 @@
             unlockBillMode({ selectMode: false, notify: false });
         }
 
-        if(editId){
+        if(copyId){
+            isSalesOrderConversionMode = false;
+            await loadCopyDocument(copyId);
+        }
+        else if(editId){
             isSalesOrderConversionMode = false;
             if (editType === "sales") {
                 const editAccess = await getBillEditAccess(editId);
@@ -2211,7 +2216,7 @@
         }
 
         initAutoBackupDraftMode();
-        if(!editId && !convertId && !convertSO){
+        if(!copyId && !editId && !convertId && !convertSO){
             showRestoreDraftPromptIfNeeded();
         }
 
@@ -6628,6 +6633,58 @@ barcodeInput.addEventListener("keydown", async function (e) {
             document.querySelectorAll("#bill_body tr").forEach(row => applyItemRestriction(row));
         }
 
+        syncPaymentUI(true);
+    }
+
+    async function loadCopyDocument(id){
+        const { data: sourceBill, error } = await sb
+            .from("sales_details")
+            .select("id,status")
+            .eq("id", id)
+            .maybeSingle();
+
+        if(error || !sourceBill){
+            console.error(error);
+            alert("The original bill could not be loaded.");
+            window.location.href = "report.html";
+            return;
+        }
+
+        if(String(sourceBill.status || "").toUpperCase() === "CANCELLED"){
+            alert("Cancelled bill cannot be made again.");
+            window.location.href = "report.html";
+            return;
+        }
+
+        await loadEditDocument(id, "sales");
+
+        // From this point onward the loaded rows belong to a brand-new sale.
+        // Do not preserve edit allowances or the old quantities used by the
+        // edit-mode stock calculation.
+        editingId = null;
+        editingType = null;
+        editingBillGrantId = null;
+        isSalesOrderConversionMode = false;
+        salesOrderAdvancePaid = 0;
+        document.querySelectorAll("#bill_body tr").forEach(row => {
+            row.dataset.originalQty = "0";
+        });
+
+        setupDate();
+        document.getElementById("bill_number").value = "";
+
+        const paymentTypeEl = document.getElementById("payment_type");
+        const paidAmountEl = document.getElementById("paid_amount");
+        if(paymentTypeEl && paymentTypeEl.value === "ADVANCE CREDIT"){
+            paymentTypeEl.value = "CREDIT";
+        }
+        updateAdvanceCreditOptionVisibility();
+        if(paidAmountEl){
+            paidAmountEl.value = paymentTypeEl?.value === "CASH"
+                ? getGrandTotalAmount().toFixed(2)
+                : "0.00";
+            paidAmountEl.dataset.salesOrderReceiptEdited = "0";
+        }
         syncPaymentUI(true);
     }
 

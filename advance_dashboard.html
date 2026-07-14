@@ -357,7 +357,9 @@ function isUnconvertedOrder(row){
   if(status.includes("closed")) return false;
   if(status.includes("completed")) return false;
   if(status.includes("cancel")) return false;
-  if(status.includes("converted")) return false;
+  // "partially converted" is still active and must remain available for
+  // billing of its remaining item quantities.
+  if(status === "converted") return false;
 
   // ✅ Includes all active unconverted orders:
   // 1) Credit / no payment
@@ -446,6 +448,7 @@ function render(){
     const age = ageDays(val(row,"date"));
     const bal = getBalance(row);
     const type = getPaymentType(row);
+    const isPartialDelivery = String(val(row,"status") || "").toLowerCase() === "partially converted";
     const cls = type === "CREDIT" ? "creditrow" : type === "FULL" ? "fullpaidrow" : age >= 30 ? "oldrow" : age >= 15 ? "midrow" : "";
 
     const ageBadge = age >= 30
@@ -454,11 +457,14 @@ function render(){
         ? `<span class="badge warn">${age} days</span>`
         : `<span class="badge fresh">${age} days</span>`;
 
-    const statusBadge = type === "CREDIT"
+    const paymentStatusBadge = type === "CREDIT"
       ? `<span class="badge credit">CREDIT - NO PAYMENT</span>`
       : type === "FULL"
         ? `<span class="badge fullpaid">FULLY PAID - NOT BILLED</span>`
         : `<span class="badge partial">PARTIAL PAYMENT</span>`;
+    const statusBadge = isPartialDelivery
+      ? `<span class="badge partial">PARTIAL DELIVERY - ITEMS REMAINING</span><br>${paymentStatusBadge}`
+      : paymentStatusBadge;
 
     const balanceStyle = type === "FULL" ? "color:var(--green)" : "color:var(--red)";
 
@@ -477,6 +483,7 @@ function render(){
         <td>
           <div class="actions">
             <button class="btn btn-blue" onclick="viewDetails(${i})">View</button>
+            <button class="btn btn-purple" onclick="convertToBill(${i})">${isPartialDelivery ? "Bill Remaining" : "Convert to Bill"}</button>
             ${bal > 0 ? `<button class="btn btn-green" onclick="collectBalance(${i})">Collect</button>` : ""}
             <button class="btn ${type === "FULL" ? "btn-purple" : type === "CREDIT" ? "btn-orange" : "btn-red"}" onclick="sendReminder(${i})">${type === "FULL" ? "Bill Alert" : type === "CREDIT" ? "Credit Alert" : "Remind"}</button>
           </div>
@@ -516,11 +523,15 @@ function viewDetails(i){
   const r = filteredRows[i];
   const bal = getBalance(r);
   const type = getPaymentType(r);
-  const statusText = type === "CREDIT"
+  const isPartialDelivery = String(val(r,"status") || "").toLowerCase() === "partially converted";
+  const paymentStatusText = type === "CREDIT"
     ? "CREDIT ORDER - NO PAYMENT RECEIVED"
     : type === "FULL"
       ? "FULLY PAID - NOT CONVERTED TO SALES BILL"
       : "PARTIAL PAYMENT - BALANCE PENDING";
+  const statusText = isPartialDelivery
+    ? `PARTIAL DELIVERY - ITEMS REMAINING (${paymentStatusText})`
+    : paymentStatusText;
 
   document.getElementById("modalBody").innerHTML = `
     <div class="grid">
@@ -538,6 +549,7 @@ function viewDetails(i){
     </div>
     <br>
     <div class="actions">
+      <button class="btn btn-purple" onclick="convertToBill(${i})">${isPartialDelivery ? "Bill Remaining Items" : "Convert to Bill"}</button>
       ${bal > 0 ? `<button class="btn btn-green" onclick="collectBalance(${i})">Collect Balance</button>` : ""}
       <button class="btn ${type === "FULL" ? "btn-purple" : type === "CREDIT" ? "btn-orange" : "btn-red"}" onclick="sendReminder(${i})">${type === "FULL" ? "Send Billing Alert" : type === "CREDIT" ? "Send Credit Alert" : "WhatsApp Reminder"}</button>
     </div>

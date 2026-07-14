@@ -619,7 +619,7 @@ async function loadDashboard(){
         let query = sb
             .from("sales_details")
             .select("id, bill_date, sales_number, series_code, customer_name, customer_mobile, invoice_amount, paid_amount, balance_amount, payment_type")
-            .eq("payment_type", "CREDIT")
+            .in("payment_type", ["CREDIT", "ADVANCE CREDIT"])
             .order("bill_date", { ascending: false });
 
         if (from) query = query.gte("bill_date", from);
@@ -650,7 +650,9 @@ async function loadDashboard(){
 
             grouped[key].bill_count += 1;
             grouped[key].total_sales += Number(r.invoice_amount || 0);
-            grouped[key].total_paid += Number(r.paid_amount || 0);
+            grouped[key].total_paid += String(r.payment_type || "").toUpperCase() === "ADVANCE CREDIT"
+                ? Math.max(0, Number(r.invoice_amount || 0) - Number(r.balance_amount || 0))
+                : Number(r.paid_amount || 0);
             grouped[key].total_balance += Number(r.balance_amount || 0);
         });
 

@@ -2844,6 +2844,66 @@
         return Math.max(0, total - advance - receipt);
     }
 
+    function getSalesOrderAdvanceApplied(totalAmount = getCurrentRoundedGrandTotal()) {
+        const total = Math.max(0, parseFloat(totalAmount || 0) || 0);
+        const availableAdvance = Math.max(0, parseFloat(salesOrderAdvancePaid || 0) || 0);
+        return Math.min(total, availableAdvance);
+    }
+
+    function getSalesOrderFulfilmentFromScreen() {
+        if (!window.loadedSalesOrderId) return [];
+        return Array.from(document.querySelectorAll('#bill_body tr.item-row'))
+            .map(row => ({
+                itemId: row.dataset.salesOrderItemId || "",
+                orderedQty: Math.max(0, parseFloat(row.dataset.salesOrderOrderedQty || 0) || 0),
+                billedQty: Math.max(0, parseFloat(row.querySelector('.qty-inp')?.value || 0) || 0)
+            }))
+            .filter(item => item.itemId && item.billedQty > 0);
+    }
+
+    function calculateSalesOrderItemsTotal(items) {
+        const exactTotal = (items || []).reduce((sum, item) => {
+            const qty = Math.max(0, parseFloat(item.quantity || 0) || 0);
+            const price = Math.max(0, parseFloat(item.price ?? item.sales_price ?? 0) || 0);
+            const discount = Math.min(100, Math.max(0, parseFloat(item.discount_percent || 0) || 0));
+            const gst = Math.max(0, parseFloat(item.gst_percent || 0) || 0);
+            return sum + (qty * price * (1 - discount / 100) * (1 + gst / 100));
+        }, 0);
+        return Math.round(exactTotal);
+    }
+
+    async function updateSalesOrderAfterPartialConversion(orderId, fulfilment, appliedAdvance) {
+        for (const item of fulfilment) {
+            const remainingQty = Math.max(0, item.orderedQty - item.billedQty);
+            const query = remainingQty > 0
+                ? sb.from('sales_order_item_details').update({ quantity: remainingQty }).eq('id', item.itemId).eq('sales_order_id', orderId)
+                : sb.from('sales_order_item_details').delete().eq('id', item.itemId).eq('sales_order_id', orderId);
+            const { error } = await query;
+            if (error) throw error;
+        }
+
+        const { data: remainingItems, error: remainingError } = await sb
+            .from('sales_order_item_details').select('*').eq('sales_order_id', orderId);
+        if (remainingError) throw remainingError;
+
+        const remainingTotal = calculateSalesOrderItemsTotal(remainingItems || []);
+        const remainingAdvance = Math.max(0, (parseFloat(salesOrderAdvancePaid || 0) || 0) - appliedAdvance);
+        const fullyConverted = !remainingItems || remainingItems.length === 0;
+        const orderUpdate = fullyConverted
+            ? { converted: true, status: 'converted', total_amount: 0, advance_amount: remainingAdvance, balance_amount: 0 }
+            : {
+                converted: false,
+                status: 'partially converted',
+                total_amount: remainingTotal,
+                advance_amount: Math.min(remainingAdvance, remainingTotal),
+                balance_amount: Math.max(0, remainingTotal - remainingAdvance)
+            };
+
+        const { error: orderError } = await sb.from('sales_order_details').update(orderUpdate).eq('id', orderId);
+        if (orderError) throw orderError;
+        return { fullyConverted, remainingTotal, remainingItems: (remainingItems || []).length };
+    }
+
     function applySalesOrderConversionPaidAmount(totalAmount = getCurrentRoundedGrandTotal(), forceSetAmount = false) {
         if (!isSalesOrderConversionMode) return;
 
@@ -5474,6 +5534,11 @@ function calcTotal() {
                 throw new Error(`Invalid quantity entered for item: ${code}`);
             }
 
+            const orderedQty = parseFloat(row.dataset.salesOrderOrderedQty || 0) || 0;
+            if (window.loadedSalesOrderId && row.dataset.salesOrderItemId && qty > orderedQty + 0.000001) {
+                throw new Error(`Bill quantity for ${code} cannot exceed the remaining ordered quantity (${orderedQty}).`);
+            }
+
             // Qty 0 rows are skipped. This lets you remove an old edit item by making qty 0.
             if (qty === 0) {
                 continue;
@@ -5556,6 +5621,8 @@ function calcTotal() {
                 itemsToValidate,
                 packingItemsToValidate
             } = collectAndValidateItemsBeforeHeaderSave(docType);
+            const convertedSalesOrderId = window.loadedSalesOrderId || null;
+            const salesOrderFulfilment = convertedSalesOrderId ? getSalesOrderFulfilmentFromScreen() : [];
 
             const head = {
                 series: document.getElementById('bill_series').value,
@@ -5998,23 +6065,17 @@ function calcTotal() {
             }
 
             // ✅ SALES ORDER CONVERSION FIX
-            // If a Sales Order is converted to normal SALES or SALES PACK / BILL,
-            // mark the original Sales Order as converted. Otherwise Advance Dashboard
-            // will still show it as FULLY PAID / NOT BILLED.
-            if (["sales", "sales_pack"].includes(docType) && window.loadedSalesOrderId) {
-                const { error: soUpdateError } = await sb
-                    .from("sales_order_details")
-                    .update({
-                        converted: true,
-                        status: "converted"
-                    })
-                    .eq("id", window.loadedSalesOrderId);
-
-                if (soUpdateError) {
-                    console.error("Sales order converted flag update failed:", soUpdateError);
-                    throw soUpdateError;
+            // Reduce only the quantities delivered on this bill. Keep untaken
+            // quantities active so the same Sales Order can be converted again.
+            if (["sales", "sales_pack"].includes(docType) && convertedSalesOrderId) {
+                const conversionResult = await updateSalesOrderAfterPartialConversion(
+                    convertedSalesOrderId,
+                    salesOrderFulfilment,
+                    getSalesOrderAdvanceApplied(roundedTotal)
+                );
+                if (!conversionResult.fullyConverted) {
+                    alert(`Partial delivery saved. ${conversionResult.remainingItems} item line(s), worth ₹${conversionResult.remainingTotal.toFixed(2)}, remain on the Sales Order.`);
                 }
-
                 window.loadedSalesOrderId = null;
                 isSalesOrderConversionMode = false;
                 salesOrderAdvancePaid = 0;
@@ -6151,9 +6212,14 @@ function calcTotal() {
 
             const row=document.getElementById(`row_${currentRowId-1}`);
 
+            row.dataset.salesOrderItemId = item.id || "";
+            row.dataset.salesOrderOrderedQty = parseFloat(item.quantity || 0) || 0;
+
             row.querySelector(".code-inp").value = item.item_code || "";
             row.querySelector(".name-inp").value = item.item_name || "";
             row.querySelector(".qty-inp").value = item.quantity || 0;
+            row.querySelector(".qty-inp").max = parseFloat(item.quantity || 0) || 0;
+            row.querySelector(".qty-inp").title = `Remaining ordered quantity: ${parseFloat(item.quantity || 0) || 0}. Enter only the quantity delivered now.`;
             row.querySelector(".price-inp").value = item.price || 0;
             row.querySelector(".price-gst-inp").value = item.sales_price_gst || 0;
             row.querySelector(".disc-inp").value = item.discount_percent || 0;
@@ -6170,7 +6236,7 @@ function calcTotal() {
                 row.querySelector(".type-inp").value = inferPriceTypeFromItemAndRow(stockRow, item);
 
                 const qtyBox = row.querySelector('.qty-inp');
-                qtyBox.title = `Available Stock: ${parseFloat(stockRow.balance || 0)}`;
+                qtyBox.title = `Deliver now (maximum remaining order qty: ${parseFloat(item.quantity || 0) || 0}). Available Stock: ${parseFloat(stockRow.balance || 0)}`;
             } else {
                 row.querySelector(".raw-data").value = "";
                 row.querySelector(".landing-inp").value = "0.00";

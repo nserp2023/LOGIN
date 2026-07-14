@@ -2858,7 +2858,8 @@
     function updateNormalSaleHoldButton() {
         const btn = document.getElementById('normal_sale_hold_btn');
         if (!btn) return;
-        btn.style.display = isSalesOrderConversionMode && !!window.loadedSalesOrderId ? '' : 'none';
+        const canUnlockConversion = isSalesOrderConversionMode && (!!window.loadedSalesOrderId || !!editingId);
+        btn.style.display = canUnlockConversion ? '' : 'none';
         if (!normalSaleHoldStartedAt) btn.textContent = 'HOLD 10s FOR NORMAL SALE';
     }
 
@@ -2873,8 +2874,12 @@
 
     function unlockAsNormalSale() {
         cancelNormalSaleHold();
-        if (!isSalesOrderConversionMode || !window.loadedSalesOrderId) return;
-        if (!confirm('Change this to a NORMAL SALE?\n\nThe Sales Order, its remaining quantities, and its advance will not be consumed by this bill.')) return;
+        if (!isSalesOrderConversionMode || (!window.loadedSalesOrderId && !editingId)) return;
+        const isEditingAdvanceCreditBill = !!editingId && !window.loadedSalesOrderId;
+        const confirmMessage = isEditingAdvanceCreditBill
+            ? 'Change this saved ADVANCE CREDIT bill to a NORMAL SALE?\n\nYou can select CASH or CREDIT before saving the edited bill.'
+            : 'Change this to a NORMAL SALE?\n\nThe Sales Order, its remaining quantities, and its advance will not be consumed by this bill.';
+        if (!confirm(confirmMessage)) return;
 
         window.loadedSalesOrderId = null;
         isSalesOrderConversionMode = false;
@@ -2899,7 +2904,9 @@
         updateNormalSaleHoldButton();
         syncPaymentUI(false);
         saveBillDraftNow(true);
-        alert('Normal Sale unlocked. The original Sales Order and its advance are unchanged.');
+        alert(isEditingAdvanceCreditBill
+            ? 'Normal Sale unlocked. Select CASH or CREDIT, then save the edited bill.'
+            : 'Normal Sale unlocked. The original Sales Order and its advance are unchanged.');
     }
 
     function setupNormalSaleHoldUnlock() {
@@ -2907,7 +2914,7 @@
         if (!btn || btn.dataset.boundHoldUnlock === '1') return;
 
         const startHold = (event) => {
-            if (!isSalesOrderConversionMode || !window.loadedSalesOrderId) return;
+            if (!isSalesOrderConversionMode || (!window.loadedSalesOrderId && !editingId)) return;
             event.preventDefault();
             cancelNormalSaleHold();
             normalSaleHoldStartedAt = Date.now();
@@ -6726,6 +6733,7 @@ barcodeInput.addEventListener("keydown", async function (e) {
             salesOrderAdvancePaid = 0;
         }
 
+        updateNormalSaleHoldButton();
         updateAdvanceCreditOptionVisibility();
         if (paymentTypeEl) {
             paymentTypeEl.value = savedPaymentType;

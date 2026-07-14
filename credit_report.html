@@ -631,7 +631,7 @@
         if (name) salesQuery = salesQuery.ilike("customer_name", `%${safeLikeValue(name)}%`);
         if (bill) salesQuery = salesQuery.or(`sales_number.ilike.%${safeLikeValue(bill)}%,invoice_number.ilike.%${safeLikeValue(bill)}%`);
         if (series) salesQuery = salesQuery.eq("series_code", series);
-        if (creditOnly) salesQuery = salesQuery.eq("payment_type", "CREDIT");
+        if (creditOnly) salesQuery = salesQuery.in("payment_type", ["CREDIT", "ADVANCE CREDIT"]);
 
         const { data: salesData, error: salesError } = await salesQuery;
         if (salesError) throw salesError;

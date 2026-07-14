@@ -721,6 +721,7 @@ body.compact-columns table{
             <option value="100" selected>100</option>
             <option value="200">200</option>
             <option value="500">500</option>
+            <option value="all">All Rows</option>
           </select>
         </div>
         <button class="btn secondary" id="refreshBtn">Refresh</button>
@@ -876,6 +877,7 @@ body.compact-columns table{
         const { data, error } = await sb
           .from('stock_balance_view')
           .select('*')
+          .order('item_code', { ascending: true })
           .range(from, from + size - 1);
 
         if(error){
@@ -897,6 +899,7 @@ function applyFilters(){
   const q = normalize(els.searchInput.value);
   const status = els.statusFilter.value;
   const sortBy = els.sortBy.value;
+  const showAllRows = els.pageSize.value === 'all';
   const pageSize = toNum(els.pageSize.value) || 100;
 
   const terms = q ? q.split(/\s+/).filter(Boolean) : [];
@@ -936,7 +939,7 @@ function applyFilters(){
   });
 
   updateStats(filteredRows);
-  renderTable(filteredRows.slice(0, pageSize));
+  renderTable(showAllRows ? filteredRows : filteredRows.slice(0, pageSize));
 }
     function updateStats(rows){
       const totalItems = rows.length;

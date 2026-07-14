@@ -694,14 +694,15 @@ Scan to Pay<br>
 
 if(p === pages-1){
 
+html+=`
+<tr><td>&nbsp;GST%</td><td>AMOUNT</td><td>CGST</td><td>SGST</td><td>Total</td></tr>`;
+
 Object.keys(gstMap).forEach(g=>{
 
 let taxable=gstMap[g].taxable;
 let gst=gstMap[g].gst;
 
 html+=`
-<tr><td>&nbsp;GST%</td><td>AMOUNT</td><td>CGST</td><td>SGST</td><td>Total</td></tr>
-
 <tr>
 <td>${g}%</td>
 <td>${taxable.toFixed(2)}</td>

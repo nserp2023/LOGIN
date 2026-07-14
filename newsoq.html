@@ -1291,6 +1291,7 @@
         <option value="CREDIT">CREDIT</option>
         <option value="ADVANCE CREDIT">ADVANCE CREDIT</option>
     </select>
+    <button type="button" id="normal_sale_hold_btn" style="display:none;margin-top:5px;padding:7px 10px;border:1px solid #f59e0b;border-radius:6px;background:#78350f;color:#fff;font-size:11px;font-weight:800;cursor:pointer;touch-action:none;user-select:none;">HOLD 10s FOR NORMAL SALE</button>
 </div>
 
 <div class="form-group" id="paid_amount_group">
@@ -1577,6 +1578,9 @@
     let historyEnabled = true;
     let isSalesOrderConversionMode = false;
     let salesOrderAdvancePaid = 0;
+    let normalSaleHoldTimer = null;
+    let normalSaleHoldTicker = null;
+    let normalSaleHoldStartedAt = 0;
     let purchaseOrderPromptOpen = false;
     let purchaseOrderPromptResolver = null;
     let purchaseOrderPromptReturnFocus = null;
@@ -2171,6 +2175,7 @@
         syncPaymentUI();
 
         bindPaymentEvents();
+        setupNormalSaleHoldUnlock();
         setupLandingColumnToggle();
         setupHistoryPanelToggle();
         initAddressGeoapify();
@@ -2850,6 +2855,80 @@
         return Math.min(total, availableAdvance);
     }
 
+    function updateNormalSaleHoldButton() {
+        const btn = document.getElementById('normal_sale_hold_btn');
+        if (!btn) return;
+        btn.style.display = isSalesOrderConversionMode && !!window.loadedSalesOrderId ? '' : 'none';
+        if (!normalSaleHoldStartedAt) btn.textContent = 'HOLD 10s FOR NORMAL SALE';
+    }
+
+    function cancelNormalSaleHold() {
+        clearTimeout(normalSaleHoldTimer);
+        clearInterval(normalSaleHoldTicker);
+        normalSaleHoldTimer = null;
+        normalSaleHoldTicker = null;
+        normalSaleHoldStartedAt = 0;
+        updateNormalSaleHoldButton();
+    }
+
+    function unlockAsNormalSale() {
+        cancelNormalSaleHold();
+        if (!isSalesOrderConversionMode || !window.loadedSalesOrderId) return;
+        if (!confirm('Change this to a NORMAL SALE?\n\nThe Sales Order, its remaining quantities, and its advance will not be consumed by this bill.')) return;
+
+        window.loadedSalesOrderId = null;
+        isSalesOrderConversionMode = false;
+        salesOrderAdvancePaid = 0;
+
+        document.querySelectorAll('#bill_body tr.item-row').forEach(row => {
+            delete row.dataset.salesOrderItemId;
+            delete row.dataset.salesOrderOrderedQty;
+            const qty = row.querySelector('.qty-inp');
+            if (qty) qty.removeAttribute('max');
+        });
+
+        const paymentTypeEl = document.getElementById('payment_type');
+        const paidAmountEl = document.getElementById('paid_amount');
+        if (paymentTypeEl) {
+            paymentTypeEl.disabled = false;
+            paymentTypeEl.value = 'CASH';
+            paymentTypeEl.dataset.justChangedToCredit = '0';
+        }
+        if (paidAmountEl) paidAmountEl.dataset.salesOrderReceiptEdited = '0';
+        updateAdvanceCreditOptionVisibility();
+        updateNormalSaleHoldButton();
+        syncPaymentUI(false);
+        saveBillDraftNow(true);
+        alert('Normal Sale unlocked. The original Sales Order and its advance are unchanged.');
+    }
+
+    function setupNormalSaleHoldUnlock() {
+        const btn = document.getElementById('normal_sale_hold_btn');
+        if (!btn || btn.dataset.boundHoldUnlock === '1') return;
+
+        const startHold = (event) => {
+            if (!isSalesOrderConversionMode || !window.loadedSalesOrderId) return;
+            event.preventDefault();
+            cancelNormalSaleHold();
+            normalSaleHoldStartedAt = Date.now();
+            const refreshText = () => {
+                const elapsed = Date.now() - normalSaleHoldStartedAt;
+                const remaining = Math.max(0, Math.ceil((10000 - elapsed) / 1000));
+                btn.textContent = remaining > 0 ? `KEEP HOLDING... ${remaining}s` : 'UNLOCKING...';
+            };
+            refreshText();
+            normalSaleHoldTicker = setInterval(refreshText, 200);
+            normalSaleHoldTimer = setTimeout(unlockAsNormalSale, 10000);
+            try { btn.setPointerCapture(event.pointerId); } catch (_) {}
+        };
+
+        btn.addEventListener('pointerdown', startHold);
+        ['pointerup', 'pointercancel', 'pointerleave'].forEach(name => btn.addEventListener(name, cancelNormalSaleHold));
+        btn.addEventListener('contextmenu', event => event.preventDefault());
+        btn.dataset.boundHoldUnlock = '1';
+        updateNormalSaleHoldButton();
+    }
+
     function getSalesOrderFulfilmentFromScreen() {
         if (!window.loadedSalesOrderId) return [];
         return Array.from(document.querySelectorAll('#bill_body tr.item-row'))
@@ -2919,12 +2998,14 @@
         if (paidAmountEl) {
             const receiptAmount = getSalesOrderConversionReceiptAmount(totalAmount);
             if (forceSetAmount || paidAmountEl.dataset.salesOrderReceiptEdited !== "1") {
-                paidAmountEl.value = receiptAmount.toFixed(2);
+                // Use only the advance already held by default. Any uncovered
+                // amount remains as credit unless a receipt is entered now.
+                paidAmountEl.value = "0.00";
             }
             paidAmountEl.readOnly = false;
             paidAmountEl.disabled = false;
-            paidAmountEl.placeholder = "Bill Total - Advance";
-            paidAmountEl.title = `Advance credit receipt amount. Bill Total - Sales Order Advance = ₹${receiptAmount.toFixed(2)} (Advance: ₹${(parseFloat(salesOrderAdvancePaid || 0) || 0).toFixed(2)})`;
+            paidAmountEl.placeholder = "Receipt now (optional)";
+            paidAmountEl.title = `Enter only money received now. Uncovered credit after using advance: ₹${receiptAmount.toFixed(2)} (Advance in hand: ₹${(parseFloat(salesOrderAdvancePaid || 0) || 0).toFixed(2)})`;
         }
     }
 
@@ -2942,7 +3023,7 @@
             paymentTypeEl.disabled = true;
             paymentTypeEl.dataset.justChangedToCredit = "0";
             paidAmountEl.disabled = false;
-            paidAmountEl.placeholder = isSalesOrderConversionMode ? "Bill Total - Advance" : "Advance Amount";
+            paidAmountEl.placeholder = isSalesOrderConversionMode ? "Receipt now (optional)" : "Advance Amount";
         } else {
             paymentTypeEl.disabled = false;
             paidAmountEl.readOnly = false;
@@ -5668,7 +5749,8 @@ function calcTotal() {
             let paidAmount = parseFloat(document.getElementById("paid_amount")?.value) || 0;
 
             if (isSalesOrderConversionMode) {
-                // ADVANCE CREDIT: default receipt is bill total - sales order advance, but user can edit it.
+                // Advance is applied first. A receipt entered now reduces the
+                // uncovered amount; the rest is saved as customer credit.
                 paidAmount = Math.max(0, Math.min(getSalesOrderConversionReceiptAmount(roundedTotal), paidAmount));
                 const paidAmountEl = document.getElementById("paid_amount");
                 if (paidAmountEl) paidAmountEl.value = paidAmount.toFixed(2);
@@ -6151,6 +6233,7 @@ function calcTotal() {
     async function loadSalesOrder(id){
         isSalesOrderConversionMode = true;
         window.loadedSalesOrderId = id;
+        updateNormalSaleHoldButton();
         document.getElementById("doc_type").value = "sales";
         await fetchNextBillNumber();
 
@@ -6164,7 +6247,7 @@ function calcTotal() {
         if (paidAmountEl) {
             paidAmountEl.dataset.salesOrderReceiptEdited = "0";
             paidAmountEl.disabled = false;
-            paidAmountEl.placeholder = "Bill Total - Advance";
+            paidAmountEl.placeholder = "Receipt now (optional)";
         }
         syncPaymentUI(true);
 
@@ -6250,7 +6333,7 @@ function calcTotal() {
         calcTotal();
         applySalesOrderConversionPaidAmount(getCurrentRoundedGrandTotal(), true);
         syncPaymentUI(true);
-        alert(`Sales Order loaded. Advance paid: ₹${salesOrderAdvancePaid.toFixed(2)}. Payment Type is ADVANCE CREDIT and receipt amount is Current Bill Total - Advance.`);
+        alert(`Sales Order loaded. Advance in hand: ₹${salesOrderAdvancePaid.toFixed(2)}. Enter only the delivered quantities. The advance will be used first; any uncovered amount will go to Credit.`);
     }
 
 

@@ -185,7 +185,7 @@ h1{margin:0;font-size:22px}.sub{font-size:13px;opacity:.85;margin-top:4px}.btn{
   <div class="headrow">
     <div>
       <h1>Order Control Dashboard</h1>
-      <div class="sub">Credit orders + partial advance + fully paid orders not converted to sales bill</div>
+      <div class="sub">Unused customer advance currently available for pending sales orders</div>
     </div>
     <div>
       <button class="btn btn-white" onclick="location.href='dashboard.html'">Dashboard</button>
@@ -198,15 +198,13 @@ h1{margin:0;font-size:22px}.sub{font-size:13px;opacity:.85;margin-top:4px}.btn{
 <div class="main">
 
   <div class="notice">
-    ✅ This page shows ALL unconverted sales orders: 🔴 credit/no payment, 🟡 partial payment, and 🟢 fully paid but not billed.
+    This page shows only pending Sales Orders that still have unused advance in hand. Orders with zero advance are excluded.
   </div>
 
   <div class="cards">
     <div class="card"><small>Customers</small><div id="cCustomers">0</div></div>
-    <div class="card"><small>Order Amount</small><div id="cOrder">₹0</div></div>
-    <div class="card"><small>Advance Received</small><div id="cAdvance">₹0</div></div>
-    <div class="card"><small>Balance To Collect</small><div id="cBalance">₹0</div></div>
-    <div class="card"><small>Credit / No Payment</small><div id="cCredit">0</div></div>
+    <div class="card"><small>Remaining Order Amount</small><div id="cOrder">₹0</div></div>
+    <div class="card"><small>Actual Advance In Hand</small><div id="cAdvance">₹0</div></div>
     <div class="card"><small>Fully Paid Not Billed</small><div id="cFullPaid">0</div></div>
     <div class="card"><small>Overdue 30+ Days</small><div id="cOverdue">0</div></div>
   </div>
@@ -217,8 +215,7 @@ h1{margin:0;font-size:22px}.sub{font-size:13px;opacity:.85;margin-top:4px}.btn{
     <input class="input" type="date" id="toDate" onchange="loadAdvances()">
 
     <select class="input" id="paymentFilter" onchange="render()">
-      <option value="ALL">All Unconverted Orders</option>
-      <option value="CREDIT">Credit / No Payment Only</option>
+      <option value="ALL">All Orders With Advance</option>
       <option value="PARTIAL">Partial Payment Only</option>
       <option value="FULL">Fully Paid Not Billed Only</option>
     </select>
@@ -248,15 +245,14 @@ h1{margin:0;font-size:22px}.sub{font-size:13px;opacity:.85;margin-top:4px}.btn{
           <th>Mobile</th>
           <th>Salesman</th>
           <th>Order Amount</th>
-          <th>Advance</th>
-          <th>Balance</th>
+          <th>Advance In Hand</th>
           <th>Age</th>
           <th>Status</th>
           <th>Actions</th>
         </tr>
       </thead>
       <tbody id="tbody">
-        <tr><td colspan="11" class="empty">Loading...</td></tr>
+        <tr><td colspan="10" class="empty">Loading...</td></tr>
       </tbody>
     </table>
   </div>
@@ -365,12 +361,12 @@ function isUnconvertedOrder(row){
   // 1) Credit / no payment
   // 2) Partial payment
   // 3) Fully paid but not converted to bill
-  return true;
+  return getAdvance(row) > 0;
 }
 
 async function loadAdvances(){
   const tbody = document.getElementById("tbody");
-  tbody.innerHTML = `<tr><td colspan="11" class="empty">Loading unconverted sales orders...</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="10" class="empty">Loading orders with advance...</td></tr>`;
 
   const from = document.getElementById("fromDate").value;
   const to = document.getElementById("toDate").value;
@@ -387,7 +383,7 @@ async function loadAdvances(){
 
   if(error){
     console.error(error);
-    tbody.innerHTML = `<tr><td colspan="11" class="empty">Error loading order control data<br>${escapeHtml(error.message)}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" class="empty">Error loading order control data<br>${escapeHtml(error.message)}</td></tr>`;
     return;
   }
 
@@ -439,7 +435,7 @@ function render(){
   const tbody = document.getElementById("tbody");
 
   if(filteredRows.length === 0){
-    tbody.innerHTML = `<tr><td colspan="11" class="empty">No unconverted sales orders found</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" class="empty">No unused customer advance found</td></tr>`;
     updateTotals([]);
     return;
   }
@@ -477,14 +473,12 @@ function render(){
         <td>${safe(val(row,"salesman"))}</td>
         <td class="money">${money(getTotal(row))}</td>
         <td class="money" style="color:var(--green)">${money(getAdvance(row))}</td>
-        <td class="money" style="${balanceStyle}">${money(bal)}</td>
         <td>${ageBadge}</td>
         <td>${statusBadge}</td>
         <td>
           <div class="actions">
             <button class="btn btn-blue" onclick="viewDetails(${i})">View</button>
             <button class="btn btn-purple" onclick="convertToBill(${i})">${isPartialDelivery ? "Bill Remaining" : "Convert to Bill"}</button>
-            ${bal > 0 ? `<button class="btn btn-green" onclick="collectBalance(${i})">Collect</button>` : ""}
             <button class="btn ${type === "FULL" ? "btn-purple" : type === "CREDIT" ? "btn-orange" : "btn-red"}" onclick="sendReminder(${i})">${type === "FULL" ? "Bill Alert" : type === "CREDIT" ? "Credit Alert" : "Remind"}</button>
           </div>
         </td>
@@ -513,8 +507,6 @@ function updateTotals(rows){
   document.getElementById("cCustomers").innerText = cust.size;
   document.getElementById("cOrder").innerText = money(order);
   document.getElementById("cAdvance").innerText = money(adv);
-  document.getElementById("cBalance").innerText = money(bal);
-  document.getElementById("cCredit").innerText = credit;
   document.getElementById("cFullPaid").innerText = fullPaid;
   document.getElementById("cOverdue").innerText = overdue;
 }
@@ -542,15 +534,13 @@ function viewDetails(i){
       <div class="box"><div class="label">Salesman</div><div class="value">${safe(val(r,"salesman"))}</div></div>
       <div class="box"><div class="label">Age</div><div class="value">${ageDays(val(r,"date"))} days</div></div>
       <div class="box"><div class="label">Order Amount</div><div class="value">${money(getTotal(r))}</div></div>
-      <div class="box"><div class="label">Advance Received</div><div class="value" style="color:var(--green)">${money(getAdvance(r))}</div></div>
-      <div class="box"><div class="label">Balance To Collect</div><div class="value" style="color:${type === "FULL" ? "var(--green)" : "var(--red)"}">${money(bal)}</div></div>
+      <div class="box"><div class="label">Actual Advance In Hand</div><div class="value" style="color:var(--green)">${money(getAdvance(r))}</div></div>
       <div class="box"><div class="label">Status</div><div class="value">${statusText}</div></div>
       <div class="box" style="grid-column:1/-1"><div class="label">Remarks</div><div class="value">${safe(val(r,"remarks"))}</div></div>
     </div>
     <br>
     <div class="actions">
       <button class="btn btn-purple" onclick="convertToBill(${i})">${isPartialDelivery ? "Bill Remaining Items" : "Convert to Bill"}</button>
-      ${bal > 0 ? `<button class="btn btn-green" onclick="collectBalance(${i})">Collect Balance</button>` : ""}
       <button class="btn ${type === "FULL" ? "btn-purple" : type === "CREDIT" ? "btn-orange" : "btn-red"}" onclick="sendReminder(${i})">${type === "FULL" ? "Send Billing Alert" : type === "CREDIT" ? "Send Credit Alert" : "WhatsApp Reminder"}</button>
     </div>
   `;
@@ -637,30 +627,26 @@ Please contact VAJRA LIGHTS to complete this order.`;
 }
 
 function shareSummary(){
-  let order = 0, adv = 0, bal = 0, old = 0, fullPaid = 0, pendingBalance = 0, credit = 0;
+  let order = 0, adv = 0, old = 0, fullPaid = 0, partialAdvance = 0;
 
   filteredRows.forEach(r=>{
     const type = getPaymentType(r);
     order += getTotal(r);
     adv += getAdvance(r);
-    bal += getBalance(r);
     if(type === "FULL") fullPaid++;
-    if(type === "CREDIT") credit++;
-    if(type === "PARTIAL") pendingBalance++;
+    if(type === "PARTIAL") partialAdvance++;
     if(ageDays(val(r,"date")) >= 30) old++;
   });
 
   const msg =
 `VAJRA ORDER CONTROL SUMMARY
 
-Total Unconverted Orders: ${filteredRows.length}
-Credit / No Payment Orders: ${credit}
-Partial Payment Orders: ${pendingBalance}
+Orders With Advance In Hand: ${filteredRows.length}
+Partially Funded Orders: ${partialAdvance}
 Fully Paid Not Billed: ${fullPaid}
 
-Order Amount: ${money(order)}
-Advance Received: ${money(adv)}
-Balance To Collect: ${money(bal)}
+Remaining Order Amount: ${money(order)}
+Actual Advance In Hand: ${money(adv)}
 Overdue 30+ Days: ${old}`;
 
   window.open("https://wa.me/?text=" + encodeURIComponent(msg), "_blank");

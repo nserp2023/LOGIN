@@ -471,6 +471,10 @@
     }
 
     function getPaymentBadge(row, type){
+        if(type === "sales_order" && String(row.status || "").trim().toLowerCase() === "partially converted") {
+            return `<span class="payment-badge payment-advance-credit">PARTIAL DELIVERY</span>`;
+        }
+
         const paymentType = getReportPaymentType(row, type);
         if(!paymentType) return "";
 

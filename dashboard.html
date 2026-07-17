@@ -54,6 +54,14 @@
       overflow-x: hidden;
     }
 
+    .po-alert-backdrop{position:fixed;inset:0;z-index:5000;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(1,6,15,.76);backdrop-filter:blur(8px)}
+    .po-alert-backdrop.show{display:flex}
+    .po-alert-box{width:min(460px,100%);padding:26px;border-radius:22px;text-align:center;background:linear-gradient(160deg,#13233d,#091426);border:1px solid rgba(251,191,36,.45);box-shadow:0 25px 80px rgba(0,0,0,.55)}
+    .po-alert-count{font-size:58px;line-height:1;font-weight:950;color:#fbbf24;margin:14px 0 8px}
+    .po-alert-actions{display:flex;justify-content:center;gap:10px;margin-top:22px}
+    .po-alert-actions button{border:0;border-radius:12px;padding:11px 20px;color:white;font-weight:800;cursor:pointer}
+    .po-alert-ok{background:#475569}.po-alert-view{background:linear-gradient(135deg,#0284c7,#2563eb)}
+
     .dashboard-shell {
       display: flex;
       min-height: 100vh;
@@ -1577,6 +1585,18 @@
   </div>
   <div class="fab" id="fabBtn" title="Quick Actions" aria-label="Quick Actions">＋</div>
 
+  <div class="po-alert-backdrop" id="poPendingPopup" role="dialog" aria-modal="true" aria-labelledby="poPendingTitle">
+    <div class="po-alert-box">
+      <h2 id="poPendingTitle">Pending purchase orders</h2>
+      <div class="po-alert-count" id="poPendingCount">0</div>
+      <div id="poPendingMessage">Purchase orders are pending receipt and are more than 10 days old.</div>
+      <div class="po-alert-actions">
+        <button type="button" class="po-alert-ok" onclick="closePendingPOPopup()">OK</button>
+        <button type="button" class="po-alert-view" onclick="viewPendingPOReport()">View</button>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
   <script src="supabaseClient.js"></script>
@@ -1602,6 +1622,7 @@
         setupBackupButton();
         setupCashClosingButtons();
         loadCRMOverdueReminder();
+        loadPendingPOLoginPopup(profile);
 
         await loadTodayDashboardSummary();
         await loadLatestCashClosing();
@@ -1611,6 +1632,59 @@
         alert("Dashboard failed to load.");
       }
     });
+
+    function pendingPOCutoffISO() {
+      const cutoff = new Date();
+      cutoff.setHours(0, 0, 0, 0);
+      cutoff.setDate(cutoff.getDate() - 10);
+      return [cutoff.getFullYear(), String(cutoff.getMonth() + 1).padStart(2, "0"), String(cutoff.getDate()).padStart(2, "0")].join("-");
+    }
+
+    async function loadPendingPOLoginPopup(profile) {
+      const role = String(profile?.role || "").toUpperCase();
+      if (["OWNER", "ADMIN"].includes(role)) return;
+      if (sessionStorage.getItem("show_pending_po_login_popup") !== "true") return;
+      sessionStorage.removeItem("show_pending_po_login_popup");
+
+      try {
+        const { data: setting, error: settingError } = await sb.from("user_page_access")
+          .select("allowed").eq("user_id", profile.id).eq("page_key", "purchase_order_popup").maybeSingle();
+        if (settingError || !setting?.allowed) return;
+
+        const cutoff = pendingPOCutoffISO();
+        const { data: orders, error: orderError } = await sb.from("purchase_order_details")
+          .select("*").lte("order_date", cutoff);
+        if (orderError) throw orderError;
+
+        const orderIds = (orders || []).filter(order =>
+          !order.is_cancelled && String(order.status || "").toUpperCase() !== "CANCELLED"
+        ).map(order => order.id).filter(Boolean);
+        if (!orderIds.length) return;
+
+        const { data: items, error: itemError } = await sb.from("purchase_order_item_details")
+          .select("*").in("purchase_order_id", orderIds);
+        if (itemError) throw itemError;
+
+        const pendingOrderIds = new Set((items || []).filter(item =>
+          Number(item.quantity || item.qty || 0) > Number(item.received_qty || 0)
+        ).map(item => item.purchase_order_id));
+        if (!pendingOrderIds.size) return;
+
+        document.getElementById("poPendingCount").textContent = String(pendingOrderIds.size);
+        document.getElementById("poPendingMessage").textContent = `${pendingOrderIds.size === 1 ? "Purchase order is" : "Purchase orders are"} pending receipt and dated 10 or more days ago.`;
+        document.getElementById("poPendingPopup").classList.add("show");
+      } catch (err) {
+        console.warn("Unable to load pending purchase order popup:", err?.message || err);
+      }
+    }
+
+    function closePendingPOPopup() {
+      document.getElementById("poPendingPopup")?.classList.remove("show");
+    }
+
+    function viewPendingPOReport() {
+      window.location.href = `purchase_order_report.html?view=order&pending=pending&to=${encodeURIComponent(pendingPOCutoffISO())}`;
+    }
 
     function setupTodayChip() {
       const el = document.getElementById("todayChip");

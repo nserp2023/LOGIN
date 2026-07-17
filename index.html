@@ -979,6 +979,7 @@
         localStorage.setItem("email", profile.email || "");
         localStorage.setItem("full_name", profile.full_name || "");
         localStorage.setItem("role", profile.role || "");
+        sessionStorage.setItem("show_pending_po_login_popup", "true");
 
         window.location.href = "dashboard.html";
       } catch (err) {

@@ -711,8 +711,11 @@ function badge(status){
 }
 
 async function init(){
-  document.getElementById("fromDate").value = monthStartISO();
-  document.getElementById("toDate").value = todayISO();
+  const params = new URLSearchParams(window.location.search);
+  viewMode = params.get("view") === "order" ? "order" : "item";
+  document.getElementById("fromDate").value = params.has("to") ? "" : monthStartISO();
+  document.getElementById("toDate").value = params.get("to") || todayISO();
+  if(params.get("pending") === "pending") document.getElementById("pendingFilter").value = "pending";
   updateViewButtons();
   await loadReport();
 }

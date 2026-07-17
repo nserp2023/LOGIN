@@ -162,6 +162,15 @@
 
     <div id="permissionGrid" class="permission-grid"></div>
 
+    <div class="user-info" id="poPopupSetting" style="margin-top:20px;display:none">
+      <h3 style="margin-top:0">Pending purchase order login popup</h3>
+      <p>Show this user a dashboard popup after every login with the number of purchase orders older than 10 days that are still pending receipt.</p>
+      <div class="perm-card">
+        <div><div class="perm-title">Enable pending PO popup</div><small>Available only for users other than OWNER and ADMIN.</small></div>
+        <input type="checkbox" id="poPopupEnabled">
+      </div>
+    </div>
+
     <div class="user-info" style="margin-top:20px">
       <h3 style="margin-top:0">One-time bill edit permission</h3>
       <p>Allow the selected user to edit one matching sales bill once. The permission is consumed only after a successful save.</p>
@@ -308,6 +317,10 @@
       });
 
       renderPermissionGrid(permissionMap);
+      const selectedRole = String(selectedUser.role || "").toUpperCase();
+      const canUsePopup = !["OWNER", "ADMIN"].includes(selectedRole);
+      document.getElementById("poPopupSetting").style.display = canUsePopup ? "" : "none";
+      document.getElementById("poPopupEnabled").checked = canUsePopup && !!permissionMap.purchase_order_popup;
       await loadBillGrants();
       setStatus("Permissions loaded.", "ok");
     }
@@ -324,6 +337,13 @@
         page_key: ch.dataset.key,
         allowed: ch.checked
       }));
+
+      const selectedRole = String(selectedUser.role || "").toUpperCase();
+      rows.push({
+        user_id: selectedUser.id,
+        page_key: "purchase_order_popup",
+        allowed: !["OWNER", "ADMIN"].includes(selectedRole) && document.getElementById("poPopupEnabled").checked
+      });
 
       const { error } = await accessClient
         .from("user_page_access")

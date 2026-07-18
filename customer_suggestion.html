@@ -321,15 +321,23 @@
 
   function apiEndpoint(path){
     const params = new URLSearchParams(window.location.search);
-    const configuredOrigin = params.get("api_origin") || localStorage.getItem("vajra_api_origin");
+    const configuredOrigin = params.get("api_origin") || window.VAJRA_API_ORIGIN || localStorage.getItem("vajra_api_origin");
     if(params.get("api_origin")){
       localStorage.setItem("vajra_api_origin", params.get("api_origin").replace(/\/$/, ""));
     }
-    const apiOrigin = configuredOrigin
-      ? configuredOrigin.replace(/\/$/, "")
-      : (window.location.port === "3000"
+    let apiOrigin = configuredOrigin ? configuredOrigin.replace(/\/$/, "") : "";
+    if(!apiOrigin){
+      const isLocal = ["localhost","127.0.0.1","::1",""].includes(window.location.hostname);
+      if(isLocal){
+        apiOrigin = window.location.port === "3000"
           ? window.location.origin
-          : `${window.location.protocol}//${window.location.hostname || "localhost"}:3000`);
+          : "http://localhost:3000";
+      }else if(window.location.port === "3000"){
+        apiOrigin = window.location.origin;
+      }else{
+        throw new Error("AI voice backend is not configured. GitHub Pages cannot run the voice server. Configure a public HTTPS backend URL.");
+      }
+    }
     return `${apiOrigin}${path}`;
   }
 
@@ -662,7 +670,10 @@
     }catch(error){
       console.error(error);
       setRecorderButtons(customerId, false);
-      setRecorderStatus(customerId, "AI voice failed: " + (error.message || "Unknown error"), "error");
+      const failedToFetch = /failed to fetch|networkerror|load failed/i.test(String(error.message || error));
+      setRecorderStatus(customerId, failedToFetch
+        ? "AI voice backend could not be reached. It must be deployed on a public HTTPS URL and configured for this page."
+        : "AI voice failed: " + (error.message || "Unknown error"), "error");
     }
   }
 

@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: nserp-vajra-voice-api
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: CORS_ORIGIN
+        value: https://nserp2023.github.io
+      - key: APP_BASE_URL
+        value: https://nserp2023.github.io/LOGIN
+      - key: GEMINI_API_KEY
+        sync: false

@@ -2531,12 +2531,64 @@
         }
     }
 
+    async function findPendingPurchaseOrderForRow(row){
+        const rawItem = getRowRawItem(row) || {};
+        const itemCode = (row.querySelector('.code-inp')?.value || rawItem.item_code || "").trim();
+        const itemName = (row.querySelector('.name-inp')?.value || rawItem.item_name || "").trim();
+        if(!itemCode && !itemName) return null;
+
+        // Item code is the stable identity. Name is used only for new/legacy
+        // items that do not have a code.
+        let itemQuery = sb.from("purchase_order_item_details").select("*");
+        itemQuery = itemCode
+            ? itemQuery.eq("item_code",itemCode)
+            : itemQuery.eq("item_name",itemName);
+
+        const {data:itemLines,error:itemError} = await itemQuery.order("id",{ascending:false}).limit(200);
+        if(itemError) throw itemError;
+
+        const pendingLines = (itemLines || []).filter(line => {
+            const quantity = Number(line.quantity || line.qty || 0);
+            const received = Number(line.received_qty || 0);
+            return quantity > received && String(line.status || "").toUpperCase() !== "CANCELLED";
+        });
+        if(!pendingLines.length) return null;
+
+        const orderIds = [...new Set(pendingLines.map(line=>line.purchase_order_id).filter(Boolean))];
+        if(!orderIds.length) return null;
+
+        const {data:orders,error:orderError} = await sb.from("purchase_order_details")
+            .select("*")
+            .in("id",orderIds);
+        if(orderError) throw orderError;
+
+        const activeOrderIds = new Set((orders || []).filter(order =>
+            !order.is_cancelled && String(order.status || "").toUpperCase() !== "CANCELLED"
+        ).map(order=>Number(order.id)));
+        const line = pendingLines.find(item=>activeOrderIds.has(Number(item.purchase_order_id)));
+        if(!line) return null;
+
+        const order = (orders || []).find(item=>Number(item.id)===Number(line.purchase_order_id));
+        return {
+            order,
+            line,
+            pendingQty:Math.max(Number(line.quantity || line.qty || 0)-Number(line.received_qty || 0),0)
+        };
+    }
+
     async function createQuickPurchaseOrderForRow(row, orderQty){
         const rawItem = getRowRawItem(row) || {};
         const itemCode = (row.querySelector('.code-inp')?.value || rawItem.item_code || "").trim();
         const itemName = (row.querySelector('.name-inp')?.value || rawItem.item_name || "").trim();
         if(!itemCode && !itemName) throw new Error("Item is required for purchase order.");
         if(orderQty <= 0) throw new Error("Purchase order qty is 0 because maximum qty is not greater than minimum qty.");
+
+        // Recheck after confirmation because another user may have created a
+        // purchase order while this prompt was open.
+        const existingPending = await findPendingPurchaseOrderForRow(row);
+        if(existingPending){
+            return {skipped:true, existingPending};
+        }
 
         const poNumber = await getNextQuickPONumber();
         const today = new Date().toISOString().split("T")[0];
@@ -2606,12 +2658,32 @@
             return false;
         }
 
+        try{
+            const existingPending = await findPendingPurchaseOrderForRow(row);
+            if(existingPending){
+                row.dataset.quickPoPromptKey = promptKey;
+                const existingNo = existingPending.order?.po_number || existingPending.order?.id || "existing PO";
+                updateDraftStatus(`PO prompt skipped: ${existingNo} already has ${Number(existingPending.pendingQty).toLocaleString("en-IN")} pending for ${name || code}`);
+                return false;
+            }
+        }catch(err){
+            console.error("Pending purchase order check failed:",err);
+            row.dataset.quickPoPromptKey = promptKey;
+            updateDraftStatus("PO prompt skipped because existing pending orders could not be checked");
+            return false;
+        }
+
         row.dataset.quickPoPromptKey = promptKey;
         const makePO = await askPurchaseOrderPrompt(row, orderQty);
         if(!makePO) return true;
 
         try{
             const po = await createQuickPurchaseOrderForRow(row, orderQty);
+            if(po.skipped){
+                const existingNo = po.existingPending?.order?.po_number || po.existingPending?.order?.id || "existing PO";
+                updateDraftStatus(`PO not created: ${existingNo} already has this item pending`);
+                return true;
+            }
             row.dataset.quickPoCreatedKey = promptKey;
             updateDraftStatus(`PO ${po.po_number || po.id} created`);
             alert(`Purchase Order created successfully.\nPO No: ${po.po_number || po.id}\nItem: ${name || code}\nQty: ${orderQty}`);

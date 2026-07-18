@@ -1,6 +1,12 @@
 {
   "name": "whatsapp-bill-server",
   "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=20 <25"
+  },
   "dependencies": {
     "@supabase/supabase-js": "^2.103.0",
     "axios": "^1.12.0",

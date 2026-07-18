@@ -695,6 +695,34 @@ function debouncedLoad(){
   clearTimeout(timer);
   timer = setTimeout(loadReport,250);
 }
+async function loadItemsForOrders(orderIds){
+  // A single large `.in(...)` request creates an oversized URL once purchase
+  // order history grows. Small parallel batches stay fast and reliable.
+  const batchSize = 100;
+  const batches = [];
+  for(let i=0;i<orderIds.length;i+=batchSize){
+    batches.push(orderIds.slice(i,i+batchSize));
+  }
+
+  const results = [];
+  const workerCount = Math.min(4,batches.length);
+  let nextBatch = 0;
+  async function worker(){
+    while(nextBatch < batches.length){
+      const ids = batches[nextBatch++];
+      const {data,error} = await sb
+        .from("purchase_order_item_details")
+        .select("*")
+        .in("purchase_order_id",ids)
+        .order("id",{ascending:true});
+      if(error) throw error;
+      results.push(...(data||[]));
+    }
+  }
+  await Promise.all(Array.from({length:workerCount},worker));
+  results.sort((a,b)=>Number(a.id||0)-Number(b.id||0));
+  return results;
+}
 function getOrderCancelled(o){
   return !!(o?.is_cancelled || o?.cancelled || String(o?.status || "").toUpperCase() === "CANCELLED");
 }
@@ -716,16 +744,23 @@ async function init(){
   document.getElementById("fromDate").value = params.has("to") ? "" : monthStartISO();
   document.getElementById("toDate").value = params.get("to") || todayISO();
   if(params.get("pending") === "pending") document.getElementById("pendingFilter").value = "pending";
-  updateViewButtons();
+  setViewMode(viewMode);
   await loadReport();
 }
 
 async function loadReport(){
   const tbody = document.getElementById("tbody");
-  tbody.innerHTML = `<tr><td colspan="13" class="empty">Loading item wise report...</td></tr>`;
+  const orderTbody = document.getElementById("orderTbody");
+  if(viewMode === "order"){
+    orderTbody.innerHTML = `<tr><td colspan="7" class="empty">Loading pending purchase orders...</td></tr>`;
+  }else{
+    tbody.innerHTML = `<tr><td colspan="13" class="empty">Loading item wise report...</td></tr>`;
+  }
 
   if(!sb){
-    tbody.innerHTML = `<tr><td colspan="13" class="empty">Supabase client not found. Check supabaseClient.js</td></tr>`;
+    const target = viewMode === "order" ? orderTbody : tbody;
+    const colspan = viewMode === "order" ? 7 : 13;
+    target.innerHTML = `<tr><td colspan="${colspan}" class="empty">Supabase client not found. Check supabaseClient.js</td></tr>`;
     return;
   }
 
@@ -746,17 +781,14 @@ async function loadReport(){
     const orderIds = (orders||[]).map(o=>o.id).filter(Boolean);
     if(!orderIds.length){
       allRows = [];
-      renderRows([]);
+      allOrders = [];
+      allItems = [];
+      if(viewMode === "order") renderOrders([],[]);
+      else renderRows([]);
       return;
     }
 
-    const {data:items,error:itemErr} = await sb
-      .from("purchase_order_item_details")
-      .select("*")
-      .in("purchase_order_id",orderIds)
-      .order("id",{ascending:true});
-
-    if(itemErr) throw itemErr;
+    const items = await loadItemsForOrders(orderIds);
 
     const orderMap = {};
     (orders||[]).forEach(o=>orderMap[o.id]=o);
@@ -856,7 +888,9 @@ async function loadReport(){
 
   }catch(err){
     console.error(err);
-    tbody.innerHTML = `<tr><td colspan="13" class="empty">Error: ${safe(err.message || err)}</td></tr>`;
+    const message = `<tr><td colspan="${viewMode === "order" ? 7 : 13}" class="empty">Could not load report: ${safe(err.message || err)}</td></tr>`;
+    if(viewMode === "order") orderTbody.innerHTML = message;
+    else tbody.innerHTML = message;
     renderStats([]);
   }
 }

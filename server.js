@@ -14,6 +14,10 @@ dotenv.config();
 const app = express();
 app.use(express.json({ limit: "45mb" }));
 
+app.get("/api/health", (_req, res) => {
+    res.json({ ok: true, service: "vajra-api" });
+});
+
 app.use((req, res, next) => {
     res.setHeader("Access-Control-Allow-Origin", process.env.CORS_ORIGIN || "*");
     res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");

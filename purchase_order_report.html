@@ -225,6 +225,16 @@ tr:hover td{background:rgba(56,189,248,.045)}
 .receivebtn{background:linear-gradient(135deg,#16a34a,#15803d)}
 .whatsappbtn{background:linear-gradient(135deg,#22c55e,#15803d)}
 .cancelbtn{background:linear-gradient(135deg,#e11d48,#be123c)}
+.order-summary-row{cursor:pointer}
+.order-summary-row .order-chevron{display:inline-block;margin-right:7px;color:var(--blue);transition:transform .16s ease}
+.order-summary-row.expanded .order-chevron{transform:rotate(90deg)}
+.order-detail-row>td{padding:0!important;position:static!important;background:#071426!important;box-shadow:none!important}
+.order-detail-panel{padding:14px 18px 18px;border-bottom:1px solid rgba(56,189,248,.28)}
+.order-detail-heading{display:flex;justify-content:space-between;gap:12px;margin-bottom:10px;font-weight:900;color:#bae6fd}
+.order-detail-table{min-width:760px;background:#09182b;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.order-detail-table th{position:static;background:#132744}
+.order-detail-table td:first-child,.order-detail-table th:first-child{position:static;box-shadow:none;background:inherit}
+.order-detail-table .detail-total td{font-weight:950;background:rgba(56,189,248,.08)}
 .empty{
   padding:35px;
   text-align:center;
@@ -645,6 +655,7 @@ let viewMode = 'item'; // 'item' or 'order'
 let receiveRow = null;
 let timer = null;
 let topSectionsOpen = false;
+const expandedOrderIds = new Set();
 
 function toggleTopSections(force){
   if(typeof force === "boolean") topSectionsOpen = force;
@@ -1011,10 +1022,13 @@ function renderOrders(orders, items){
 
   const rows = (orders || []).map(o=>{
     const its = (items||[]).filter(i=>Number(i.purchase_order_id)===Number(o.id));
-    const value = (its||[]).reduce((a,it)=>a + (Number(it.quantity||0) * Number(it.price||0)),0);
-    const qty = (its||[]).reduce((a,it)=>a + Number(it.quantity||0),0);
+    const value = (its||[]).reduce((a,it)=>a + (
+      Number(it.quantity || it.qty || 0) *
+      Number(it.price || it.purchase_price_gst || it.purchase_price || 0)
+    ),0);
+    const qty = (its||[]).reduce((a,it)=>a + Number(it.quantity || it.qty || 0),0);
     const received = (its||[]).reduce((a,it)=>a + Number(it.received_qty||0),0);
-    const pending = (its||[]).reduce((a,it)=>a + Math.max(Number(it.quantity||0)-Number(it.received_qty||0),0),0);
+    const pending = (its||[]).reduce((a,it)=>a + Math.max(Number(it.quantity || it.qty || 0)-Number(it.received_qty||0),0),0);
     const cancelled = getOrderCancelled(o) || String(o.status||'').toUpperCase() === 'CANCELLED';
     return {order:o,items:its,value,qty,received,pending,cancelled};
   }).filter(r => r.pending > 0 && !r.cancelled);
@@ -1028,9 +1042,27 @@ function renderOrders(orders, items){
   tbody.innerHTML = rows.map(r=>{
     const o = r.order;
     const cancelled = getOrderCancelled(o) || String(o.status||'').toUpperCase()==='CANCELLED';
+    const expanded = expandedOrderIds.has(Number(o.id));
+    const itemRows = r.items.map((it,index)=>{
+      const qty = Number(it.quantity || it.qty || 0);
+      const received = Number(it.received_qty || 0);
+      const pending = Math.max(qty-received,0);
+      const price = Number(it.price || it.purchase_price_gst || it.purchase_price || 0);
+      return `
+        <tr>
+          <td class="center">${index+1}</td>
+          <td class="mono">${safe(it.item_code || "-")}</td>
+          <td><b>${safe(it.item_name || "-")}</b><div class="hint">${safe(it.department || "")}</div></td>
+          <td class="right">${num(qty)}</td>
+          <td class="right">${num(received)}</td>
+          <td class="right ${pending>0 ? "pendingText" : "okText"}">${num(pending)}</td>
+          <td class="right">${money(price)}</td>
+          <td class="right"><b>${money(qty*price)}</b></td>
+        </tr>`;
+    }).join("");
     return `
-      <tr>
-        <td class="mono"><b>${safe(poNo(o))}</b></td>
+      <tr id="order-summary-${o.id}" class="order-summary-row${expanded ? " expanded" : ""}" title="Click to ${expanded ? "hide" : "view"} ordered items" onclick="if(!event.target.closest('button')) toggleOrderItems(${o.id})">
+        <td class="mono"><span class="order-chevron">▶</span><b>${safe(poNo(o))}</b></td>
         <td>${fmtDate(o.order_date || o.purchase_order_date || o.created_at)}</td>
         <td><b>${safe(o.supplier_name || '-')}</b></td>
         <td><b>${safe(o.supplier_mobile || o.mobile || getMobileFromRemark(o.remark || o.remarks || ''))}</b></td>
@@ -1045,10 +1077,37 @@ function renderOrders(orders, items){
           </div>
         </td>
       </tr>
+      <tr id="order-details-${o.id}" class="order-detail-row" style="display:${expanded ? "table-row" : "none"}">
+        <td colspan="7">
+          <div class="order-detail-panel">
+            <div class="order-detail-heading"><span>Items ordered in PO ${safe(poNo(o))}</span><span>${r.items.length} item(s)</span></div>
+            <table class="order-detail-table">
+              <thead><tr><th>#</th><th>Item Code</th><th>Item Name</th><th class="right">Ordered</th><th class="right">Received</th><th class="right">Pending</th><th class="right">Price</th><th class="right">Amount</th></tr></thead>
+              <tbody>
+                ${itemRows || `<tr><td colspan="8" class="empty">No item details found for this purchase order.</td></tr>`}
+                <tr class="detail-total"><td colspan="7" class="right">Purchase Order Total</td><td class="right">${money(r.value)}</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </td>
+      </tr>
     `;
   }).join('');
 
   document.getElementById('resultInfo').textContent = `${rows.length} order(s) shown`;
+}
+
+function toggleOrderItems(orderId){
+  const id = Number(orderId);
+  const detailRow = document.getElementById(`order-details-${id}`);
+  const summaryRow = document.getElementById(`order-summary-${id}`);
+  if(!detailRow) return;
+  const opening = detailRow.style.display !== "table-row";
+  detailRow.style.display = opening ? "table-row" : "none";
+  summaryRow?.classList.toggle("expanded",opening);
+  summaryRow?.setAttribute("title",`Click to ${opening ? "hide" : "view"} ordered items`);
+  if(opening) expandedOrderIds.add(id);
+  else expandedOrderIds.delete(id);
 }
 
 function openOrderReceiveModal(orderId){

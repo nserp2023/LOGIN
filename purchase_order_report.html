@@ -937,7 +937,7 @@ function renderRows(rows){
             <button class="smallbtn iconbtn whatsappbtn" type="button" title="Share on WhatsApp" aria-label="Share purchase order on WhatsApp" onclick="sharePOWhatsApp(${r.order_id})" ${cancelled ? "disabled" : ""}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.5 8.5 0 0 1-12.6 7.4L3 21l2.1-5.2A8.5 8.5 0 1 1 21 11.5Z"/><path d="M8.5 8.2c.6 3 2.3 4.7 5.3 5.3"/></svg></button>
             <button class="smallbtn iconbtn editbtn" type="button" title="Edit purchase order" aria-label="Edit purchase order" onclick="editPO(${r.order_id})" ${cancelled ? "disabled" : ""}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg></button>
             <button class="smallbtn iconbtn receivebtn" type="button" title="Material received" aria-label="Record material received" onclick="openReceiveModal(${r.item_id})" ${cancelled || r.pending_qty<=0 ? "disabled" : ""}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/><path d="m9 16 2 2 4-4"/></svg></button>
-            <button class="smallbtn iconbtn cancelbtn" type="button" title="Cancel purchase order" aria-label="Cancel purchase order" onclick="cancelPO(${r.order_id})" ${cancelled ? "disabled" : ""}><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m9 9 6 6m0-6-6 6"/></svg></button>
+            <button class="smallbtn iconbtn cancelbtn" type="button" title="Delete only this item" aria-label="Delete only this purchase order item" onclick="deletePOItem(${r.item_id})" ${cancelled ? "disabled" : ""}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="m7 7 1 13h8l1-13"/><path d="M10 11v5m4-5v5"/></svg></button>
           </div>
         </td>
       </tr>
@@ -1073,7 +1073,7 @@ function renderOrders(orders, items){
             <button class="smallbtn iconbtn whatsappbtn" type="button" title="Share on WhatsApp" aria-label="Share purchase order on WhatsApp" onclick="sharePOWhatsApp(${o.id})" ${cancelled ? 'disabled' : ''}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.5 8.5 0 0 1-12.6 7.4L3 21l2.1-5.2A8.5 8.5 0 1 1 21 11.5Z"/><path d="M8.5 8.2c.6 3 2.3 4.7 5.3 5.3"/></svg></button>
             <button class="smallbtn iconbtn editbtn" type="button" title="Edit purchase order" aria-label="Edit purchase order" onclick="editPO(${o.id})" ${cancelled ? 'disabled' : ''}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg></button>
             <button class="smallbtn iconbtn receivebtn" type="button" title="Material received" aria-label="Record material received" onclick="openOrderReceiveModal(${o.id})" ${cancelled ? 'disabled' : ''}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/><path d="m9 16 2 2 4-4"/></svg></button>
-            <button class="smallbtn iconbtn cancelbtn" type="button" title="Cancel purchase order" aria-label="Cancel purchase order" onclick="cancelPO(${o.id})" ${cancelled ? 'disabled' : ''}><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m9 9 6 6m0-6-6 6"/></svg></button>
+            <button class="smallbtn iconbtn cancelbtn" type="button" title="Cancel full purchase order" aria-label="Cancel full purchase order" onclick="cancelPO(${o.id})" ${cancelled ? 'disabled' : ''}><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m9 9 6 6m0-6-6 6"/></svg></button>
           </div>
         </td>
       </tr>
@@ -1256,10 +1256,7 @@ async function updatePOStatus(orderId){
     .eq("id",orderId);
 }
 
-async function cancelPO(orderId){
-  if(!confirm("Cancel this full purchase order?")) return;
-
-  try{
+async function cancelFullOrderRecord(orderId){
     const {error} = await sb.from("purchase_order_details")
       .update({
         status:"CANCELLED",
@@ -1275,6 +1272,46 @@ async function cancelPO(orderId){
 
       if(retry.error) throw retry.error;
     }
+}
+
+async function deletePOItem(itemId){
+  const row = allRows.find(r=>Number(r.item_id)===Number(itemId));
+  if(!row) return alert("Purchase order item not found.");
+
+  const receivedWarning = Number(row.received_qty || 0) > 0
+    ? `\n\nThis line already has ${num(row.received_qty)} received. Its item record will still be deleted.`
+    : "";
+  if(!confirm(`Delete only this item from PO ${row.po_no}?\n\n${row.item_name || row.item_code || "Selected item"}${receivedWarning}\n\nThe other items in this purchase order will remain.`)) return;
+
+  try{
+    const {error} = await sb.from("purchase_order_item_details")
+      .delete()
+      .eq("id",row.item_id)
+      .eq("purchase_order_id",row.order_id);
+    if(error) throw error;
+
+    const {count,error:countError} = await sb.from("purchase_order_item_details")
+      .select("id",{count:"exact",head:true})
+      .eq("purchase_order_id",row.order_id);
+    if(countError) throw countError;
+
+    if(Number(count || 0) === 0){
+      await cancelFullOrderRecord(row.order_id);
+    }else{
+      await updatePOStatus(row.order_id);
+    }
+
+    await loadReport();
+  }catch(err){
+    alert("Item delete failed: " + (err.message || err));
+  }
+}
+
+async function cancelPO(orderId){
+  if(!confirm("Cancel this FULL purchase order? All its item lines will be treated as cancelled.")) return;
+
+  try{
+    await cancelFullOrderRecord(orderId);
 
     await loadReport();
 

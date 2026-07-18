@@ -439,10 +439,13 @@ app.post("/api/customer-suggestion-voice", async (req, res) => {
         }
 
         const prompt = [
-            "Read the following Malayalam customer suggestion exactly as written.",
-            "Use a warm, clear, professional Indian female sales-assistant voice.",
-            "Speak naturally, politely, and confidently, with a Kerala-friendly Malayalam accent.",
-            "Keep the pace comfortable for a WhatsApp customer voice message.",
+            "Perform the following Malayalam message as a natural WhatsApp voice note.",
+            "Voice: a warm, cheerful, friendly Kerala woman speaking to a valued customer.",
+            "Emotion: genuinely happy and welcoming, with a gentle smile audible in the voice; never robotic, flat, dramatic, or announcer-like.",
+            "Delivery: conversational and expressive, with natural Malayalam rhythm, short pauses at punctuation, and light emphasis on helpful product suggestions.",
+            "Pronunciation: pronounce every Malayalam word clearly and correctly. Do not rush, swallow syllables, spell out words, or use a foreign accent.",
+            "Pace: relaxed and easy to understand, suitable for listening once on WhatsApp.",
+            "Do not add, remove, translate, or paraphrase any words from the message.",
             customerName ? `The customer name is ${String(customerName).slice(0, 120)}.` : "",
             "",
             script

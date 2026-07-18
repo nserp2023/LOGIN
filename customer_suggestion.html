@@ -320,10 +320,16 @@
   const sb = window.sbcc;
 
   function apiEndpoint(path){
-    const isLocal = ["localhost", "127.0.0.1", "::1", ""].includes(window.location.hostname);
-    const apiOrigin = isLocal && window.location.port !== "3000"
-      ? "http://localhost:3000"
-      : window.location.origin;
+    const params = new URLSearchParams(window.location.search);
+    const configuredOrigin = params.get("api_origin") || localStorage.getItem("vajra_api_origin");
+    if(params.get("api_origin")){
+      localStorage.setItem("vajra_api_origin", params.get("api_origin").replace(/\/$/, ""));
+    }
+    const apiOrigin = configuredOrigin
+      ? configuredOrigin.replace(/\/$/, "")
+      : (window.location.port === "3000"
+          ? window.location.origin
+          : `${window.location.protocol}//${window.location.hostname || "localhost"}:3000`);
     return `${apiOrigin}${path}`;
   }
 
@@ -484,6 +490,14 @@
     return `നമസ്കാരം ${name}, VAJRA LIGHTS AND ELECTRICALSൽ നിന്ന് വാങ്ങിയതിന് നന്ദി. നിങ്ങൾ ഇപ്പോൾ വാങ്ങിയ ഐറ്റങ്ങൾ ഒഴികെ, നിങ്ങളുടെ വീടിനും പ്രോജക്ടിനും ആവശ്യമാകാവുന്ന ${list} എന്നിവയും ഞങ്ങളുടെ കടയിൽ ലഭ്യമാണ്. നല്ല ക്വാളിറ്റിയും മികച്ച വിലയും ലഭിക്കും. ആവശ്യമുണ്ടെങ്കിൽ ദയവായി VAJRA LIGHTS AND ELECTRICALSനെ ബന്ധപ്പെടുക. നന്ദി.`;
   }
 
+  function buildMalayalamSpeechText(customer){
+    // Malayalam phonetic spelling prevents English brand words from being
+    // pronounced letter-by-letter or with an unnatural foreign accent.
+    return buildMalayalamText(customer)
+      .replaceAll("VAJRA LIGHTS AND ELECTRICALS", "\u0d35\u0d1c\u0d4d\u0d30 \u0d32\u0d48\u0d31\u0d4d\u0d31\u0d4d\u0d38\u0d4d \u0d06\u0d7b\u0d21\u0d4d \u0d07\u0d32\u0d15\u0d4d\u0d1f\u0d4d\u0d30\u0d3f\u0d15\u0d4d\u0d15\u0d7d\u0d38\u0d4d")
+      .replaceAll("VAJRA", "\u0d35\u0d1c\u0d4d\u0d30");
+  }
+
   function buildWhatsAppText(customer){
     const missing = customer.missingCategories.map(c => c.ml).join(", ");
     return [
@@ -521,10 +535,10 @@
     }
 
     window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(buildMalayalamText(customer));
+    const utterance = new SpeechSynthesisUtterance(buildMalayalamSpeechText(customer));
     utterance.lang = "ml-IN";
-    utterance.rate = 0.92;
-    utterance.pitch = 1;
+    utterance.rate = 0.88;
+    utterance.pitch = 1.06;
 
     const selectedName = els.voiceSelect.value;
     const selected = state.voices.find(v => v.name === selectedName);
@@ -604,7 +618,13 @@
       const data = await response.clone().json();
       return data.error || response.statusText;
     }catch(_){
-      return await response.text() || response.statusText;
+      const raw = await response.text();
+      if(/<html|<!doctype/i.test(raw)){
+        return response.status === 405
+          ? "Voice API is not running at the configured address. Start server.js on port 3000."
+          : `Voice API returned an invalid server response (${response.status}).`;
+      }
+      return raw || response.statusText;
     }
   }
 
@@ -614,14 +634,14 @@
 
     try{
       setRecorderButtons(customerId, true);
-      setRecorderStatus(customerId, "Generating female AI voice... please wait.", "info");
+      setRecorderStatus(customerId, "Generating a natural Malayalam voice... please wait.", "info");
 
       const response = await fetch(apiEndpoint("/api/customer-suggestion-voice"), {
         method:"POST",
         headers:{ "Content-Type":"application/json" },
         body:JSON.stringify({
           customerName: customer.name || "Customer",
-          text: buildMalayalamText(customer)
+          text: buildMalayalamSpeechText(customer)
         })
       });
 
@@ -638,7 +658,7 @@
         generated: true
       });
       updateVoicePreview(customerId);
-      setRecorderStatus(customerId, "Female AI voice ready. Preview it, then open WhatsApp Web.", "success");
+      setRecorderStatus(customerId, "Natural Malayalam voice is ready. Preview it, then open WhatsApp Web.", "success");
     }catch(error){
       console.error(error);
       setRecorderButtons(customerId, false);

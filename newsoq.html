@@ -265,6 +265,13 @@
             outline: none;
         }
 
+        /* Native price-type menus use a white popup background. Keep their
+           option labels dark while the closed select remains white on the row. */
+        #bill_body .type-inp option {
+            color: #111827;
+            background-color: #ffffff;
+        }
+
 
         /* ===== ACTIVE ITEM ROW HIGHLIGHT ===== */
         #bill_body tr.item-row{

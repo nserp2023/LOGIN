@@ -3053,9 +3053,20 @@
 
         const remainingTotal = calculateSalesOrderItemsTotal(remainingItems || []);
         const remainingAdvance = Math.max(0, (parseFloat(salesOrderAdvancePaid || 0) || 0) - appliedAdvance);
-        const fullyConverted = !remainingItems || remainingItems.length === 0;
+        const allItemsDelivered = !remainingItems || remainingItems.length === 0;
+        // Once the customer's advance is fully used, the Sales Order must not
+        // remain open just because some originally ordered items were not taken.
+        // Keep those item rows for audit/history, but close the order itself.
+        const advanceExhausted = remainingAdvance <= 0.005;
+        const fullyConverted = allItemsDelivered || advanceExhausted;
         const orderUpdate = fullyConverted
-            ? { converted: true, status: 'converted', total_amount: 0, advance_amount: remainingAdvance, balance_amount: 0 }
+            ? {
+                converted: true,
+                status: advanceExhausted && !allItemsDelivered ? 'closed' : 'converted',
+                total_amount: 0,
+                advance_amount: advanceExhausted ? 0 : remainingAdvance,
+                balance_amount: 0
+            }
             : {
                 converted: false,
                 status: 'partially converted',

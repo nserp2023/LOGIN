@@ -6241,6 +6241,15 @@ function calcTotal() {
                     salesOrderFulfilment,
                     getSalesOrderAdvanceApplied(roundedTotal)
                 );
+                try {
+                    localStorage.setItem("sales_order_report_changed", JSON.stringify({
+                        orderId: convertedSalesOrderId,
+                        fullyConverted: conversionResult.fullyConverted,
+                        changedAt: Date.now()
+                    }));
+                } catch (notificationError) {
+                    console.warn("Could not notify the open Sales Order report tab:", notificationError);
+                }
                 if (!conversionResult.fullyConverted) {
                     alert(`Partial delivery saved. ${conversionResult.remainingItems} item line(s), worth ₹${conversionResult.remainingTotal.toFixed(2)}, remain on the Sales Order.`);
                 }

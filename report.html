@@ -418,6 +418,10 @@
         return String(v || "").trim().toLowerCase();
     }
 
+    function isFullyConvertedSalesOrder(row){
+        return row?.converted === true || normalizeText(row?.status) === "converted";
+    }
+
     function getBillNumberSearchValue(filter){
         const value = normalizeText(filter);
         if(/^\d+$/.test(value)) return value;
@@ -1233,6 +1237,7 @@
         let totalSum = 0;
 
         for(let s of rows){
+            const salesOrderFullyConverted = type === "sales_order" && isFullyConvertedSalesOrder(s);
             const amount = parseFloat(s[cfg.amountField] || 0);
             if(s.status !== "CANCELLED") totalSum += amount;
 
@@ -1249,7 +1254,7 @@
             } ${
                 s.hasMissingItem ? 'missing-item-row' : ''
             } ${
-                ((type === 'quotation' || type === 'sales_order') && s.converted)
+                ((type === 'quotation' && s.converted) || salesOrderFullyConverted)
                 ? 'converted-row' : ''
             }" onclick="toggleDetails(${s.id})">
 
@@ -1335,7 +1340,7 @@
                             : ""
                     }
 
-                    ${(type === "quotation" || type === "sales_order") && !s.converted && s.status !== "CANCELLED" ? `
+                    ${((type === "quotation" && !s.converted) || (type === "sales_order" && !salesOrderFullyConverted)) && s.status !== "CANCELLED" ? `
                         ${reportIconButton("convert", "Convert to sales", `convertToSales(${s.id})`, { cssClass:"icon-convert" })}
                     ` : ""}
                 </div></td>
@@ -2086,6 +2091,14 @@
         document.getElementById("gst_filter").addEventListener("input", debounce(loadReport, 400));
         document.getElementById("salesman_filter").addEventListener("input", debounce(loadReport, 400));
         document.getElementById("created_by_filter").addEventListener("input", debounce(loadReport, 400));
+
+        // Conversion happens in a separate newsoq tab. Refresh this report as
+        // soon as that tab finishes updating the original Sales Order.
+        window.addEventListener("storage", event => {
+            if (event.key === "sales_order_report_changed" && document.getElementById("report_type").value === "sales_order") {
+                loadReport();
+            }
+        });
     });
 </script>
 

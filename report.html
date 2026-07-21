@@ -419,7 +419,18 @@
     }
 
     function isFullyConvertedSalesOrder(row){
-        return row?.converted === true || normalizeText(row?.status) === "converted";
+        const status = normalizeText(row?.status);
+        return row?.converted === true || status === "converted" || status === "closed";
+    }
+
+    function shouldHideClosedSalesOrder(row){
+        const status = normalizeText(row?.status);
+        const advance = Math.max(0, Number(row?.advance_amount) || 0);
+
+        // Also hides legacy partial conversions that were left open after their
+        // advance was completely consumed.
+        return status === "closed" ||
+            (advance <= 0.005 && (row?.converted === true || status === "converted" || status === "partially converted"));
     }
 
     function getBillNumberSearchValue(filter){
@@ -1149,6 +1160,10 @@
         }
 
         let rows = data || [];
+
+        if(type === "sales_order"){
+            rows = rows.filter(row => !shouldHideClosedSalesOrder(row));
+        }
 
         if(billFilter){
             rows = rows.filter(r => {

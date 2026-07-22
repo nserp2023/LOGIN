@@ -500,6 +500,64 @@ app.post("/api/customer-suggestion-voice", async (req, res) => {
     }
 });
 
+app.post("/api/quotation-list-scan", async (req, res) => {
+    try {
+        const { imageBase64, mimeType } = req.body || {};
+        if (!GEMINI_API_KEY) {
+            return res.status(500).json({ error: "GEMINI_API_KEY is missing in .env" });
+        }
+        if (!imageBase64) {
+            return res.status(400).json({ error: "A handwritten-list image is required" });
+        }
+
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_IMAGE_MODEL)}:generateContent`;
+        const prompt = `Read this customer's handwritten quotation/material list with extreme care.
+The handwriting may contain English, Malayalam, brand names, electrical terms, lighting terms, abbreviations, model codes and dimensions.
+Return every visible requested line in reading order. Do not invent missing text and do not calculate prices.
+For ditto marks, repeated quantities or obvious continuations, resolve them only when visually clear.
+Return JSON only as an array. Each item must have:
+- raw_name: the item description exactly as understood, including brand/model/colour/size
+- quantity: numeric requested quantity; use 1 only when no quantity is visible
+- unit: visible unit such as pcs, box, meter, set, or empty string
+- handwritten_text: best literal transcription of that line
+- confidence: number from 0 to 1
+- note: short uncertainty note or empty string`;
+
+        const geminiRes = await axios.post(endpoint, {
+            contents: [{ parts: [
+                { text: prompt },
+                { inlineData: { mimeType: mimeType || "image/jpeg", data: imageBase64 } }
+            ] }],
+            generationConfig: {
+                temperature: 0.1,
+                responseMimeType: "application/json"
+            }
+        }, {
+            headers: { "Content-Type": "application/json", "x-goog-api-key": GEMINI_API_KEY },
+            timeout: 60000
+        });
+
+        const parts = geminiRes.data?.candidates?.[0]?.content?.parts || [];
+        const rawText = parts.map(part => part.text || "").join("").trim();
+        const parsed = JSON.parse(rawText || "[]");
+        const rows = (Array.isArray(parsed) ? parsed : parsed.items || []).slice(0, 100).map(row => ({
+            raw_name: String(row.raw_name || row.handwritten_text || "").trim(),
+            quantity: Math.max(0.01, Number(row.quantity) || 1),
+            unit: String(row.unit || "").trim(),
+            handwritten_text: String(row.handwritten_text || row.raw_name || "").trim(),
+            confidence: Math.max(0, Math.min(1, Number(row.confidence) || 0)),
+            note: String(row.note || "").trim()
+        })).filter(row => row.raw_name);
+
+        res.json({ items: rows, model: GEMINI_IMAGE_MODEL });
+    } catch (err) {
+        const status = err.response?.status;
+        const message = err.response?.data?.error?.message || err.message || "Handwritten list scan failed";
+        console.error("Quotation list scan error:", err.response?.data || err.message);
+        res.status(500).json({ error: status ? `Gemini ${status}: ${message}` : message });
+    }
+});
+
 async function sendAudio(to, mediaId) {
     return axios.post(
         `https://graph.facebook.com/v23.0/${PHONE_NUMBER_ID}/messages`,

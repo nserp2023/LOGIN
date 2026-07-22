@@ -103,7 +103,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--blue);box-shadow:0 0 
 .actions{display:flex;gap:10px;flex-wrap:wrap}
 .summary{
   display:grid;
-  grid-template-columns:repeat(4,1fr);
+  grid-template-columns:repeat(6,1fr);
   gap:12px;
 }
 .box{
@@ -197,6 +197,9 @@ th{
 .suggest-item b{display:block;color:white;font-size:14px}
 .suggest-item small{color:#c8def8;font-size:12px}
 .mini-note{color:var(--muted);font-size:12px;margin:0 0 10px;line-height:1.35}
+@media(max-width:1400px){
+  .summary{grid-template-columns:repeat(3,1fr)}
+}
 @media(max-width:900px){
   .grid,.row,.summary{grid-template-columns:1fr}
   .header h2{font-size:18px}
@@ -298,7 +301,9 @@ th{
     <div class="summary">
       <div class="box"><span>From Lines</span><b id="sumFromLines">0</b></div>
       <div class="box"><span>Total Stock Out</span><b id="sumOut">0</b></div>
+      <div class="box"><span>From Value (Landing)</span><b id="sumFromValue">0.00</b></div>
       <div class="box"><span>To Lines / Total In</span><b id="sumIn">0</b></div>
+      <div class="box"><span>To Value (Landing)</span><b id="sumToValue">0.00</b></div>
       <div class="box"><span>Status</span><b id="sumStatus">Ready</b></div>
     </div>
 
@@ -351,8 +356,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   makeConversionNo();
 
   await loadStock();
-  addFromRow();
-  addToRow();
+  addFromRow(false);
+  addToRow(false);
   await loadHistory();
 
   document.addEventListener("click", e => {
@@ -398,7 +403,7 @@ async function loadStock(){
   }
 }
 
-function addFromRow(){
+function addFromRow(focusSearch = true){
   const id = makeRowId("f");
   fromRows.push({id, item:null});
 
@@ -429,9 +434,12 @@ function addFromRow(){
   });
 
   qtyInput.addEventListener("input", updateSummary);
+  qtyInput.addEventListener("keydown", e => handleQtyEnter(e, "from", id));
+  if(focusSearch) focusInput(search);
+  return tr;
 }
 
-function addToRow(){
+function addToRow(focusSearch = true){
   const id = makeRowId("t");
   toRows.push({id, item:null});
 
@@ -462,6 +470,34 @@ function addToRow(){
   });
 
   qtyInput.addEventListener("input", updateSummary);
+  qtyInput.addEventListener("keydown", e => handleQtyEnter(e, "to", id));
+  if(focusSearch) focusInput(search);
+  return tr;
+}
+
+function focusInput(input){
+  requestAnimationFrame(() => {
+    input?.focus();
+    input?.select();
+  });
+}
+
+function handleQtyEnter(e, section, currentId){
+  if(e.key !== "Enter" && e.key !== "NumpadEnter") return;
+  e.preventDefault();
+  updateSummary();
+
+  const rows = section === "from" ? fromRows : toRows;
+  const currentIndex = rows.findIndex(r => r.id === currentId);
+  const nextRow = currentIndex >= 0 ? rows[currentIndex + 1] : null;
+  if(nextRow){
+    const selector = section === "from" ? ".fromSearch" : ".toSearch";
+    focusInput(document.getElementById(nextRow.id)?.querySelector(selector));
+    return;
+  }
+
+  if(section === "from") addFromRow(true);
+  else addToRow(true);
 }
 
 function removeFromRow(id){
@@ -588,6 +624,7 @@ function hideSuggest(){
 
 function updateSummary(){
   let totalOut = 0;
+  let totalFromValue = 0;
   let fromLineCount = 0;
   let lowStock = false;
 
@@ -601,12 +638,14 @@ function updateSummary(){
 
     if(r.item && q > 0){
       totalOut += q;
+      totalFromValue += q * Number(r.item.landing || 0);
       fromLineCount++;
       if(q > bal) lowStock = true;
     }
   });
 
   let totalIn = 0;
+  let totalToValue = 0;
   let toLineCount = 0;
 
   toRows.forEach(r => {
@@ -619,6 +658,7 @@ function updateSummary(){
 
     if(r.item && q > 0){
       totalIn += q;
+      totalToValue += q * Number(r.item.landing || 0);
       toLineCount++;
     }
   });
@@ -630,7 +670,9 @@ function updateSummary(){
 
   sumFromLines.textContent = fromLineCount;
   sumOut.textContent = qty(totalOut);
+  sumFromValue.textContent = money(totalFromValue);
   sumIn.textContent = `${toLineCount} / ${qty(totalIn)}`;
+  sumToValue.textContent = money(totalToValue);
   sumStatus.textContent = status;
 }
 
@@ -864,8 +906,9 @@ function clearForm(newNo=true){
   fromBody.innerHTML = "";
   toBody.innerHTML = "";
 
-  addFromRow();
-  addToRow();
+  const firstFromRow = addFromRow(false);
+  addToRow(false);
+  focusInput(firstFromRow.querySelector(".fromSearch"));
 
   conversionDate.value = new Date().toISOString().slice(0,10);
   if(newNo) makeConversionNo();

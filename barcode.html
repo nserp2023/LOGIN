@@ -1228,6 +1228,14 @@ function findStockItemByCodeOrName(code, name){
     return item;
 }
 
+function firstValidPrice(...values){
+    for(const value of values){
+        const number = parseFloat(value);
+        if(Number.isFinite(number) && number > 0) return number;
+    }
+    return 0;
+}
+
 function addSelectedItem(){
     const qty = Math.max(1, parseInt(qtyInput.value, 10) || 1);
     const rawSearch = searchInput.value.trim();
@@ -1360,40 +1368,37 @@ async function loadPurchase(){
         const qty = Math.max(1, Math.round(parseFloat(row.quantity) || 1));
         const stockItem = findStockItemByCodeOrName(row.item_code, row.item_name);
 
-        const rowBase = parseFloat(
-            row.sales_price ??
-            row.price ??
-            row.purchase_price ??
-            row.price1 ??
-            0
-        ) || 0;
-
         const rowGst = parseFloat(row.gst_percent) || (stockItem ? stockItem.gst_percent : 0) || 0;
-        const rowBaseGst = parseFloat(
-            row.sales_price_gst ??
-            row.purchase_price_gst ??
-            row.price1_gst ??
-            0
-        ) || calcGstPrice(rowBase, rowGst);
+        // A purchase line is a snapshot of the prices saved for that bill. Prefer
+        // those values so later/stale stock rows cannot change its barcode price.
+        const price1 = firstValidPrice(
+            row.price1,
+            row.sales_price,
+            stockItem?.price1,
+            // Legacy purchase lines may not have selling-price columns.
+            row.price,
+            row.purchase_price
+        );
+        const price2 = firstValidPrice(row.price2, stockItem?.price2, price1);
+        const price3 = firstValidPrice(row.price3, stockItem?.price3, price1);
+        const price1Gst = firstValidPrice(row.price1_gst, row.sales_price_gst) || calcGstPrice(price1, rowGst);
+        const price2Gst = firstValidPrice(row.price2_gst) || calcGstPrice(price2, rowGst);
+        const price3Gst = firstValidPrice(row.price3_gst) || calcGstPrice(price3, rowGst);
 
-        const finalItem = stockItem ? {
-            ...stockItem,
-            item_code: row.item_code || stockItem.item_code,
-            item_name: row.item_name || stockItem.item_name,
-            barcode: row.barcode || stockItem.barcode || stockItem.item_code
-        } : {
-            item_code: row.item_code || '',
-            item_name: row.item_name || '',
-            barcode: row.barcode || row.item_code || '',
-            price1: rowBase,
-            price2: rowBase,
-            price3: rowBase,
-            price1_gst: rowBaseGst,
-            price2_gst: rowBaseGst,
-            price3_gst: rowBaseGst,
+        const finalItem = {
+            ...(stockItem || {}),
+            item_code: row.item_code || stockItem?.item_code || '',
+            item_name: row.item_name || stockItem?.item_name || '',
+            barcode: row.barcode || stockItem?.barcode || stockItem?.item_code || row.item_code || '',
+            price1,
+            price2,
+            price3,
+            price1_gst: price1Gst,
+            price2_gst: price2Gst,
+            price3_gst: price3Gst,
             gst_percent: rowGst,
-            balance: 0,
-            landing: parseFloat(row.purchase_price) || 0
+            balance: stockItem?.balance || 0,
+            landing: firstValidPrice(row.landing, row.purchase_price, stockItem?.landing)
         };
 
         upsertQueueItem(finalItem, qty);

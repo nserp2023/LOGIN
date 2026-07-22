@@ -39,15 +39,28 @@ async function quotationScanJson(response){
   }
 }
 scanHandwrittenList=async function(file){
-  scanStatus.textContent='Reading handwriting and matching stock… The AI server may take up to a minute to wake.';
+  let secondsLeft=75;
+  handwrittenPhoto.disabled=true;
+  scanStatus.textContent=`Reading handwriting and matching stock… ${secondsLeft}s remaining.`;
+  const countdown=setInterval(()=>{
+    secondsLeft=Math.max(0,secondsLeft-1);
+    scanStatus.textContent=`Reading handwriting and matching stock… ${secondsLeft}s remaining.`;
+  },1000);
+  const controller=new AbortController();
+  const abortTimer=setTimeout(()=>controller.abort(),75000);
   try{
-    await catalogReady;
+    // A slow stock request must not prevent handwriting recognition forever.
+    await Promise.race([
+      catalogReady,
+      new Promise(resolve=>setTimeout(resolve,10000))
+    ]);
     const image=await prepareScanImage(file);
     const endpoint=quotationApiEndpoint('/api/quotation-list-scan');
     let response;
     try{
-      response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(image)});
+      response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(image),signal:controller.signal});
     }catch(networkError){
+      if(networkError.name==='AbortError') throw new Error('Scanner timed out after 75 seconds. The AI server may be sleeping or unavailable; wait a moment and try again.');
       throw new Error(`Cannot reach the scanner backend at ${new URL(endpoint).origin}. Start/deploy server.js or configure api_origin.`);
     }
     const result=await quotationScanJson(response);
@@ -85,6 +98,11 @@ scanHandwrittenList=async function(file){
     calculate();
   }catch(e){
     scanStatus.textContent='Could not scan: '+e.message;
+  }finally{
+    clearInterval(countdown);
+    clearTimeout(abortTimer);
+    handwrittenPhoto.disabled=false;
+    handwrittenPhoto.value='';
   }
 };
 </script>

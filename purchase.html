@@ -548,7 +548,7 @@
   <div class="wrap">
     <div class="page-top">
       <div class="title">
-        <h1>Purchase Entry</h1>
+        <h1 id="pageTitle">Purchase Entry</h1>
         <span>Duplicate invoice is checked before item entry</span>
       </div>
       <div class="page-badges">
@@ -631,7 +631,7 @@
 
       <div class="actions">
         <button class="btn" id="addRowBtn">+ Add row</button>
-        <button class="btn primary" id="saveBtn" disabled>Save & Update</button>
+        <button class="btn primary" id="saveBtn" disabled>Save Purchase</button>
       </div>
     </div>
 
@@ -645,7 +645,7 @@
       </div>
       <div class="sticky-actions">
         <button class="btn" id="addRowBtnSticky">+ Add row</button>
-        <button class="btn primary" id="saveBtnSticky" disabled>Save & Update</button>
+        <button class="btn primary" id="saveBtnSticky" disabled>Save Purchase</button>
       </div>
     </div>
   </div>
@@ -671,6 +671,9 @@
     let isKeyboardNavigating = false;
     let stockData = [];
     let duplicateInvoiceFound = false;
+    let loadedPurchaseId = null;
+    let originalItemsSnapshot = [];
+    let isEditMode = false;
     const PURCHASE_DRAFT_KEY = "vajra_purchase_unsaved_draft_v1";
     const PURCHASE_DRAFT_MAX_AGE_MS = 24 * 60 * 60 * 1000;
     let purchaseDraftReady = false;
@@ -1169,13 +1172,18 @@
         return false;
       }
 
-      const { data, error } = await sb
+      let duplicateQuery = sb
         .from("purchase_details")
         .select("id, purchase_number, invoice_number, invoice_date, gst_number")
         .eq("gst_number", gst)
         .eq("invoice_number", invoiceNumber)
-        .eq("invoice_date", invoiceDate)
-        .limit(1);
+        .eq("invoice_date", invoiceDate);
+
+      if(isEditMode && loadedPurchaseId){
+        duplicateQuery = duplicateQuery.neq("id", loadedPurchaseId);
+      }
+
+      const { data, error } = await duplicateQuery.limit(1);
 
       if (error) {
         console.error("Duplicate check error:", error);
@@ -1428,6 +1436,7 @@ if (baseLanding > 0) {
       purch.value= prefill.purchase_price ?? "";
       purchG.value= prefill.purchase_price_gst ?? "";
       landing.value= prefill.landing ?? purchG.value ?? "";
+      if(prefill.landing != null && prefill.landing !== "") landing.dataset.userOverride = "1";
       p1p.value = prefill.price1_percent ?? "";
       p1.value = prefill.price1 ?? "";
       p1g.value = prefill.price1_gst ?? "";
@@ -1858,6 +1867,11 @@ if (baseLanding > 0) {
 
       await ensureSupplierExists();
 
+      if(isEditMode){
+        await updateExistingPurchase(inv, items, status);
+        return;
+      }
+
       const { data: pd, error: e1 } = await sb
         .from("purchase_details")
         .upsert({
@@ -1979,6 +1993,126 @@ if (baseLanding > 0) {
       maybeEnableSave();
     }
 
+    async function reversePurchaseStock(items){
+      const quantities = {};
+      items.forEach(it => {
+        const code = String(it.item_code || "").trim();
+        if(code) quantities[code] = (quantities[code] || 0) + num(it.quantity);
+      });
+
+      for(const [code, quantity] of Object.entries(quantities)){
+        const { data, error } = await sb.from("stock_items").select("quantity").eq("item_code", code).maybeSingle();
+        if(error) throw new Error(`Unable to read stock for ${code}: ${error.message}`);
+        const { error: updateError } = await sb
+          .from("stock_items")
+          .update({ quantity: Math.max(0, num(data?.quantity) - quantity) })
+          .eq("item_code", code);
+        if(updateError) throw new Error(`Unable to reverse stock for ${code}: ${updateError.message}`);
+      }
+    }
+
+    async function applyPurchaseStock(items){
+      for(const it of items){
+        const code = String(it.item_code || "").trim();
+        if(!code) continue;
+        const { data, error } = await sb.from("stock_items").select("quantity").eq("item_code", code).maybeSingle();
+        if(error) throw new Error(`Unable to read stock for ${code}: ${error.message}`);
+        const payload = {
+          item_code: code, item_name: it.item_name, barcode: it.barcode, hsn_code: it.hsn_code,
+          department: it.department, quantity: num(data?.quantity) + num(it.quantity),
+          purchase_price: it.purchase_price, purchase_price_gst: it.purchase_price_gst,
+          gst_percent: it.gst_percent, landing: it.landing,
+          price1_percent: it.price1_percent, price1: it.price1, price1_gst: it.price1_gst,
+          price2_percent: it.price2_percent, price2: it.price2, price2_gst: it.price2_gst,
+          price3_percent: it.price3_percent, price3: it.price3, price3_gst: it.price3_gst
+        };
+        const { error: upsertError } = await sb.from("stock_items").upsert(payload, { onConflict:"item_code" });
+        if(upsertError) throw new Error(`Unable to update stock for ${code}: ${upsertError.message}`);
+      }
+    }
+
+    function purchaseItemRows(items){
+      return items.map(it => ({
+        purchase_id: loadedPurchaseId,
+        hsn_code: it.hsn_code, item_code: it.item_code, barcode: it.barcode,
+        item_name: it.item_name, department: it.department, quantity: it.quantity,
+        price: it.price, discount_percent: it.discount_percent, gst_percent: it.gst_percent,
+        purchase_price: it.purchase_price, purchase_price_gst: it.purchase_price_gst,
+        landing: it.landing, price1_percent: it.price1_percent, price1: it.price1,
+        price1_gst: it.price1_gst, price2_percent: it.price2_percent, price2: it.price2,
+        price2_gst: it.price2_gst, price3_percent: it.price3_percent, price3: it.price3,
+        price3_gst: it.price3_gst
+      }));
+    }
+
+    async function updateExistingPurchase(inv, items, status){
+      status.textContent = "Updating purchase...";
+      try{
+        const { error: headerError } = await sb.from("purchase_details").update({
+          bill_date: inv.bill_date, gst_number: inv.gst_number, supplier_name: inv.supplier_name,
+          address: inv.address, invoice_number: inv.invoice_number, invoice_date: inv.invoice_date,
+          invoice_amount: inv.invoice_amount, special_discount: inv.special_discount,
+          round_off: inv.round_off, payable: inv.payable
+        }).eq("id", loadedPurchaseId);
+        if(headerError) throw headerError;
+
+        await reversePurchaseStock(originalItemsSnapshot);
+        const { error: deleteError } = await sb.from("purchase_item_details").delete().eq("purchase_id", loadedPurchaseId);
+        if(deleteError) throw deleteError;
+
+        const rows = purchaseItemRows(items);
+        const { error: itemError } = await sb.from("purchase_item_details").insert(rows);
+        if(itemError) throw itemError;
+        await applyPurchaseStock(items);
+
+        originalItemsSnapshot = JSON.parse(JSON.stringify(rows));
+        status.innerHTML = `<span class="ok">Purchase updated successfully. Stock was adjusted for the edited bill.</span>`;
+        clearPurchaseDraft("Updated - backup cleared");
+      }catch(error){
+        console.error(error);
+        status.innerHTML = `<span class="err">Update failed: ${error.message}</span>`;
+      }finally{
+        maybeEnableSave();
+      }
+    }
+
+    async function loadPurchaseForEdit(id){
+      const status = byId("saveStatus");
+      status.textContent = "Loading purchase...";
+      const { data: header, error: headerError } = await sb.from("purchase_details").select("*").eq("id", id).single();
+      if(headerError || !header) throw new Error(headerError?.message || "Purchase not found");
+      const { data: items, error: itemError } = await sb
+        .from("purchase_item_details").select("*").eq("purchase_id", id).order("id", { ascending:true });
+      if(itemError) throw itemError;
+
+      loadedPurchaseId = header.id;
+      originalItemsSnapshot = JSON.parse(JSON.stringify(items || []));
+      isEditMode = true;
+      duplicateInvoiceFound = false;
+      byId("pageTitle").textContent = "Edit Purchase";
+      byId("saveBtn").textContent = "Update Purchase";
+      byId("saveBtnSticky").textContent = "Update Purchase";
+      byId("purchaseDraftStatus").textContent = "Edit Mode";
+      byId("purchaseNumber").value = header.purchase_number || "";
+      byId("billDate").value = header.bill_date || todayISO();
+      byId("gstNumber").value = header.gst_number || "";
+      byId("supplierName").value = header.supplier_name || "";
+      byId("supplierAddress").value = header.address || "";
+      byId("invoiceNumber").value = header.invoice_number || "";
+      byId("invoiceDate").value = header.invoice_date || todayISO();
+      byId("invoiceAmount").value = fmt2(header.invoice_amount || 0);
+      byId("specialDiscount").value = fmt2(header.special_discount || 0);
+      byId("roundOff").value = fmt2(header.round_off || 0);
+      byId("payable").value = fmt2(header.payable || 0);
+      byId("items").innerHTML = "";
+      (items || []).forEach(item => newItemRow(item));
+      if(!(items || []).length) newItemRow();
+      setItemsEnabled(true);
+      await checkDuplicateInvoice();
+      status.innerHTML = `<span class="ok">Purchase loaded. Edit the details and click Update Purchase.</span>`;
+      maybeEnableSave();
+    }
+
     document.addEventListener("keydown", function(e){
       const current = document.activeElement;
       if(!current || !current.matches("input, select")) return;
@@ -2052,8 +2186,19 @@ if (baseLanding > 0) {
       setupColumnControls();
       await initInvoice();
       await loadStockData();
-      const restoredDraft = await initPurchaseAutoBackup();
-      if(!restoredDraft) newItemRow();
+      const editId = Number(new URLSearchParams(location.search).get("edit") || 0);
+      if(editId){
+        purchaseDraftReady = false;
+        try{
+          await loadPurchaseForEdit(editId);
+        }catch(error){
+          byId("saveStatus").innerHTML = `<span class="err">Unable to load purchase: ${error.message}</span>`;
+          newItemRow();
+        }
+      }else{
+        const restoredDraft = await initPurchaseAutoBackup();
+        if(!restoredDraft) newItemRow();
+      }
       byId("addRowBtn").addEventListener("click", ()=> newItemRow());
       byId("addRowBtnSticky").addEventListener("click", ()=> newItemRow());
       byId("saveBtn").addEventListener("click", saveAll);

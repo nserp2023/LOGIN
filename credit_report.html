@@ -758,6 +758,7 @@
           const isCreditReceipt =
             ref === "sales_credit" ||
             ref === "customer_credit_auto" ||
+            ref === "customer_credit_refund" ||
             text.includes("credit collection") ||
             text.includes("auto_alloc");
 
@@ -803,10 +804,10 @@
             mobile: receiptMobile,
             customer:r.party_name || fallbackName || "",
             billAmount:0,
-            cashReceived:amount,
+            cashReceived:isPayment ? -amount : amount,
             advancePaid:isSalesOrderAdvance ? amount : 0,
-            paidAmount:isSalesOrderAdvance ? 0 : amount,
-            receiptAmount:isSalesOrderAdvance ? 0 : amount,
+            paidAmount:isSalesOrderAdvance ? 0 : (isPayment ? -amount : amount),
+            receiptAmount:isSalesOrderAdvance ? 0 : (isPayment ? -amount : amount),
             balanceAmount:0,
             remarks:r.remarks || "",
             status:isSalesOrderAdvance ? "ADVANCE" : "RECEIPT"
@@ -1026,7 +1027,7 @@
       let runningBalance = 0;
       chronologicalRows.forEach(row => {
         if (row.rowKind === "bill") runningBalance += num(row.billAmount);
-        if (row.rowKind === "advance" || row.rowKind === "receipt") runningBalance -= num(row.cashReceived || row.receiptAmount || row.advancePaid);
+        if (row.rowKind === "advance" || row.rowKind === "receipt" || row.rowKind === "payment") runningBalance -= num(row.cashReceived || row.receiptAmount || row.advancePaid);
         if (row.rowKind === "credit_return") runningBalance -= num(row.creditAdjustment);
         row.runningBalance = runningBalance;
       });
@@ -1051,7 +1052,7 @@
           const chipClass = isCreditReturn ? "chip-return" : (isAdvance ? "chip-advance" : "chip-receipt");
           const receivedText = isCreditReturn
             ? "ADJ " + money(row.creditAdjustment)
-            : money(row.cashReceived || row.receiptAmount || row.advancePaid);
+            : (row.rowKind === "payment" ? "REFUND " + money(Math.abs(num(row.cashReceived))) : money(row.cashReceived || row.receiptAmount || row.advancePaid));
 
           html += `
             <tr class="${isCreditReturn ? "receipt-row" : "receipt-row"}">

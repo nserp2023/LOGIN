@@ -1324,20 +1324,26 @@
         </div>
 
         <div class="form-group" style="position: relative;">
+            <label>Agent</label>
+            <input type="text" id="agent_mobile" class="form-control w-md nav-input" placeholder="Agent Mobile / Name" tabindex="5" autocomplete="off">
+            <div id="agent_suggestions" class="autocomplete-list"></div>
+        </div>
+
+        <div class="form-group" style="position: relative;">
             <label>Address</label>
-            <input type="text" id="cust_address" class="form-control w-lg nav-input" tabindex="5" autocomplete="off" placeholder="Type place / address">
+            <input type="text" id="cust_address" class="form-control w-lg nav-input" tabindex="6" autocomplete="off" placeholder="Type place / address">
             <div id="address_suggestions" class="autocomplete-list address-autocomplete-list"></div>
         </div>
         
         <div class="form-group" style="position: relative;">
             <label>GST No</label>
-            <input type="text" id="cust_gst" class="form-control w-md nav-input" tabindex="6" autocomplete="off" placeholder="GST Number">
+            <input type="text" id="cust_gst" class="form-control w-md nav-input" tabindex="7" autocomplete="off" placeholder="GST Number">
             <div id="gst_suggestions" class="autocomplete-list"></div>
         </div>
 
         <div class="form-group" id="customer_remark_group">
             <label>Customer Remark</label>
-            <input type="text" id="cust_remark" class="form-control w-xl nav-input" tabindex="7" placeholder="TYPE / EDIT CUSTOMER REMARK">
+            <input type="text" id="cust_remark" class="form-control w-xl nav-input" tabindex="8" placeholder="TYPE / EDIT CUSTOMER REMARK">
         </div>
 
 
@@ -1728,6 +1734,7 @@
                 paid_amount: getInputValue('paid_amount'),
                 customer_mobile: getInputValue('cust_mobile'),
                 customer_name: getInputValue('cust_name'),
+                agent_mobile: getInputValue('agent_mobile'),
                 customer_address: getInputValue('cust_address'),
                 customer_gst: getInputValue('cust_gst'),
                 customer_remark: getInputValue('cust_remark'),
@@ -1751,6 +1758,7 @@
         const hasHeader = !!(
             String(h.customer_mobile || "").trim() ||
             String(h.customer_name || "").trim() ||
+            String(h.agent_mobile || "").trim() ||
             String(h.customer_address || "").trim() ||
             String(h.customer_gst || "").trim() ||
             String(h.quotation_remark || "").trim()
@@ -1856,6 +1864,7 @@
             setInputValue('paid_amount', h.paid_amount || '0');
             setInputValue('cust_mobile', h.customer_mobile || '');
             setInputValue('cust_name', h.customer_name || '');
+            setInputValue('agent_mobile', h.agent_mobile || '');
             setInputValue('cust_address', h.customer_address || '');
             setInputValue('cust_gst', h.customer_gst || '');
             setInputValue('cust_remark', h.customer_remark || '');
@@ -3820,6 +3829,8 @@ const stockSelect = 'item_code,item_name,barcode,price1,price2,price3,landing,ba
     const mobileList = document.getElementById('mobile_suggestions');
     const customerNameInput = document.getElementById('cust_name');
     const nameList = document.getElementById('name_suggestions');
+    const agentInput = document.getElementById('agent_mobile');
+    const agentList = document.getElementById('agent_suggestions');
     let custTimer;
     let customerSearchRequestId = 0;
     let selectedCustomerFromDropdown = false;
@@ -3839,7 +3850,7 @@ const stockSelect = 'item_code,item_name,barcode,price1,price2,price3,landing,ba
     }
 
     function hideCustomerSuggestions(){
-        [mobileList, nameList].forEach(list => {
+        [mobileList, nameList, agentList].forEach(list => {
             if(!list) return;
             list.style.display = 'none';
             list.removeAttribute("data-open");
@@ -3885,7 +3896,7 @@ const stockSelect = 'item_code,item_name,barcode,price1,price2,price3,landing,ba
         return row?.is_accepted === true || String(row?.approval_status || '').trim().toLowerCase() === 'approved';
     }
 
-    async function fetchAllCustomerAmountRows(table, columns, mobiles, configureQuery){
+    async function fetchAllCustomerAmountRows(table, columns, mobiles, configureQuery, mobileColumn = 'customer_mobile'){
         const pageSize = 1000;
         const rows = [];
 
@@ -3893,7 +3904,7 @@ const stockSelect = 'item_code,item_name,barcode,price1,price2,price3,landing,ba
             let query = sb
                 .from(table)
                 .select(columns)
-                .in('customer_mobile', mobiles)
+                .in(mobileColumn, mobiles)
                 .order('id', { ascending: true })
                 .range(from, from + pageSize - 1);
 
@@ -3917,12 +3928,19 @@ const stockSelect = 'item_code,item_name,barcode,price1,price2,price3,landing,ba
 
         if(missingMobiles.length){
             try{
-                const [salesRows, returnRows] = await Promise.all([
+                const [directSalesResult, agentSalesResult, returnsResult] = await Promise.allSettled([
                     fetchAllCustomerAmountRows(
                         'sales_details',
-                        'customer_mobile, invoice_amount, status',
+                        'id, customer_mobile, agent_mobile, invoice_amount, status',
                         missingMobiles,
                         query => query.or('status.is.null,status.neq.CANCELLED')
+                    ),
+                    fetchAllCustomerAmountRows(
+                        'sales_details',
+                        'id, customer_mobile, agent_mobile, invoice_amount, status',
+                        missingMobiles,
+                        query => query.or('status.is.null,status.neq.CANCELLED'),
+                        'agent_mobile'
                     ),
                     fetchAllCustomerAmountRows(
                         'sales_return_details',
@@ -3931,13 +3949,29 @@ const stockSelect = 'item_code,item_name,barcode,price1,price2,price3,landing,ba
                     )
                 ]);
 
+                if(directSalesResult.status === 'rejected') throw directSalesResult.reason;
+                if(returnsResult.status === 'rejected') throw returnsResult.reason;
+
+                const salesById = new Map();
+                directSalesResult.value.forEach(row => salesById.set(String(row.id), row));
+                if(agentSalesResult.status === 'fulfilled'){
+                    agentSalesResult.value.forEach(row => salesById.set(String(row.id), row));
+                }else{
+                    console.warn('Agent purchase total load error:', agentSalesResult.reason);
+                }
+                const salesRows = [...salesById.values()];
+                const returnRows = returnsResult.value;
+
                 const billTotals = new Map();
                 const returnTotals = new Map();
 
                 salesRows.forEach(row => {
-                    const key = customerMobileKey(row.customer_mobile);
                     const amount = customerAmount(row.invoice_amount);
-                    billTotals.set(key, (billTotals.get(key) || 0) + amount);
+                    const customerKey = customerMobileKey(row.customer_mobile);
+                    const agentKey = customerMobileKey(row.agent_mobile);
+                    if(customerKey) billTotals.set(customerKey, (billTotals.get(customerKey) || 0) + amount);
+                    // Do not count the same bill twice if customer and agent numbers are identical.
+                    if(agentKey && agentKey !== customerKey) billTotals.set(agentKey, (billTotals.get(agentKey) || 0) + amount);
                 });
 
                 returnRows.forEach(row => {
@@ -3966,7 +4000,7 @@ const stockSelect = 'item_code,item_name,barcode,price1,price2,price3,landing,ba
         }));
     }
 
-    function renderCustomerSuggestions(input, list, data){
+    function renderCustomerSuggestions(input, list, data, onSelect = selectCustomer){
         if(!list) return;
 
         list.innerHTML = '';
@@ -4006,7 +4040,7 @@ ${data.map((c, idx) => {
             adjustDropdownPosition(input, list);
 
             list.querySelectorAll(".autocomplete-row").forEach((tr, i) => {
-                tr.onclick = () => selectCustomer(data[i]);
+                tr.onclick = () => onSelect(data[i]);
             });
 
             const first = list.querySelector(".autocomplete-row");
@@ -4057,7 +4091,7 @@ ${data.map((c, idx) => {
     }
 
     function getCustomerSearchMode(input){
-        return input?.id === 'cust_mobile' ? 'mobile' : 'name';
+        return ['cust_mobile', 'agent_mobile'].includes(input?.id) ? 'mobile' : 'name';
     }
 
     function shouldShowNameCustomerSuggestions(input){
@@ -4097,7 +4131,7 @@ ${data.map((c, idx) => {
             .limit(10);
     }
 
-    function bindCustomerSearch(input, list){
+    function bindCustomerSearch(input, list, onSelect = selectCustomer){
         if(!input || !list) return;
 
         input.addEventListener('input', (e) => {
@@ -4145,7 +4179,7 @@ ${data.map((c, idx) => {
                 if(requestId !== customerSearchRequestId) return;
                 const customers = await addCustomerNetPurchaseAmounts(data || []);
                 if(requestId !== customerSearchRequestId) return;
-                renderCustomerSuggestions(input, list, customers);
+                renderCustomerSuggestions(input, list, customers, onSelect);
             }, 250);
         });
 
@@ -4162,6 +4196,7 @@ ${data.map((c, idx) => {
 
     bindCustomerSearch(mobileInput, mobileList);
     bindCustomerSearch(customerNameInput, nameList);
+    bindCustomerSearch(agentInput, agentList, selectAgent);
 
     const gstInput = document.getElementById('cust_gst');
     const gstList = document.getElementById('gst_suggestions');
@@ -4325,6 +4360,12 @@ ${data.map((c, idx) => {
         updateGstCustomerHighlight();
         hideCustomerSuggestions();
         lastHistoryKey = "";
+        document.getElementById('cust_address').focus();
+    }
+
+    function selectAgent(c) {
+        document.getElementById('agent_mobile').value = c.mobile || '';
+        hideCustomerSuggestions();
         document.getElementById('cust_address').focus();
     }
 
@@ -5807,6 +5848,7 @@ function calcTotal() {
                 date: document.getElementById('bill_date').value || new Date().toISOString().split("T")[0],
                 mob: document.getElementById('cust_mobile').value,
                 name: document.getElementById('cust_name').value,
+                agent: document.getElementById('agent_mobile')?.value || '',
                 addr: document.getElementById('cust_address').value,
                 gst: document.getElementById('cust_gst').value,
                 remark: document.getElementById('cust_remark')?.value || '',
@@ -5953,6 +5995,7 @@ function calcTotal() {
                     order_date: head.date || new Date().toISOString().split("T")[0],
                     customer_name: head.name,
                     customer_mobile: head.mob,
+                    agent_mobile: head.agent,
                     gst_number: head.gst,
                     total_amount: roundedTotal,
                     payment_type: paymentType,
@@ -5969,6 +6012,7 @@ function calcTotal() {
                     quotation_date: head.date,
                     customer_name: head.name,
                     customer_mobile: head.mob,
+                    agent_mobile: head.agent,
                     gst_number: head.gst,
                     total_amount: roundedTotal,
                     remark: document.getElementById("quotation_remark")?.value.trim() || "",
@@ -5983,6 +6027,7 @@ function calcTotal() {
                     bill_date: head.date,
                     customer_name: head.name,
                     customer_mobile: head.mob,
+                    agent_mobile: head.agent,
                     gst_number: head.gst,
                     address: head.addr,
                     invoice_number: editingId ? document.getElementById("bill_number").value : nextBillNo,
@@ -6090,6 +6135,7 @@ function calcTotal() {
                             packing_date: head.date,
                             customer_name: head.name,
                             customer_mobile: head.mob,
+                            agent_mobile: head.agent,
                             gst_number: head.gst,
                             packing_amount: roundedTotal,
                             salesman: document.getElementById("salesman").value
@@ -6110,6 +6156,7 @@ function calcTotal() {
                             packing_date: head.date,
                             customer_name: head.name,
                             customer_mobile: head.mob,
+                            agent_mobile: head.agent,
                             gst_number: head.gst,
                             packing_amount: roundedTotal,
                             salesman: document.getElementById("salesman").value
@@ -6209,6 +6256,9 @@ function calcTotal() {
                 document.getElementById('bill_number').value = nextBillNo;
             }
 
+            // A saved or edited bill can change both the customer's and the
+            // selected agent's totals. Force the next dropdown search to reload them.
+            customerNetPurchaseCache.clear();
             disableAutoBackupAndClearDraft("Saved - draft cleared");
 
             if(overStockSaleUnlocked){
@@ -6369,6 +6419,7 @@ function calcTotal() {
         if(head){
             document.getElementById("cust_name").value = head.customer_name || "";
             document.getElementById("cust_mobile").value = head.customer_mobile || "";
+            document.getElementById("agent_mobile").value = head.agent_mobile || "";
             document.getElementById("cust_gst").value = head.gst_number || "";
             document.getElementById("cust_address").value = head.address || "";
 
@@ -6527,6 +6578,7 @@ function calcTotal() {
         if(qHead){
             document.getElementById("cust_name").value = qHead.customer_name || "";
             document.getElementById("cust_mobile").value = qHead.customer_mobile || "";
+            document.getElementById("agent_mobile").value = qHead.agent_mobile || "";
             document.getElementById("cust_gst").value = qHead.gst_number || "";
             document.getElementById("cust_address").value = qHead.address || "";
 
@@ -6766,6 +6818,7 @@ barcodeInput.addEventListener("keydown", async function (e) {
 
         document.getElementById("cust_name").value = head.customer_name || "";
         document.getElementById("cust_mobile").value = head.customer_mobile || "";
+        document.getElementById("agent_mobile").value = head.agent_mobile || "";
         document.getElementById("cust_address").value = head.address || "";
         document.getElementById("cust_gst").value = head.gst_number || "";
 

@@ -13,17 +13,16 @@
 const sb=supabase.createClient('https://kzxwjujjvnehhthazicc.supabase.co','sb_publishable_Iu3sQGl9gq_VsVYxR3j_7g_SLvgqp_9');
 const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[char]));
 const money=value=>'₹'+Number(value||0).toLocaleString('en-IN',{maximumFractionDigits:0});
-const apiEndpoint=path=>location.hostname.endsWith('github.io')?`https://nserp-vajra-voice-api.onrender.com${path}`:path;
 async function loadEnquiries(){
  const list=document.getElementById('list'); list.innerHTML='<div class="empty">Loading enquiries…</div>';
  const {data:{session}}=await sb.auth.getSession();
  if(!session){ location.href='index.html'; return; }
  try{
-  const response=await fetch(apiEndpoint('/api/website-enquiries?limit=200'),{headers:{Authorization:`Bearer ${session.access_token}`}}); const result=await response.json();
-  if(!response.ok) throw new Error(result.error||'Unable to load enquiries');
-  document.getElementById('summary').textContent=`${result.enquiries.length} recent enquiries`;
-  if(!result.enquiries.length){list.innerHTML='<div class="empty">No website enquiries yet.</div>';return}
-  list.innerHTML=result.enquiries.map(row=>`<article class="card"><div class="head"><div><b>#${row.id} · ${esc(row.customer_name||'Customer')}</b><div class="meta"><a href="tel:+${esc(row.mobile)}">+${esc(row.mobile)}</a> · ${new Date(row.created_at).toLocaleString('en-IN')}</div></div><span class="badge">${esc(row.status)}</span></div>${row.note?`<div class="meta"><b>Message:</b> ${esc(row.note)}</div>`:''}<div class="items">${(row.items||[]).map(item=>`<div class="item"><span>${esc(item.item_name)}${item.item_code?` <small>(${esc(item.item_code)})</small>`:''} × ${Number(item.quantity||1)}</span><b>${money(Number(item.displayed_price||0)*Number(item.quantity||1))}</b></div>`).join('')}<div class="item"><b>Total estimate</b><b>${money(row.estimated_total)}</b></div></div></article>`).join('');
+  const {data:enquiries,error}=await sb.from('website_enquiries').select('*').order('created_at',{ascending:false}).limit(200);
+  if(error) throw error;
+  document.getElementById('summary').textContent=`${enquiries.length} recent enquiries`;
+  if(!enquiries.length){list.innerHTML='<div class="empty">No website enquiries yet.</div>';return}
+  list.innerHTML=enquiries.map(row=>`<article class="card"><div class="head"><div><b>#${row.id} · ${esc(row.customer_name||'Customer')}</b><div class="meta"><a href="tel:+${esc(row.mobile)}">+${esc(row.mobile)}</a> · ${new Date(row.created_at).toLocaleString('en-IN')}</div></div><span class="badge">${esc(row.status)}</span></div>${row.note?`<div class="meta"><b>Message:</b> ${esc(row.note)}</div>`:''}<div class="items">${(row.items||[]).map(item=>`<div class="item"><span>${esc(item.item_name)}${item.item_code?` <small>(${esc(item.item_code)})</small>`:''} × ${Number(item.quantity||1)}</span><b>${money(Number(item.displayed_price||0)*Number(item.quantity||1))}</b></div>`).join('')}<div class="item"><b>Total estimate</b><b>${money(row.estimated_total)}</b></div></div></article>`).join('');
  }catch(error){list.innerHTML=`<div class="error">${esc(error.message)}</div>`}
 }
 loadEnquiries();

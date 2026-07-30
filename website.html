@@ -248,6 +248,9 @@ button{cursor:pointer;-webkit-tap-highlight-color:transparent}
   z-index:500;
 }
 .status small{color:var(--muted)}
+.status-actions{display:flex;align-items:center;gap:8px}
+.stock-filter{border:1px solid #b8b8b8;border-radius:8px;padding:9px 12px;background:#fff;font-weight:800;white-space:nowrap}
+.stock-filter.active{background:var(--amazon-yellow);border-color:#e8a53e}
 .sort{border:1px solid #b8b8b8;border-radius:8px;padding:9px;background:#fff;max-width:170px}
 
 .products{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
@@ -311,7 +314,7 @@ button{cursor:pointer;-webkit-tap-highlight-color:transparent}
   .hero{padding:16px;border-radius:10px;margin-bottom:8px}
   .hero h1{font-size:22px}.hero p{font-size:13px}
   .status{top:100px;border-radius:8px;padding:8px;align-items:flex-start}
-  .status small{font-size:11px}.sort{padding:8px;font-size:12px;max-width:135px}
+  .status-actions{align-items:stretch;flex-direction:column;gap:5px}.stock-filter,.sort{padding:7px;font-size:11px;max-width:135px}
   .products{grid-template-columns:repeat(2,1fr);gap:8px}
   .img{height:155px}.body{padding:8px;gap:6px}
   .name{font-size:12.5px;height:34px}.price{font-size:17px}.old,.code,.meta{font-size:11px}.off{font-size:12px}
@@ -359,13 +362,16 @@ button{cursor:pointer;-webkit-tap-highlight-color:transparent}
 
   <section class="status">
     <div><b id="countText">Products</b><br><small id="statusText">Loading products...</small></div>
-    <select class="sort" id="sortSelect" onchange="renderProducts()">
-      <option value="featured">Sort: Featured</option>
-      <option value="name">Name A-Z</option>
-      <option value="priceLow">Price Low to High</option>
-      <option value="priceHigh">Price High to Low</option>
-      <option value="stockHigh">Stock High to Low</option>
-    </select>
+    <div class="status-actions">
+      <button class="stock-filter" id="stockFilterButton" type="button" aria-pressed="false" onclick="toggleStockFilter()">Show all products</button>
+      <select class="sort" id="sortSelect" onchange="renderProducts()">
+        <option value="featured">Sort: Featured</option>
+        <option value="name">Name A-Z</option>
+        <option value="priceLow">Price Low to High</option>
+        <option value="priceHigh">Price High to Low</option>
+        <option value="stockHigh">Stock High to Low</option>
+      </select>
+    </div>
   </section>
 
   <section class="products" id="products"></section>
@@ -411,6 +417,7 @@ const supabaseKey = "sb_publishable_Iu3sQGl9gq_VsVYxR3j_7g_SLvgqp_9";
 window.sbcc = supabase.createClient(supabaseUrl, supabaseKey);
 const WHATSAPP_NUMBER = "918606808063";
 let allProducts = [];
+let showAllProducts = false;
 let cart = readStoredJson('vajra_cart', []);
 let customerMobile = localStorage.getItem('vajra_customer_mobile') || '';
 
@@ -492,21 +499,35 @@ function quickSearch(text){
   renderProducts();
 }
 
+function toggleStockFilter(){
+  showAllProducts = !showAllProducts;
+  renderProducts();
+}
+
 function renderProducts(){
   const q = (document.getElementById('searchInput').value || '').toLowerCase();
   const sort = document.getElementById('sortSelect').value;
   let list = allProducts.filter(p=>{
     const txt = [p.item_name,p.item_code,p.brand,p.department,p.description].join(' ').toLowerCase();
-    return txt.includes(q) && p.product_image_url && p.product_image_url.trim() !== '';
+    const hasImage = p.product_image_url && p.product_image_url.trim() !== '';
+    const matchesStock = showAllProducts || p.balance > 0;
+    return txt.includes(q) && hasImage && matchesStock;
   });
   if(sort === 'name') list.sort((a,b)=>a.item_name.localeCompare(b.item_name));
   if(sort === 'priceLow') list.sort((a,b)=>a.price-b.price);
   if(sort === 'priceHigh') list.sort((a,b)=>b.price-a.price);
   if(sort === 'stockHigh') list.sort((a,b)=>b.balance-a.balance);
   document.getElementById('countText').textContent = `${list.length} Products`;
+  const stockFilterButton = document.getElementById('stockFilterButton');
+  stockFilterButton.textContent = showAllProducts ? 'Show in-stock only' : 'Show all products';
+  stockFilterButton.classList.toggle('active', showAllProducts);
+  stockFilterButton.setAttribute('aria-pressed', String(showAllProducts));
+  document.getElementById('statusText').textContent = showAllProducts
+    ? 'Showing all products with images, including out-of-stock items.'
+    : 'Showing only products currently in stock.';
   const box = document.getElementById('products');
   if(!list.length){
-    box.innerHTML = `<div class="empty" style="grid-column:1/-1"><b>No products found</b><br>Only products with product_image_url are shown.</div>`;
+    box.innerHTML = `<div class="empty" style="grid-column:1/-1"><b>No products found</b><br>${showAllProducts ? 'No matching products with images are available.' : 'Try “Show all products” to include out-of-stock items.'}</div>`;
     return;
   }
   box.innerHTML = list.map(productCard).join('');
@@ -528,9 +549,7 @@ function productCard(p){
         <div class="off">${off ? off + '% off' : 'Best price'}</div>
         <div class="meta">${escapeHtml(p.department)}</div>
         <div class="actions">
-          ${p.balance > 0
-            ? `<button class="cart" data-product-id="${escapeAttr(String(p.id))}" onclick="addToCart(this.dataset.productId)">Add to cart</button>`
-            : `<button class="wa" data-product-id="${escapeAttr(String(p.id))}" onclick="enquireProduct(this.dataset.productId)">Enquire now</button>`}
+          <button class="cart" data-product-id="${escapeAttr(String(p.id))}" onclick="addToCart(this.dataset.productId)">Add to cart</button>
         </div>
       </div>
     </div>`;
@@ -551,12 +570,6 @@ function formatPrice(n){
 
 function sendGeneralWhatsApp(){ openWhatsApp('Hi, I need product details from VAJRA LIGHTS AND ELECTRICALS.'); }
 function openWhatsApp(text){ window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`,'_blank'); }
-
-function enquireProduct(productId){
-  const product = allProducts.find(item => String(item.id) === String(productId));
-  if(!product) return;
-  openWhatsApp(`Hi, I would like to enquire about ${product.item_name}${product.item_code ? ` (Code: ${product.item_code})` : ''}. Please confirm availability and price.`);
-}
 function escapeHtml(str){ return String(str || '').replace(/[&<>'"]/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[s])); }
 function escapeAttr(str){ return escapeHtml(str).replace(/`/g,'&#096;'); }
 

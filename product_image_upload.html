@@ -920,6 +920,7 @@ function makeSafeFileName(item) {
    7) UPLOAD TO CLOUDINARY + SAVE URL TO SUPABASE
    ========================================================= */
 async function saveProductImage() {
+  let savedItemCode = "";
   try {
     if (!selectedItem) {
       setStatus("Please select an item from stock first.", "err");
@@ -956,6 +957,7 @@ async function saveProductImage() {
 
     if (error) throw error;
 
+    savedItemCode = selectedItem.item_code;
     selectedItem.product_image_url = imageUrl;
     await recordAiReview({
       productValue: formatProductValue(selectedItem),
@@ -969,7 +971,9 @@ async function saveProductImage() {
     }, "accepted", imageUrl);
     setProgress(100);
 
-    setStatus(`Saved successfully. Image URL updated for ${selectedItem.item_code}.`, "ok");
+    clearForm();
+    setStatus(`Saved successfully. Image URL updated for ${savedItemCode}. Ready for the next item.`, "ok");
+    itemSearch.focus();
   } catch (err) {
     console.error(err);
     setStatus("Save failed: " + cleanErr(err), "err");

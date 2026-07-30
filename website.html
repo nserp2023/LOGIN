@@ -48,7 +48,7 @@ button{cursor:pointer;-webkit-tap-highlight-color:transparent}
   margin:auto;
   padding:8px 12px 10px;
   display:grid;
-  grid-template-columns:auto 1fr auto;
+  grid-template-columns:auto 1fr auto auto;
   align-items:center;
   gap:10px;
 }
@@ -181,6 +181,8 @@ button{cursor:pointer;-webkit-tap-highlight-color:transparent}
   white-space:nowrap;
 }
 .top-btn:hover{border-color:var(--amazon-yellow);color:var(--amazon-yellow)}
+.cart-btn{background:var(--amazon-yellow);color:#111;border-color:var(--amazon-yellow);position:relative}
+.cart-count{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 6px;margin-left:5px;border-radius:999px;background:#b12704;color:#fff;font-size:12px}
 
 .nav-strip{
   background:var(--amazon-mid);
@@ -287,10 +289,16 @@ button{cursor:pointer;-webkit-tap-highlight-color:transparent}
 .footer h4{margin-bottom:10px;color:var(--amazon-yellow)}
 .footer p{line-height:1.8;font-size:14px;color:#e5e7eb}
 .copy{background:var(--amazon-dark);text-align:center;padding:12px;font-size:13px;color:#cbd5e1}
-.float-wa{position:fixed;right:16px;bottom:16px;width:58px;height:58px;border-radius:50%;border:none;background:var(--wa);color:white;font-size:28px;z-index:1001;box-shadow:0 4px 18px rgba(0,0,0,.28)}
+.float-wa{display:none}
+.float-cart{position:fixed;right:16px;bottom:16px;height:54px;border-radius:999px;border:none;background:var(--amazon-yellow);color:#111;font-size:15px;font-weight:900;padding:0 18px;z-index:1001;box-shadow:0 4px 18px rgba(0,0,0,.28)}
+.overlay{position:fixed;inset:0;background:rgba(15,23,42,.62);z-index:2000;opacity:0;pointer-events:none;transition:.2s}.overlay.show{opacity:1;pointer-events:auto}
+.drawer{position:fixed;right:0;top:0;bottom:0;width:min(440px,100%);background:#fff;z-index:2001;transform:translateX(105%);transition:.25s;display:flex;flex-direction:column;box-shadow:-10px 0 35px rgba(0,0,0,.2)}.drawer.show{transform:none}
+.drawer-head{padding:18px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}.drawer-head button{border:none;background:#f1f5f9;border-radius:50%;width:36px;height:36px;font-size:20px}
+.cart-items{padding:12px;overflow:auto;flex:1}.cart-row{display:grid;grid-template-columns:64px 1fr auto;gap:10px;padding:10px 0;border-bottom:1px solid #eee}.cart-row img{width:64px;height:64px;object-fit:contain;border:1px solid #eee;border-radius:7px}.cart-row h4{font-size:13px;line-height:1.35;margin-bottom:4px}.qty{display:flex;align-items:center;gap:7px;margin-top:7px}.qty button{width:27px;height:27px;border:1px solid #c7c7c7;background:#fff;border-radius:6px}.remove{border:none;background:none;color:#b91c1c;font-size:12px;margin-top:7px}.drawer-foot{border-top:1px solid var(--line);padding:16px}.total{display:flex;justify-content:space-between;font-weight:900;margin-bottom:12px}.checkout-btn{width:100%;border:none;border-radius:999px;padding:13px;background:var(--amazon-yellow);font-weight:950}.checkout-btn:disabled{opacity:.55;cursor:not-allowed}
+.modal{position:fixed;left:50%;top:50%;transform:translate(-50%,-46%);width:min(430px,calc(100% - 28px));background:#fff;border-radius:15px;z-index:2101;padding:22px;box-shadow:0 24px 80px rgba(0,0,0,.3);opacity:0;pointer-events:none;transition:.2s}.modal.show{opacity:1;pointer-events:auto;transform:translate(-50%,-50%)}.modal h2{margin-bottom:7px}.modal p{color:var(--muted);line-height:1.45;font-size:14px;margin-bottom:15px}.field{margin-bottom:12px}.field label{display:block;font-size:12px;font-weight:800;margin-bottom:5px}.field input,.field textarea{width:100%;border:1px solid #aeb4bc;border-radius:8px;padding:11px;outline:none}.field input:focus,.field textarea:focus{border-color:#e09600;box-shadow:0 0 0 2px rgba(254,189,105,.3)}.phone-field{display:grid;grid-template-columns:58px 1fr}.phone-field span{display:grid;place-items:center;background:#f1f5f9;border:1px solid #aeb4bc;border-right:0;border-radius:8px 0 0 8px}.phone-field input{border-radius:0 8px 8px 0}.primary{width:100%;border:none;border-radius:999px;background:var(--amazon-yellow);padding:12px;font-weight:900}.error{color:#b91c1c;font-size:13px;min-height:18px;margin-top:8px}.toast{position:fixed;left:50%;bottom:22px;transform:translate(-50%,30px);background:#172033;color:#fff;padding:11px 17px;border-radius:999px;z-index:3000;opacity:0;pointer-events:none;transition:.25s;text-align:center;max-width:calc(100% - 24px)}.toast.show{opacity:1;transform:translate(-50%,0)}
 
 @media(max-width:1200px){.products{grid-template-columns:repeat(4,1fr)}}
-@media(max-width:950px){.products{grid-template-columns:repeat(3,1fr)}.top-inner{grid-template-columns:1fr auto}.search-wrap{grid-column:1/-1;grid-row:2}.led-board{min-width:0}.status{top:112px}}
+@media(max-width:950px){.products{grid-template-columns:repeat(3,1fr)}.top-inner{grid-template-columns:1fr auto auto}.search-wrap{grid-column:1/-1;grid-row:2}.led-board{min-width:0}.status{top:112px}}
 @media(max-width:650px){
   body{background:#f3f4f6}
   .top-inner{padding:7px 8px 9px;gap:7px}
@@ -327,6 +335,7 @@ button{cursor:pointer;-webkit-tap-highlight-color:transparent}
     </div>
 
     <button class="top-btn" onclick="sendGeneralWhatsApp()">Enquiry</button>
+    <button class="top-btn cart-btn" onclick="openCart()">Cart <span class="cart-count" data-cart-count>0</span></button>
   </div>
   <div class="nav-strip">
     <div class="nav-strip-inner">
@@ -344,7 +353,6 @@ button{cursor:pointer;-webkit-tap-highlight-color:transparent}
   <section class="hero">
     <h1>Shop lighting, electrical and project materials</h1>
     <div class="hero-actions">
-      <button class="hero-wa" onclick="sendGeneralWhatsApp()">WhatsApp Enquiry</button>
       <button class="hero-call" onclick="window.location.href='tel:+918606808063'">Call 86068 08063</button>
     </div>
   </section>
@@ -373,7 +381,29 @@ button{cursor:pointer;-webkit-tap-highlight-color:transparent}
   <div class="copy">© <span id="year"></span> VAJRA LIGHTS AND ELECTRICALS</div>
 </footer>
 
-<button class="float-wa" onclick="sendGeneralWhatsApp()">☘</button>
+<button class="float-cart" onclick="openCart()">Cart · <span data-cart-count>0</span></button>
+
+<div class="overlay" id="pageOverlay" onclick="handleOverlayClick()"></div>
+<aside class="drawer" id="cartDrawer" aria-label="Shopping cart">
+  <div class="drawer-head"><h2>Your cart</h2><button onclick="closePanels()" aria-label="Close">&times;</button></div>
+  <div class="cart-items" id="cartItems"></div>
+  <div class="drawer-foot"><div class="total"><span>Estimated total</span><span id="cartTotal">₹0</span></div><button class="checkout-btn" id="checkoutButton" onclick="openCheckout()">Proceed to checkout</button></div>
+</aside>
+
+<section class="modal" id="mobileModal" aria-modal="true" role="dialog">
+  <h2>Welcome to Vajra</h2><p>Enter your mobile number so we can contact you about product availability, prices, and your cart.</p>
+  <div class="field"><label for="welcomeMobile">Mobile number</label><div class="phone-field"><span>+91</span><input id="welcomeMobile" inputmode="numeric" maxlength="10" autocomplete="tel" placeholder="10-digit number"></div></div>
+  <button class="primary" onclick="saveWelcomeMobile()">Continue shopping</button><div class="error" id="welcomeError"></div>
+</section>
+
+<section class="modal" id="checkoutModal" aria-modal="true" role="dialog">
+  <h2>Send your enquiry</h2><p>We will receive your cart and contact you to confirm stock, final price, and delivery.</p>
+  <div class="field"><label for="customerName">Name (optional)</label><input id="customerName" maxlength="100" autocomplete="name"></div>
+  <div class="field"><label for="checkoutMobile">Mobile number</label><div class="phone-field"><span>+91</span><input id="checkoutMobile" inputmode="numeric" maxlength="10" autocomplete="tel"></div></div>
+  <div class="field"><label for="customerNote">Message (optional)</label><textarea id="customerNote" rows="3" maxlength="500" placeholder="Delivery place, preferred brand, or any question"></textarea></div>
+  <button class="primary" id="submitCheckout" onclick="submitCheckout()">Submit enquiry</button><div class="error" id="checkoutError"></div>
+</section>
+<div class="toast" id="toast"></div>
 
 <script>
 const supabaseUrl = "https://kzxwjujjvnehhthazicc.supabase.co";
@@ -381,6 +411,8 @@ const supabaseKey = "sb_publishable_Iu3sQGl9gq_VsVYxR3j_7g_SLvgqp_9";
 window.sbcc = supabase.createClient(supabaseUrl, supabaseKey);
 const WHATSAPP_NUMBER = "918606808063";
 let allProducts = [];
+let cart = readStoredJson('vajra_cart', []);
+let customerMobile = localStorage.getItem('vajra_customer_mobile') || '';
 
 async function loadProducts(){
   try{
@@ -496,8 +528,7 @@ function productCard(p){
         <div class="off">${off ? off + '% off' : 'Best price'}</div>
         <div class="meta">${escapeHtml(p.department)}${p.gst_percent ? ' • GST '+p.gst_percent+'%' : ''}</div>
         <div class="actions">
-          <button class="cart" onclick="sendProductWhatsApp('${escapeAttr(p.item_name)}','${escapeAttr(p.item_code)}')">Enquiry</button>
-          <button class="wa" onclick="sendProductWhatsApp('${escapeAttr(p.item_name)}','${escapeAttr(p.item_code)}')">WhatsApp</button>
+          <button class="cart" data-product-id="${escapeAttr(String(p.id))}" onclick="addToCart(this.dataset.productId)">Add to cart</button>
         </div>
       </div>
     </div>`;
@@ -517,12 +548,106 @@ function formatPrice(n){
 }
 
 function sendGeneralWhatsApp(){ openWhatsApp('Hi, I need product details from VAJRA LIGHTS AND ELECTRICALS.'); }
-function sendProductWhatsApp(name,code){ openWhatsApp(`Hi, I need details and best price for this product:\n\nProduct: ${name}\nCode: ${code}`); }
 function openWhatsApp(text){ window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`,'_blank'); }
 function escapeHtml(str){ return String(str || '').replace(/[&<>'"]/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[s])); }
 function escapeAttr(str){ return escapeHtml(str).replace(/`/g,'&#096;'); }
 
+function readStoredJson(key, fallback){
+  try{ const value = JSON.parse(localStorage.getItem(key)); return Array.isArray(value) ? value : fallback; }catch(_){ return fallback; }
+}
+
+function validMobile(value){ return String(value || '').replace(/\D/g,'').replace(/^91(?=\d{10}$)/,'').length === 10; }
+function normalizedMobile(value){ return String(value || '').replace(/\D/g,'').replace(/^91(?=\d{10}$)/,'').slice(-10); }
+
+function saveCart(){
+  localStorage.setItem('vajra_cart', JSON.stringify(cart));
+  renderCart();
+}
+
+function addToCart(productId){
+  const product = allProducts.find(item => String(item.id) === String(productId));
+  if(!product) return;
+  const existing = cart.find(item => String(item.product_id) === String(product.id));
+  if(existing) existing.quantity += 1;
+  else cart.push({product_id:String(product.id),item_code:product.item_code,item_name:product.item_name,displayed_price:product.price,image_url:product.product_image_url,quantity:1});
+  saveCart();
+  showToast(`${product.item_name} added to cart`);
+}
+
+function changeQuantity(productId, change){
+  const item = cart.find(row => String(row.product_id) === String(productId));
+  if(!item) return;
+  item.quantity = Math.max(0, Number(item.quantity || 1) + change);
+  cart = cart.filter(row => row.quantity > 0);
+  saveCart();
+}
+
+function removeFromCart(productId){ cart = cart.filter(row => String(row.product_id) !== String(productId)); saveCart(); }
+
+function renderCart(){
+  const count = cart.reduce((sum,item)=>sum + Number(item.quantity || 0),0);
+  document.querySelectorAll('[data-cart-count]').forEach(node=>node.textContent=count);
+  const itemsBox = document.getElementById('cartItems');
+  const total = cart.reduce((sum,item)=>sum + Number(item.displayed_price || 0) * Number(item.quantity || 0),0);
+  document.getElementById('cartTotal').textContent = formatPrice(total);
+  document.getElementById('checkoutButton').disabled = !cart.length;
+  if(!cart.length){ itemsBox.innerHTML='<div class="empty"><b>Your cart is empty</b><br><small>Add products to send an enquiry.</small></div>'; return; }
+  itemsBox.innerHTML = cart.map(item=>`<div class="cart-row">
+    <img src="${escapeAttr(optimizeImage(item.image_url || ''))}" alt="">
+    <div><h4>${escapeHtml(item.item_name)}</h4><small>${escapeHtml(item.item_code)}</small><div class="qty"><button onclick="changeQuantity('${escapeAttr(item.product_id)}',-1)">−</button><b>${item.quantity}</b><button onclick="changeQuantity('${escapeAttr(item.product_id)}',1)">+</button></div></div>
+    <div><b>${formatPrice(Number(item.displayed_price || 0) * Number(item.quantity || 0))}</b><br><button class="remove" onclick="removeFromCart('${escapeAttr(item.product_id)}')">Remove</button></div>
+  </div>`).join('');
+}
+
+function openCart(){ closePanels(); document.getElementById('pageOverlay').classList.add('show'); document.getElementById('cartDrawer').classList.add('show'); }
+function closePanels(){ document.getElementById('pageOverlay').classList.remove('show'); document.getElementById('cartDrawer').classList.remove('show'); document.querySelectorAll('.modal').forEach(node=>node.classList.remove('show')); }
+function showModal(id){ closePanels(); document.getElementById('pageOverlay').classList.add('show'); document.getElementById(id).classList.add('show'); }
+function handleOverlayClick(){ if(document.getElementById('mobileModal').classList.contains('show') && !validMobile(customerMobile)) return; closePanels(); }
+function apiEndpoint(path){ return location.hostname.endsWith('github.io') ? `https://nserp-vajra-voice-api.onrender.com${path}` : path; }
+
+function saveWelcomeMobile(){
+  const input = document.getElementById('welcomeMobile');
+  if(!validMobile(input.value)){ document.getElementById('welcomeError').textContent='Please enter a valid 10-digit mobile number.'; return; }
+  customerMobile = normalizedMobile(input.value);
+  localStorage.setItem('vajra_customer_mobile', customerMobile);
+  closePanels(); showToast('Thank you. You can now add products to your cart.');
+}
+
+function openCheckout(){
+  if(!cart.length) return;
+  document.getElementById('checkoutMobile').value = customerMobile;
+  document.getElementById('checkoutError').textContent = '';
+  showModal('checkoutModal');
+}
+
+async function submitCheckout(){
+  const mobileInput = document.getElementById('checkoutMobile');
+  const errorBox = document.getElementById('checkoutError');
+  if(!validMobile(mobileInput.value)){ errorBox.textContent='Please enter a valid 10-digit mobile number.'; return; }
+  const button = document.getElementById('submitCheckout');
+  button.disabled=true; button.textContent='Submitting...'; errorBox.textContent='';
+  try{
+    const response = await fetch(apiEndpoint('/api/website-checkout'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      name:document.getElementById('customerName').value,
+      mobile:normalizedMobile(mobileInput.value),
+      note:document.getElementById('customerNote').value,
+      items:cart
+    })});
+    const result = await response.json().catch(()=>({}));
+    if(!response.ok) throw new Error(result.error || 'Unable to submit your enquiry');
+    customerMobile=normalizedMobile(mobileInput.value); localStorage.setItem('vajra_customer_mobile',customerMobile);
+    cart=[]; saveCart(); closePanels();
+    showToast(`Enquiry #${result.enquiryId} submitted. We will contact you shortly.`);
+  }catch(err){ errorBox.textContent=err.message; }
+  finally{ button.disabled=false; button.textContent='Submit enquiry'; }
+}
+
+let toastTimer;
+function showToast(message){ const node=document.getElementById('toast'); node.textContent=message; node.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>node.classList.remove('show'),3500); }
+
 document.getElementById('year').textContent = new Date().getFullYear();
+renderCart();
+if(!validMobile(customerMobile)) setTimeout(()=>showModal('mobileModal'),350);
 loadProducts();
 </script>
 </body>

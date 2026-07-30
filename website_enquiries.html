@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Website Enquiries | Vajra</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f1f5f9;color:#172033;font-family:Arial,sans-serif}header{background:#131921;color:#fff;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;gap:12px}header a{color:#febd69;text-decoration:none}.wrap{max-width:1200px;margin:auto;padding:18px}.toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}.toolbar button{border:0;border-radius:9px;padding:10px 14px;background:#febd69;font-weight:800}.grid{display:grid;gap:12px}.card{background:#fff;border:1px solid #d8dee7;border-radius:12px;padding:16px;box-shadow:0 1px 4px #0f172a12}.head{display:flex;justify-content:space-between;gap:12px;margin-bottom:8px}.badge{background:#dcfce7;color:#166534;border-radius:999px;padding:4px 8px;font-size:12px;font-weight:800}.meta{color:#64748b;font-size:13px;line-height:1.6}.items{margin-top:12px;border-top:1px solid #e5e7eb;padding-top:9px}.item{display:flex;justify-content:space-between;gap:10px;padding:5px 0}.empty{text-align:center;background:#fff;padding:35px;border-radius:12px;color:#64748b}.error{color:#b91c1c;background:#fee2e2;padding:12px;border-radius:8px}@media(max-width:600px){.head,.item{flex-direction:column;gap:3px}}
+</style>
+</head>
+<body><header><div><b>Website enquiries</b><br><small>Customer carts and contact details</small></div><a href="dashboard.html">Dashboard</a></header><main class="wrap"><div class="toolbar"><span id="summary">Loading…</span><button onclick="loadEnquiries()">Refresh</button></div><div class="grid" id="list"></div></main>
+<script>
+const sb=supabase.createClient('https://kzxwjujjvnehhthazicc.supabase.co','sb_publishable_Iu3sQGl9gq_VsVYxR3j_7g_SLvgqp_9');
+const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[char]));
+const money=value=>'₹'+Number(value||0).toLocaleString('en-IN',{maximumFractionDigits:0});
+const apiEndpoint=path=>location.hostname.endsWith('github.io')?`https://nserp-vajra-voice-api.onrender.com${path}`:path;
+async function loadEnquiries(){
+ const list=document.getElementById('list'); list.innerHTML='<div class="empty">Loading enquiries…</div>';
+ const {data:{session}}=await sb.auth.getSession();
+ if(!session){ location.href='index.html'; return; }
+ try{
+  const response=await fetch(apiEndpoint('/api/website-enquiries?limit=200'),{headers:{Authorization:`Bearer ${session.access_token}`}}); const result=await response.json();
+  if(!response.ok) throw new Error(result.error||'Unable to load enquiries');
+  document.getElementById('summary').textContent=`${result.enquiries.length} recent enquiries`;
+  if(!result.enquiries.length){list.innerHTML='<div class="empty">No website enquiries yet.</div>';return}
+  list.innerHTML=result.enquiries.map(row=>`<article class="card"><div class="head"><div><b>#${row.id} · ${esc(row.customer_name||'Customer')}</b><div class="meta"><a href="tel:+${esc(row.mobile)}">+${esc(row.mobile)}</a> · ${new Date(row.created_at).toLocaleString('en-IN')}</div></div><span class="badge">${esc(row.status)}</span></div>${row.note?`<div class="meta"><b>Message:</b> ${esc(row.note)}</div>`:''}<div class="items">${(row.items||[]).map(item=>`<div class="item"><span>${esc(item.item_name)}${item.item_code?` <small>(${esc(item.item_code)})</small>`:''} × ${Number(item.quantity||1)}</span><b>${money(Number(item.displayed_price||0)*Number(item.quantity||1))}</b></div>`).join('')}<div class="item"><b>Total estimate</b><b>${money(row.estimated_total)}</b></div></div></article>`).join('');
+ }catch(error){list.innerHTML=`<div class="error">${esc(error.message)}</div>`}
+}
+loadEnquiries();
+</script></body></html>

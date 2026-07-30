@@ -263,7 +263,7 @@ button{cursor:pointer;-webkit-tap-highlight-color:transparent}
 }
 .card:hover{box-shadow:0 3px 16px rgba(15,23,42,.16);transform:translateY(-1px)}
 .img{height:210px;background:#fff;position:relative;display:flex;align-items:center;justify-content:center;border-bottom:1px solid #eef0f2}
-.img img{width:100%;height:100%;object-fit:cover;object-position:center;display:block}
+.img img{width:100%;height:100%;object-fit:contain;object-position:center;display:block}
 .stock{
   position:absolute;top:8px;left:8px;background:#e6f4ea;color:#0a6d22;
   border:1px solid #b7dfc1;padding:4px 7px;border-radius:999px;font-size:11px;font-weight:900;
@@ -528,7 +528,9 @@ function productCard(p){
         <div class="off">${off ? off + '% off' : 'Best price'}</div>
         <div class="meta">${escapeHtml(p.department)}</div>
         <div class="actions">
-          <button class="cart" data-product-id="${escapeAttr(String(p.id))}" onclick="addToCart(this.dataset.productId)">Add to cart</button>
+          ${p.balance > 0
+            ? `<button class="cart" data-product-id="${escapeAttr(String(p.id))}" onclick="addToCart(this.dataset.productId)">Add to cart</button>`
+            : `<button class="wa" data-product-id="${escapeAttr(String(p.id))}" onclick="enquireProduct(this.dataset.productId)">Enquire now</button>`}
         </div>
       </div>
     </div>`;
@@ -549,6 +551,12 @@ function formatPrice(n){
 
 function sendGeneralWhatsApp(){ openWhatsApp('Hi, I need product details from VAJRA LIGHTS AND ELECTRICALS.'); }
 function openWhatsApp(text){ window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`,'_blank'); }
+
+function enquireProduct(productId){
+  const product = allProducts.find(item => String(item.id) === String(productId));
+  if(!product) return;
+  openWhatsApp(`Hi, I would like to enquire about ${product.item_name}${product.item_code ? ` (Code: ${product.item_code})` : ''}. Please confirm availability and price.`);
+}
 function escapeHtml(str){ return String(str || '').replace(/[&<>'"]/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[s])); }
 function escapeAttr(str){ return escapeHtml(str).replace(/`/g,'&#096;'); }
 

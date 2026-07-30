@@ -16,3 +16,7 @@ services:
         value: https://nserp2023.github.io/LOGIN
       - key: GEMINI_API_KEY
         sync: false
+      - key: PRIMARY_SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: BUSINESS_NOTIFICATION_NUMBER
+        value: "918606808063"

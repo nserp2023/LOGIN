@@ -603,7 +603,6 @@ function openCart(){ closePanels(); document.getElementById('pageOverlay').class
 function closePanels(){ document.getElementById('pageOverlay').classList.remove('show'); document.getElementById('cartDrawer').classList.remove('show'); document.querySelectorAll('.modal').forEach(node=>node.classList.remove('show')); }
 function showModal(id){ closePanels(); document.getElementById('pageOverlay').classList.add('show'); document.getElementById(id).classList.add('show'); }
 function handleOverlayClick(){ if(document.getElementById('mobileModal').classList.contains('show') && !validMobile(customerMobile)) return; closePanels(); }
-function apiEndpoint(path){ return location.hostname.endsWith('github.io') ? `https://nserp-vajra-voice-api.onrender.com${path}` : path; }
 
 function saveWelcomeMobile(){
   const input = document.getElementById('welcomeMobile');
@@ -627,17 +626,21 @@ async function submitCheckout(){
   const button = document.getElementById('submitCheckout');
   button.disabled=true; button.textContent='Submitting...'; errorBox.textContent='';
   try{
-    const response = await fetch(apiEndpoint('/api/website-checkout'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-      name:document.getElementById('customerName').value,
-      mobile:normalizedMobile(mobileInput.value),
-      note:document.getElementById('customerNote').value,
-      items:cart
-    })});
-    const result = await response.json().catch(()=>({}));
-    if(!response.ok) throw new Error(result.error || 'Unable to submit your enquiry');
+    const items=cart.slice(0,100).map(item=>({product_id:String(item.product_id||'').slice(0,100),item_code:String(item.item_code||'').slice(0,100),item_name:String(item.item_name||'').slice(0,250),quantity:Math.max(1,Math.min(999,Math.floor(Number(item.quantity)||1))),displayed_price:Math.max(0,Math.min(100000000,Number(item.displayed_price)||0)),image_url:String(item.image_url||'').slice(0,1500)}));
+    const estimatedTotal=items.reduce((sum,item)=>sum+item.displayed_price*item.quantity,0);
+    const {error}=await window.sbcc.from('website_enquiries').insert({
+      customer_name:(document.getElementById('customerName').value||'').trim().slice(0,100)||null,
+      mobile:'91'+normalizedMobile(mobileInput.value),
+      note:(document.getElementById('customerNote').value||'').trim().slice(0,500)||null,
+      items,
+      item_count:items.reduce((sum,item)=>sum+item.quantity,0),
+      estimated_total:estimatedTotal,
+      status:'new',source:'website'
+    });
+    if(error) throw error;
     customerMobile=normalizedMobile(mobileInput.value); localStorage.setItem('vajra_customer_mobile',customerMobile);
     cart=[]; saveCart(); closePanels();
-    showToast(`Enquiry #${result.enquiryId} submitted. We will contact you shortly.`);
+    showToast('Enquiry submitted. We will contact you shortly.');
   }catch(err){ errorBox.textContent=err.message; }
   finally{ button.disabled=false; button.textContent='Submit enquiry'; }
 }

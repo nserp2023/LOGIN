@@ -411,7 +411,8 @@ async function loadProducts(){
 }
 
 function normalizeProduct(row){
-  const price = Number(row.price1 || row.price || row.sales_price || row.price1_gst || row.sales_price_gst || 0);
+  const price = Math.round(Number(row.price1 || row.price || row.sales_price || row.price1_gst || row.sales_price_gst || 0));
+  const discountPercent = getProductDiscount(row.item_code || row.id || row.item_name || '');
   return {
     id: row.id || row.item_code || Math.random(),
     item_code: row.item_code || '',
@@ -419,12 +420,19 @@ function normalizeProduct(row){
     brand: row.brand || '',
     department: row.department || '',
     price,
-    old_price: Math.round(price * 1.25),
+    old_price: price ? Math.round(price / (1 - discountPercent / 100)) : 0,
+    discount_percent: discountPercent,
     balance: Number(row.balance || 0),
     gst_percent: Number(row.gst_percent || 0),
     product_image_url: row.product_image_url || row.image_url || '',
     description: row.description || row.item_name || ''
   };
+}
+
+function getProductDiscount(productKey){
+  const discounts = [40, 50, 60];
+  const hash = String(productKey).split('').reduce((total, char) => total + char.charCodeAt(0), 0);
+  return discounts[hash % discounts.length];
 }
 
 async function attachStockBalance(){
@@ -473,7 +481,7 @@ function renderProducts(){
 }
 
 function productCard(p){
-  const off = p.price && p.old_price ? Math.round(((p.old_price - p.price) / p.old_price) * 100) : 0;
+  const off = p.price ? p.discount_percent : 0;
   return `
     <div class="card">
       <div class="img">
@@ -503,9 +511,9 @@ function optimizeImage(url){
 }
 
 function formatPrice(n){
-  const v = Number(n || 0);
+  const v = Math.round(Number(n || 0));
   if(!v) return 'Ask Price';
-  return '₹' + v.toLocaleString('en-IN',{maximumFractionDigits:2});
+  return '₹' + v.toLocaleString('en-IN',{maximumFractionDigits:0});
 }
 
 function sendGeneralWhatsApp(){ openWhatsApp('Hi, I need product details from VAJRA LIGHTS AND ELECTRICALS.'); }
@@ -518,4 +526,4 @@ document.getElementById('year').textContent = new Date().getFullYear();
 loadProducts();
 </script>
 </body>
-</html> 
+</html>

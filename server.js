@@ -42,17 +42,10 @@ const GEMINI_IMAGE_GENERATION_MODEL = process.env.GEMINI_IMAGE_GENERATION_MODEL 
 const GEMINI_CATALOG_VERIFY_MODEL = process.env.GEMINI_CATALOG_VERIFY_MODEL || GEMINI_IMAGE_MODEL;
 const PRIMARY_SUPABASE_URL = process.env.PRIMARY_SUPABASE_URL || "https://kzxwjujjvnehhthazicc.supabase.co";
 const PRIMARY_SUPABASE_PUBLISHABLE_KEY = process.env.PRIMARY_SUPABASE_PUBLISHABLE_KEY || "sb_publishable_Iu3sQGl9gq_VsVYxR3j_7g_SLvgqp_9";
-const PRIMARY_SUPABASE_SERVICE_ROLE_KEY = process.env.PRIMARY_SUPABASE_SERVICE_ROLE_KEY;
-const BUSINESS_NOTIFICATION_NUMBER = process.env.BUSINESS_NOTIFICATION_NUMBER || "918606808063";
 const REVIEW_SUPABASE_URL = process.env.REVIEW_SUPABASE_URL;
 const REVIEW_SUPABASE_SERVICE_ROLE_KEY = process.env.REVIEW_SUPABASE_SERVICE_ROLE_KEY;
 const reviewSb = REVIEW_SUPABASE_URL && REVIEW_SUPABASE_SERVICE_ROLE_KEY
     ? createClient(REVIEW_SUPABASE_URL, REVIEW_SUPABASE_SERVICE_ROLE_KEY, {
-        auth: { persistSession: false, autoRefreshToken: false }
-    })
-    : null;
-const primaryAdminSb = PRIMARY_SUPABASE_SERVICE_ROLE_KEY
-    ? createClient(PRIMARY_SUPABASE_URL, PRIMARY_SUPABASE_SERVICE_ROLE_KEY, {
         auth: { persistSession: false, autoRefreshToken: false }
     })
     : null;
@@ -582,93 +575,6 @@ async function sendAudio(to, mediaId) {
         }
     );
 }
-
-function cleanText(value, maxLength) {
-    return String(value || "").trim().slice(0, maxLength);
-}
-
-async function sendWhatsAppText(to, body) {
-    if (!WHATSAPP_TOKEN || !PHONE_NUMBER_ID) throw new Error("WhatsApp notifications are not configured");
-    return axios.post(
-        `https://graph.facebook.com/v23.0/${PHONE_NUMBER_ID}/messages`,
-        {
-            messaging_product: "whatsapp",
-            to: formatNumber(to),
-            type: "text",
-            text: { preview_url: false, body: String(body || "").slice(0, 4000) }
-        },
-        {
-            headers: { Authorization: `Bearer ${WHATSAPP_TOKEN}`, "Content-Type": "application/json" },
-            timeout: 20000
-        }
-    );
-}
-
-app.post("/api/website-checkout", async (req, res) => {
-    try {
-        if (!primaryAdminSb) return res.status(503).json({ error: "Checkout storage is not configured on the server" });
-
-        const mobile = formatNumber(req.body?.mobile);
-        const name = cleanText(req.body?.name, 100);
-        const note = cleanText(req.body?.note, 500);
-        const rawItems = Array.isArray(req.body?.items) ? req.body.items : [];
-        if (mobile.length < 10 || mobile.length > 15) return res.status(400).json({ error: "Enter a valid mobile number" });
-        if (!rawItems.length) return res.status(400).json({ error: "Your cart is empty" });
-
-        const items = rawItems.slice(0, 100).map(item => ({
-            product_id: cleanText(item?.product_id, 100),
-            item_code: cleanText(item?.item_code, 100),
-            item_name: cleanText(item?.item_name, 250),
-            quantity: Math.max(1, Math.min(999, Math.floor(Number(item?.quantity) || 1))),
-            displayed_price: Math.max(0, Math.min(100000000, Number(item?.displayed_price) || 0)),
-            image_url: cleanText(item?.image_url, 1500)
-        })).filter(item => item.item_name);
-        if (!items.length) return res.status(400).json({ error: "Your cart has no valid items" });
-
-        const estimatedTotal = items.reduce((sum, item) => sum + item.displayed_price * item.quantity, 0);
-        const { data, error } = await primaryAdminSb.from("website_enquiries").insert({
-            customer_name: name || null,
-            mobile,
-            note: note || null,
-            items,
-            item_count: items.reduce((sum, item) => sum + item.quantity, 0),
-            estimated_total: estimatedTotal,
-            status: "new",
-            source: "website"
-        }).select("id,created_at").single();
-        if (error) throw error;
-
-        let notificationSent = false;
-        try {
-            const itemLines = items.slice(0, 25).map((item, index) =>
-                `${index + 1}. ${item.item_name}${item.item_code ? ` (${item.item_code})` : ""} x ${item.quantity}`
-            );
-            const extra = items.length > 25 ? `\n...and ${items.length - 25} more item(s)` : "";
-            await sendWhatsAppText(BUSINESS_NOTIFICATION_NUMBER,
-                `New website enquiry #${data.id}\nCustomer: ${name || "Not provided"}\nMobile: +${mobile}\n\n${itemLines.join("\n")}${extra}\n\nEstimated total: Rs ${Math.round(estimatedTotal).toLocaleString("en-IN")}${note ? `\nNote: ${note}` : ""}`
-            );
-            notificationSent = true;
-            await primaryAdminSb.from("website_enquiries").update({ notified_at: new Date().toISOString() }).eq("id", data.id);
-        } catch (notificationError) {
-            console.warn("Website checkout saved, but WhatsApp notification failed:", notificationError.response?.data || notificationError.message);
-        }
-
-        res.status(201).json({ success: true, enquiryId: data.id, createdAt: data.created_at, notificationSent });
-    } catch (err) {
-        console.error("Website checkout error:", err);
-        res.status(500).json({ error: err.message || "Unable to submit enquiry" });
-    }
-});
-
-app.get("/api/website-enquiries", async (req, res) => {
-    const user = await requirePrimarySupabaseUser(req, res);
-    if (!user) return;
-    if (!primaryAdminSb) return res.status(503).json({ error: "Enquiry storage is not configured on the server" });
-    const limit = Math.max(1, Math.min(200, Number(req.query.limit) || 100));
-    const { data, error } = await primaryAdminSb.from("website_enquiries").select("*").order("created_at", { ascending: false }).limit(limit);
-    if (error) return res.status(500).json({ error: error.message });
-    res.json({ enquiries: data || [] });
-});
 
 app.post("/api/send-whatsapp-audio", async (req, res) => {
     let tempFile;

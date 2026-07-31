@@ -779,6 +779,8 @@
         <div class="section-tools">
           <button onclick="exportReport('hsn','csv')">EXPORT CSV</button>
           <button onclick="exportReport('hsn','excel')">EXPORT EXCEL</button>
+          <button onclick="exportReport('b2bHsn','csv')">EXPORT B2B HSN CSV</button>
+          <button onclick="exportReport('b2bHsn','excel')">EXPORT B2B HSN EXCEL</button>
         </div>
       </div>
       <div class="table-wrap">
@@ -798,7 +800,7 @@
         </table>
       </div>
       <div class="note">
-        HSN summary is generated from sales item rows and grouped by HSN + GST %.
+        HSN summary is generated from sales item rows and grouped by HSN + GST %. B2B HSN export is grouped by customer GSTIN + HSN + GST %.
       </div>
     </div>
 
@@ -868,6 +870,7 @@
     let b2bRows = [];
     let b2cRows = [];
     let hsnSummaryRows = [];
+    let b2bHsnSummaryRows = [];
     let cancelledSalesRows = [];
     let isLoadingReport = false;
 
@@ -1125,6 +1128,7 @@
       b2bRows = [];
       b2cRows = [];
       hsnSummaryRows = [];
+      b2bHsnSummaryRows = [];
       cancelledSalesRows = [];
 
       [
@@ -1184,6 +1188,7 @@
       b2bRows = groupB2BByBillGstHSN(salesItemRows);
       b2cRows = salesSummaryRows.filter(r => !isValidGSTIN(r.customer_gst));
       hsnSummaryRows = generateHSNSummary(salesItemRows);
+      b2bHsnSummaryRows = generateB2BHSNSummary(salesItemRows);
     }
 
     function filterReturnRowsForMode(rows){
@@ -1675,6 +1680,41 @@
       renderMonthlySummary();
       renderTopStats();
       renderQualityChecks();
+    }
+
+    function generateB2BHSNSummary(rows){
+      const map = new Map();
+
+      rows.filter(r => isValidGSTIN(r.customer_gst)).forEach(r => {
+        const gstin = String(r.customer_gst || "").trim().toUpperCase();
+        const hsn = String(r.hsn_code || "").trim();
+        const key = `${gstin}_${hsn}_${r.gst_percent}`;
+        if(!map.has(key)){
+          map.set(key, {
+            customer_name: r.customer_name || "",
+            customer_gst: gstin,
+            hsn_code: hsn,
+            gst_percent: r.gst_percent,
+            qty: 0,
+            taxable_value: 0,
+            gst_value: 0,
+            total_value: 0
+          });
+        }
+
+        const row = map.get(key);
+        row.qty += num(r.qty);
+        row.taxable_value += num(r.taxable_value);
+        row.gst_value += num(r.gst_value);
+        row.total_value += num(r.total_value);
+      });
+
+      return Array.from(map.values()).sort((a,b) =>
+        String(a.customer_name).localeCompare(String(b.customer_name)) ||
+        String(a.customer_gst).localeCompare(String(b.customer_gst)) ||
+        String(a.hsn_code).localeCompare(String(b.hsn_code)) ||
+        num(a.gst_percent) - num(b.gst_percent)
+      );
     }
 
     function renderSalesTable(rows){
@@ -2179,6 +2219,20 @@
               TOTAL_VALUE: r.total_value
             }))
           };
+        case "b2bHsn":
+          return {
+            filename: "b2b_wise_hsn_summary",
+            rows: makeRowsExportable(b2bHsnSummaryRows).map(r => ({
+              CUSTOMER: r.customer_name,
+              GSTIN: r.customer_gst,
+              HSN: r.hsn_code,
+              GST_PERCENT: r.gst_percent,
+              QUANTITY: r.qty,
+              TAXABLE_VALUE: r.taxable_value,
+              GST_VALUE: r.gst_value,
+              TOTAL_VALUE: r.total_value
+            }))
+          };
         case "cancelledSales":
           return {
             filename: "cancelled_sales_audit_not_for_gst_filing",
@@ -2283,7 +2337,7 @@
     }
 
     function exportAllReports(format){
-      ["sales","b2b","b2c","purchase","return","hsn","gstRateSummary","monthlySummary","cancelledSales"].forEach((key, idx) => {
+      ["sales","b2b","b2c","purchase","return","hsn","b2bHsn","gstRateSummary","monthlySummary","cancelledSales"].forEach((key, idx) => {
         setTimeout(() => exportReport(key, format), idx * 120);
       });
     }

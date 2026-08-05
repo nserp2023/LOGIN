@@ -1134,9 +1134,9 @@
             .order(cfg.numberField, { ascending:false });
 
         const billNumberSearch = getBillNumberSearchValue(billFilter);
-        if(billFilter){
-            // Bill lookup is intentionally independent of the report date window,
-            // so a bill from an earlier month can still be found directly.
+        if(billFilter || mobile){
+            // Direct bill and customer-mobile lookups are intentionally independent
+            // of the report date window, so all matching bills can be found.
             if(billNumberSearch) query = query.eq(cfg.numberField, billNumberSearch);
         }else{
             if(from) query = query.gte(cfg.dateField, from);

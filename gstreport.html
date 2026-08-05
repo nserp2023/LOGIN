@@ -2201,15 +2201,13 @@
             rows: makeRowsExportable(returnSummaryRows).map(r => ({
               TYPE: r.type,
               INVOICE_DATE: formatDate(r.return_date),
-              INVOICE_NUMBER: r.return_number,
               SALES_RETURN_BILL_NUMBER: r.sales_return_bill_number,
               CUSTOMER: r.customer_name,
               GSTIN: r.customer_gst,
-              STATUS: r.status,
-              GST_PERCENT: r.gst_percent,
-              TAXABLE_VALUE: r.taxable_value,
-              GST_VALUE: r.gst_value,
-              TOTAL_VALUE: r.total_value
+              GST_PERCENT: Math.abs(num(r.gst_percent)),
+              TAXABLE_VALUE: Math.abs(num(r.taxable_value)),
+              GST_VALUE: Math.abs(num(r.gst_value)),
+              TOTAL_VALUE: Math.abs(num(r.total_value))
             }))
           };
         case "hsn":

@@ -1973,7 +1973,8 @@ if (baseLanding > 0) {
         return;
       }
 
-      status.innerHTML = `<span class="ok">Saved successfully.</span>`;
+      const savedPurchaseNumber = inv.purchase_number;
+      status.innerHTML = `<span class="ok">Purchase ${savedPurchaseNumber} saved successfully.</span>`;
       clearPurchaseDraft("Saved - backup cleared");
       byId("purchaseNumber").value = await generatePurchaseNumber();
       byId("invoiceNumber").value = "";
@@ -2066,7 +2067,7 @@ if (baseLanding > 0) {
         await applyPurchaseStock(items);
 
         originalItemsSnapshot = JSON.parse(JSON.stringify(rows));
-        status.innerHTML = `<span class="ok">Purchase updated successfully. Stock was adjusted for the edited bill.</span>`;
+        status.innerHTML = `<span class="ok">Purchase ${inv.purchase_number} updated successfully. Stock was adjusted for the edited bill.</span>`;
         clearPurchaseDraft("Updated - backup cleared");
       }catch(error){
         console.error(error);

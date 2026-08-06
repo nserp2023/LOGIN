@@ -3251,7 +3251,10 @@
             }
 
             if (paid < 0) paid = 0;
-            if (paid > total) paid = total;
+            // A Sales Order may collect more than its current value. Keep the
+            // full excess as customer advance; normal credit bills remain
+            // capped at the bill total.
+            if (docType !== "sales_order" && paid > total) paid = total;
             paidAmountEl.value = paid.toFixed(2);
         }
 
@@ -3306,9 +3309,10 @@
                     paidAmountEl.dataset.salesOrderReceiptEdited = "1";
                 }
                 let paid = getMoneyValue(paidAmountEl.value);
+                const isSalesOrderAdvance = getCurrentDocType() === "sales_order" && !isConversionReceipt;
                 const maxPaid = isConversionReceipt
                     ? getSalesOrderConversionReceiptAmount(total)
-                    : total;
+                    : (isSalesOrderAdvance ? Number.POSITIVE_INFINITY : total);
 
                 if (paid < 0) paid = 0;
                 if (paid > maxPaid) paid = maxPaid;
@@ -5893,6 +5897,10 @@ function calcTotal() {
                 paidAmount = Math.max(0, Math.min(getSalesOrderConversionReceiptAmount(roundedTotal), paidAmount));
                 const paidAmountEl = document.getElementById("paid_amount");
                 if (paidAmountEl) paidAmountEl.value = paidAmount.toFixed(2);
+            } else if (docType === "sales_order") {
+                // Customers can leave an advance larger than this order for
+                // future purchases, so preserve the complete received amount.
+                paidAmount = Math.max(0, paidAmount);
             } else {
                 paidAmount = Math.max(0, Math.min(roundedTotal, paidAmount));
             }

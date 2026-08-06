@@ -1443,7 +1443,7 @@
         </table>
         
         <div style="padding: 10px; opacity: 0.6; color:#0dbd2a; font-size: 12px;">
-            <span style="color: var(--primary);">Tip:</span> Use <b>Enter</b> key to jump. Use <b>Up & Down Arrow</b> keys for navigation. Use <b>Shift+Enter</b> key to jump back.
+            <span style="color: var(--primary);">Tip:</span> Use <b>Enter</b> key to jump. Use <b>Up & Down Arrow</b> keys for navigation. Use <b>Shift+Enter</b> key to jump back. Press <b>Ctrl+Q</b> for Quotation mode.
         </div>
     </div>
 
@@ -5932,29 +5932,6 @@ function calcTotal() {
                 localStorage.getItem("user") ||
                 "SYSTEM";
 
-            const seriesCode = document.getElementById('bill_series').value;
-            let nextBillNo;
-
-            if (editingId) {
-                nextBillNo = document.getElementById("bill_number").value;
-            } else {
-                if (docType === "sales" || docType === "sales_pack") {
-                    const { data, error } = await sb.rpc('get_next_sales_number', { p_series: seriesCode });
-                    if (error) throw error;
-                    nextBillNo = data;
-                } else if (docType === "sales_order") {
-                    const { data, error } = await sb.rpc('get_next_sales_order_number', { p_series: seriesCode });
-                    if (error) throw error;
-                    nextBillNo = data;
-                } else {
-                    const { data, error } = await sb.rpc('get_next_quotation_number', { p_series: seriesCode });
-                    if (error) throw error;
-                    nextBillNo = data;
-                }
-            }
-
-            console.log("Auto-detected Bill No:", nextBillNo);
-
             if ((head.mob || "").trim()) {
                 const { data: existC } = await sb
                     .from('customers')
@@ -5985,6 +5962,31 @@ function calcTotal() {
                     if (cErr) throw cErr;
                 }
             }
+
+            // Allocate the permanent number only after validation and customer
+            // writes succeed. The RPC advances a database counter, so calling it
+            // earlier permanently skipped a number whenever one of those steps
+            // failed (and repeated failures could create a large jump).
+            const seriesCode = document.getElementById('bill_series').value;
+            let nextBillNo;
+
+            if (editingId) {
+                nextBillNo = document.getElementById("bill_number").value;
+            } else if (docType === "sales" || docType === "sales_pack") {
+                const { data, error } = await sb.rpc('get_next_sales_number', { p_series: seriesCode });
+                if (error) throw error;
+                nextBillNo = data;
+            } else if (docType === "sales_order") {
+                const { data, error } = await sb.rpc('get_next_sales_order_number', { p_series: seriesCode });
+                if (error) throw error;
+                nextBillNo = data;
+            } else {
+                const { data, error } = await sb.rpc('get_next_quotation_number', { p_series: seriesCode });
+                if (error) throw error;
+                nextBillNo = data;
+            }
+
+            console.log("Auto-detected Bill No:", nextBillNo);
 
             let insertData;
 
@@ -7208,6 +7210,18 @@ async function handleBarcodeValue(code) {
     }
 
     document.addEventListener('keydown', (e) => {
+        if(e.ctrlKey && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'q'){
+            e.preventDefault();
+            e.stopPropagation();
+
+            const docTypeSelect = document.getElementById('doc_type');
+            if(docTypeSelect && docTypeSelect.value !== 'quotation'){
+                docTypeSelect.value = 'quotation';
+                docTypeSelect.dispatchEvent(new Event('change'));
+            }
+            return;
+        }
+
         if(e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'p'){
             e.preventDefault();
             e.stopPropagation();

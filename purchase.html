@@ -1843,6 +1843,87 @@ if (baseLanding > 0) {
       return { valid: invalid.length === 0, invalid };
     }
 
+    async function reconcilePurchasedItemsWithPendingPOs(items){
+      const purchasedByCode = new Map();
+      (items || []).forEach(item => {
+        const code = String(item.item_code || "").trim().toUpperCase();
+        const qty = Math.max(0, num(item.quantity));
+        if(code && qty > 0) purchasedByCode.set(code, (purchasedByCode.get(code) || 0) + qty);
+      });
+
+      const touchedOrderIds = new Set();
+      let updatedLines = 0;
+
+      for(const [code, purchasedQty] of purchasedByCode){
+        const { data: lines, error: lineError } = await sb
+          .from("purchase_order_item_details")
+          .select("*")
+          .ilike("item_code", code)
+          .order("id", { ascending:true });
+        if(lineError) throw lineError;
+
+        const orderIds = [...new Set((lines || []).map(line => line.purchase_order_id).filter(Boolean))];
+        if(!orderIds.length) continue;
+
+        const { data: orders, error: orderError } = await sb
+          .from("purchase_order_details")
+          .select("*")
+          .in("id", orderIds);
+        if(orderError) throw orderError;
+
+        const activeOrderIds = new Set((orders || [])
+          .filter(order => !order.is_cancelled && String(order.status || "").toUpperCase() !== "CANCELLED")
+          .map(order => Number(order.id)));
+
+        let available = purchasedQty;
+        for(const line of (lines || [])){
+          if(available <= 0) break;
+          if(!activeOrderIds.has(Number(line.purchase_order_id))) continue;
+          if(String(line.status || "").toUpperCase() === "CANCELLED") continue;
+
+          const ordered = Math.max(0, num(line.quantity ?? line.qty));
+          const alreadyReceived = Math.max(0, num(line.received_qty));
+          const pending = Math.max(0, ordered - alreadyReceived);
+          if(pending <= 0) continue;
+
+          const applied = Math.min(available, pending);
+          const receivedQty = alreadyReceived + applied;
+          const lineStatus = receivedQty >= ordered ? "RECEIVED" : "PARTIAL";
+          const { error: updateError } = await sb
+            .from("purchase_order_item_details")
+            .update({ received_qty:receivedQty, status:lineStatus })
+            .eq("id", line.id);
+          if(updateError) throw updateError;
+
+          available -= applied;
+          updatedLines++;
+          touchedOrderIds.add(line.purchase_order_id);
+        }
+      }
+
+      for(const orderId of touchedOrderIds){
+        const { data: orderLines, error: orderLinesError } = await sb
+          .from("purchase_order_item_details")
+          .select("*")
+          .eq("purchase_order_id", orderId);
+        if(orderLinesError) throw orderLinesError;
+
+        const activeLines = (orderLines || []).filter(line => String(line.status || "").toUpperCase() !== "CANCELLED");
+        const completed = activeLines.length > 0 && activeLines.every(line =>
+          num(line.received_qty) >= num(line.quantity ?? line.qty)
+        );
+        const anyReceived = activeLines.some(line => num(line.received_qty) > 0);
+        const orderStatus = completed ? "COMPLETED" : anyReceived ? "PARTIAL" : "PENDING";
+        const { error: closeError } = await sb
+          .from("purchase_order_details")
+          .update({ status:orderStatus })
+          .eq("id", orderId);
+        if(closeError) throw closeError;
+      }
+
+      return { updatedLines, updatedOrders:touchedOrderIds.size };
+    }
+
     async function saveAll(){
       const status = byId("saveStatus");
 
@@ -1973,8 +2054,22 @@ if (baseLanding > 0) {
         return;
       }
 
+      let poReconciliation = null;
+      let poReconciliationError = null;
+      try{
+        poReconciliation = await reconcilePurchasedItemsWithPendingPOs(items);
+      }catch(error){
+        poReconciliationError = error;
+        console.error("Purchase order reconciliation failed:", error);
+      }
+
       const savedPurchaseNumber = inv.purchase_number;
-      status.innerHTML = `<span class="ok">Purchase ${savedPurchaseNumber} saved successfully.</span>`;
+      const poMessage = poReconciliationError
+        ? ` <span class="warn">Purchase was saved, but pending PO quantities could not be updated: ${poReconciliationError.message || poReconciliationError}</span>`
+        : poReconciliation?.updatedLines
+          ? ` <span class="ok">${poReconciliation.updatedLines} pending PO item line(s) updated.</span>`
+          : "";
+      status.innerHTML = `<span class="ok">Purchase ${savedPurchaseNumber} saved successfully.</span>${poMessage}`;
       clearPurchaseDraft("Saved - backup cleared");
       byId("purchaseNumber").value = await generatePurchaseNumber();
       byId("invoiceNumber").value = "";

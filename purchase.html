@@ -2279,10 +2279,13 @@ if (baseLanding > 0) {
     }
 
     (async function(){
+      const editId = Number(new URLSearchParams(location.search).get("edit") || 0);
+      if(!editId){
+        alert("REORDER QUANTITY REMINDER\n\nDo you know the reorder quantities for the items you are going to enter?");
+      }
       setupColumnControls();
       await initInvoice();
       await loadStockData();
-      const editId = Number(new URLSearchParams(location.search).get("edit") || 0);
       if(editId){
         purchaseDraftReady = false;
         try{

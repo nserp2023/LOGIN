@@ -2548,6 +2548,14 @@
         }
     }
 
+    function getSalesmanForSave(docType){
+        // Bill mode is represented by sales_pack and must always belong to
+        // VAJRA. Do not depend only on the dropdown change event: document
+        // loading/draft restoration can set the mode programmatically.
+        if(docType === "sales_pack") return "VAJRA";
+        return String(document.getElementById("salesman")?.value || "").trim().toUpperCase();
+    }
+
     async function findPendingPurchaseOrderForRow(row){
         const rawItem = getRowRawItem(row) || {};
         const itemCode = (row.querySelector('.code-inp')?.value || rawItem.item_code || "").trim();
@@ -5841,6 +5849,7 @@ function calcTotal() {
         ) || 0;
 
         const docType = document.getElementById("doc_type").value;
+        const salesmanForSave = getSalesmanForSave(docType);
         const btn = document.getElementById('btn_save');
         if (btn.disabled) return;
 
@@ -6028,7 +6037,7 @@ function calcTotal() {
                     payment_type: paymentType,
                     advance_amount: paidAmount,
                     balance_amount: balanceAmount,
-                    salesman: document.getElementById("salesman").value || "",
+                    salesman: salesmanForSave,
                     created_by: createdBy
                 };
             }
@@ -6043,7 +6052,7 @@ function calcTotal() {
                     gst_number: head.gst,
                     total_amount: roundedTotal,
                     remark: document.getElementById("quotation_remark")?.value.trim() || "",
-                    salesman: document.getElementById("salesman").value || "",
+                    salesman: salesmanForSave,
                     created_by: createdBy
                 };
             }
@@ -6063,7 +6072,7 @@ function calcTotal() {
                     payment_type: paymentType,
                     paid_amount: paidAmount,
                     balance_amount: balanceAmount,
-                    salesman: document.getElementById("salesman").value,
+                    salesman: salesmanForSave,
                     created_by: createdBy,
                     round_off: roundOff
                 };
@@ -6165,7 +6174,7 @@ function calcTotal() {
                             agent_mobile: head.agent,
                             gst_number: head.gst,
                             packing_amount: roundedTotal,
-                            salesman: document.getElementById("salesman").value
+                            salesman: salesmanForSave
                         })
                         .eq("sales_id", saleId)
                         .select()
@@ -6186,7 +6195,7 @@ function calcTotal() {
                             agent_mobile: head.agent,
                             gst_number: head.gst,
                             packing_amount: roundedTotal,
-                            salesman: document.getElementById("salesman").value
+                            salesman: salesmanForSave
                         }])
                         .select()
                         .single();

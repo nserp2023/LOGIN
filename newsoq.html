@@ -1581,6 +1581,7 @@
     let currentRowId = 0;
     let editingId = null;
     let editingType = null;
+    let editingLinkedSalesId = null;
     let editingBillGrantId = null;
     let historyTimer = null;
     let lastHistoryKey = "";
@@ -5547,6 +5548,16 @@ function calcTotal() {
             .order("sales_id", { ascending: false })
             .limit(10);
 
+        // The open document is not purchase history yet. A BILL has a linked
+        // sales header as well as its packing header, so exclude that linked
+        // sales row while the BILL is being modified.
+        const currentSalesId = editingType === "sales"
+            ? editingId
+            : (editingType === "sales_pack" ? editingLinkedSalesId : null);
+        if(currentSalesId != null){
+            q = q.neq("sales_id", currentSalesId);
+        }
+
         if(itemCode){
             q = q.eq("item_code", itemCode);
         }else if(itemName){
@@ -5573,12 +5584,18 @@ function calcTotal() {
     }
 
     async function loadSalesPackHistory(customerMobile, itemCode, itemName){
-        const { data: packHeads, error: headErr } = await sb
+        let headQuery = sb
             .from("sales_packing_details")
             .select("id, packing_date, packing_number, series_code, customer_mobile")
             .eq("customer_mobile", customerMobile)
             .order("id", { ascending: false })
             .limit(20);
+
+        if(editingType === "sales_pack" && editingId != null){
+            headQuery = headQuery.neq("id", editingId);
+        }
+
+        const { data: packHeads, error: headErr } = await headQuery;
 
         if(headErr){
             console.error("Sales pack header load error:", headErr);
@@ -5661,7 +5678,7 @@ function calcTotal() {
             return;
         }
 
-        const key = `${docType}|${customerMobile}|${itemCode}|${itemName}`;
+        const key = `${docType}|${customerMobile}|${itemCode}|${itemName}|${editingType || ""}|${editingId || ""}|${editingLinkedSalesId || ""}`;
         if(lastHistoryKey === key) return;
         lastHistoryKey = key;
 
@@ -6725,6 +6742,7 @@ barcodeInput.addEventListener("keydown", async function (e) {
     async function loadEditDocument(id,type){
         editingId = id;
         editingType = type;
+        editingLinkedSalesId = null;
 
         document.getElementById("doc_type").value = type;
         toggleRemarkField();
@@ -6775,6 +6793,7 @@ barcodeInput.addEventListener("keydown", async function (e) {
             }
 
             head = data;
+            editingLinkedSalesId = data.sales_id || null;
 
             // A packing header intentionally stores only packing-specific fields.
             // Customer address and payment details live on its linked sales header.
@@ -7065,6 +7084,7 @@ barcodeInput.addEventListener("keydown", async function (e) {
         // edit-mode stock calculation.
         editingId = null;
         editingType = null;
+        editingLinkedSalesId = null;
         editingBillGrantId = null;
         isSalesOrderConversionMode = false;
         salesOrderAdvancePaid = 0;

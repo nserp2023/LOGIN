@@ -302,6 +302,48 @@
             -webkit-user-select:none;
             touch-action:manipulation;
         }
+
+        .quotation-summary{
+            display:grid;
+            grid-template-columns:repeat(3, minmax(130px, 190px));
+            gap:12px;
+            margin:0 0 16px;
+        }
+
+        .quotation-summary[hidden]{
+            display:none;
+        }
+
+        .quotation-summary-card{
+            padding:13px 16px;
+            border:1px solid rgba(255,255,255,.18);
+            border-radius:12px;
+            background:rgba(255,255,255,.08);
+        }
+
+        .quotation-summary-label{
+            display:block;
+            margin-bottom:4px;
+            color:rgba(255,255,255,.72);
+            font-size:12px;
+            font-weight:800;
+            text-transform:uppercase;
+        }
+
+        .quotation-summary-value{
+            font-size:25px;
+            font-weight:900;
+        }
+
+        .quotation-summary-card.pending .quotation-summary-value{ color:#fde68a; }
+        .quotation-summary-card.converted .quotation-summary-value{ color:#86efac; }
+        .quotation-summary-card.cancelled .quotation-summary-value{ color:#fca5a5; }
+
+        @media(max-width:600px){
+            .quotation-summary{ grid-template-columns:repeat(3, 1fr); gap:7px; }
+            .quotation-summary-card{ padding:10px 8px; }
+            .quotation-summary-value{ font-size:21px; }
+        }
     </style>
 </head>
 <body>
@@ -359,6 +401,21 @@
 
     <label>Created By:</label>
     <input type="text" id="created_by_filter" placeholder="Search created user">
+</div>
+
+<div id="quotation_summary" class="quotation-summary" hidden aria-label="Quotation status totals">
+    <div class="quotation-summary-card pending">
+        <span class="quotation-summary-label">Pending</span>
+        <span id="quotation_pending_count" class="quotation-summary-value">0</span>
+    </div>
+    <div class="quotation-summary-card converted">
+        <span class="quotation-summary-label">Converted</span>
+        <span id="quotation_converted_count" class="quotation-summary-value">0</span>
+    </div>
+    <div class="quotation-summary-card cancelled">
+        <span class="quotation-summary-label">Cancelled</span>
+        <span id="quotation_cancelled_count" class="quotation-summary-value">0</span>
+    </div>
 </div>
 
 <table>
@@ -1105,6 +1162,7 @@
         const cfg = getCurrentTypeConfig();
         const type = cfg.type;
         toggleRemarkColumn();
+        document.getElementById("quotation_summary").hidden = type !== "quotation";
 
         const from = document.getElementById('from_date').value;
         const to = document.getElementById('to_date').value;
@@ -1245,6 +1303,20 @@
         }
 
         currentRows = rows;
+
+        if(type === "quotation"){
+            const quotationCounts = rows.reduce((counts, row) => {
+                const status = normalizeText(row.status);
+                if(status === "cancelled") counts.cancelled++;
+                else if(row.converted === true || status === "converted") counts.converted++;
+                else counts.pending++;
+                return counts;
+            }, { pending:0, converted:0, cancelled:0 });
+
+            document.getElementById("quotation_pending_count").textContent = quotationCounts.pending;
+            document.getElementById("quotation_converted_count").textContent = quotationCounts.converted;
+            document.getElementById("quotation_cancelled_count").textContent = quotationCounts.cancelled;
+        }
 
         const body = document.getElementById('report_body');
         body.innerHTML = '';

@@ -3441,13 +3441,16 @@
 
     async function fetchNextBillNumber() {
         const series = document.getElementById('bill_series').value;
-        const { data } = await sb
-            .from('bill_series')
-            .select('bill_number')
-            .eq('series_code', series)
-            .maybeSingle();
+        const { data, error } = await sb.rpc('peek_next_sales_number', {
+            p_series: series
+        });
 
-        document.getElementById('bill_number').value = data ? (data.bill_number + 1) : 1;
+        if (error) {
+            console.error('Unable to preview next sales number:', error);
+            return;
+        }
+
+        document.getElementById('bill_number').value = data || 1;
     }
 
 async function loadStockData() {
@@ -5997,19 +6000,17 @@ function calcTotal() {
                 }
             }
 
-            // Allocate the permanent number only after validation and customer
-            // writes succeed. The RPC advances a database counter, so calling it
-            // earlier permanently skipped a number whenever one of those steps
-            // failed (and repeated failures could create a large jump).
+            // Sales numbers are assigned by the database during header insert.
+            // Other document types continue to use their existing counters.
             const seriesCode = document.getElementById('bill_series').value;
             let nextBillNo;
 
             if (editingId) {
                 nextBillNo = document.getElementById("bill_number").value;
             } else if (docType === "sales" || docType === "sales_pack") {
-                const { data, error } = await sb.rpc('get_next_sales_number', { p_series: seriesCode });
-                if (error) throw error;
-                nextBillNo = data;
+                // The database assigns the number in the same transaction as
+                // the sales header insert, so a failed insert cannot consume it.
+                nextBillNo = null;
             } else if (docType === "sales_order") {
                 const { data, error } = await sb.rpc('get_next_sales_order_number', { p_series: seriesCode });
                 if (error) throw error;
@@ -6108,6 +6109,10 @@ function calcTotal() {
             // live in customers; sales_order_details has no address column.
             const headerWriteData = { ...insertData };
             if (headerTable === "sales_order_details") delete headerWriteData.address;
+            if (!editingId && headerTable === "sales_details") {
+                delete headerWriteData.sales_number;
+                delete headerWriteData.invoice_number;
+            }
 
             let sale;
 
@@ -6150,6 +6155,10 @@ function calcTotal() {
 
                 if (error) throw error;
                 sale = data;
+            }
+
+            if (!editingId && headerTable === "sales_details") {
+                nextBillNo = sale?.sales_number;
             }
 
             if (!sale || !sale.id) {

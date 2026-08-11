@@ -2654,6 +2654,10 @@
         <div class="form-group">
             <label>Bill No</label>
             <input type="text" id="bill_number" class="form-control w-sm" readonly tabindex="-1">
+            <label id="skipped_bill_option" style="display:flex;align-items:center;gap:5px;margin-top:5px;font-size:11px;cursor:pointer;white-space:nowrap;">
+                <input type="checkbox" id="fill_skipped_bill" style="width:auto;">
+                Fill skipped bill
+            </label>
         </div>
 
         <div class="form-group">
@@ -3525,6 +3529,12 @@
             isSalesOrderConversionMode = false;
             addNewRow();
         }
+
+        document.getElementById('fill_skipped_bill')?.addEventListener('change', syncSkippedBillMode);
+        document.getElementById('bill_series')?.addEventListener('change', () => {
+            if(!isSkippedBillMode()) fetchNextBillNumber();
+        });
+        syncSkippedBillMode();
 
         initAutoBackupDraftMode();
         if(!editId && !convertId && !convertSO){
@@ -4440,6 +4450,7 @@
     }
 
     async function fetchNextBillNumber() {
+        if(document.getElementById('fill_skipped_bill')?.checked) return;
         const series = document.getElementById('bill_series').value;
         const { data } = await sb
             .from('bill_series')
@@ -4448,6 +4459,49 @@
             .maybeSingle();
 
         document.getElementById('bill_number').value = data ? (data.bill_number + 1) : 1;
+    }
+
+    function isSkippedBillMode(){
+        return !editingId && document.getElementById('fill_skipped_bill')?.checked === true;
+    }
+
+    function syncSkippedBillMode(){
+        const checkbox = document.getElementById('fill_skipped_bill');
+        const billNumber = document.getElementById('bill_number');
+        if(!checkbox || !billNumber) return;
+
+        const allowed = !editingId && ['sales', 'sales_pack'].includes(document.getElementById('doc_type')?.value);
+        checkbox.disabled = !allowed;
+        if(!allowed) checkbox.checked = false;
+
+        billNumber.readOnly = !checkbox.checked;
+        billNumber.tabIndex = checkbox.checked ? 2 : -1;
+        billNumber.placeholder = checkbox.checked ? 'Enter missed number' : '';
+        if(checkbox.checked){
+            billNumber.value = '';
+            billNumber.focus();
+        }else if(allowed){
+            syncSkippedBillMode();
+        }
+    }
+
+    async function validateSkippedBillNumber(seriesCode, billNumber){
+        const cleanNumber = String(billNumber || '').trim();
+        if(!/^\d+$/.test(cleanNumber) || Number(cleanNumber) < 1){
+            throw new Error('Enter a valid skipped bill number.');
+        }
+
+        const { data, error } = await sb
+            .from('sales_details')
+            .select('id,bill_date')
+            .eq('series_code', seriesCode)
+            .eq('sales_number', cleanNumber)
+            .limit(1);
+        if(error) throw error;
+        if(data?.length){
+            throw new Error(`Bill ${seriesCode}-${cleanNumber} already exists${data[0].bill_date ? ` on ${data[0].bill_date}` : ''}.`);
+        }
+        return cleanNumber;
     }
 
 async function loadStockData() {
@@ -6903,6 +6957,11 @@ function calcTotal() {
 
             if (editingId) {
                 nextBillNo = document.getElementById("bill_number").value;
+            } else if (isSkippedBillMode()) {
+                nextBillNo = await validateSkippedBillNumber(
+                    seriesCode,
+                    document.getElementById("bill_number").value
+                );
             } else {
                 if (docType === "sales" || docType === "sales_pack") {
                     const { data, error } = await sb.rpc('get_next_sales_number', { p_series: seriesCode });

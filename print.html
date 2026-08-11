@@ -525,9 +525,7 @@ const savedTotalCandidates = type === "sales"
         ? [head.packing_amount, head.invoice_amount, head.total_amount]
         : [head.total_amount, head.invoice_amount, head.packing_amount];
 const savedDocumentTotal = savedTotalCandidates
-    .map(value => value === null || value === undefined || value === ""
-        ? NaN
-        : Number(value))
+    .map(value => Number(value))
     .find(value => Number.isFinite(value));
 let titleText =
 type==="quotation" ? "QUOTATION" :

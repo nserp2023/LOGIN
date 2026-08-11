@@ -949,9 +949,29 @@
       return hsnData.find(item => String(item.hsn_code || "").trim().toUpperCase() === wanted) || null;
     }
 
-    function applyHSNGST(row){
+    async function applyHSNGST(row){
       const fields = getRowFields(row);
-      const match = findHSN(fields.hsn?.value);
+      const requestedCode = String(fields.hsn?.value || "").trim().toUpperCase();
+      if(!requestedCode || !fields.gstp) return false;
+
+      let match = findHSN(requestedCode);
+      if(!match){
+        const { data, error } = await sb
+          .from("hsn_codes")
+          .select("hsn_code,gst_percent,cgst_percent,sgst_percent,igst_percent")
+          .ilike("hsn_code", requestedCode)
+          .limit(1)
+          .maybeSingle();
+        if(error){
+          console.warn(`Unable to look up HSN ${requestedCode}:`, error);
+          return false;
+        }
+        match = data || null;
+        if(match && !findHSN(match.hsn_code)) hsnData.push(match);
+      }
+
+      // Ignore a delayed response when the user has already typed another code.
+      if(String(fields.hsn?.value || "").trim().toUpperCase() !== requestedCode) return false;
       if(!match || !fields.gstp) return false;
       fields.gstp.value = num(match.gst_percent);
       calculateRow(row);
@@ -1548,8 +1568,19 @@ if (baseLanding > 0) {
         if(item) fillRowFromStock(wrap, item);
       });
 
-      hsn.addEventListener("input", () => applyHSNGST(wrap));
+      let hsnLookupTimer = null;
+      hsn.addEventListener("input", () => {
+        clearTimeout(hsnLookupTimer);
+        if(findHSN(hsn.value)){
+          applyHSNGST(wrap);
+        }else{
+          hsnLookupTimer = setTimeout(() => applyHSNGST(wrap), 250);
+        }
+      });
       hsn.addEventListener("change", () => applyHSNGST(wrap));
+      hsn.addEventListener("keydown", (event) => {
+        if(event.key === "Enter") applyHSNGST(wrap);
+      });
 
       [qty,price,disc,gstp,landing,p1p,p1,p1g,p2p,p2,p2g,p3p,p3,p3g].forEach(el=>{
         el.addEventListener("input", () => calculateRow(wrap));

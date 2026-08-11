@@ -515,6 +515,20 @@ let container=document.getElementById("pages");
 let totalTaxable=0;
 let totalGst=0;
 let gstMap={};
+// The report uses the total saved on the document header.  Do the same here
+// instead of rebuilding the final payable amount only from item rows, because
+// older bills and manually adjusted bills can contain a header-level rounding
+// adjustment (for example, W-4329).
+const savedTotalCandidates = type === "sales"
+    ? [head.invoice_amount, head.total_amount]
+    : type === "sales_pack"
+        ? [head.packing_amount, head.invoice_amount, head.total_amount]
+        : [head.total_amount, head.invoice_amount, head.packing_amount];
+const savedDocumentTotal = savedTotalCandidates
+    .map(value => value === null || value === undefined || value === ""
+        ? NaN
+        : Number(value))
+    .find(value => Number.isFinite(value));
 let titleText =
 type==="quotation" ? "QUOTATION" :
 type==="sales_order" ? "SALES ORDER" :
@@ -694,6 +708,12 @@ Scan to Pay<br>
 
 if(p === pages-1){
 
+const calculatedTotal = totalTaxable + totalGst;
+const documentTotal = Number.isFinite(savedDocumentTotal)
+    ? savedDocumentTotal
+    : Math.round(calculatedTotal);
+const roundOff = documentTotal - calculatedTotal;
+
 html+=`
 <tr><td>&nbsp;GST%</td><td>AMOUNT</td><td>CGST</td><td>SGST</td><td>Total</td></tr>`;
 
@@ -755,12 +775,12 @@ html+=`
 
 <tr>
 <td>Round Off</td>
-<td>${(Math.round(totalTaxable+totalGst)-(totalTaxable+totalGst)).toFixed(2)}</td>
+<td>${roundOff.toFixed(2)}</td>
 </tr>
 
 <tr>
 <td>Total</td>
-<td>${Math.round(totalTaxable+totalGst).toFixed(2)}</td>
+<td>${documentTotal.toFixed(2)}</td>
 </tr>
 `;
 
@@ -804,7 +824,9 @@ container.innerHTML = packingHTML + originalHTML;
 
 /* QR */
 
-let grand = Math.round(totalTaxable + totalGst);
+let grand = Number.isFinite(savedDocumentTotal)
+    ? savedDocumentTotal
+    : Math.round(totalTaxable + totalGst);
 
 let qr = `upi://pay?pa=q137103198@ybl&pn=Vajra Lights&am=${grand}&cu=INR`;
 

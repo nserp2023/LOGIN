@@ -706,13 +706,13 @@ Scan to Pay<br>
 
 <table class="gst-summary">`;
 
-if(p === pages-1){
-
 const calculatedTotal = totalTaxable + totalGst;
 const documentTotal = Number.isFinite(savedDocumentTotal)
     ? savedDocumentTotal
     : Math.round(calculatedTotal);
 const roundOff = documentTotal - calculatedTotal;
+
+if(p === pages-1){
 
 html+=`
 <tr><td>&nbsp;GST%</td><td>AMOUNT</td><td>CGST</td><td>SGST</td><td>Total</td></tr>`;

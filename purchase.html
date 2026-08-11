@@ -670,6 +670,7 @@
     let dropdownAnchor = null;
     let isKeyboardNavigating = false;
     let stockData = [];
+    let hsnData = [];
     let duplicateInvoiceFound = false;
     let loadedPurchaseId = null;
     let originalItemsSnapshot = [];
@@ -928,6 +929,72 @@
       }
 
       stockData = mergeStockItems(sources);
+    }
+
+    async function loadHSNData(){
+      const { data, error } = await sb
+        .from("hsn_codes")
+        .select("hsn_code,gst_percent,cgst_percent,sgst_percent,igst_percent");
+      if(error){
+        console.warn("HSN master could not be loaded:", error);
+        hsnData = [];
+        return;
+      }
+      hsnData = Array.isArray(data) ? data : [];
+    }
+
+    function findHSN(code){
+      const wanted = String(code || "").trim().toUpperCase();
+      if(!wanted) return null;
+      return hsnData.find(item => String(item.hsn_code || "").trim().toUpperCase() === wanted) || null;
+    }
+
+    function applyHSNGST(row){
+      const fields = getRowFields(row);
+      const match = findHSN(fields.hsn?.value);
+      if(!match || !fields.gstp) return false;
+      fields.gstp.value = num(match.gst_percent);
+      calculateRow(row);
+      return true;
+    }
+
+    async function saveMissingHSNCodes(items){
+      const unique = new Map();
+      (items || []).forEach(item => {
+        const hsnCode = String(item.hsn_code || "").trim().toUpperCase();
+        if(hsnCode && !unique.has(hsnCode)) unique.set(hsnCode, item);
+      });
+
+      for(const [hsnCode, item] of unique){
+        if(findHSN(hsnCode)) continue;
+
+        const { data: existing, error: lookupError } = await sb
+          .from("hsn_codes")
+          .select("hsn_code,gst_percent,cgst_percent,sgst_percent,igst_percent")
+          .eq("hsn_code", hsnCode)
+          .maybeSingle();
+        if(lookupError) throw new Error(`Unable to check HSN ${hsnCode}: ${lookupError.message}`);
+        if(existing){
+          hsnData.push(existing);
+          continue;
+        }
+
+        const enteredGST = Number(item.gst_percent);
+        const gst = Number.isFinite(enteredGST) ? Math.max(0, enteredGST) : 0;
+        const payload = {
+          hsn_code: hsnCode,
+          description: String(item.item_name || `Added from purchase (${hsnCode})`).trim(),
+          gst_percent: Number(gst.toFixed(2)),
+          cgst_percent: Number((gst / 2).toFixed(2)),
+          sgst_percent: Number((gst / 2).toFixed(2)),
+          igst_percent: Number(gst.toFixed(2))
+        };
+        const { error: insertError } = await sb.from("hsn_codes").insert([payload]);
+        if(insertError && insertError.code !== "23505"){
+          throw new Error(`Unable to save new HSN ${hsnCode}: ${insertError.message}`);
+        }
+        hsnData.push(payload);
+      }
     }
 
     function searchStock(query, field, selectedDepartment = "") {
@@ -1481,6 +1548,9 @@ if (baseLanding > 0) {
         if(item) fillRowFromStock(wrap, item);
       });
 
+      hsn.addEventListener("input", () => applyHSNGST(wrap));
+      hsn.addEventListener("change", () => applyHSNGST(wrap));
+
       [qty,price,disc,gstp,landing,p1p,p1,p1g,p2p,p2,p2g,p3p,p3,p3g].forEach(el=>{
         el.addEventListener("input", () => calculateRow(wrap));
       });
@@ -1948,6 +2018,15 @@ if (baseLanding > 0) {
 
       await ensureSupplierExists();
 
+      try{
+        await saveMissingHSNCodes(items);
+      }catch(error){
+        status.innerHTML = `<span class="err">Save stopped: ${error.message}</span>`;
+        byId("saveBtn").disabled = false;
+        syncStickySaveState();
+        return;
+      }
+
       if(isEditMode){
         await updateExistingPurchase(inv, items, status);
         return;
@@ -2285,7 +2364,7 @@ if (baseLanding > 0) {
       }
       setupColumnControls();
       await initInvoice();
-      await loadStockData();
+      await Promise.all([loadStockData(), loadHSNData()]);
       if(editId){
         purchaseDraftReady = false;
         try{

@@ -683,6 +683,29 @@
     const num = v => (v === "" || v == null || isNaN(Number(v)) ? 0 : Number(v));
     const todayISO = () => new Date().toISOString().slice(0,10);
 
+    function normalizeDateForDb(value){
+      const raw = String(value || "").trim();
+      if(!raw) return null;
+
+      let year, month, day;
+      let match = raw.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T\s].*)?$/);
+      if(match){
+        [, year, month, day] = match;
+      } else {
+        match = raw.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+        if(!match) return null;
+        [, day, month, year] = match;
+        month = month.padStart(2, "0");
+        day = day.padStart(2, "0");
+      }
+
+      const normalized = `${year}-${month}-${day}`;
+      const parsed = new Date(`${normalized}T00:00:00Z`);
+      return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0,10) === normalized
+        ? normalized
+        : null;
+    }
+
     let dropdown = null;
     let activeIndex = -1;
     let dropdownAnchor = null;
@@ -2155,20 +2178,32 @@
         return;
       }
 
+      const returnDateForDb = normalizeDateForDb(byId("returnDate").value);
+      const invoiceDateRaw = mode === "with_bill" ? loadedPurchase.invoice_date : byId("invoiceDate").value;
+      const invoiceDateForDb = normalizeDateForDb(invoiceDateRaw);
+      if(!returnDateForDb){
+        status.innerHTML = `<span class="err">Enter a valid return date.</span>`;
+        return;
+      }
+      if(invoiceDateRaw && !invoiceDateForDb){
+        status.innerHTML = `<span class="err">Original invoice date is invalid. Use DD/MM/YYYY or YYYY-MM-DD.</span>`;
+        return;
+      }
+
       byId("saveBtn").disabled = true;
       byId("saveBtnSticky").disabled = true;
       status.textContent = isEditMode ? "Updating purchase return..." : "Saving purchase return...";
 
       const headerPayload = {
         purchase_return_number: byId("purchaseReturnNumber").value.trim(),
-        return_date: byId("returnDate").value,
+        return_date: returnDateForDb,
         purchase_id: mode === "with_bill" ? loadedPurchase.id : null,
         purchase_number: mode === "with_bill" ? loadedPurchase.purchase_number : (mode === "discount_credit_note" ? "DISCOUNT CREDIT NOTE" : "WITHOUT BILL"),
         gst_number: mode === "with_bill" ? (loadedPurchase.gst_number || "") : byId("gstNumber").value.trim(),
         supplier_name: mode === "with_bill" ? (loadedPurchase.supplier_name || "") : byId("supplierName").value.trim(),
         address: mode === "with_bill" ? (loadedPurchase.address || "") : byId("supplierAddress").value.trim(),
         original_invoice_number: mode === "with_bill" ? (loadedPurchase.invoice_number || "") : byId("invoiceNumber").value.trim(),
-        original_invoice_date: mode === "with_bill" ? (loadedPurchase.invoice_date || null) : (byId("invoiceDate").value || null),
+        original_invoice_date: invoiceDateForDb,
         supplier_return_bill_number: mode === "discount_credit_note" ? null : (byId("supplierReturnBillNumber").value.trim() || null),
         total_amount: num(byId("invoiceAmount").value),
         round_off: num(byId("roundOff").value),

@@ -604,6 +604,7 @@
         <div class="field"><label>Supplier address</label><input id="supplierAddress" class="readonly" readonly /></div>
         <div class="field"><label id="invoiceNumberLabel">Original invoice no</label><input id="invoiceNumber" class="readonly" readonly /></div>
         <div class="field"><label id="invoiceDateLabel">Original invoice date</label><input id="invoiceDate" class="readonly" readonly /></div>
+        <div class="field" id="supplierReturnBillField"><label>Supplier credit note / return bill no</label><input id="supplierReturnBillNumber" class="manual-field" placeholder="TYPE NUMBER FROM SUPPLIER BILL" /></div>
         <div class="field"><label id="invoiceAmountLabel">Return amount</label><input id="invoiceAmount" class="readonly" readonly placeholder="0.00" /></div>
         <div class="field"><label>Round off</label><input id="roundOff" class="readonly" readonly /></div>
         <div class="field"><label id="payableLabel">Payable</label><input id="payable" class="readonly" readonly /></div>
@@ -786,6 +787,7 @@
         makeSupplierFieldsReadonly(true);
         makeCreditAmountEditable(false);
         setCreditNoteLabels(false);
+        byId("supplierReturnBillField").classList.remove("hide");
       } else if(currentMode === "without_bill") {
         byId("pageSubTitle").textContent = "Create purchase return without old purchase bill. Add items manually and save.";
         byId("modeInfoBadge").textContent = "WITHOUT PURCHASE BILL";
@@ -806,6 +808,7 @@
         makeSupplierFieldsReadonly(false);
         makeCreditAmountEditable(false);
         setCreditNoteLabels(false);
+        byId("supplierReturnBillField").classList.remove("hide");
       } else {
         byId("pageSubTitle").textContent = "Supplier discount / credit note entry without item stock movement.";
         byId("modeInfoBadge").textContent = "DISCOUNT CREDIT NOTE";
@@ -821,6 +824,7 @@
         makeSupplierFieldsReadonly(false);
         makeCreditAmountEditable(true);
         setCreditNoteLabels(true);
+        byId("supplierReturnBillField").classList.add("hide");
         byId("invoiceAmount").placeholder = "TYPE DISCOUNT CREDIT NOTE AMOUNT";
       }
 
@@ -1007,6 +1011,7 @@
       byId("supplierAddress").value = "";
       byId("invoiceNumber").value = "";
       byId("invoiceDate").value = "";
+      byId("supplierReturnBillNumber").value = "";
       byId("invoiceAmount").value = fmt2(0);
       byId("roundOff").value = fmt2(0);
       byId("payable").value = fmt2(0);
@@ -1819,6 +1824,7 @@
       byId("supplierAddress").value = header.address || "";
       byId("invoiceNumber").value = header.original_invoice_number || "";
       byId("invoiceDate").value = header.original_invoice_date || "";
+      byId("supplierReturnBillNumber").value = header.supplier_return_bill_number || "";
       byId("invoiceAmount").value = fmt2(header.total_amount || 0);
       byId("roundOff").value = fmt2(header.round_off || 0);
       byId("payable").value = fmt2(header.payable || 0);
@@ -1897,6 +1903,7 @@
       const supAddress = byId("supplierAddress").value || "";
       const invNo = byId("invoiceNumber").value || "";
       const invDate = byId("invoiceDate").value || "";
+      const supplierReturnBillNo = byId("supplierReturnBillNumber").value || "";
       const roundOff = num(byId("roundOff").value);
       const payable = num(byId("payable").value);
       const invoiceAmount = num(byId("invoiceAmount").value);
@@ -1988,6 +1995,9 @@
           <td colspan="2"><div class="lbl">Supplier Address</div><div class="val">${escPrint(supAddress)}</div></td>
           <td><div class="lbl">Original Invoice No</div><div class="val">${escPrint(invNo)}</div></td>
           <td><div class="lbl">Original Invoice Date</div><div class="val">${escPrint(invDate)}</div></td>
+        </tr>
+        <tr>
+          <td colspan="4"><div class="lbl">Supplier Credit Note / Return Bill No</div><div class="val">${escPrint(supplierReturnBillNo)}</div></td>
         </tr>
       </table>
       <table class="items">
@@ -2159,6 +2169,7 @@
         address: mode === "with_bill" ? (loadedPurchase.address || "") : byId("supplierAddress").value.trim(),
         original_invoice_number: mode === "with_bill" ? (loadedPurchase.invoice_number || "") : byId("invoiceNumber").value.trim(),
         original_invoice_date: mode === "with_bill" ? (loadedPurchase.invoice_date || null) : (byId("invoiceDate").value || null),
+        supplier_return_bill_number: mode === "discount_credit_note" ? null : (byId("supplierReturnBillNumber").value.trim() || null),
         total_amount: num(byId("invoiceAmount").value),
         round_off: num(byId("roundOff").value),
         payable: num(byId("payable").value)
@@ -2311,7 +2322,7 @@
     });
 
     byId("returnMode").addEventListener("change", () => applyModeChange(true));
-    ["gstNumber", "supplierName", "supplierAddress", "invoiceNumber", "invoiceDate", "returnDate", "invoiceAmount"].forEach(id => {
+    ["gstNumber", "supplierName", "supplierAddress", "invoiceNumber", "invoiceDate", "supplierReturnBillNumber", "returnDate", "invoiceAmount"].forEach(id => {
       byId(id).addEventListener("input", () => { updateSummaryFromItems(); maybeEnableSave(); });
       byId(id).addEventListener("change", () => { updateSummaryFromItems(); maybeEnableSave(); });
     });

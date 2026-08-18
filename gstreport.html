@@ -647,7 +647,7 @@
 
     <div id="b2bSection" class="section">
       <div class="section-head">
-        <div class="section-title">B2B SALES - GSTIN + HSN</div>
+        <div class="section-title">B2B SALES - BILL WISE GST RATE WISE</div>
         <div class="section-tools">
           <button onclick="exportReport('b2b','csv')">EXPORT CSV</button>
           <button onclick="exportReport('b2b','excel')">EXPORT EXCEL</button>
@@ -666,7 +666,6 @@
               <th>GSTIN</th>
               <th>Invoice No</th>
               <th>Invoice Date</th>
-              <th>HSN</th>
               <th>GST %</th>
               <th class="num">Taxable Value</th>
               <th class="num">GST Value</th>
@@ -1186,7 +1185,7 @@
       salesSummaryRows = groupSalesByBillAndGst(salesItemRows);
       purchaseSummaryRows = groupPurchaseByBillAndGst(purchaseItemRows);
       returnSummaryRows = groupReturnByBillAndGst(returnRows);
-      b2bRows = groupB2BByBillGstHSN(salesItemRows);
+      b2bRows = groupB2BByBillAndGst(salesItemRows);
       b2cRows = salesSummaryRows.filter(r => !isValidGSTIN(r.customer_gst));
       hsnSummaryRows = generateHSNSummary(salesItemRows);
       b2bHsnSummaryRows = generateB2BHSNSummary(salesItemRows);
@@ -1605,11 +1604,17 @@
         .sort((a,b) => new Date(a.return_date) - new Date(b.return_date) || num(a.return_number)-num(b.return_number) || num(a.gst_percent)-num(b.gst_percent));
     }
 
-    function groupB2BByBillGstHSN(rows){
+    function groupB2BByBillAndGst(rows){
       const map = new Map();
+      const billTotals = new Map();
+      const b2bItems = rows.filter(r => isValidGSTIN(r.customer_gst));
 
-      rows.filter(r => isValidGSTIN(r.customer_gst)).forEach(r => {
-        const key = `${r.bill_id}_${r.gst_percent}_${r.hsn_code}`;
+      b2bItems.forEach(r => {
+        billTotals.set(r.bill_id, (billTotals.get(r.bill_id) || 0) + num(r.total_value));
+      });
+
+      b2bItems.forEach(r => {
+        const key = `${r.bill_id}_${r.gst_percent}`;
         if(!map.has(key)){
           map.set(key, {
             bill_id: r.bill_id,
@@ -1621,18 +1626,16 @@
             customer_gst: r.customer_gst,
             invoice_number: r.invoice_number,
             invoice_date: r.invoice_date,
-            hsn_code: r.hsn_code,
             gst_percent: r.gst_percent,
             taxable_value: 0,
             gst_value: 0,
-            total_value: 0
+            total_value: billTotals.get(r.bill_id) || 0
           });
         }
 
         const row = map.get(key);
         row.taxable_value += num(r.taxable_value);
         row.gst_value += num(r.gst_value);
-        row.total_value += num(r.total_value);
       });
 
       return Array.from(map.values())
@@ -1780,7 +1783,7 @@
     function renderB2BTable(rows){
       const body = document.getElementById("b2bBody");
       if(!rows.length){
-        body.innerHTML = `<tr><td colspan="14" class="empty">No B2B sales found</td></tr>`;
+        body.innerHTML = `<tr><td colspan="13" class="empty">No B2B sales found</td></tr>`;
         return;
       }
 
@@ -1795,7 +1798,6 @@
           <td>${escapeHtml(r.customer_gst)}</td>
           <td>${escapeHtml(r.invoice_number)}</td>
           <td>${formatDate(r.invoice_date)}</td>
-          <td>${escapeHtml(r.hsn_code)}</td>
           <td class="num">${fmt(r.gst_percent)}</td>
           <td class="num">${fmt(r.taxable_value)}</td>
           <td class="num">${fmt(r.gst_value)}</td>
@@ -2159,7 +2161,6 @@
               INVOICE_NUMBER: makeInvoiceNumber(r.series_code, r.invoice_number, r.sales_number),
               CUSTOMER: r.customer_name,
               GSTIN: r.customer_gst,
-              HSN: r.hsn_code,
               GST_PERCENT: r.gst_percent,
               TAXABLE_VALUE: r.taxable_value,
               GST_VALUE: r.gst_value,

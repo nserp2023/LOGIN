@@ -227,14 +227,29 @@ async function fetchCustomerAccountOptions(query){
     if(mobile.length>=3) returnQ=returnQ.ilike('customer_mobile',`%${mobile}%`);
     else returnQ=returnQ.or(`customer_name.ilike.%${escapeOrValue(search)}%,customer_mobile.ilike.%${escapeOrValue(search)}%`);
 
-    const cashQ=sb.from('cash_transactions').select('txn_type,party_name,amount,remarks,reference_type,voucher_no,approval_status').in('txn_type',['receipt','payment']).eq('approval_status','approved').limit(5000);
-
-    const [salesRes,returnRes,cashRes]=await Promise.all([salesQ,returnQ,cashQ]);
+    const [salesRes,returnRes]=await Promise.all([salesQ,returnQ]);
     if(salesRes.error){ console.warn('Customer account balance load error:',salesRes.error); return []; }
     const grouped=new Map();
     const ensure=(name,mob)=>{ const key=normaliseCustomerKey(name,mob); if(!key||key==='|') return null; if(!grouped.has(key)) grouped.set(key,{kind:'customer_credit_refund',customer_name:name||'',customer_mobile:mob||'',account_balance:0}); return grouped.get(key); };
     for(const r of salesRes.data||[]){ const g=ensure(r.customer_name,r.customer_mobile); if(g) g.account_balance+=num(r.invoice_amount); }
     if(!returnRes.error){ for(const r of returnRes.data||[]){ if(!isAcceptedCreditReturn(r)||normalizeReturnType(r.return_payment_type||r.settlement_mode||r.payment_type||'')!=='CREDIT') continue; const g=ensure(r.customer_name,r.customer_mobile); if(g) g.account_balance-=getCreditReturnAmount(r); } }
+
+    const cashFilters=[];
+    for(const customer of grouped.values()){
+        const name=escapeOrValue(customer.customer_name);
+        const customerMobile=String(customer.customer_mobile||'').replace(/\D/g,'');
+        if(name){ cashFilters.push(`party_name.ilike.%${name}%`); cashFilters.push(`remarks.ilike.%${name}%`); }
+        if(customerMobile){ cashFilters.push(`party_name.ilike.%${customerMobile}%`); cashFilters.push(`remarks.ilike.%${customerMobile}%`); }
+    }
+    let cashRes={data:[],error:null};
+    if(cashFilters.length){
+        cashRes=await sb.from('cash_transactions')
+            .select('txn_type,party_name,amount,remarks,reference_type,voucher_no,approval_status')
+            .in('txn_type',['receipt','payment'])
+            .eq('approval_status','approved')
+            .or(cashFilters.join(','))
+            .limit(5000);
+    }
     if(!cashRes.error){
         for(const r of cashRes.data||[]){
             const ref=normalize(r.reference_type);

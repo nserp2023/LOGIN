@@ -346,6 +346,10 @@
       filter:grayscale(.1);
     }
 
+    .items-disabled #downloadExcelSampleBtn{
+      pointer-events:auto;
+    }
+
     .actions{
       display:flex;
       justify-content:flex-end;
@@ -595,6 +599,7 @@
 
       <div class="column-tools">
         <button class="btn small" id="importExcelBtn" type="button">Import Excel</button>
+        <button class="btn small" id="downloadExcelSampleBtn" type="button">Download Sample Excel</button>
         <input id="importExcelFile" type="file" accept=".xlsx,.xls,.csv" hidden />
         <button class="btn small" id="unhideColumnsBtn" type="button">Unhide All Columns</button>
       </div>
@@ -1731,6 +1736,40 @@ if (baseLanding > 0) {
       }
     }
 
+    function downloadPurchaseExcelSample(){
+      const status = byId("importExcelStatus");
+      if(typeof XLSX === "undefined"){
+        status.innerHTML = `<span class="err">Excel generator could not be loaded. Check the internet connection and try again.</span>`;
+        return;
+      }
+
+      const sampleRows = [{
+        "HSN Code":"8536",
+        "Item Code":"ITEM001",
+        "Barcode":"8901234567890",
+        "Item Name":"SAMPLE ITEM",
+        "Department":"ELECTRICAL",
+        "Qty":10,
+        "Price":100,
+        "GST%":18,
+        "Landing":118,
+        "P1":140,
+        "P2":150,
+        "P3":160
+      }];
+      const sheet = XLSX.utils.json_to_sheet(sampleRows, {
+        header:["HSN Code", "Item Code", "Barcode", "Item Name", "Department", "Qty", "Price", "GST%", "Landing", "P1", "P2", "P3"]
+      });
+      sheet["!cols"] = [
+        {wch:12}, {wch:14}, {wch:18}, {wch:28}, {wch:16}, {wch:10},
+        {wch:12}, {wch:10}, {wch:12}, {wch:12}, {wch:12}, {wch:12}
+      ];
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, sheet, "Purchase Items");
+      XLSX.writeFile(workbook, "purchase_import_sample.xlsx");
+      status.innerHTML = `<span class="ok">Sample Excel sheet downloaded.</span>`;
+    }
+
     function calculateRow(row, silent=false){
       const { hsn, code, barcode, name, department, qty, price, disc, total, gstp, totalG, purch, purchG, landing, p1p, p1, p1g, p2p, p2, p2g, p3p, p3, p3g } = getRowFields(row);
 
@@ -2518,6 +2557,7 @@ if (baseLanding > 0) {
       byId("addRowBtn").addEventListener("click", ()=> newItemRow());
       byId("addRowBtnSticky").addEventListener("click", ()=> newItemRow());
       byId("importExcelBtn").addEventListener("click", ()=> byId("importExcelFile").click());
+      byId("downloadExcelSampleBtn").addEventListener("click", downloadPurchaseExcelSample);
       byId("importExcelFile").addEventListener("change", event => importPurchaseExcel(event.target.files?.[0]));
       byId("saveBtn").addEventListener("click", saveAll);
       byId("saveBtnSticky").addEventListener("click", ()=>{

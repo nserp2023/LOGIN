@@ -594,8 +594,12 @@
       </div>
 
       <div class="column-tools">
+        <button class="btn small" id="importExcelBtn" type="button">Import Excel</button>
+        <input id="importExcelFile" type="file" accept=".xlsx,.xls,.csv" hidden />
         <button class="btn small" id="unhideColumnsBtn" type="button">Unhide All Columns</button>
       </div>
+
+      <div class="status" id="importExcelStatus" aria-live="polite"></div>
 
       <div class="table-container">
         <div class="grid hdr">
@@ -651,6 +655,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="supabaseClient.js"></script>
   <script src="page_permissions.js"></script>
   <script>
@@ -811,6 +816,7 @@
       const panel = byId("itemsPanel");
       const addRowBtn = byId("addRowBtn");
       const addRowBtnSticky = byId("addRowBtnSticky");
+      const importExcelBtn = byId("importExcelBtn");
       const saveBtn = byId("saveBtn");
 
       if(enabled){
@@ -821,6 +827,7 @@
 
       addRowBtn.disabled = !enabled;
       addRowBtnSticky.disabled = !enabled;
+      if(importExcelBtn) importExcelBtn.disabled = !enabled;
 
       if(!enabled){
         saveBtn.disabled = true;
@@ -1487,6 +1494,13 @@ if (baseLanding > 0) {
         return s;
       };
 
+      const ensureDepartmentOption = (select, value) => {
+        const departmentValue = String(value || "").trim().toUpperCase();
+        if(!departmentValue) return;
+        const exists = Array.from(select.options).some(option => option.value === departmentValue);
+        if(!exists) select.add(new Option(departmentValue, departmentValue));
+      };
+
       const hsn = mk("HSN");
       const code = mk("Code");
       const barcode = mk("Barcode");
@@ -1515,7 +1529,8 @@ if (baseLanding > 0) {
       barcode.value = prefill.barcode ?? "";
       name.value = prefill.item_name ?? "";
       hsn.value  = prefill.hsn_code ?? "";
-      department.value = String(prefill.department || "").toUpperCase();
+      ensureDepartmentOption(department, prefill.department);
+      department.value = String(prefill.department || "").trim().toUpperCase();
       qty.value  = prefill.quantity ?? "";
       price.value= prefill.price ?? prefill.purchase_price ?? "";
       disc.value = prefill.discount_percent ?? "";
@@ -1622,6 +1637,98 @@ if (baseLanding > 0) {
 
       calculateRow(wrap);
       return wrap;
+    }
+
+    function normalizeExcelHeader(value){
+      return String(value ?? "").trim().toLowerCase().replace(/[%]/g, "percent").replace(/[^a-z0-9]+/g, "");
+    }
+
+    function excelCell(row, aliases){
+      for(const alias of aliases){
+        const key = normalizeExcelHeader(alias);
+        if(Object.prototype.hasOwnProperty.call(row, key)) return row[key];
+      }
+      return "";
+    }
+
+    function mapExcelItem(sourceRow){
+      const row = {};
+      Object.entries(sourceRow || {}).forEach(([key, value]) => row[normalizeExcelHeader(key)] = value);
+
+      const value = aliases => excelCell(row, aliases);
+      const landing = value(["landing", "landing price"]);
+      const gst = value(["gst%", "gst percent", "gst"]);
+      const price1 = value(["p1", "price1", "price 1"]);
+      const price2 = value(["p2", "price2", "price 2"]);
+      const price3 = value(["p3", "price3", "price 3"]);
+      const landingNumber = num(landing);
+      const tierPercent = tier => tier !== "" && landingNumber > 0
+        ? fmt2(((num(tier) / landingNumber) - 1) * 100)
+        : "";
+
+      return {
+        hsn_code: value(["hsn code", "hsn", "hsncode"]),
+        item_code: value(["item code", "itemcode", "code"]),
+        barcode: value(["barcode", "bar code"]),
+        item_name: value(["item name", "itemname", "name"]),
+        department: value(["department", "dept"]),
+        quantity: value(["qty", "quantity"]),
+        price: value(["price", "purchase price", "rate"]),
+        discount_percent: value(["discount%", "disc%", "discount", "disc"]),
+        gst_percent: gst,
+        landing,
+        price1_percent: tierPercent(price1),
+        price1,
+        price2_percent: tierPercent(price2),
+        price2,
+        price3_percent: tierPercent(price3),
+        price3
+      };
+    }
+
+    function itemHasImportData(item){
+      return [item.hsn_code, item.item_code, item.barcode, item.item_name, item.department,
+        item.quantity, item.price, item.gst_percent, item.landing, item.price1, item.price2, item.price3]
+        .some(value => String(value ?? "").trim() !== "");
+    }
+
+    async function importPurchaseExcel(file){
+      const status = byId("importExcelStatus");
+      if(!file) return;
+      if(typeof XLSX === "undefined"){
+        status.innerHTML = `<span class="err">Excel reader could not be loaded. Check the internet connection and try again.</span>`;
+        return;
+      }
+      try{
+        status.textContent = "Reading spreadsheet...";
+        const workbook = XLSX.read(await file.arrayBuffer(), { type:"array" });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const records = XLSX.utils.sheet_to_json(sheet, { defval:"", raw:false });
+        const items = records.map(mapExcelItem).filter(itemHasImportData);
+        if(!items.length) throw new Error("No item rows were found in the first sheet.");
+
+        const existingRows = Array.from(document.querySelectorAll("#items .grid"));
+        existingRows.forEach(row => {
+          const fields = getRowFields(row);
+          const isBlank = ![fields.code, fields.barcode, fields.name, fields.qty, fields.price]
+            .some(field => String(field?.value || "").trim());
+          if(isBlank) row.remove();
+        });
+
+        for(const item of items){
+          const row = newItemRow(item);
+          if(!row) throw new Error("Complete valid invoice details before importing items.");
+          calculateRow(row, true);
+        }
+        updatePayableFromItems();
+        maybeEnableSave();
+        schedulePurchaseDraftSave();
+        status.innerHTML = `<span class="ok">Imported ${items.length} item${items.length === 1 ? "" : "s"}. Review or edit them, then click Save Purchase when ready.</span>`;
+      }catch(error){
+        status.innerHTML = `<span class="err">Import failed: ${error.message}</span>`;
+      }finally{
+        byId("importExcelFile").value = "";
+      }
     }
 
     function calculateRow(row, silent=false){
@@ -2410,6 +2517,8 @@ if (baseLanding > 0) {
       }
       byId("addRowBtn").addEventListener("click", ()=> newItemRow());
       byId("addRowBtnSticky").addEventListener("click", ()=> newItemRow());
+      byId("importExcelBtn").addEventListener("click", ()=> byId("importExcelFile").click());
+      byId("importExcelFile").addEventListener("change", event => importPurchaseExcel(event.target.files?.[0]));
       byId("saveBtn").addEventListener("click", saveAll);
       byId("saveBtnSticky").addEventListener("click", ()=>{
         if(!byId("saveBtnSticky").disabled) saveAll();

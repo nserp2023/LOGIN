@@ -202,11 +202,13 @@ async function showPartySuggestions(query){ const items=[]; const clean=query.tr
     if(txnType.value==='receipt' || txnType.value==='payment'){
         const accountOptions=await fetchCustomerAccountOptions(clean);
         accountOptions.forEach(x=>items.push(x));
-        const creditCustomerKeys=new Set(accountOptions.map(x=>normaliseCustomerKey(x.customer_name,x.customer_mobile)));
-        const autoOptions=await fetchCustomerAutoAllocationOptions(clean);
-        autoOptions.filter(x=>!creditCustomerKeys.has(normaliseCustomerKey(x.customer_name,x.customer_mobile))).forEach(x=>items.push(x));
-        const billOptions=await fetchCustomerCreditBills(clean);
-        billOptions.filter(x=>!creditCustomerKeys.has(normaliseCustomerKey(x.customer_name,x.customer_mobile))).forEach(x=>items.push(x));
+        if(txnType.value==='receipt'){
+            const creditCustomerKeys=new Set(accountOptions.map(x=>normaliseCustomerKey(x.customer_name,x.customer_mobile)));
+            const autoOptions=await fetchCustomerAutoAllocationOptions(clean);
+            autoOptions.filter(x=>!creditCustomerKeys.has(normaliseCustomerKey(x.customer_name,x.customer_mobile))).forEach(x=>items.push(x));
+            const billOptions=await fetchCustomerCreditBills(clean);
+            billOptions.filter(x=>!creditCustomerKeys.has(normaliseCustomerKey(x.customer_name,x.customer_mobile))).forEach(x=>items.push(x));
+        }
     }
     suggestionItems=dedupeSuggestionItems(items); renderSuggestions(suggestionItems,clean);
 }
@@ -241,7 +243,7 @@ async function fetchCustomerAccountOptions(query){
             if(!related) continue;
             const partyDigits=String(r.party_name||'').replace(/\D/g,'');
             const transactionText=normalize(`${r.party_name||''} ${r.remarks||''}`);
-            const g=Array.from(grouped.values()).find(x=>normalize(x.customer_name)===normalize(r.party_name)||(partyDigits&&partyDigits===String(x.customer_mobile||'').replace(/\D/g,''))||(x.customer_mobile&&transactionText.includes(String(x.customer_mobile).replace(/\D/g,''))));
+            const g=Array.from(grouped.values()).find(x=>loose(x.customer_name)===loose(r.party_name)||(partyDigits&&partyDigits===String(x.customer_mobile||'').replace(/\D/g,''))||(x.customer_mobile&&transactionText.includes(String(x.customer_mobile).replace(/\D/g,''))));
             if(g) g.account_balance+=(normalize(r.txn_type)==='payment'?num(r.amount):-num(r.amount));
         }
     }

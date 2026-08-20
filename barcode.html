@@ -1470,6 +1470,11 @@ function renderQueue(){
     updateFilledCount();
 }
 
+function updateFilledCount(){
+    const total = queueItems.reduce((sum, item) => sum + (parseInt(item.qty, 10) || 0), 0);
+    filledCount.textContent = total;
+}
+
 function changeQty(index, delta){
     if(!queueItems[index]) return;
     queueItems[index].qty += delta;

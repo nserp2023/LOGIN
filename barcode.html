@@ -450,6 +450,11 @@ body{
     font-size:12px;
 }
 
+.page-controls{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:0 14px 14px;padding:10px 12px;border:1px solid #dbe3ef;border-radius:12px;background:#f8fafc}
+.page-controls-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.page-controls select{min-width:145px}
+.page-summary{font-size:12px;color:#475569;font-weight:700}
+
 .info-line{
     margin-top:10px;
     font-size:12px;
@@ -552,7 +557,8 @@ body{
     .queue-panel,
     .footer-note,
     .panel-head,
-    .info-line{
+    .info-line,
+    .page-controls{
         display:none !important;
     }
 
@@ -602,7 +608,8 @@ body{
             <div class="stats">
                 <div class="stat">Sheet: 5 × 13 = 65 labels</div>
                 <div class="stat">Stock Loaded: <span id="stock_count">0</span></div>
-                <div class="stat">Filled: <span id="filled_count">0</span></div>
+                <div class="stat">Total Labels: <span id="filled_count">0</span></div>
+                <div class="stat">Pages: <span id="page_count">1</span></div>
             </div>
         </div>
 
@@ -691,7 +698,7 @@ body{
                     <h2>Sticker Queue</h2>
                     <small>Adjust quantities before printing</small>
                 </div>
-                <button class="btn btn-primary" onclick="window.print()">PRINT</button>
+                <button class="btn btn-primary" onclick="printSelectedPage()">PRINT SELECTED PAGE</button>
             </div>
             <div id="queue" class="queue"></div>
         </div>
@@ -702,6 +709,15 @@ body{
                     <h2>Print Preview</h2>
                     <small>A4 sheet preview for 65 stickers</small>
                 </div>
+            </div>
+            <div class="page-controls">
+                <div class="page-controls-actions">
+                    <button class="btn" type="button" onclick="changePage(-1)">PREVIOUS</button>
+                    <select id="page_selector" class="input" aria-label="Select barcode page"></select>
+                    <button class="btn" type="button" onclick="changePage(1)">NEXT</button>
+                </div>
+                <div id="page_summary" class="page-summary">Page 1 of 1</div>
+                <button class="btn btn-primary" type="button" onclick="printSelectedPage()">PRINT THIS PAGE</button>
             </div>
             <div class="labels-wrap">
                 <div class="sheet">
@@ -727,6 +743,7 @@ let suggestionData = [];
 let selectedSuggestionIndex = -1;
 let selectedItem = null;
 let queueItems = [];
+let currentPage = 1;
 let stockLoaded = false;
 let stockLoading = false;
 
@@ -737,6 +754,9 @@ const suggestionsBox = document.getElementById('suggestions');
 const queueBox = document.getElementById('queue');
 const labelsBox = document.getElementById('labels');
 const filledCount = document.getElementById('filled_count');
+const pageCount = document.getElementById('page_count');
+const pageSelector = document.getElementById('page_selector');
+const pageSummary = document.getElementById('page_summary');
 const stockCount = document.getElementById('stock_count');
 const loadStatus = document.getElementById('load_status');
 const priceTypeInput = document.getElementById('price_type');
@@ -850,6 +870,11 @@ function setupInputs(){
 
     printValueTypeInput.addEventListener('change', () => {
         renderQueue();
+        renderLabels();
+    });
+
+    pageSelector.addEventListener('change', () => {
+        currentPage = Math.max(1, parseInt(pageSelector.value, 10) || 1);
         renderLabels();
     });
 
@@ -1488,12 +1513,16 @@ function flattenQueue(){
             });
         }
     });
-    return out.slice(0, 65);
+    return out;
 }
 
 function renderLabels(){
     labelsBox.innerHTML = '';
-    const flat = flattenQueue();
+    const allLabels = flattenQueue();
+    const totalPages = Math.max(1, Math.ceil(allLabels.length / 65));
+    currentPage = Math.min(Math.max(1, currentPage), totalPages);
+    const startIndex = (currentPage - 1) * 65;
+    const flat = allLabels.slice(startIndex, startIndex + 65);
 
     for(let i = 0; i < 65; i++){
         const item = flat[i];
@@ -1540,12 +1569,41 @@ function renderLabels(){
         labelsBox.appendChild(div);
     }
 
-    updateFilledCount();
+    updatePageControls(allLabels.length, totalPages, flat.length);
 }
 
-function updateFilledCount(){
-    const total = queueItems.reduce((sum, item) => sum + (parseInt(item.qty, 10) || 0), 0);
-    filledCount.textContent = Math.min(total, 65);
+function updatePageControls(total, totalPages, labelsOnPage){
+    filledCount.textContent = total;
+    pageCount.textContent = totalPages;
+    pageSelector.innerHTML = '';
+
+    for(let page = 1; page <= totalPages; page++){
+        const first = ((page - 1) * 65) + 1;
+        const last = Math.min(page * 65, total);
+        const option = document.createElement('option');
+        option.value = page;
+        option.textContent = total ? `Page ${page} (labels ${first}-${last})` : 'Page 1 (empty)';
+        option.selected = page === currentPage;
+        pageSelector.appendChild(option);
+    }
+
+    pageSummary.textContent = `Page ${currentPage} of ${totalPages} - ${labelsOnPage} label${labelsOnPage === 1 ? '' : 's'} on this page`;
+}
+
+function changePage(offset){
+    const totalPages = Math.max(1, Math.ceil(flattenQueue().length / 65));
+    const nextPage = Math.min(totalPages, Math.max(1, currentPage + offset));
+    if(nextPage === currentPage) return;
+    currentPage = nextPage;
+    renderLabels();
+}
+
+function printSelectedPage(){
+    if(!flattenQueue().length){
+        alert('Add barcode labels before printing.');
+        return;
+    }
+    window.print();
 }
 
 function escapeHtml(str){

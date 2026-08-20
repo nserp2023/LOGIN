@@ -579,15 +579,22 @@ body{
     }
 
     .labels-wrap{
+        display:block !important;
+        visibility:visible !important;
         padding:0;
         margin:0;
     }
 
     #labels{
+        display:grid !important;
+        visibility:visible !important;
         width:210mm;
         margin:0;
         gap:0;
     }
+
+    #labels .label,
+    #labels .label *{visibility:visible !important}
 
     .label{
         border:none;
@@ -743,7 +750,7 @@ let suggestionData = [];
 let selectedSuggestionIndex = -1;
 let selectedItem = null;
 let queueItems = [];
-let currentPage = 1;
+let barcodeCurrentPage = 1;
 let stockLoaded = false;
 let stockLoading = false;
 
@@ -754,9 +761,9 @@ const suggestionsBox = document.getElementById('suggestions');
 const queueBox = document.getElementById('queue');
 const labelsBox = document.getElementById('labels');
 const filledCount = document.getElementById('filled_count');
-const pageCount = document.getElementById('page_count');
-const pageSelector = document.getElementById('page_selector');
-const pageSummary = document.getElementById('page_summary');
+const barcodePageCount = document.getElementById('page_count');
+const barcodePageSelector = document.getElementById('page_selector');
+const barcodePageSummary = document.getElementById('page_summary');
 const stockCount = document.getElementById('stock_count');
 const loadStatus = document.getElementById('load_status');
 const priceTypeInput = document.getElementById('price_type');
@@ -873,8 +880,8 @@ function setupInputs(){
         renderLabels();
     });
 
-    pageSelector.addEventListener('change', () => {
-        currentPage = Math.max(1, parseInt(pageSelector.value, 10) || 1);
+    barcodePageSelector.addEventListener('change', () => {
+        barcodeCurrentPage = Math.max(1, parseInt(barcodePageSelector.value, 10) || 1);
         renderLabels();
     });
 
@@ -1520,8 +1527,8 @@ function renderLabels(){
     labelsBox.innerHTML = '';
     const allLabels = flattenQueue();
     const totalPages = Math.max(1, Math.ceil(allLabels.length / 65));
-    currentPage = Math.min(Math.max(1, currentPage), totalPages);
-    const startIndex = (currentPage - 1) * 65;
+    barcodeCurrentPage = Math.min(Math.max(1, barcodeCurrentPage), totalPages);
+    const startIndex = (barcodeCurrentPage - 1) * 65;
     const flat = allLabels.slice(startIndex, startIndex + 65);
 
     for(let i = 0; i < 65; i++){
@@ -1574,8 +1581,8 @@ function renderLabels(){
 
 function updatePageControls(total, totalPages, labelsOnPage){
     filledCount.textContent = total;
-    pageCount.textContent = totalPages;
-    pageSelector.innerHTML = '';
+    barcodePageCount.textContent = totalPages;
+    barcodePageSelector.innerHTML = '';
 
     for(let page = 1; page <= totalPages; page++){
         const first = ((page - 1) * 65) + 1;
@@ -1583,18 +1590,18 @@ function updatePageControls(total, totalPages, labelsOnPage){
         const option = document.createElement('option');
         option.value = page;
         option.textContent = total ? `Page ${page} (labels ${first}-${last})` : 'Page 1 (empty)';
-        option.selected = page === currentPage;
-        pageSelector.appendChild(option);
+        option.selected = page === barcodeCurrentPage;
+        barcodePageSelector.appendChild(option);
     }
 
-    pageSummary.textContent = `Page ${currentPage} of ${totalPages} - ${labelsOnPage} label${labelsOnPage === 1 ? '' : 's'} on this page`;
+    barcodePageSummary.textContent = `Page ${barcodeCurrentPage} of ${totalPages} - ${labelsOnPage} label${labelsOnPage === 1 ? '' : 's'} on this page`;
 }
 
 function changePage(offset){
     const totalPages = Math.max(1, Math.ceil(flattenQueue().length / 65));
-    const nextPage = Math.min(totalPages, Math.max(1, currentPage + offset));
-    if(nextPage === currentPage) return;
-    currentPage = nextPage;
+    const nextPage = Math.min(totalPages, Math.max(1, barcodeCurrentPage + offset));
+    if(nextPage === barcodeCurrentPage) return;
+    barcodeCurrentPage = nextPage;
     renderLabels();
 }
 
@@ -1603,7 +1610,8 @@ function printSelectedPage(){
         alert('Add barcode labels before printing.');
         return;
     }
-    window.print();
+    renderLabels();
+    requestAnimationFrame(() => window.print());
 }
 
 function escapeHtml(str){

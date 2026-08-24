@@ -255,7 +255,7 @@ async function fetchCustomerAccountOptions(query){
         for(const r of cashRes.data||[]){
             const ref=normalize(r.reference_type);
             const text=loose(`${r.remarks||''} ${r.voucher_no||''} ${r.reference_type||''}`);
-            const related=['sales_credit','customer_credit_auto','customer_credit_refund','customer_advance','sales_order','sales_order_advance','sales_order_advance_receipt','sales_order_conversion_receipt'].includes(ref)||text.includes('creditcollection')||text.includes('autoalloc')||text.includes('salesorderadvance')||text.includes('salesorderconversionreceipt')||text.includes('advancecreditreceipt')||text.includes('orderadvance')||text.includes('advancereceived')||text.includes('advancepaid');
+            const related=['sales_credit','sales_pack_credit','customer_credit_auto','customer_credit_refund','customer_advance','sales_order','sales_order_advance','sales_order_advance_receipt','sales_order_conversion_receipt'].includes(ref)||text.includes('creditcollection')||text.includes('autoalloc')||text.includes('salesorderadvance')||text.includes('salesorderconversionreceipt')||text.includes('advancecreditreceipt')||text.includes('orderadvance')||text.includes('advancereceived')||text.includes('advancepaid');
             if(!related) continue;
             const partyDigits=String(r.party_name||'').replace(/\D/g,'');
             const transactionText=normalize(`${r.party_name||''} ${r.remarks||''}`);

@@ -801,25 +801,38 @@
         return result;
     }
 
-    async function getBillProfitMap(type, billIds){
+    async function getBillProfitMap(type, billRows){
         const result = new Map();
         if(!canViewSalesProfit) return result;
 
         const itemSourceByType = {
             sales: { table:"sales_item_details", idField:"sales_id" },
-            sales_pack: { table:"sales_packing_item_details", idField:"packing_id" },
+            // A Sales + Packing document is backed by a normal Sales record.
+            // Use those authoritative sale rows because legacy packing-item rows
+            // may not contain the item code/prices required for profit.
+            sales_pack: { table:"sales_item_details", idField:"sales_id" },
             quotation: { table:"quotation_item_details", idField:"quotation_id" },
             sales_order: { table:"sales_order_item_details", idField:"sales_order_id" }
         };
         const itemSource = itemSourceByType[type];
         if(!itemSource) return result;
 
-        const normalizedBillIds = [...new Set((billIds || []).map(v => Number(v)).filter(Boolean))];
-        if(!normalizedBillIds.length) return result;
+        const rows = Array.isArray(billRows) ? billRows : [];
+        const sourceIdToReportIds = new Map();
+        rows.forEach(row => {
+            const reportId = Number(row?.id);
+            const sourceId = Number(type === "sales_pack" ? row?.sales_id : row?.id);
+            if(!reportId || !sourceId) return;
+            if(!sourceIdToReportIds.has(sourceId)) sourceIdToReportIds.set(sourceId, []);
+            sourceIdToReportIds.get(sourceId).push(reportId);
+        });
+
+        const sourceIds = [...sourceIdToReportIds.keys()];
+        if(!sourceIds.length) return result;
 
         const items = [];
-        for(let i = 0; i < normalizedBillIds.length; i += 100){
-            const chunk = normalizedBillIds.slice(i, i + 100);
+        for(let i = 0; i < sourceIds.length; i += 100){
+            const chunk = sourceIds.slice(i, i + 100);
             let from = 0;
             const pageSize = 1000;
 
@@ -867,6 +880,16 @@
             const landing = landingByCode.get(String(item.item_code || "").trim().toUpperCase()) || 0;
             result.set(billId, (result.get(billId) || 0) + ((sellPrice - landing) * qty));
         });
+
+        if(type === "sales_pack"){
+            const packingResult = new Map();
+            for(const [salesId, profit] of result.entries()){
+                (sourceIdToReportIds.get(salesId) || []).forEach(packingId => {
+                    packingResult.set(packingId, profit);
+                });
+            }
+            return packingResult;
+        }
 
         return result;
     }
@@ -1393,7 +1416,7 @@
         const [billIssueMap, billAmountMap, billProfitMap] = await Promise.all([
             getBillIssueMap(type, billIds),
             getBillAmountMap(type, billIds),
-            getBillProfitMap(type, billIds)
+            getBillProfitMap(type, rows)
         ]);
         if(requestId !== reportRequestId) return;
         if(billIds.length && billAmountMap.size === 0){

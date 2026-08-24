@@ -61,6 +61,48 @@
             cursor:pointer;
         }
 
+        .bill-profit-trigger{
+            position:relative;
+            display:inline-block;
+            padding:3px 5px;
+            margin:-3px -5px;
+            border-radius:4px;
+            outline:none;
+        }
+
+        .bill-profit-trigger:hover,
+        .bill-profit-trigger:focus,
+        .bill-profit-trigger.profit-open{
+            background:rgba(255,215,0,.16);
+        }
+
+        .bill-profit-tooltip{
+            position:absolute;
+            z-index:30;
+            left:50%;
+            bottom:calc(100% + 8px);
+            transform:translateX(-50%);
+            display:none;
+            min-width:130px;
+            padding:8px 10px;
+            border:1px solid rgba(255,215,0,.65);
+            border-radius:7px;
+            background:#17110b;
+            color:#ffd700;
+            box-shadow:0 8px 22px rgba(0,0,0,.45);
+            font-size:12px;
+            font-weight:bold;
+            text-align:center;
+            white-space:nowrap;
+            pointer-events:none;
+        }
+
+        .bill-profit-trigger:hover .bill-profit-tooltip,
+        .bill-profit-trigger:focus .bill-profit-tooltip,
+        .bill-profit-trigger.profit-open .bill-profit-tooltip{
+            display:block;
+        }
+
         .total-row {
             font-weight:bold;
             background: rgba(255,215,0,0.15);
@@ -443,6 +485,7 @@
 <script>
     const sb = window.sbcc;
     let canEditBills = false;
+    let canViewSalesProfit = false;
     let currentRows = [];
     let reportRequestId = 0;
     let packingUnlocked = false;
@@ -756,6 +799,74 @@
         }
 
         return result;
+    }
+
+    async function getBillProfitMap(type, billIds){
+        const result = new Map();
+        if(!canViewSalesProfit || type !== "sales") return result;
+
+        const normalizedBillIds = [...new Set((billIds || []).map(v => Number(v)).filter(Boolean))];
+        if(!normalizedBillIds.length) return result;
+
+        const items = [];
+        for(let i = 0; i < normalizedBillIds.length; i += 100){
+            const chunk = normalizedBillIds.slice(i, i + 100);
+            let from = 0;
+            const pageSize = 1000;
+
+            while(true){
+                const { data, error } = await sb
+                    .from("sales_item_details")
+                    .select("sales_id,item_code,quantity,sales_price_gst,price,sales_price")
+                    .in("sales_id", chunk)
+                    .range(from, from + pageSize - 1);
+
+                if(error){
+                    console.error("Bill profit item lookup failed:", error);
+                    return result;
+                }
+
+                items.push(...(data || []));
+                if(!data || data.length < pageSize) break;
+                from += pageSize;
+            }
+        }
+
+        const itemCodes = [...new Set(items.map(item => String(item.item_code || "").trim()).filter(Boolean))];
+        const landingByCode = new Map();
+
+        for(let i = 0; i < itemCodes.length; i += 100){
+            const { data, error } = await sb
+                .from("stock_balance_view")
+                .select("item_code,landing")
+                .in("item_code", itemCodes.slice(i, i + 100));
+
+            if(error){
+                console.error("Bill profit landing lookup failed:", error);
+                return new Map();
+            }
+
+            (data || []).forEach(item => {
+                landingByCode.set(String(item.item_code || "").trim().toUpperCase(), parseFloat(item.landing || 0) || 0);
+            });
+        }
+
+        items.forEach(item => {
+            const salesId = Number(item.sales_id);
+            const qty = parseFloat(item.quantity || 0) || 0;
+            const sellPrice = parseFloat(item.sales_price_gst || item.price || item.sales_price || 0) || 0;
+            const landing = landingByCode.get(String(item.item_code || "").trim().toUpperCase()) || 0;
+            result.set(salesId, (result.get(salesId) || 0) + ((sellPrice - landing) * qty));
+        });
+
+        return result;
+    }
+
+    function toggleProfitTooltip(event, element){
+        event.stopPropagation();
+        const shouldOpen = !element.classList.contains("profit-open");
+        document.querySelectorAll(".bill-profit-trigger.profit-open").forEach(el => el.classList.remove("profit-open"));
+        if(shouldOpen) element.classList.add("profit-open");
     }
 
     function getBaseUrl(){
@@ -1270,9 +1381,10 @@
         const billIds = rows.map(r => Number(r.id)).filter(Boolean);
         // These are independent item-table reads. Running them together avoids
         // paying two full network round trips one after the other.
-        const [billIssueMap, billAmountMap] = await Promise.all([
+        const [billIssueMap, billAmountMap, billProfitMap] = await Promise.all([
             getBillIssueMap(type, billIds),
-            getBillAmountMap(type, billIds)
+            getBillAmountMap(type, billIds),
+            getBillProfitMap(type, billIds)
         ]);
         if(requestId !== reportRequestId) return;
         if(billIds.length && billAmountMap.size === 0){
@@ -1282,6 +1394,7 @@
         rows = rows.map(r => ({
             ...r,
             [cfg.amountField]: billAmountMap.has(Number(r.id)) ? billAmountMap.get(Number(r.id)) : r[cfg.amountField],
+            reportProfit: billProfitMap.get(Number(r.id)),
             issueReasons: billIssueMap.get(Number(r.id)) || [],
             hasMissingItem: (billIssueMap.get(Number(r.id)) || []).length > 0
         }));
@@ -1348,7 +1461,12 @@
                 <td>${s.series_code || ''}</td>
 
                 <td>
-                    ${s[cfg.numberField] || ''}
+                    ${canViewSalesProfit && type === "sales" ? `
+                        <span class="bill-profit-trigger" tabindex="0" role="button" aria-label="Bill ${escapeHTML(s[cfg.numberField] || '')}, show profit" onclick="toggleProfitTooltip(event, this)">
+                            ${escapeHTML(s[cfg.numberField] || '')}
+                            <span class="bill-profit-tooltip" role="tooltip">Profit: &#8377;${Number(s.reportProfit || 0).toFixed(2)}</span>
+                        </span>
+                    ` : escapeHTML(s[cfg.numberField] || '')}
                     ${s.hasMissingItem ? '<span class="warn-badge">⚠</span>' : ''}
                     ${s.status === "CANCELLED" ? '<span class="cancelled-badge">CANCELLED</span>' : ''}
                     ${getPaymentBadge(s, type)}
@@ -2127,6 +2245,10 @@
     document.addEventListener("DOMContentLoaded", async () => {
         const ok = await requirePageAccess("sales");
         if (!ok) return;
+
+        const loggedInProfile = await getLoggedInProfile();
+        const loggedInRole = String(loggedInProfile?.role || "").toUpperCase();
+        canViewSalesProfit = loggedInRole === "OWNER" || loggedInRole === "ADMIN";
 
         setupSecretUnlocks();
 

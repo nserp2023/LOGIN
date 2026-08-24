@@ -803,7 +803,16 @@
 
     async function getBillProfitMap(type, billIds){
         const result = new Map();
-        if(!canViewSalesProfit || type !== "sales") return result;
+        if(!canViewSalesProfit) return result;
+
+        const itemSourceByType = {
+            sales: { table:"sales_item_details", idField:"sales_id" },
+            sales_pack: { table:"sales_packing_item_details", idField:"packing_id" },
+            quotation: { table:"quotation_item_details", idField:"quotation_id" },
+            sales_order: { table:"sales_order_item_details", idField:"sales_order_id" }
+        };
+        const itemSource = itemSourceByType[type];
+        if(!itemSource) return result;
 
         const normalizedBillIds = [...new Set((billIds || []).map(v => Number(v)).filter(Boolean))];
         if(!normalizedBillIds.length) return result;
@@ -816,9 +825,9 @@
 
             while(true){
                 const { data, error } = await sb
-                    .from("sales_item_details")
-                    .select("sales_id,item_code,quantity,sales_price_gst,price,sales_price")
-                    .in("sales_id", chunk)
+                    .from(itemSource.table)
+                    .select(`${itemSource.idField},item_code,quantity,sales_price_gst,price,sales_price`)
+                    .in(itemSource.idField, chunk)
                     .range(from, from + pageSize - 1);
 
                 if(error){
@@ -852,11 +861,11 @@
         }
 
         items.forEach(item => {
-            const salesId = Number(item.sales_id);
+            const billId = Number(item[itemSource.idField]);
             const qty = parseFloat(item.quantity || 0) || 0;
             const sellPrice = parseFloat(item.sales_price_gst || item.price || item.sales_price || 0) || 0;
             const landing = landingByCode.get(String(item.item_code || "").trim().toUpperCase()) || 0;
-            result.set(salesId, (result.get(salesId) || 0) + ((sellPrice - landing) * qty));
+            result.set(billId, (result.get(billId) || 0) + ((sellPrice - landing) * qty));
         });
 
         return result;
@@ -1461,7 +1470,7 @@
                 <td>${s.series_code || ''}</td>
 
                 <td>
-                    ${canViewSalesProfit && type === "sales" ? `
+                    ${canViewSalesProfit ? `
                         <span class="bill-profit-trigger" tabindex="0" role="button" aria-label="Bill ${escapeHTML(s[cfg.numberField] || '')}, show profit" onclick="toggleProfitTooltip(event, this)">
                             ${escapeHTML(s[cfg.numberField] || '')}
                             <span class="bill-profit-tooltip" role="tooltip">Profit: &#8377;${Number(s.reportProfit || 0).toFixed(2)}</span>

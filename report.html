@@ -807,10 +807,7 @@
 
         const itemSourceByType = {
             sales: { table:"sales_item_details", idField:"sales_id" },
-            // A Sales + Packing document is backed by a normal Sales record.
-            // Use those authoritative sale rows because legacy packing-item rows
-            // may not contain the item code/prices required for profit.
-            sales_pack: { table:"sales_item_details", idField:"sales_id" },
+            sales_pack: { table:"sales_packing_item_details", idField:"packing_id" },
             quotation: { table:"quotation_item_details", idField:"quotation_id" },
             sales_order: { table:"sales_order_item_details", idField:"sales_order_id" }
         };
@@ -821,7 +818,7 @@
         const sourceIdToReportIds = new Map();
         rows.forEach(row => {
             const reportId = Number(row?.id);
-            const sourceId = Number(type === "sales_pack" ? row?.sales_id : row?.id);
+            const sourceId = Number(row?.id);
             if(!reportId || !sourceId) return;
             if(!sourceIdToReportIds.has(sourceId)) sourceIdToReportIds.set(sourceId, []);
             sourceIdToReportIds.get(sourceId).push(reportId);
@@ -839,7 +836,9 @@
             while(true){
                 const { data, error } = await sb
                     .from(itemSource.table)
-                    .select(`${itemSource.idField},item_code,quantity,sales_price_gst,price,sales_price`)
+                    // price and sales_price_gst exist on every report item table;
+                    // sales_packing_item_details intentionally has no sales_price.
+                    .select(`${itemSource.idField},item_code,quantity,sales_price_gst,price`)
                     .in(itemSource.idField, chunk)
                     .range(from, from + pageSize - 1);
 
@@ -857,20 +856,48 @@
         const itemCodes = [...new Set(items.map(item => String(item.item_code || "").trim()).filter(Boolean))];
         const landingByCode = new Map();
 
+        function addLandingRows(rows){
+            (rows || []).forEach(item => {
+                const landing = parseFloat(item.landing || 0) || 0;
+                const stockCode = String(item.item_code || "").trim().toUpperCase();
+                const barcode = String(item.barcode || "").trim().toUpperCase();
+                if(stockCode) landingByCode.set(stockCode, landing);
+                if(barcode) landingByCode.set(barcode, landing);
+            });
+        }
+
         for(let i = 0; i < itemCodes.length; i += 100){
+            const chunk = itemCodes.slice(i, i + 100);
             const { data, error } = await sb
                 .from("stock_balance_view")
-                .select("item_code,landing")
-                .in("item_code", itemCodes.slice(i, i + 100));
+                .select("item_code,barcode,landing")
+                .in("item_code", chunk);
 
             if(error){
                 console.error("Bill profit landing lookup failed:", error);
                 return new Map();
             }
 
-            (data || []).forEach(item => {
-                landingByCode.set(String(item.item_code || "").trim().toUpperCase(), parseFloat(item.landing || 0) || 0);
-            });
+            addLandingRows(data);
+
+            // Some legacy stock codes contain leading/trailing spaces while bill
+            // rows contain the cleaned code. Their barcode normally keeps the
+            // cleaned value, so use it as a fallback instead of treating landing
+            // as zero and showing the full bill amount as profit.
+            const missingCodes = chunk.filter(code => !landingByCode.has(code.toUpperCase()));
+            if(missingCodes.length){
+                const { data: barcodeRows, error: barcodeError } = await sb
+                    .from("stock_balance_view")
+                    .select("item_code,barcode,landing")
+                    .in("barcode", missingCodes);
+
+                if(barcodeError){
+                    console.error("Bill profit barcode landing lookup failed:", barcodeError);
+                    return new Map();
+                }
+
+                addLandingRows(barcodeRows);
+            }
         }
 
         items.forEach(item => {
@@ -880,16 +907,6 @@
             const landing = landingByCode.get(String(item.item_code || "").trim().toUpperCase()) || 0;
             result.set(billId, (result.get(billId) || 0) + ((sellPrice - landing) * qty));
         });
-
-        if(type === "sales_pack"){
-            const packingResult = new Map();
-            for(const [salesId, profit] of result.entries()){
-                (sourceIdToReportIds.get(salesId) || []).forEach(packingId => {
-                    packingResult.set(packingId, profit);
-                });
-            }
-            return packingResult;
-        }
 
         return result;
     }

@@ -759,13 +759,19 @@
             ref === "sales_credit" ||
             ref === "customer_credit_auto" ||
             ref === "customer_credit_refund" ||
+            ref === "customer_advance" ||
+            ref === "sales_order_conversion_receipt" ||
             text.includes("credit collection") ||
-            text.includes("auto_alloc");
+            text.includes("auto_alloc") ||
+            text.includes("advance credit receipt") ||
+            text.includes("sales_order_conversion_receipt");
 
           const isSalesOrderAdvance =
             ref === "sales_order" ||
             ref === "sales_order_advance" ||
             ref === "sales_order_advance_receipt" ||
+            ref === "sales_order_conversion_receipt" ||
+            ref === "customer_advance" ||
             ref === "sales order" ||
             text.includes("sales order advance") ||
             text.includes("order advance") ||
@@ -783,11 +789,15 @@
             ref === "sales_order" ||
             ref === "sales_order_advance" ||
             ref === "sales_order_advance_receipt" ||
+            ref === "sales_order_conversion_receipt" ||
+            ref === "customer_advance" ||
             ref === "sales order" ||
             text.includes("sales order advance") ||
             text.includes("order advance") ||
             text.includes("advance received") ||
-            text.includes("advance paid");
+            text.includes("advance paid") ||
+            text.includes("sales_order_conversion_receipt") ||
+            text.includes("advance credit receipt");
           const isPayment = String(r.txn_type || "").trim().toLowerCase() === "payment";
 
           const receiptMobile = getReceiptMobile(r, lookup.customerMobileMap || {});
@@ -804,10 +814,10 @@
             mobile: receiptMobile,
             customer:r.party_name || fallbackName || "",
             billAmount:0,
-            cashReceived:isPayment ? -amount : amount,
+            cashReceived:amount,
             advancePaid:isSalesOrderAdvance ? amount : 0,
-            paidAmount:isSalesOrderAdvance ? 0 : (isPayment ? -amount : amount),
-            receiptAmount:isSalesOrderAdvance ? 0 : (isPayment ? -amount : amount),
+            paidAmount:isSalesOrderAdvance ? 0 : amount,
+            receiptAmount:isSalesOrderAdvance ? 0 : amount,
             balanceAmount:0,
             remarks:r.remarks || "",
             status:isSalesOrderAdvance ? "ADVANCE" : "RECEIPT"

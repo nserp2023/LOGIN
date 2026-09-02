@@ -242,12 +242,6 @@ button:hover {
 </div>
 
 <div class="filters">
-    <label>From:</label>
-    <input type="date" id="from_date">
-
-    <label>To:</label>
-    <input type="date" id="to_date">
-
     <label>Series:</label>
     <select id="series_filter">
         <option value="">All</option>
@@ -282,17 +276,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     const ok = await requirePageAccess("purchase");
     if (!ok) return;
 
-    const today = new Date().toISOString().split("T")[0];
-    document.getElementById("from_date").value = today;
-    document.getElementById("to_date").value = today;
-
     await loadSeries();
     loadPurchase();
 
-    document.getElementById("from_date").addEventListener("change", loadPurchase);
-    document.getElementById("to_date").addEventListener("change", loadPurchase);
     document.getElementById("series_filter").addEventListener("change", loadPurchase);
-    document.getElementById("supplier_filter").addEventListener("input", debounce(loadPurchase, 400));
+    const debouncedSupplierSearch = debounce(loadPurchase, 400);
+    document.getElementById("supplier_filter").addEventListener("input", function(event) {
+        event.target.value = event.target.value.toUpperCase();
+        debouncedSupplierSearch();
+    });
 });
 
 function goToNewPurchase(){
@@ -407,9 +399,33 @@ async function fetchPurchaseItemsForReport(purchaseIds){
     return rows;
 }
 
+async function fetchPurchaseHeadersForReport(series, supplier){
+    const rows = [];
+    const pageSize = 1000;
+    let from = 0;
+
+    while (true) {
+        let query = sb
+            .from('purchase_details')
+            .select('*')
+            .order('purchase_number', { ascending:false })
+            .range(from, from + pageSize - 1);
+
+        if (series) query = query.eq('series_code', series);
+        if (supplier) query = query.ilike('supplier_name', `%${supplier}%`);
+
+        const { data, error } = await query;
+        if (error) throw error;
+
+        rows.push(...(data || []));
+        if (!data || data.length < pageSize) break;
+        from += pageSize;
+    }
+
+    return rows;
+}
+
 async function loadPurchase() {
-    const from = document.getElementById('from_date').value;
-    const to = document.getElementById('to_date').value;
     const series = document.getElementById('series_filter').value;
     const supplier = document.getElementById('supplier_filter').value.trim();
     const body = document.getElementById('report_body');
@@ -418,17 +434,13 @@ async function loadPurchase() {
     body.innerHTML = '';
     statusBox.textContent = 'Loading purchase report...';
 
-    let query = sb
-        .from('purchase_details')
-        .select('*')
-        .gte('bill_date', from)
-        .lte('bill_date', to)
-        .order('purchase_number', { ascending:false });
-
-    if (series) query = query.eq('series_code', series);
-    if (supplier) query = query.ilike('supplier_name', `%${supplier}%`);
-
-    const { data, error } = await query;
+    let data;
+    let error;
+    try {
+        data = await fetchPurchaseHeadersForReport(series, supplier);
+    } catch (fetchError) {
+        error = fetchError;
+    }
 
     if(error){
         console.error(error);

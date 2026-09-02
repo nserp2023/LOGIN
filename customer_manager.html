@@ -1214,26 +1214,41 @@ MEERA,8888888888,NEDUMANGAD,,32,WHATSAPP ONLY</div>
       return normalizeValue(customer.mobile).replace(/\D/g, "");
     }
 
-    function getDuplicateCustomerGroups() {
-      const groups = new Map();
+    function getDuplicateCustomerGroups(limit = 20) {
+      const firstCustomerByMobile = new Map();
+      const duplicateGroupsByMobile = new Map();
+      const duplicateGroups = [];
+      let displayedRows = 0;
 
-      customers.forEach(customer => {
+      for (const customer of customers) {
         const mobile = duplicateMobileKey(customer);
-        if (!mobile) return;
-        if (!groups.has(mobile)) groups.set(mobile, []);
-        groups.get(mobile).push(customer);
-      });
+        if (!mobile) continue;
 
-      return [...groups.entries()]
-        .filter(([, group]) => group.length > 1)
-        .sort((a, b) => a[0].localeCompare(b[0]));
+        const firstCustomer = firstCustomerByMobile.get(mobile);
+        if (!firstCustomer) {
+          firstCustomerByMobile.set(mobile, customer);
+          continue;
+        }
+
+        const existingGroup = duplicateGroupsByMobile.get(mobile);
+        if (!existingGroup && displayedRows + 2 <= limit) {
+          const group = [mobile, [firstCustomer, customer]];
+          duplicateGroups.push(group);
+          duplicateGroupsByMobile.set(mobile, group);
+          displayedRows += 2;
+        }
+
+        if (displayedRows >= limit) break;
+      }
+
+      return duplicateGroups;
     }
 
     function renderDuplicateCustomers() {
-      const groups = getDuplicateCustomerGroups();
       const duplicateLimit = 20;
-      const totalDuplicateCustomers = groups.reduce((count, [, group]) => count + group.length, 0);
-      duplicateCustomerCount.textContent = `${groups.length} duplicate group${groups.length === 1 ? "" : "s"} · showing ${Math.min(totalDuplicateCustomers, duplicateLimit)} of ${totalDuplicateCustomers} customers`;
+      const groups = getDuplicateCustomerGroups(duplicateLimit);
+      const duplicateRows = groups.reduce((count, [, group]) => count + group.length, 0);
+      duplicateCustomerCount.textContent = `${groups.length} duplicate group${groups.length === 1 ? "" : "s"} found - showing ${duplicateRows} of up to ${duplicateLimit} customers`;
 
       if (!groups.length) {
         duplicateCustomerTableBody.innerHTML = `
@@ -1242,14 +1257,7 @@ MEERA,8888888888,NEDUMANGAD,,32,WHATSAPP ONLY</div>
         return;
       }
 
-      let remainingRows = duplicateLimit;
-      const visibleGroups = groups.map(([mobile, group]) => {
-        const visibleCustomers = group.slice(0, remainingRows);
-        remainingRows -= visibleCustomers.length;
-        return [mobile, visibleCustomers];
-      }).filter(([, group]) => group.length);
-
-      duplicateCustomerTableBody.innerHTML = visibleGroups.map(([mobile, group]) => {
+      duplicateCustomerTableBody.innerHTML = groups.map(([mobile, group]) => {
         const groupRows = group.map((customer, index) => {
           const id = Number(customer.customer_id);
           const checked = selectedCustomerIds.has(id) ? "checked" : "";

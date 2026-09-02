@@ -242,6 +242,12 @@ button:hover {
 </div>
 
 <div class="filters">
+    <label>From:</label>
+    <input type="date" id="from_date">
+
+    <label>To:</label>
+    <input type="date" id="to_date">
+
     <label>Series:</label>
     <select id="series_filter">
         <option value="">All</option>
@@ -276,9 +282,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     const ok = await requirePageAccess("purchase");
     if (!ok) return;
 
+    const today = new Date().toISOString().split("T")[0];
+    document.getElementById("from_date").value = today;
+    document.getElementById("to_date").value = today;
+
     await loadSeries();
     loadPurchase();
 
+    document.getElementById("from_date").addEventListener("change", loadPurchase);
+    document.getElementById("to_date").addEventListener("change", loadPurchase);
     document.getElementById("series_filter").addEventListener("change", loadPurchase);
     const debouncedSupplierSearch = debounce(loadPurchase, 400);
     document.getElementById("supplier_filter").addEventListener("input", function(event) {
@@ -399,7 +411,7 @@ async function fetchPurchaseItemsForReport(purchaseIds){
     return rows;
 }
 
-async function fetchPurchaseHeadersForReport(series, supplier){
+async function fetchPurchaseHeadersForReport(fromDate, toDate, series, supplier){
     const rows = [];
     const pageSize = 1000;
     let from = 0;
@@ -412,7 +424,12 @@ async function fetchPurchaseHeadersForReport(series, supplier){
             .range(from, from + pageSize - 1);
 
         if (series) query = query.eq('series_code', series);
-        if (supplier) query = query.ilike('supplier_name', `%${supplier}%`);
+        if (supplier) {
+            query = query.ilike('supplier_name', `%${supplier}%`);
+        } else {
+            if (fromDate) query = query.gte('bill_date', fromDate);
+            if (toDate) query = query.lte('bill_date', toDate);
+        }
 
         const { data, error } = await query;
         if (error) throw error;
@@ -426,6 +443,8 @@ async function fetchPurchaseHeadersForReport(series, supplier){
 }
 
 async function loadPurchase() {
+    const fromDate = document.getElementById('from_date').value;
+    const toDate = document.getElementById('to_date').value;
     const series = document.getElementById('series_filter').value;
     const supplier = document.getElementById('supplier_filter').value.trim();
     const body = document.getElementById('report_body');
@@ -437,7 +456,7 @@ async function loadPurchase() {
     let data;
     let error;
     try {
-        data = await fetchPurchaseHeadersForReport(series, supplier);
+        data = await fetchPurchaseHeadersForReport(fromDate, toDate, series, supplier);
     } catch (fetchError) {
         error = fetchError;
     }

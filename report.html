@@ -2350,6 +2350,21 @@
         document.getElementById("salesman_filter").addEventListener("input", debounce(loadReport, 400));
         document.getElementById("created_by_filter").addEventListener("input", debounce(loadReport, 400));
 
+        // Keep every text-based report search in capital letters as it is typed.
+        ["bill_filter", "customer_filter", "mobile_filter", "gst_filter", "salesman_filter", "created_by_filter"]
+            .forEach(id => {
+                const input = document.getElementById(id);
+                input.addEventListener("input", () => {
+                    const start = input.selectionStart;
+                    const end = input.selectionEnd;
+                    const upperValue = input.value.toUpperCase();
+                    if (input.value !== upperValue) {
+                        input.value = upperValue;
+                        input.setSelectionRange(start, end);
+                    }
+                });
+            });
+
         // Conversion happens in a separate newsoq tab. Refresh this report as
         // soon as that tab finishes updating the original Sales Order.
         window.addEventListener("storage", event => {

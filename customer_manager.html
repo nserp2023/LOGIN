@@ -877,12 +877,16 @@ MEERA,8888888888,NEDUMANGAD,,32,WHATSAPP ONLY</div>
 
 
     let customers = [];
+    let duplicateCustomers = [];
+    let duplicateLookupUnavailable = false;
     let selectedCustomerIds = new Set();
     let editingCustomerId = null;
     let bulkPreviewRows = [];
     let addressDebounceTimer = null;
     let suggestionIndex = -1;
     let workspaceView = "create";
+    let customerLoadTimer = null;
+    const customerPageSize = 50;
 
     const form = document.getElementById("customerForm");
     const formTitle = document.getElementById("formTitle");
@@ -966,11 +970,8 @@ MEERA,8888888888,NEDUMANGAD,,32,WHATSAPP ONLY</div>
         }
       });
 
-      searchInput.addEventListener("input", renderCustomers);
-      gstSearchInput.addEventListener("input", renderCustomers);
-      stateSearchInput.addEventListener("input", renderCustomers);
-      addressSearchInput.addEventListener("input", renderCustomers);
-      remarkSearchInput.addEventListener("input", renderCustomers);
+      [searchInput, gstSearchInput, stateSearchInput, addressSearchInput, remarkSearchInput]
+        .forEach(input => input.addEventListener("input", scheduleCustomerLoad));
 
       selectAllVisibleCustomers.addEventListener("change", toggleSelectAllVisibleCustomers);
       mergeSelectedBtn.addEventListener("click", mergeSelectedCustomers);
@@ -1092,8 +1093,29 @@ MEERA,8888888888,NEDUMANGAD,,32,WHATSAPP ONLY</div>
       `;
 
       try {
-        customers = await fetchAllCustomers();
-        totalCustomers.textContent = customers.length;
+        let query = supabaseClient.from("customers").select("*", { count: "exact" })
+          .order("customer_id", { ascending: false }).range(0, customerPageSize - 1);
+        const term = normalizeValue(searchInput.value);
+        if (term) query = query.or(`name.ilike.%${term}%,mobile.ilike.%${term}%`);
+        if (normalizeValue(gstSearchInput.value)) query = query.ilike("gst_number", `%${normalizeValue(gstSearchInput.value)}%`);
+        if (normalizeValue(stateSearchInput.value)) query = query.ilike("state_code", `%${normalizeValue(stateSearchInput.value)}%`);
+        if (normalizeValue(addressSearchInput.value)) query = query.ilike("address", `%${normalizeValue(addressSearchInput.value)}%`);
+        if (normalizeValue(remarkSearchInput.value)) query = query.ilike("customer_remark", `%${normalizeValue(remarkSearchInput.value)}%`);
+        const { data, error, count } = await query;
+        if (error) throw error;
+        customers = data || [];
+        totalCustomers.textContent = count ?? 0;
+        filteredCustomers.textContent = count ?? 0;
+        const { data: duplicateData, error: duplicateError } = await supabaseClient
+          .rpc("customer_manager_duplicate_customers", { p_limit: 20 });
+        if (duplicateError) {
+          console.warn("Duplicate lookup is unavailable:", duplicateError);
+          duplicateCustomers = [];
+          duplicateLookupUnavailable = true;
+        } else {
+          duplicateCustomers = duplicateData || [];
+          duplicateLookupUnavailable = false;
+        }
         renderCustomers();
       } catch (error) {
         showStatus("Error loading customers: " + (error.message || "Unknown error"), "error");
@@ -1103,33 +1125,9 @@ MEERA,8888888888,NEDUMANGAD,,32,WHATSAPP ONLY</div>
       }
     }
 
-    async function fetchAllCustomers() {
-      const pageSize = 1000;
-      let from = 0;
-      let allRows = [];
-
-      while (true) {
-        const to = from + pageSize - 1;
-
-        const { data, error } = await supabaseClient
-          .from("customers")
-          .select("*")
-          .order("customer_id", { ascending: false })
-          .range(from, to);
-
-        if (error) throw error;
-
-        const rows = data || [];
-        allRows = allRows.concat(rows);
-
-        totalCustomers.textContent = allRows.length + "+";
-        filteredCustomers.textContent = allRows.length + "+";
-
-        if (rows.length < pageSize) break;
-        from += pageSize;
-      }
-
-      return allRows;
+    function scheduleCustomerLoad() {
+      clearTimeout(customerLoadTimer);
+      customerLoadTimer = setTimeout(loadCustomers, 300);
     }
 
     function getFilteredCustomers() {
@@ -1139,17 +1137,7 @@ MEERA,8888888888,NEDUMANGAD,,32,WHATSAPP ONLY</div>
       const addressTerm = normalizeValue(addressSearchInput.value);
       const remarkTerm = normalizeValue(remarkSearchInput.value);
 
-      return customers.filter(c =>
-        (
-          !term ||
-          normalizeValue(c.name).includes(term) ||
-          normalizeValue(c.mobile).includes(term)
-        ) &&
-        (!gstTerm || normalizeValue(c.gst_number).includes(gstTerm)) &&
-        (!stateTerm || normalizeValue(c.state_code).includes(stateTerm)) &&
-        (!addressTerm || normalizeValue(c.address).includes(addressTerm)) &&
-        (!remarkTerm || normalizeValue(c.customer_remark).includes(remarkTerm))
-      );
+      return customers;
     }
 
     function updateSelectedCustomerCount() {
@@ -1220,7 +1208,7 @@ MEERA,8888888888,NEDUMANGAD,,32,WHATSAPP ONLY</div>
       const duplicateGroups = [];
       let displayedRows = 0;
 
-      for (const customer of customers) {
+      for (const customer of duplicateCustomers) {
         const mobile = duplicateMobileKey(customer);
         if (!mobile) continue;
 
@@ -1246,6 +1234,11 @@ MEERA,8888888888,NEDUMANGAD,,32,WHATSAPP ONLY</div>
 
     function renderDuplicateCustomers() {
       const duplicateLimit = 20;
+      if (duplicateLookupUnavailable) {
+        duplicateCustomerCount.textContent = "Duplicate lookup needs the performance SQL update";
+        duplicateCustomerTableBody.innerHTML = `<tr><td colspan="6" class="empty">Run supabase_customer_manager_performance.sql once to enable fast duplicate lookup.</td></tr>`;
+        return;
+      }
       const groups = getDuplicateCustomerGroups(duplicateLimit);
       const duplicateRows = groups.reduce((count, [, group]) => count + group.length, 0);
       duplicateCustomerCount.textContent = `${groups.length} duplicate group${groups.length === 1 ? "" : "s"} found - showing ${duplicateRows} of up to ${duplicateLimit} customers`;
@@ -1277,7 +1270,7 @@ MEERA,8888888888,NEDUMANGAD,,32,WHATSAPP ONLY</div>
     }
 
     function selectDuplicateGroup(mobile, checked) {
-      customers
+      duplicateCustomers
         .filter(customer => duplicateMobileKey(customer) === mobile)
         .forEach(customer => {
           const id = Number(customer.customer_id);
@@ -1309,7 +1302,15 @@ MEERA,8888888888,NEDUMANGAD,,32,WHATSAPP ONLY</div>
     async function mergeSelectedCustomers() {
       hideStatus();
 
-      const selectedCustomers = customers.filter(c => selectedCustomerIds.has(Number(c.customer_id)));
+      const selectedIds = [...selectedCustomerIds];
+      const { data: selectedCustomers, error: selectedCustomersError } = await supabaseClient
+        .from("customers")
+        .select("*")
+        .in("customer_id", selectedIds);
+      if (selectedCustomersError) {
+        showStatus("Could not load selected customers: " + selectedCustomersError.message, "error");
+        return;
+      }
       if (selectedCustomers.length < 2) {
         showStatus("Select at least 2 customers to merge.", "error");
         return;

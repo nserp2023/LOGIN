@@ -372,6 +372,32 @@
       flex-wrap:wrap;
     }
 
+    .duplicate-section{
+      margin-bottom:18px;
+      border:1px solid #fed7aa;
+      border-radius:16px;
+      overflow:hidden;
+      background:#fffaf5;
+    }
+
+    .duplicate-section-head{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      padding:14px;
+      background:#fff7ed;
+      border-bottom:1px solid #fed7aa;
+    }
+
+    .duplicate-section-head strong{ color:#9a3412; }
+
+    .duplicate-section-head span{
+      color:#9a3412;
+      font-size:12px;
+      font-weight:700;
+    }
+
     .row-check{
       width:18px;
       height:18px;
@@ -734,6 +760,33 @@ MEERA,8888888888,NEDUMANGAD,,32,WHATSAPP ONLY</div>
         </div>
 
         <div class="panel-body">
+          <section class="duplicate-section">
+            <div class="duplicate-section-head">
+              <div>
+                <strong>Duplicate Customers</strong>
+                <span id="duplicateCustomerCount">0 duplicate groups</span>
+              </div>
+              <span>Duplicates are matched by mobile number. Select a group, then use Merge Selected below.</span>
+            </div>
+            <div class="table-wrap" style="border:0;border-radius:0;">
+              <table>
+                <thead>
+                  <tr>
+                    <th class="select-col">Select</th>
+                    <th>Duplicate Mobile</th>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Address</th>
+                    <th>GST Number</th>
+                  </tr>
+                </thead>
+                <tbody id="duplicateCustomerTableBody">
+                  <tr><td colspan="6" class="empty">Checking duplicate customers...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
           <div class="toolbar">
             <input type="text" id="searchInput" placeholder="SEARCH BY NAME OR MOBILE...">
             <input type="text" id="gstSearchInput" placeholder="SEARCH GST NUMBER...">
@@ -823,6 +876,8 @@ MEERA,8888888888,NEDUMANGAD,,32,WHATSAPP ONLY</div>
     const addressSearchInput = document.getElementById("addressSearchInput");
     const remarkSearchInput = document.getElementById("remarkSearchInput");
     const customerTableBody = document.getElementById("customerTableBody");
+    const duplicateCustomerTableBody = document.getElementById("duplicateCustomerTableBody");
+    const duplicateCustomerCount = document.getElementById("duplicateCustomerCount");
     const selectAllVisibleCustomers = document.getElementById("selectAllVisibleCustomers");
     const selectedCustomerCount = document.getElementById("selectedCustomerCount");
     const mergeSelectedBtn = document.getElementById("mergeSelectedBtn");
@@ -1054,6 +1109,7 @@ MEERA,8888888888,NEDUMANGAD,,32,WHATSAPP ONLY</div>
     function renderCustomers() {
       const filtered = getFilteredCustomers();
       filteredCustomers.textContent = filtered.length;
+      renderDuplicateCustomers();
 
       if (!filtered.length) {
         customerTableBody.innerHTML = `
@@ -1093,7 +1149,67 @@ MEERA,8888888888,NEDUMANGAD,,32,WHATSAPP ONLY</div>
       const id = Number(customerId);
       if (checked) selectedCustomerIds.add(id);
       else selectedCustomerIds.delete(id);
-      updateSelectedCustomerCount();
+      renderCustomers();
+    }
+
+    function duplicateMobileKey(customer) {
+      return normalizeValue(customer.mobile).replace(/\D/g, "");
+    }
+
+    function getDuplicateCustomerGroups() {
+      const groups = new Map();
+
+      customers.forEach(customer => {
+        const mobile = duplicateMobileKey(customer);
+        if (!mobile) return;
+        if (!groups.has(mobile)) groups.set(mobile, []);
+        groups.get(mobile).push(customer);
+      });
+
+      return [...groups.entries()]
+        .filter(([, group]) => group.length > 1)
+        .sort((a, b) => a[0].localeCompare(b[0]));
+    }
+
+    function renderDuplicateCustomers() {
+      const groups = getDuplicateCustomerGroups();
+      duplicateCustomerCount.textContent = `${groups.length} duplicate group${groups.length === 1 ? "" : "s"}`;
+
+      if (!groups.length) {
+        duplicateCustomerTableBody.innerHTML = `
+          <tr><td colspan="6" class="empty">No duplicate mobile numbers found.</td></tr>
+        `;
+        return;
+      }
+
+      duplicateCustomerTableBody.innerHTML = groups.map(([mobile, group]) => {
+        const groupRows = group.map((customer, index) => {
+          const id = Number(customer.customer_id);
+          const checked = selectedCustomerIds.has(id) ? "checked" : "";
+          return `
+            <tr>
+              <td class="select-col"><input type="checkbox" class="row-check" ${checked} onchange="toggleCustomerSelection(${id}, this.checked)"></td>
+              <td>${index === 0 ? `${escapeHtml(normalizeValue(customer.mobile))}<br><button type="button" class="mini-btn mini-edit" onclick="selectDuplicateGroup('${escapeJs(mobile)}', true)">Select group</button>` : ""}</td>
+              <td>${id}</td>
+              <td>${escapeHtml(normalizeValue(customer.name))}</td>
+              <td>${escapeHtml(normalizeValue(customer.address))}</td>
+              <td>${escapeHtml(normalizeValue(customer.gst_number))}</td>
+            </tr>
+          `;
+        }).join("");
+        return groupRows;
+      }).join("");
+    }
+
+    function selectDuplicateGroup(mobile, checked) {
+      customers
+        .filter(customer => duplicateMobileKey(customer) === mobile)
+        .forEach(customer => {
+          const id = Number(customer.customer_id);
+          if (checked) selectedCustomerIds.add(id);
+          else selectedCustomerIds.delete(id);
+        });
+      renderCustomers();
     }
 
     function toggleSelectAllVisibleCustomers() {
@@ -1561,6 +1677,7 @@ MEERA,8888888888,NEDUMANGAD,,32,WHATSAPP ONLY</div>
     window.editCustomer = editCustomer;
     window.deleteCustomer = deleteCustomer;
     window.toggleCustomerSelection = toggleCustomerSelection;
+    window.selectDuplicateGroup = selectDuplicateGroup;
   </script>
 </body>
 </html>

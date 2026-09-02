@@ -806,8 +806,9 @@ container.innerHTML+=html;
 
 }
 // ===== ADD PACKING COPY =====
-
-if(type==="sales_pack"){
+// A regular sales invoice needs the same accompanying packing slip as a
+// Sales + Packing document. Both copies are sent together in one print job.
+if(type==="sales" || type==="sales_pack"){
 
 let originalHTML = container.innerHTML;
 

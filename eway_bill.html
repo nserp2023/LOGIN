@@ -111,7 +111,15 @@ function num(v){ return Number(v || 0); }
 function money(v){ return Number(v || 0).toFixed(2); }
 function clean(v){ return String(v || '').trim(); }
 function escapeHTML(v){ return String(v || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
+const DEPLOYED_BACKEND_URL = 'https://nserp-vajra-voice-api.onrender.com';
 function apiBase(){ return clean(document.getElementById('backendUrl').value).replace(/\/$/, ''); }
+
+function setDefaultBackendUrl(){
+    // GitHub Pages cannot reach a server on the visitor's own localhost.
+    if(location.hostname.endsWith('github.io')){
+        document.getElementById('backendUrl').value = DEPLOYED_BACKEND_URL;
+    }
+}
 
 function getConfig(){
     const type = qs('type') || 'sales';
@@ -351,7 +359,10 @@ window.downloadJson = downloadJson;
 window.copyJson = copyJson;
 window.sendToBackend = sendToBackend;
 window.checkBackend = checkBackend;
-document.addEventListener('DOMContentLoaded', loadData);
+document.addEventListener('DOMContentLoaded', () => {
+    setDefaultBackendUrl();
+    loadData();
+});
 </script>
 </body>
 </html>

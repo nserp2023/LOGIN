@@ -29,6 +29,44 @@ app.use((req, res, next) => {
 const PORT = process.env.PORT || 3000;
 app.use(express.static(process.cwd()));
 
+// E-Way Bill JSON is prepared locally by this server.  Credentials remain in
+// .env so they are never exposed to the browser; submitting to the government
+// portal/API is intentionally a separate step.
+const EWAY_USERNAME = process.env.EWAY_USERNAME || process.env.EWAY_BILL_USERNAME || "";
+const EWAY_JSON_DIRECTORY = path.join(process.cwd(), "eway-json");
+
+function ewayFilePart(value) {
+    return String(value || "eway_bill")
+        .replace(/[^a-z0-9_-]+/gi, "_")
+        .replace(/^_+|_+$/g, "")
+        .slice(0, 80) || "eway_bill";
+}
+
+app.get("/eway-login-check", (_req, res) => {
+    res.json({
+        success: true,
+        username: EWAY_USERNAME || "Local server ready"
+    });
+});
+
+app.post("/generate-eway-json", (req, res) => {
+    const payload = req.body;
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+        return res.status(400).json({ success: false, message: "A valid E-Way Bill JSON payload is required." });
+    }
+
+    try {
+        fs.mkdirSync(EWAY_JSON_DIRECTORY, { recursive: true });
+        const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+        const fileName = `eway_${ewayFilePart(payload.docNo)}_${timestamp}.json`;
+        fs.writeFileSync(path.join(EWAY_JSON_DIRECTORY, fileName), JSON.stringify(payload, null, 2), "utf8");
+        res.json({ success: true, fileName, jsonData: payload });
+    } catch (error) {
+        console.error("E-Way JSON generation error:", error.message);
+        res.status(500).json({ success: false, message: "Could not save E-Way Bill JSON on the server." });
+    }
+});
+
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
 const PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID;
 const APP_BASE_URL = process.env.APP_BASE_URL || "http://localhost:5500";

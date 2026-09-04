@@ -217,8 +217,34 @@ justify-content:space-between;
 
 .summary-note{
 font-size:10px;
-text-align:center;
 padding:5px;
+display:flex;
+align-items:center;
+gap:7px;
+}
+
+.daily-bill-number{
+flex:0 0 auto;
+min-width:28px;
+padding:3px 5px;
+border:1px solid #000;
+font-size:16px;
+font-weight:bold;
+line-height:1;
+text-align:center;
+}
+
+.daily-bill-number small{
+display:block;
+margin-top:2px;
+font-size:6px;
+font-weight:normal;
+line-height:1;
+}
+
+.footer-message{
+flex:1;
+text-align:center;
 }
 </style>
 
@@ -383,6 +409,30 @@ async function isInterlockBill(head, items){
     return (data || []).some(item => normalizeDepartment(item.department) === "INTERLOCK");
 }
 
+// This is a daily operational sequence, separate from the official invoice
+// number. It is based on the order in which sales were created for the bill
+// date, so it naturally starts again at 1 on every new date and stays the
+// same when an old bill is printed again.
+async function getDailyBillNumber(saleId, billDate){
+    if(!saleId || !billDate) return "";
+
+    const day = String(billDate).split("T")[0];
+    const { data, error } = await sb
+        .from("sales_details")
+        .select("id")
+        .eq("bill_date", day)
+        .order("created_at", { ascending:true })
+        .order("id", { ascending:true });
+
+    if(error){
+        console.warn("Daily bill number lookup failed:", error);
+        return "";
+    }
+
+    const position = (data || []).findIndex(row => String(row.id) === String(saleId));
+    return position >= 0 ? String(position + 1) : "";
+}
+
 async function loadData(){
 
 /* HEADER */
@@ -501,6 +551,12 @@ if (itemError || !items) {
 const companyName = await isInterlockBill(head, items)
     ? "SN TRADERS"
     : "VAJRA LIGHTS & ELECTRICALS";
+
+const saleIdForDailyNumber = type === "sales_pack" ? head.sales_id : head.id;
+const billDateForDailyNumber = type === "sales_pack"
+    ? (linkedSalesHead?.bill_date || head.packing_date)
+    : (head.bill_date || head.packing_date);
+const dailyBillNumber = await getDailyBillNumber(saleIdForDailyNumber, billDateForDailyNumber);
 
 let rowsPerPage = items.length<=10 ? 10 : 40;
 let pageClass = items.length<=10 ? "page-half":"page-full";
@@ -747,11 +803,14 @@ html+=`
 A/C No : 15490200002687<br>
 IFSC : FDRL0001549
 <div class="summary-note">
+${dailyBillNumber ? `<div class="daily-bill-number">${escapeHtml(dailyBillNumber)}<small>DAILY</small></div>` : ""}
+<div class="footer-message">
 Goods once sold will not be taken back or exchanged without original bill.<br>
 All branded items are covered under manufacturer warranty.<br>
 All disputes are subject to Trivandrum Jurisdiction.<br>
 This is a Computer Generated Invoice and does not require signature.<br>
 Thank you for your valueable patronage. Visit Again!
+</div>
 
 </div>
 
@@ -805,20 +864,13 @@ container.innerHTML+=html;
 
 
 }
-// ===== ADD PACKING COPY =====
-// A regular sales invoice needs the same accompanying packing slip as a
-// Sales + Packing document. Both copies are sent together in one print job.
-if(type==="sales" || type==="sales_pack"){
-
-let originalHTML = container.innerHTML;
-
-// create packing copy
-let packingHTML = originalHTML
-.replace(/GST INVOICE/g,"PACKING SLIP")
-.replace(/Bill No\s*:.*?<br>/g,"");   // remove bill number
-
-container.innerHTML = packingHTML + originalHTML;
-
+// A normal sale prints only its packing slip. A Sales + Packing transaction
+// prints only its GST invoice. This deliberately keeps the DAILY number on
+// one physical copy of a sale.
+if(type === "sales"){
+    container.innerHTML = container.innerHTML
+        .replace(/GST INVOICE/g, "PACKING SLIP")
+        .replace(/Bill No\s*:.*?<br>/g, "");
 }
 
 /* QR */

@@ -864,13 +864,22 @@ container.innerHTML+=html;
 
 
 }
-// A normal sale prints only its packing slip. A Sales + Packing transaction
-// prints only its GST invoice. This deliberately keeps the DAILY number on
-// one physical copy of a sale.
-if(type === "sales"){
-    container.innerHTML = container.innerHTML
+// Both Sale and Sales + Packing print a packing slip plus GST invoice.
+// The daily operational number must appear on one copy only:
+// Sale -> packing slip; Sales + Packing -> GST invoice.
+if(type === "sales" || type === "sales_pack"){
+    const originalHTML = container.innerHTML;
+    const packingHTML = originalHTML
         .replace(/GST INVOICE/g, "PACKING SLIP")
         .replace(/Bill No\s*:.*?<br>/g, "");
+    const removeDailyNumber = html => html.replace(
+        /<div class="daily-bill-number">[\s\S]*?<\/div>/g,
+        ""
+    );
+
+    container.innerHTML = type === "sales"
+        ? packingHTML + removeDailyNumber(originalHTML)
+        : removeDailyNumber(packingHTML) + originalHTML;
 }
 
 /* QR */

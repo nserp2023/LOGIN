@@ -532,22 +532,23 @@
 
     .workboard-title { margin: 0; font-size: 15px; font-weight: 900; color: #fff; }
     .workboard-note { color: var(--muted); font-size: 12px; }
-    .workboard-list { flex: 1; min-height: 92px; max-height: 172px; overflow: auto; padding-right: 3px; }
+    .workboard-list { flex: 1; min-height: 92px; max-height: 172px; overflow: auto; padding: 1px 5px 1px 1px; }
     .workboard-empty { padding: 23px 10px; color: var(--muted); font-size: 13px; text-align: center; }
-    .work-item { padding: 10px 0; border-top: 1px solid rgba(255,255,255,.09); }
-    .work-item:first-child { border-top: 0; padding-top: 0; }
+    .work-item { margin: 0 0 9px; padding: 11px; border: 1px solid rgba(96,165,250,.3); border-left: 4px solid #60a5fa; border-radius: 11px; background: rgba(30,58,138,.18); box-shadow: 0 2px 9px rgba(0,0,0,.13); }
+    .work-item:nth-child(even) { border-color: rgba(45,212,191,.28); border-left-color: #2dd4bf; background: rgba(15,118,110,.16); }
+    .work-item:nth-child(3n) { border-color: rgba(167,139,250,.3); border-left-color: #a78bfa; background: rgba(91,33,182,.16); }
     .work-message-line { display: flex; align-items: flex-start; gap: 8px; }
     .work-body { flex: 1; min-width: 0; color: #f5f8ff; font-size: 13px; line-height: 1.38; overflow-wrap: anywhere; }
     .work-meta { display: block; margin-top: 3px; color: var(--muted); font-size: 10px; }
-    .work-replies { margin: 8px 0 0 13px; padding-left: 10px; border-left: 2px solid rgba(96,165,250,.34); }
-    .work-reply { margin-top: 7px; }
+    .work-replies { margin: 9px 0 0 8px; padding-left: 9px; border-left: 2px solid rgba(255,255,255,.25); }
+    .work-reply { margin-top: 7px; padding: 7px 8px; border-radius: 8px; background: rgba(7,16,35,.26); }
     .work-delete { flex: 0 0 auto; border: 0; border-radius: 8px; padding: 3px 7px; color: #fecaca; background: rgba(239,68,68,.13); cursor: pointer; font: inherit; font-size: 11px; font-weight: 800; }
     .work-delete:hover { background: rgba(239,68,68,.28); }
     .work-compose { display: flex; gap: 7px; margin-top: 10px; }
     .work-compose input { min-width: 0; flex: 1; border: 1px solid rgba(255,255,255,.15); border-radius: 10px; padding: 10px 11px; color: #fff; background: rgba(7,16,35,.5); outline: none; font: inherit; font-size: 13px; }
     .work-compose input:focus { border-color: rgba(96,165,250,.8); }
     .work-send { border: 0; border-radius: 10px; padding: 0 12px; color: #fff; background: linear-gradient(135deg,#2563eb,#1d4ed8); cursor: pointer; font: inherit; font-size: 12px; font-weight: 800; }
-    .work-reply-form { display: flex; gap: 6px; margin: 8px 0 0 13px; }
+    .work-reply-form { display: flex; gap: 6px; margin: 9px 0 0 8px; }
     .work-reply-form input { min-width: 0; flex: 1; border: 1px solid rgba(255,255,255,.13); border-radius: 8px; padding: 7px 9px; color: #fff; background: rgba(7,16,35,.36); outline: none; font: inherit; font-size: 12px; }
     .work-reply-form button { border: 0; border-radius: 8px; padding: 0 9px; color: #dbeafe; background: rgba(59,130,246,.25); cursor: pointer; font: inherit; font-size: 11px; font-weight: 800; }
 

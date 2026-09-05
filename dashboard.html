@@ -512,10 +512,44 @@
       color: white;
     }
 
-    .mini-stack {
-      display: grid;
-      gap: 18px;
+    .mini-stack { min-width: 0; }
+
+    .workboard {
+      height: 100%;
+      min-height: 248px;
+      padding: 17px;
+      display: flex;
+      flex-direction: column;
     }
+
+    .workboard-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .workboard-title { margin: 0; font-size: 15px; font-weight: 900; color: #fff; }
+    .workboard-note { color: var(--muted); font-size: 12px; }
+    .workboard-list { flex: 1; min-height: 92px; max-height: 172px; overflow: auto; padding-right: 3px; }
+    .workboard-empty { padding: 23px 10px; color: var(--muted); font-size: 13px; text-align: center; }
+    .work-item { padding: 10px 0; border-top: 1px solid rgba(255,255,255,.09); }
+    .work-item:first-child { border-top: 0; padding-top: 0; }
+    .work-message-line { display: flex; align-items: flex-start; gap: 8px; }
+    .work-body { flex: 1; min-width: 0; color: #f5f8ff; font-size: 13px; line-height: 1.38; overflow-wrap: anywhere; }
+    .work-meta { display: block; margin-top: 3px; color: var(--muted); font-size: 10px; }
+    .work-replies { margin: 8px 0 0 13px; padding-left: 10px; border-left: 2px solid rgba(96,165,250,.34); }
+    .work-reply { margin-top: 7px; }
+    .work-delete { flex: 0 0 auto; border: 0; border-radius: 8px; padding: 3px 7px; color: #fecaca; background: rgba(239,68,68,.13); cursor: pointer; font: inherit; font-size: 11px; font-weight: 800; }
+    .work-delete:hover { background: rgba(239,68,68,.28); }
+    .work-compose { display: flex; gap: 7px; margin-top: 10px; }
+    .work-compose input { min-width: 0; flex: 1; border: 1px solid rgba(255,255,255,.15); border-radius: 10px; padding: 10px 11px; color: #fff; background: rgba(7,16,35,.5); outline: none; font: inherit; font-size: 13px; }
+    .work-compose input:focus { border-color: rgba(96,165,250,.8); }
+    .work-send { border: 0; border-radius: 10px; padding: 0 12px; color: #fff; background: linear-gradient(135deg,#2563eb,#1d4ed8); cursor: pointer; font: inherit; font-size: 12px; font-weight: 800; }
+    .work-reply-form { display: flex; gap: 6px; margin: 8px 0 0 13px; }
+    .work-reply-form input { min-width: 0; flex: 1; border: 1px solid rgba(255,255,255,.13); border-radius: 8px; padding: 7px 9px; color: #fff; background: rgba(7,16,35,.36); outline: none; font: inherit; font-size: 12px; }
+    .work-reply-form button { border: 0; border-radius: 8px; padding: 0 9px; color: #dbeafe; background: rgba(59,130,246,.25); cursor: pointer; font: inherit; font-size: 11px; font-weight: 800; }
 
     .mini-panel {
       padding: 18px;
@@ -1418,33 +1452,19 @@
         </div>
 
         <div class="mini-stack">
-          <div class="mini-panel">
-            <div class="mini-panel-title">Approval Watch</div>
-            <div class="big-value" id="pendingApprovalsMini">0</div>
-            <div class="mini-row">
-              <span>Pending Payment</span>
-              <strong id="pendingPaymentsText">0</strong>
+          <section class="mini-panel workboard" aria-labelledby="workboardTitle">
+            <div class="workboard-head">
+              <div>
+                <h2 class="workboard-title" id="workboardTitle">Team Workboard</h2>
+                <div class="workboard-note">Post work, reply with updates, then delete when done.</div>
+              </div>
             </div>
-            <div class="mini-row">
-              <span>Pending Return</span>
-              <strong id="pendingReturnsText">0</strong>
-            </div>
-            <div class="status-chip">Only approved CASH refunds affect cash total</div>
-          </div>
-
-          <div class="mini-panel">
-            <div class="mini-panel-title">Cash Closing Snapshot</div>
-            <div class="big-value" id="lastClosingAmount">₹ 0.00</div>
-            <div class="mini-row">
-              <span>Last Closed By</span>
-              <strong id="lastClosedBy">—</strong>
-            </div>
-            <div class="mini-row">
-              <span>Closed At</span>
-              <strong id="lastClosedAt">—</strong>
-            </div>
-            <div class="status-chip" id="closingStatusChip">No closing yet today</div>
-          </div>
+            <div class="workboard-list" id="workboardList" aria-live="polite"><div class="workboard-empty">Loading team work…</div></div>
+            <form class="work-compose" id="workboardForm">
+              <input id="workboardInput" maxlength="500" autocomplete="off" placeholder="Add a task or message…" aria-label="New task or message">
+              <button class="work-send" type="submit">Post</button>
+            </form>
+          </section>
         </div>
       </section>
 
@@ -1634,6 +1654,7 @@
         setupFab();
         setupBackupButton();
         setupCashClosingButtons();
+        setupWorkboard(profile);
         loadCRMOverdueReminder();
         loadPendingPOLoginPopup(profile);
 
@@ -1842,6 +1863,125 @@
         if (fabMenu.contains(e.target) || fabBtn.contains(e.target)) return;
         fabMenu.classList.remove("show");
       });
+    }
+
+    let workboardProfile = null;
+    let workboardRefreshTimer = null;
+
+    function setupWorkboard(profile) {
+      workboardProfile = profile;
+      const form = document.getElementById("workboardForm");
+      const list = document.getElementById("workboardList");
+      form?.addEventListener("submit", postWorkboardMessage);
+      list?.addEventListener("submit", handleWorkboardReply);
+      list?.addEventListener("click", handleWorkboardDelete);
+      loadWorkboard();
+      clearInterval(workboardRefreshTimer);
+      workboardRefreshTimer = setInterval(loadWorkboard, 20000);
+    }
+
+    function workboardDate(value) {
+      const date = value ? new Date(value) : null;
+      if (!date || Number.isNaN(date.getTime())) return "";
+      return date.toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+    }
+
+    async function loadWorkboard() {
+      const list = document.getElementById("workboardList");
+      if (!list) return;
+      try {
+        const { data, error } = await sb.from("dashboard_work_messages")
+          .select("id, body, author_name, parent_id, created_at")
+          .order("created_at", { ascending: false })
+          .limit(200);
+        if (error) throw error;
+
+        const rows = data || [];
+        const roots = rows.filter(row => !row.parent_id);
+        const replies = new Map();
+        rows.filter(row => row.parent_id).forEach(row => {
+          const group = replies.get(row.parent_id) || [];
+          group.push(row);
+          replies.set(row.parent_id, group);
+        });
+        roots.forEach(row => (replies.get(row.id) || []).sort((a, b) => new Date(a.created_at) - new Date(b.created_at)));
+        list.innerHTML = roots.length ? roots.map(row => renderWorkboardItem(row, replies.get(row.id) || [])).join("") :
+          '<div class="workboard-empty">No open work yet. Add the first task above.</div>';
+      } catch (err) {
+        console.warn("Unable to load team workboard:", err?.message || err);
+        list.innerHTML = '<div class="workboard-empty">Team Workboard needs its database table enabled. Run <code>supabase_dashboard_workboard.sql</code>.</div>';
+      }
+    }
+
+    function renderWorkboardItem(item, replies) {
+      const replyHtml = replies.map(reply => `
+        <div class="work-message-line work-reply">
+          <div class="work-body">${escapeHtml(reply.body)}<span class="work-meta">${escapeHtml(reply.author_name || "Team member")} · ${workboardDate(reply.created_at)}</span></div>
+          <button class="work-delete" type="button" data-work-delete="${reply.id}" aria-label="Delete reply">Delete</button>
+        </div>`).join("");
+      return `<article class="work-item">
+        <div class="work-message-line">
+          <div class="work-body">${escapeHtml(item.body)}<span class="work-meta">${escapeHtml(item.author_name || "Team member")} · ${workboardDate(item.created_at)}</span></div>
+          <button class="work-delete" type="button" data-work-delete="${item.id}" aria-label="Delete task">Delete</button>
+        </div>
+        ${replies.length ? `<div class="work-replies">${replyHtml}</div>` : ""}
+        <form class="work-reply-form" data-work-reply="${item.id}">
+          <input maxlength="500" autocomplete="off" placeholder="Write an update or response…" aria-label="Reply to task">
+          <button type="submit">Reply</button>
+        </form>
+      </article>`;
+    }
+
+    async function postWorkboardMessage(event) {
+      event.preventDefault();
+      const input = document.getElementById("workboardInput");
+      await saveWorkboardMessage(input?.value, null, input);
+    }
+
+    async function handleWorkboardReply(event) {
+      const form = event.target.closest("form[data-work-reply]");
+      if (!form) return;
+      event.preventDefault();
+      await saveWorkboardMessage(form.querySelector("input")?.value, form.dataset.workReply, form.querySelector("input"));
+    }
+
+    async function saveWorkboardMessage(body, parentId, input) {
+      const cleanBody = String(body || "").trim();
+      if (!cleanBody || !workboardProfile) return;
+      input.disabled = true;
+      try {
+        const { error } = await sb.from("dashboard_work_messages").insert({
+          body: cleanBody,
+          parent_id: parentId || null,
+          author_id: workboardProfile.id,
+          author_name: workboardProfile.full_name || workboardProfile.email || "Team member"
+        });
+        if (error) throw error;
+        input.value = "";
+        await loadWorkboard();
+      } catch (err) {
+        console.error("Unable to post team work:", err);
+        alert("Could not save this message. Please make sure the Team Workboard SQL has been run.");
+      } finally {
+        input.disabled = false;
+        input.focus();
+      }
+    }
+
+    async function handleWorkboardDelete(event) {
+      const button = event.target.closest("[data-work-delete]");
+      if (!button) return;
+      if (!confirm("Delete this message? Replies under a deleted task will be removed too.")) return;
+      button.disabled = true;
+      try {
+        const { error } = await sb.from("dashboard_work_messages").delete().eq("id", button.dataset.workDelete);
+        if (error) throw error;
+        await loadWorkboard();
+      } catch (err) {
+        console.error("Unable to delete team work:", err);
+        alert("Could not delete this message.");
+        button.disabled = false;
+      }
     }
 
     function updateV2HealthStatus(todayBalance, todayCreditSales, pendingCount) {

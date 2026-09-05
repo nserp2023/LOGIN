@@ -578,18 +578,53 @@
       };
     }
 
-    function receiptMatchesCustomer(row, lookup, filters = {}){
+    function customerIdentityMatches(identity, lookup){
+      const text = normalNameKey(`${identity.party_name || ""} ${identity.remarks || ""} ${identity.voucher_no || ""}`);
+      const identityMobile = extractMobile(`${identity.party_name || ""} ${identity.remarks || ""}`) ||
+        String(identity.customer_mobile || "").replace(/\D/g, "").slice(-10);
+
+      if (identityMobile && lookup.mobiles.includes(identityMobile)) return true;
+
+      return lookup.names.some(nameKey => {
+        const partyName = normalNameKey(identity.party_name || identity.customer_name);
+        // Older auto-generated advances may have a shortened party name
+        // (for example, "ATHIRA" instead of "ATHIRA A").  Treat either
+        // version as the same customer, as long as it is a meaningful name.
+        const partyMatches = partyName.length >= 3 &&
+          (nameKey.includes(partyName) || partyName.includes(nameKey));
+        return nameKey && (text.includes(nameKey) || partyMatches);
+      });
+    }
+
+    function receiptMatchesCustomer(row, lookup, filters = {}, salesOrderCustomerMap = {}){
       const hasCustomerSearch = Boolean((filters.mobile || "").trim() || (filters.name || "").trim());
       if (!hasCustomerSearch) return true;
 
-      const text = normalNameKey(`${row.party_name || ""} ${row.remarks || ""} ${row.voucher_no || ""}`);
-      const receiptMobile = extractMobile(`${row.party_name || ""} ${row.remarks || ""}`);
+      if (customerIdentityMatches(row, lookup)) return true;
 
-      if (receiptMobile && lookup.mobiles.includes(receiptMobile)) return true;
+      // The advance is permanently tied to its sales-order header by
+      // reference_id. Use that identity when the party name was changed while
+      // converting the order to a sales bill.
+      const linkedOrder = salesOrderCustomerMap[String(row.reference_id || "")];
+      return !!linkedOrder && customerIdentityMatches(linkedOrder, lookup);
+    }
 
-      return lookup.names.some(nameKey => {
-        return nameKey && (text.includes(nameKey) || nameKey.includes(normalNameKey(row.party_name)));
-      });
+    async function loadSalesOrderCustomerMap(receiptRows){
+      const orderIds = [...new Set((receiptRows || [])
+        .filter(row => ["sales_order", "sales_order_advance", "sales_order_advance_receipt"].includes(String(row.reference_type || "").toLowerCase()))
+        .map(row => row.reference_id)
+        .filter(Boolean))];
+      if (!orderIds.length) return {};
+
+      const { data, error } = await sb
+        .from("sales_order_details")
+        .select("id, customer_name, customer_mobile")
+        .in("id", orderIds);
+      if (error) {
+        console.warn("Sales order identity lookup warning:", error);
+        return {};
+      }
+      return Object.fromEntries((data || []).map(row => [String(row.id), row]));
     }
 
     async function loadCreditReport() {
@@ -704,7 +739,7 @@
 
       let receiptQuery = sb
         .from("cash_transactions")
-        .select("id, txn_date, voucher_no, txn_type, party_name, amount, remarks, approval_status, reference_type, is_checked")
+        .select("id, txn_date, voucher_no, txn_type, party_name, amount, remarks, approval_status, reference_type, reference_id, is_checked")
         .in("txn_type", ["receipt", "payment"])
         .eq("approval_status", "approved");
 
@@ -734,6 +769,12 @@
             orParts.push(`remarks.ilike.%${name}%`);
           }
         });
+
+        // Sales-order advances are sometimes saved with only a customer name,
+        // rather than the mobile entered on the bill. Include them here and
+        // apply the customer check below, after the rows have been loaded.
+        ["sales_order", "sales_order_advance", "sales_order_advance_receipt", "sales_order_conversion_receipt", "customer_advance"]
+          .forEach(ref => orParts.push(`reference_type.eq.${ref}`));
       }
 
       if (filters.bill) {
@@ -749,6 +790,8 @@
         console.warn("Receipt rows load warning:", error);
         return [];
       }
+
+      const salesOrderCustomerMap = await loadSalesOrderCustomerMap(data || []);
 
       return (data || [])
         .filter(r => {
@@ -780,7 +823,7 @@
             text.includes("advance paid");
 
           if (!isCreditReceipt && !isSalesOrderAdvance) return false;
-          if (hasCustomerSearch && !receiptMatchesCustomer(r, lookup, filters)) return false;
+          if (hasCustomerSearch && !receiptMatchesCustomer(r, lookup, filters, salesOrderCustomerMap)) return false;
           return true;
         })
         .map(r => {
@@ -801,7 +844,9 @@
             text.includes("advance credit receipt");
           const isPayment = String(r.txn_type || "").trim().toLowerCase() === "payment";
 
-          const receiptMobile = getReceiptMobile(r, lookup.customerMobileMap || {});
+          const linkedOrder = salesOrderCustomerMap[String(r.reference_id || "")];
+          const receiptMobile = getReceiptMobile(r, lookup.customerMobileMap || {}) ||
+            String(linkedOrder?.customer_mobile || "").replace(/\D/g, "").slice(-10);
           const fallbackName = receiptMobile && lookup.customerNameMap ? lookup.customerNameMap[receiptMobile] : "";
           const amount = num(r.amount);
 

@@ -197,6 +197,9 @@ th{
 .suggest-item b{display:block;color:white;font-size:14px}
 .suggest-item small{color:#c8def8;font-size:12px}
 .mini-note{color:var(--muted);font-size:12px;margin:0 0 10px;line-height:1.35}
+.department-stock{display:none;margin:0 0 12px;padding:12px;border:1px solid var(--line);border-radius:12px;background:#08172a;max-height:245px;overflow:auto}
+.department-stock table{min-width:560px}
+.price-input{min-width:100px}
 @media(max-width:1400px){
   .summary{grid-template-columns:repeat(3,1fr)}
 }
@@ -231,8 +234,12 @@ th{
       <p class="mini-note">You can now reduce stock from one item or many items in the same conversion.</p>
 
       <div class="actions" style="margin-bottom:12px">
+        <select id="fromDepartment" aria-label="Source department" style="width:190px" onchange="refreshFromDepartment()"></select>
+        <button class="btn btn-dark" onclick="toggleDepartmentStock()">View Department Stock</button>
         <button class="btn btn-blue" onclick="addFromRow()">+ Add Source Item</button>
       </div>
+
+      <div id="departmentStock" class="department-stock"></div>
 
       <div class="table-wrap">
         <table>
@@ -264,11 +271,17 @@ th{
         <table>
           <thead>
             <tr>
-              <th style="width:38%">Search Item</th>
+              <th style="width:28%">Search Item</th>
               <th>Code</th>
               <th>Stock</th>
               <th>Add Qty</th>
               <th>After</th>
+              <th>Price</th>
+              <th>Price+GST</th>
+              <th>Landing</th>
+              <th>P1+GST</th>
+              <th>P2+GST</th>
+              <th>P3+GST</th>
               <th></th>
             </tr>
           </thead>
@@ -356,6 +369,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   makeConversionNo();
 
   await loadStock();
+  populateDepartmentFilter();
   addFromRow(false);
   addToRow(false);
   await loadHistory();
@@ -403,6 +417,30 @@ async function loadStock(){
   }
 }
 
+function positiveStockItems(){ return stockItems.filter(it => Number(it.balance || 0) > 0); }
+function populateDepartmentFilter(){
+  const selected = fromDepartment.value || "ALL";
+  const departments = [...new Set(positiveStockItems().map(it => String(it.department || "ALL").trim() || "ALL"))].sort((a,b) => a.localeCompare(b));
+  fromDepartment.innerHTML = `<option value="ALL">All departments</option>` + departments.map(dept => `<option value="${esc(dept)}">${esc(dept)}</option>`).join("");
+  fromDepartment.value = departments.includes(selected) || selected === "ALL" ? selected : "ALL";
+}
+function sourceItemsForDepartment(){
+  const department = fromDepartment.value || "ALL";
+  return positiveStockItems().filter(it => department === "ALL" || String(it.department || "ALL").trim() === department);
+}
+function refreshFromDepartment(){ hideSuggest(); if(departmentStock.style.display === "block") renderDepartmentStock(); }
+function toggleDepartmentStock(){
+  const opening = departmentStock.style.display !== "block";
+  departmentStock.style.display = opening ? "block" : "none";
+  if(opening) renderDepartmentStock();
+}
+function renderDepartmentStock(){
+  const items = sourceItemsForDepartment();
+  const label = fromDepartment.options[fromDepartment.selectedIndex]?.text || "Selected department";
+  const rows = items.map(it => `<tr><td>${esc(it.item_code)}</td><td>${esc(it.item_name)}</td><td>${qty(it.balance)}</td></tr>`).join("") || `<tr><td colspan="3">No items with stock in this department.</td></tr>`;
+  departmentStock.innerHTML = `<b>${esc(label)} — ${items.length} item(s) with stock</b><table><thead><tr><th>Code</th><th>Item</th><th>Available Stock</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
 function addFromRow(focusSearch = true){
   const id = makeRowId("f");
   fromRows.push({id, item:null});
@@ -428,12 +466,13 @@ function addFromRow(focusSearch = true){
     search.value = displayItem(it);
     tr.querySelector(".fromCode").value = it.item_code || "";
     tr.querySelector(".fromStock").value = qty(it.balance);
+    updateConvertedTargetPrices();
     updateSummary();
     qtyInput.focus();
     qtyInput.select();
   });
 
-  qtyInput.addEventListener("input", updateSummary);
+  qtyInput.addEventListener("input", () => { updateConvertedTargetPrices(); updateSummary(); });
   qtyInput.addEventListener("keydown", e => handleQtyEnter(e, "from", id));
   if(focusSearch) focusInput(search);
   return tr;
@@ -441,7 +480,7 @@ function addFromRow(focusSearch = true){
 
 function addToRow(focusSearch = true){
   const id = makeRowId("t");
-  toRows.push({id, item:null});
+  toRows.push({id, item:null, prices:{}});
 
   const tr = document.createElement("tr");
   tr.id = id;
@@ -451,6 +490,12 @@ function addToRow(focusSearch = true){
     <td><input class="toStock" readonly></td>
     <td><input class="toQty" type="number" min="0" step="0.01"></td>
     <td><input class="toAfter" readonly></td>
+    <td><input class="toPrice price-input" type="number" min="0" step="0.01"></td>
+    <td><input class="toPriceGst price-input" type="number" min="0" step="0.01"></td>
+    <td><input class="toLanding price-input" type="number" min="0" step="0.01"></td>
+    <td><input class="toP1Gst price-input" type="number" min="0" step="0.01"></td>
+    <td><input class="toP2Gst price-input" type="number" min="0" step="0.01"></td>
+    <td><input class="toP3Gst price-input" type="number" min="0" step="0.01"></td>
     <td><button class="small-btn del" onclick="removeToRow('${id}')">❌</button></td>
   `;
   toBody.appendChild(tr);
@@ -464,12 +509,14 @@ function addToRow(focusSearch = true){
     search.value = displayItem(it);
     tr.querySelector(".toCode").value = it.item_code || "";
     tr.querySelector(".toStock").value = qty(it.balance);
+    setToRowPrices(row, tr, getConvertedUnitPrices());
     updateSummary();
     qtyInput.focus();
     qtyInput.select();
   });
 
-  qtyInput.addEventListener("input", updateSummary);
+  qtyInput.addEventListener("input", () => { updateConvertedTargetPrices(); updateSummary(); });
+  bindToPriceInputs(id, tr);
   qtyInput.addEventListener("keydown", e => handleQtyEnter(e, "to", id));
   if(focusSearch) focusInput(search);
   return tr;
@@ -529,7 +576,8 @@ function showSuggestions(input, onSelect){
   if(!q){ hideSuggest(); return; }
 
   const words = q.split(" ").filter(Boolean);
-  const found = stockItems.filter(it => {
+  const candidates = input.classList.contains("fromSearch") ? sourceItemsForDepartment() : stockItems;
+  const found = candidates.filter(it => {
     const hay = normalize(`${it.item_code || ""} ${it.item_name || ""} ${it.barcode || ""}`);
     return words.every(w => hay.includes(w));
   }).slice(0,100);
@@ -620,6 +668,83 @@ function hideSuggest(){
   globalList.style.display = "none";
   globalList.innerHTML = "";
   activeSuggest = null;
+}
+
+function roundPrice(value){ return Math.round(Number(value || 0) * 100) / 100; }
+function addGst(base, gst){ return roundPrice(Number(base || 0) * (1 + Number(gst || 0) / 100)); }
+function removeGst(gross, gst){ return roundPrice(Number(gross || 0) / (1 + Number(gst || 0) / 100)); }
+function getConvertedUnitPrices(){
+  const from = getValidFromRows(false);
+  const totalOut = from.reduce((sum, row) => sum + row.qty, 0);
+  const totalIn = toRows.reduce((sum, row) => {
+    const tr = document.getElementById(row.id);
+    return sum + Number(tr?.querySelector(".toQty")?.value || 0);
+  }, 0);
+  if(!totalOut || !totalIn) return null;
+  const total = field => from.reduce((sum, row) => sum + row.qty * Number(row.item[field] || 0), 0);
+  const basePrice = total("purchase_price") || total("price");
+  const priceGst = total("purchase_price_gst") || total("price_gst");
+  return {
+    price: roundPrice(basePrice / totalIn),
+    price_gst: roundPrice((priceGst || total("landing")) / totalIn),
+    landing: roundPrice(total("landing") / totalIn),
+    price1_gst: roundPrice(total("price1_gst") / totalIn),
+    price2_gst: roundPrice(total("price2_gst") / totalIn),
+    price3_gst: roundPrice(total("price3_gst") / totalIn)
+  };
+}
+function setToRowPrices(row, tr, prices){
+  const p = prices || {
+    price: row.item?.purchase_price || 0, price_gst: row.item?.purchase_price_gst || 0,
+    landing: row.item?.landing || 0, price1_gst: row.item?.price1_gst || 0,
+    price2_gst: row.item?.price2_gst || 0, price3_gst: row.item?.price3_gst || 0
+  };
+  row.prices = {...p};
+  tr.querySelector(".toPrice").value = money(p.price);
+  tr.querySelector(".toPriceGst").value = money(p.price_gst);
+  tr.querySelector(".toLanding").value = money(p.landing);
+  tr.querySelector(".toP1Gst").value = money(p.price1_gst);
+  tr.querySelector(".toP2Gst").value = money(p.price2_gst);
+  tr.querySelector(".toP3Gst").value = money(p.price3_gst);
+}
+function updateConvertedTargetPrices(){
+  const prices = getConvertedUnitPrices();
+  if(!prices) return;
+  toRows.forEach(row => {
+    const tr = document.getElementById(row.id);
+    if(row.item && tr) setToRowPrices(row, tr, prices);
+  });
+}
+function bindToPriceInputs(id, tr){
+  const fields = {
+    toPrice:"price", toPriceGst:"price_gst", toLanding:"landing",
+    toP1Gst:"price1_gst", toP2Gst:"price2_gst", toP3Gst:"price3_gst"
+  };
+  Object.entries(fields).forEach(([className, field]) => tr.querySelector("." + className).addEventListener("input", e => {
+    const row = toRows.find(r => r.id === id);
+    if(!row) return;
+    row.prices[field] = roundPrice(e.target.value);
+    const gst = Number(row.item?.gst_percent || 0);
+    if(field === "price"){
+      row.prices.price_gst = addGst(row.prices.price, gst);
+      tr.querySelector(".toPriceGst").value = money(row.prices.price_gst);
+    } else if(field === "price_gst"){
+      row.prices.price = removeGst(row.prices.price_gst, gst);
+      tr.querySelector(".toPrice").value = money(row.prices.price);
+    }
+  }));
+}
+function targetPricePayload(row){
+  const tr = document.getElementById(row.id);
+  const gst = Number(row.item.gst_percent || 0);
+  const value = selector => roundPrice(tr.querySelector(selector).value);
+  const p1g = value(".toP1Gst"), p2g = value(".toP2Gst"), p3g = value(".toP3Gst");
+  return {
+    purchase_price:value(".toPrice"), purchase_price_gst:value(".toPriceGst"), landing:value(".toLanding"),
+    price1:removeGst(p1g,gst), price1_gst:p1g,
+    price2:removeGst(p2g,gst), price2_gst:p2g,
+    price3:removeGst(p3g,gst), price3_gst:p3g
+  };
 }
 
 function updateSummary(){
@@ -801,10 +926,21 @@ async function saveConversion(){
     const {error:ledErr} = await sb.from("stock_ledger").insert(ledgerRows);
     if(ledErr) throw ledErr;
 
-    showMsg("Stock conversion saved successfully. Stock ledger updated.", "ok");
+    // Save the target item's purchase/landing prices and its P1/P2/P3 base prices.
+    // Only the GST-inclusive tier prices are edited on this screen; the base prices are derived here.
+    for(const r of validTo){
+      const {error:priceErr} = await sb
+        .from("stock_items")
+        .update(targetPricePayload(r))
+        .eq("item_code", r.item.item_code);
+      if(priceErr) throw new Error(`Price update failed for ${r.item.item_code}: ${priceErr.message}`);
+    }
+
+    showMsg("Stock conversion saved successfully. Stock ledger and target prices updated.", "ok");
 
     clearForm(false);
     await loadStock();
+    populateDepartmentFilter();
     await loadHistory();
 
   }catch(err){
@@ -826,7 +962,7 @@ function getValidFromRows(throwErrors){
 
     if(r.item && q > 0){
       if(q > Number(r.item.balance || 0)) throw new Error("Source item stock is not enough: " + r.item.item_code);
-      arr.push({item:r.item, qty:q});
+      arr.push({id:r.id, item:r.item, qty:q});
     }
   }
 
@@ -846,7 +982,7 @@ function getValidToRows(throwErrors){
     if(r.item && q <= 0 && throwErrors) throw new Error("Enter add qty for target item: " + r.item.item_code);
 
     if(r.item && q > 0){
-      arr.push({item:r.item, qty:q});
+      arr.push({id:r.id, item:r.item, qty:q});
     }
   }
 

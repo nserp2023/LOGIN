@@ -407,6 +407,22 @@
         .btn-save:hover { background: #047857; }
         .btn-save:disabled { background: #94a3b8; cursor: not-allowed; }
 
+        .reprint-last-btn {
+            align-self: center;
+            min-height: 34px;
+            padding: 7px 12px;
+            border: 1px solid rgba(96, 165, 250, .75);
+            border-radius: 6px;
+            background: #1d4ed8;
+            color: #ffffff;
+            font-size: 12px;
+            font-weight: 800;
+            cursor: pointer;
+        }
+
+        .reprint-last-btn:hover { background: #1e40af; }
+        .reprint-last-btn:disabled { opacity: .65; cursor: wait; }
+
         .autocomplete-wrapper { position: relative; width: 100%; height: 100%; }
         
         .autocomplete-list {
@@ -1465,6 +1481,7 @@
         </div>
 
         <div id="draft_status_text" style="align-self:center;color:#22c55e;font-weight:800;font-size:12px;padding:8px 10px;border:1px solid rgba(34,197,94,.45);border-radius:6px;background:rgba(20,83,45,.35);">Auto Backup ON</div>
+        <button type="button" id="btn_reprint_last" class="reprint-last-btn" onclick="reprintLastDocument()" title="Print the most recently saved document in the selected mode">Reprint Last Bill</button>
 
         <div class="footer-actions" aria-label="Billing actions">
             <button type="button" class="btn icon-btn icon-btn-report" data-tooltip="Sales report" aria-label="Open sales report" title="Sales report" onclick="openReportPanel()">
@@ -1664,6 +1681,67 @@
     function resetCurrentBill(){
         disableAutoBackupAndClearDraft("New bill - draft cleared");
         window.location.reload();
+    }
+
+    const LAST_DOCUMENT_PRINT_CONFIG = Object.freeze({
+        sales: {
+            table: "sales_details",
+            printType: "sales",
+            label: "Sales bill"
+        },
+        sales_pack: {
+            table: "sales_packing_details",
+            printType: "sales_pack",
+            label: "Sales Pack bill"
+        },
+        quotation: {
+            table: "quotation_details",
+            printType: "quotation",
+            label: "Quotation"
+        },
+        sales_order: {
+            table: "sales_order_details",
+            printType: "sales_order",
+            label: "Sales Order"
+        }
+    });
+
+    async function reprintLastDocument(){
+        const docType = document.getElementById("doc_type")?.value || "sales";
+        const config = LAST_DOCUMENT_PRINT_CONFIG[docType];
+        const button = document.getElementById("btn_reprint_last");
+
+        if(!config){
+            alert("Select a document mode before reprinting.");
+            return;
+        }
+
+        if(button) button.disabled = true;
+
+        try{
+            // IDs are generated in save order, so the highest ID is the last
+            // saved document for this exact mode.
+            const { data, error } = await sb
+                .from(config.table)
+                .select("id")
+                .order("id", { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+            if(error) throw error;
+
+            if(!data?.id){
+                alert(`No saved ${config.label} is available to reprint.`);
+                return;
+            }
+
+            window.open(`print.html?type=${encodeURIComponent(config.printType)}&id=${encodeURIComponent(data.id)}`, "_blank");
+        }catch(error){
+            console.error("Last document reprint failed:", error);
+            alert(`Could not load the last ${config.label}. Please try again.`);
+        }finally{
+            if(button) button.disabled = false;
+        }
     }
 
     function setSaveButtonLabel(label){

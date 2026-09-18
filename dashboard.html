@@ -1793,12 +1793,17 @@
       const role = (localStorage.getItem("role") || "").toUpperCase();
 
       if (role !== "OWNER" && role !== "ADMIN") {
-        const userSettingsCard = document.querySelector('[onclick*="users.html"]');
-        if (userSettingsCard) userSettingsCard.style.display = "none";
+        document.querySelectorAll('[onclick*="users.html"], [onclick*="user_accessibility.html"]').forEach(card => {
+          card.style.display = "none";
+        });
 
         const backupBtn = document.getElementById("backupBtn");
         if (backupBtn) backupBtn.style.display = "none";
       } else {
+        document.querySelectorAll('[onclick*="users.html"], [onclick*="user_accessibility.html"]').forEach(card => {
+          card.style.display = "";
+        });
+
         const backupBtn = document.getElementById("backupBtn");
         if (backupBtn) backupBtn.style.display = "";
       }

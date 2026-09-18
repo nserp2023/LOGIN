@@ -645,9 +645,9 @@
 
     <section class="form-side">
       <div class="login-card">
-        <div class="mini-title">⚡ Staff Login</div>
+        <div class="mini-title">⚡ Secure Login</div>
         <h2>Welcome back</h2>
-        <p class="help">Enter your approved staff name and password to open the dashboard.</p>
+        <p class="help">Enter your approved name and password to open the dashboard.</p>
 
         <form id="loginForm" autocomplete="off">
           <div class="input-group">
@@ -687,7 +687,7 @@
         <p class="signup-line">Don't have an account? <a href="signup.html">Sign up here</a></p>
 
         <div class="bottom-strip">
-          Tip: Use the exact staff full name saved in user profiles.
+          Tip: Use the exact full name saved in your profile.
         </div>
       </div>
     </section>
@@ -969,7 +969,7 @@
         }
 
         if (!profile.approved) {
-          showError("Your account is waiting for OWNER / ADMIN approval.");
+          showError("Your account is waiting for approval.");
           await loginClient.auth.signOut();
           clearSavedLoginData();
           return;

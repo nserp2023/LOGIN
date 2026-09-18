@@ -436,7 +436,7 @@
 
     if(dirty && loadedBills.length){
       const ok = confirm('You have unsaved changes. Loading again will remove current changes. Continue?');
-      if(!ok) return;
+      if(!ok) return false;
     }
 
     const fromDate = els.fromDate.value;
@@ -445,11 +445,11 @@
 
     if(!fromDate || !toDate){
       showMessage('Please select From Date and To Date.', 'warn');
-      return;
+      return false;
     }
     if(fromDate > toDate){
       showMessage('From Date cannot be greater than To Date.', 'warn');
-      return;
+      return false;
     }
 
     setBusy(els.loadBtn, 'LOADING...', true);
@@ -464,7 +464,7 @@
 
     if(error){
       showMessage('Load failed: ' + error.message + '. Please confirm RPC get_bulk_sales_bills exists and has permission.', 'error');
-      return;
+      return false;
     }
 
     const grouped = {};
@@ -533,17 +533,19 @@
     } else {
       showMessage(`${loadedBills.length} bill(s) loaded successfully. Cleaner row view is enabled.`, 'success');
     }
+
+    return true;
   }
 
   function applyPriceType(){
     clearMessage();
     if(!loadedBills.length){
       showMessage('Load bills first.', 'warn');
-      return;
+      return false;
     }
 
     const ok = confirm('Apply Purchase + GST rate to all loaded item rows? This updates Price + GST and derives the base Price, but will not save until Review & Save.');
-    if(!ok) return;
+    if(!ok) return false;
 
     loadedBills.forEach(bill => {
       bill.items.forEach(item => {
@@ -555,6 +557,7 @@
     dirty = true;
     renderAll();
     showMessage('Purchase + GST rate applied. Base Price and Price + GST are both shown like the sales page.', 'info');
+    return true;
   }
 
   function recalcBillTotal(bill){
@@ -910,17 +913,17 @@
     clearMessage();
     if(!loadedBills.length){
       showMessage('Load bills first.', 'warn');
-      return;
+      return false;
     }
 
     const zeroCount = loadedBills.reduce((sum, bill) => sum + bill.items.filter(item => n(item.quantity) <= 0).length, 0);
     if(!zeroCount){
       showMessage('No zero quantity rows found in loaded bills.', 'info');
-      return;
+      return true;
     }
 
     const ok = confirm(`Remove ${zeroCount} zero quantity row(s) from all loaded bills? This will not save until Review & Save.`);
-    if(!ok) return;
+    if(!ok) return false;
 
     let removed = 0;
     loadedBills.forEach(bill => {
@@ -938,6 +941,8 @@
     }else{
       showMessage(`${removed} zero quantity row(s) removed from all loaded bills. No empty bills found.`, 'success');
     }
+
+    return true;
   }
 
   function removeRow(billIndex, itemIndex){
@@ -963,11 +968,11 @@
     clearMessage();
     if(!loadedBills.length){
       showMessage('Load bills first.', 'warn');
-      return;
+      return false;
     }
 
     const ok = confirm('Adjust negative-stock item quantities on this page? This only changes the pending bill quantity. Stock will be updated only by SQL during Review & Save.');
-    if(!ok) return;
+    if(!ok) return false;
 
     const groups = {};
     let negativeRowsFound = 0;
@@ -995,7 +1000,7 @@
 
     if(!negativeRowsFound){
       showMessage('No negative-stock rows are loaded on this page. If you see negative stock elsewhere, click LOAD BILLS again and make sure the uploaded page is the latest bulkedit.html.', 'info');
-      return;
+      return true;
     }
 
     let adjustedRows = 0;
@@ -1044,7 +1049,7 @@
 
     if(!adjustedRows){
       showMessage('No negative-stock quantities could be adjusted from the loaded bills.', 'info');
-      return;
+      return true;
     }
 
     dirty = true;
@@ -1054,6 +1059,7 @@
     const moreText = adjustmentDetails.length > 6 ? `, +${adjustmentDetails.length - 6} more` : '';
     const unresolvedText = unresolved.length ? ` Unresolved: ${unresolved.join(', ')}.` : '';
     showMessage(`Stock adjust prepared. Changed ${adjustedRows} row(s) across ${touchedItems} item group(s). ${detailText}${moreText}.${unresolvedText} Review & Save will send these quantities to SQL.`, unresolved.length ? 'warn' : 'success');
+    return true;
   }
   window.adjustQuantities = adjustQuantities;
 
@@ -1469,6 +1475,39 @@
   els.saveBtn.addEventListener('click', reviewAndSave);
   els.cancelSaveBtn.addEventListener('click', closeConfirmModal);
   els.confirmSaveBtn.addEventListener('click', confirmSaveNow);
+
+  function focusNextAfterEnter(event, action, nextElement){
+    if(event.key !== 'Enter') return;
+    event.preventDefault();
+    Promise.resolve(action()).then(completed => {
+      if(completed && nextElement) nextElement.focus();
+    });
+  }
+
+  els.fromDate.addEventListener('keydown', event => {
+    if(event.key === 'Enter'){
+      event.preventDefault();
+      els.toDate.focus();
+    }
+  });
+  els.toDate.addEventListener('keydown', event => {
+    if(event.key === 'Enter'){
+      event.preventDefault();
+      els.loadBtn.focus();
+    }
+  });
+  els.loadBtn.addEventListener('keydown', event => {
+    focusNextAfterEnter(event, loadBills, els.applyPriceBtn);
+  });
+  els.applyPriceBtn.addEventListener('keydown', event => {
+    focusNextAfterEnter(event, applyPriceType, els.adjustBtn);
+  });
+  els.adjustBtn.addEventListener('keydown', event => {
+    focusNextAfterEnter(event, adjustQuantities, els.clearAllZeroBtn);
+  });
+  els.clearAllZeroBtn.addEventListener('keydown', event => {
+    focusNextAfterEnter(event, clearAllZeroRows, null);
+  });
 
   function setActionButtonsDisabled(disabled){
     [els.loadBtn, els.applyPriceBtn, els.adjustBtn, els.clearAllZeroBtn, els.saveBtn].forEach(btn => {

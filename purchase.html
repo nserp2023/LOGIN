@@ -923,9 +923,9 @@
 
         const value = num(baseInput.value) * (1 + num(percentInput.value) / 100);
         origin.value = fmt2(value);
+        origin.focus();
         origin.dispatchEvent(new Event("input", { bubbles:true }));
         closePercentageCalculator();
-        origin.focus();
         origin.select();
       });
     }

@@ -1342,6 +1342,12 @@
         inp.addEventListener('input', () => {
           els.confirmSaveBtn.disabled = inp.value.trim().toUpperCase() !== 'SAVE';
         });
+        inp.addEventListener('keydown', event => {
+          if(event.key === 'Enter' && inp.value.trim().toUpperCase() === 'SAVE'){
+            event.preventDefault();
+            els.confirmSaveBtn.click();
+          }
+        });
       }
     }, 50);
   }
@@ -1545,6 +1551,9 @@
 
     els.salesmanSelect.value = 'VAJRA';
     await loadAllItems();
+
+    els.fromDate.focus();
+    els.fromDate.select();
   }
 
   initPage();

@@ -355,6 +355,13 @@ function getGstNumber(head, linkedHead = null, customerHead = null){
     );
 }
 
+function isInterStateSales(head, linkedHead = null, customerHead = null){
+    if(type !== "sales") return false;
+    const gstNumber = getGstNumber(head, linkedHead, customerHead);
+    const stateCode = String(gstNumber || "").trim().slice(0, 2);
+    return /^\d{2}$/.test(stateCode) && stateCode !== "32";
+}
+
 function getSalesman(head){
     return firstNonEmpty(head.salesman, head.sales_man, head.created_by);
 }
@@ -557,6 +564,7 @@ const billDateForDailyNumber = type === "sales_pack"
     ? (linkedSalesHead?.bill_date || head.packing_date)
     : (head.bill_date || head.packing_date);
 const dailyBillNumber = await getDailyBillNumber(saleIdForDailyNumber, billDateForDailyNumber);
+const interStateSales = isInterStateSales(head, linkedSalesHead, customerHead);
 
 let rowsPerPage = items.length<=10 ? 10 : 40;
 let pageClass = items.length<=10 ? "page-half":"page-full";
@@ -769,7 +777,7 @@ const roundOff = documentTotal - calculatedTotal;
 if(p === pages-1){
 
 html+=`
-<tr><td>&nbsp;GST%</td><td>AMOUNT</td><td>CGST</td><td>SGST</td><td>Total</td></tr>`;
+<tr><td>&nbsp;GST%</td><td>AMOUNT</td><td>${interStateSales ? "IGST" : "CGST"}</td>${interStateSales ? "" : "<td>SGST</td>"}<td>Total</td></tr>`;
 
 Object.keys(gstMap).forEach(g=>{
 
@@ -780,8 +788,8 @@ html+=`
 <tr>
 <td>${g}%</td>
 <td>${taxable.toFixed(2)}</td>
-<td>${(gst/2).toFixed(2)}</td>
-<td>${(gst/2).toFixed(2)}</td>
+<td>${(interStateSales ? gst : gst/2).toFixed(2)}</td>
+${interStateSales ? "" : `<td>${(gst/2).toFixed(2)}</td>`}
 <td>${(taxable+gst).toFixed(2)}</td>
 </tr>`;
 
@@ -790,9 +798,9 @@ html+=`
 }else{
 
 html+=`
-<tr><td>&nbsp;GST%</td><td>AMOUNT</td><td>CGST</td><td>SGST</td><td>Total</td></tr>
-<tr><td>&nbsp;</td><td></td><td></td><td></td><td></td></tr>
-<tr><td>&nbsp;</td><td></td><td></td><td></td><td></td></tr>
+<tr><td>&nbsp;GST%</td><td>AMOUNT</td><td>${interStateSales ? "IGST" : "CGST"}</td>${interStateSales ? "" : "<td>SGST</td>"}<td>Total</td></tr>
+<tr><td>&nbsp;</td><td></td><td></td>${interStateSales ? "" : "<td></td>"}<td></td></tr>
+<tr><td>&nbsp;</td><td></td><td></td>${interStateSales ? "" : "<td></td>"}<td></td></tr>
 `;
 
 }

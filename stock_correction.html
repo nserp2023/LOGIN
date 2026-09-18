@@ -947,6 +947,16 @@
       );
     }
 
+    function normalizeSearchTerms(value) {
+      return String(value || '')
+        .toUpperCase()
+        .replace(/[^A-Z0-9]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .split(' ')
+        .filter(Boolean);
+    }
+
     function buildFilteredQuery() {
       const f = getActiveFilters();
       let query = sb.from('stock_items').select('*').order(state.sortBy, { ascending: state.ascending, nullsFirst: false });
@@ -961,13 +971,10 @@
       if (f.max_gst !== '') query = query.lte('gst_percent', Number(f.max_gst));
 
       if (f.qSearch) {
-        const s = f.qSearch.replaceAll(',', ' ').trim();
-        query = query.or([
-          `item_code.ilike.%${s}%`,
-          `item_name.ilike.%${s}%`,
-          `barcode.ilike.%${s}%`,
-          `hsn_code.ilike.%${s}%`
-        ].join(','));
+        const searchFields = ['item_code', 'item_name', 'barcode', 'hsn_code'];
+        for (const term of normalizeSearchTerms(f.qSearch)) {
+          query = query.or(searchFields.map(field => `${field}.ilike.%${term}%`).join(','));
+        }
       }
 
       return applyMissingFilter(query, f.missing);

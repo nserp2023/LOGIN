@@ -315,6 +315,52 @@
       display:none !important;
     }
 
+    .percentage-calculator{
+      position:fixed;
+      z-index:30;
+      width:190px;
+      padding:12px;
+      border:1px solid #4d75ae;
+      border-radius:10px;
+      background:linear-gradient(180deg, #182946, #101b30);
+      box-shadow:0 14px 30px rgba(0,0,0,.35);
+    }
+
+    .percentage-calculator label{
+      display:block;
+      margin-bottom:5px;
+      color:#9eb0cf;
+      font-size:11px;
+      font-weight:700;
+      text-transform:uppercase;
+    }
+
+    .percentage-calculator input{
+      width:100%;
+      height:32px;
+      margin-bottom:9px;
+      padding:0 9px;
+      border:1px solid #38557f;
+      border-radius:6px;
+      background:#0c1526;
+      color:#f5f8ff;
+      outline:none;
+      box-sizing:border-box;
+    }
+
+    .percentage-calculator input:focus{
+      border-color:#67a2ff;
+      box-shadow:0 0 0 3px rgba(94,160,255,.18);
+    }
+
+    .percentage-calculator .calculator-result{
+      margin-top:1px;
+      color:#8ed1a8;
+      font-size:12px;
+      font-weight:700;
+      text-align:right;
+    }
+
     .grid input,
     .grid select{
       font-size:13px;
@@ -808,6 +854,99 @@
         p3g: byKey("price3_gst")
       };
     }
+
+    const PERCENTAGE_CALCULATOR_COLUMNS = new Set([
+      "price1", "price1_gst", "price2", "price2_gst", "price3", "price3_gst"
+    ]);
+    let percentageCalculator = null;
+
+    function closePercentageCalculator(){
+      if(!percentageCalculator) return;
+      percentageCalculator.element.remove();
+      percentageCalculator = null;
+    }
+
+    function positionPercentageCalculator(box, origin){
+      const rect = origin.getBoundingClientRect();
+      const gap = 8;
+      const left = Math.max(8, Math.min(rect.left, window.innerWidth - box.offsetWidth - 8));
+      const top = rect.top - box.offsetHeight - gap;
+      box.style.left = `${left}px`;
+      box.style.top = `${Math.max(8, top)}px`;
+    }
+
+    function openPercentageCalculator(origin){
+      closePercentageCalculator();
+
+      const box = document.createElement("div");
+      box.className = "percentage-calculator";
+      box.innerHTML = `
+        <label for="calculatorBase">Value</label>
+        <input id="calculatorBase" type="number" step="any" autocomplete="off">
+        <label for="calculatorPercent">Add percent</label>
+        <input id="calculatorPercent" type="number" step="any" autocomplete="off">
+        <div class="calculator-result" aria-live="polite">Result: 0.00</div>
+      `;
+      document.body.appendChild(box);
+
+      const baseInput = box.querySelector("#calculatorBase");
+      const percentInput = box.querySelector("#calculatorPercent");
+      const result = box.querySelector(".calculator-result");
+      const updateResult = () => {
+        const base = num(baseInput.value);
+        const percent = num(percentInput.value);
+        result.textContent = `Result: ${fmt2(base * (1 + percent / 100))}`;
+      };
+
+      percentageCalculator = { element: box, origin, baseInput, percentInput };
+      baseInput.value = origin.value || "";
+      baseInput.addEventListener("input", updateResult);
+      percentInput.addEventListener("input", updateResult);
+      positionPercentageCalculator(box, origin);
+      baseInput.focus();
+      baseInput.select();
+
+      box.addEventListener("keydown", (event) => {
+        if(event.key === "Escape"){
+          event.preventDefault();
+          closePercentageCalculator();
+          origin.focus();
+          return;
+        }
+        if(event.key !== "Enter") return;
+        event.preventDefault();
+        if(event.target === baseInput){
+          percentInput.focus();
+          percentInput.select();
+          return;
+        }
+
+        const value = num(baseInput.value) * (1 + num(percentInput.value) / 100);
+        origin.value = fmt2(value);
+        origin.dispatchEvent(new Event("input", { bubbles:true }));
+        closePercentageCalculator();
+        origin.focus();
+        origin.select();
+      });
+    }
+
+    document.addEventListener("keydown", function(e){
+      if(percentageCalculator) return;
+      if(e.key !== "F2") return;
+      const current = document.activeElement;
+      if(!current || !PERCENTAGE_CALCULATOR_COLUMNS.has(current.dataset.col)) return;
+      e.preventDefault();
+      openPercentageCalculator(current);
+    });
+
+    document.addEventListener("click", function(e){
+      if(percentageCalculator && !percentageCalculator.element.contains(e.target) && e.target !== percentageCalculator.origin){
+        closePercentageCalculator();
+      }
+    });
+
+    window.addEventListener("resize", closePercentageCalculator);
+    window.addEventListener("scroll", closePercentageCalculator, true);
 
     function syncStickySaveState(){
       const mainSave = byId("saveBtn");
@@ -2466,6 +2605,7 @@ if (baseLanding > 0) {
     }
 
     document.addEventListener("keydown", function(e){
+      if(percentageCalculator) return;
       const current = document.activeElement;
       if(!current || !current.matches("input, select")) return;
 

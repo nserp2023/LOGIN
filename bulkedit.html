@@ -56,8 +56,10 @@
     .btn-amber{background:var(--amber)!important;color:#fff!important}
     .stats{display:flex;gap:12px;flex-wrap:wrap;margin-top:14px}
     .stat{background:#f8fafc;border:1px solid var(--line);border-radius:14px;padding:10px 14px;min-width:155px}
-    .stat-good{background:var(--soft-green);border-color:#a7f3d0;color:#065f46}
+    .stat-good{background:#bbf7d0;border-color:#22c55e;color:#14532d}
     .stat-good .k{color:#047857}
+    .stat-bad{background:#fecaca;border-color:#ef4444;color:#991b1b}
+    .stat-bad .k{color:#b91c1c}
     .stat .k{font-size:12px;color:var(--muted);font-weight:700;text-transform:uppercase}
     .stat .v{font-size:20px;font-weight:800;margin-top:4px}
     .summary-strip{margin:14px 0 10px;color:var(--muted);font-size:13px;font-weight:700}
@@ -186,7 +188,7 @@
           <div class="stat"><div class="k">Loaded Items</div><div class="v" id="statItems">0</div></div>
           <div class="stat"><div class="k">New Total</div><div class="v" id="statTotal">₹ 0.00</div></div>
           <div class="stat"><div class="k">Changed Rows</div><div class="v" id="statChanged">0</div></div>
-          <div class="stat"><div class="k">Zero Qty Rows</div><div class="v" id="statZero">0</div></div>
+          <div class="stat" id="zeroQtyStat"><div class="k">Zero Qty Rows</div><div class="v" id="statZero">0</div></div>
           <div class="stat" id="emptyBillsStat"><div class="k">Empty Bills</div><div class="v" id="statEmpty">0</div></div>
           <div class="stat"><div class="k">New Rows</div><div class="v" id="statNew">0</div></div>
         </div>
@@ -239,6 +241,7 @@
     statChanged: document.getElementById('statChanged'),
     statZero: document.getElementById('statZero'),
     statEmpty: document.getElementById('statEmpty'),
+    zeroQtyStat: document.getElementById('zeroQtyStat'),
     emptyBillsStat: document.getElementById('emptyBillsStat'),
     statNew: document.getElementById('statNew'),
     confirmModal: document.getElementById('confirmModal'),
@@ -609,7 +612,11 @@
     els.statChanged.textContent = String(stats.changedCount);
     els.statZero.textContent = String(stats.zeroCount);
     els.statEmpty.textContent = String(stats.emptyCount);
-    els.emptyBillsStat.classList.toggle('stat-good', loadedBills.length > 0 && stats.emptyCount === 0);
+    const hasLoadedBills = loadedBills.length > 0;
+    els.zeroQtyStat.classList.toggle('stat-good', hasLoadedBills && stats.zeroCount === 0);
+    els.zeroQtyStat.classList.toggle('stat-bad', hasLoadedBills && stats.zeroCount > 0);
+    els.emptyBillsStat.classList.toggle('stat-good', hasLoadedBills && stats.emptyCount === 0);
+    els.emptyBillsStat.classList.toggle('stat-bad', hasLoadedBills && stats.emptyCount > 0);
     els.statNew.textContent = String(stats.newCount);
 
     if(!loadedBills.length){

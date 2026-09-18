@@ -1404,7 +1404,6 @@
            <button class="summary-btn" type="button"onclick="openSummaryPrint()">🧾 Summary Print</button>
           <button id="closeCashTopBtn" class="close-cash-btn" type="button">🔒 Close My Cash</button>
           <button id="backupBtn" class="backup-btn" title="Full Backup to Excel" aria-label="Full Backup to Excel" type="button">💾</button>
-          <span id="userRoleBadge" class="role-badge">Staff</span>
         </div>
       
       </nav>
@@ -1777,24 +1776,16 @@
 
     async function loadUserInfo() {
       const username = localStorage.getItem("username") || "User";
-      const role = localStorage.getItem("role") || "PENDING";
 
       const welcomeEl = document.getElementById("welcome");
       const welcomeHeading = document.getElementById("welcomeHeading");
-      const roleBadgeEl = document.getElementById("userRoleBadge");
 
       if (welcomeHeading) {
         welcomeHeading.innerText = `Welcome, ${username}`;
       }
 
       if (welcomeEl) {
-        welcomeEl.innerText = `Role: ${role}. This dashboard is now optimized for approval-aware cash control and CASH / CREDIT / ADVANCE CREDIT tracking.`;
-      }
-
-      const formattedRole = role.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
-
-      if (roleBadgeEl) {
-        roleBadgeEl.innerText = formattedRole;
+        welcomeEl.innerText = 'This dashboard is optimized for approval-aware cash control and CASH / CREDIT / ADVANCE CREDIT tracking.';
       }
     }
 

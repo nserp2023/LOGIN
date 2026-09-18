@@ -1795,6 +1795,12 @@
       if (role !== "OWNER" && role !== "ADMIN") {
         const userSettingsCard = document.querySelector('[onclick*="users.html"]');
         if (userSettingsCard) userSettingsCard.style.display = "none";
+
+        const backupBtn = document.getElementById("backupBtn");
+        if (backupBtn) backupBtn.style.display = "none";
+      } else {
+        const backupBtn = document.getElementById("backupBtn");
+        if (backupBtn) backupBtn.style.display = "";
       }
 
       if (!["OWNER", "ADMIN", "MANAGER"].includes(role)) {
@@ -1987,8 +1993,8 @@
       const btn = document.getElementById("backupBtn");
       const role = (localStorage.getItem("role") || "").toUpperCase();
 
-      if (!["OWNER", "ADMIN", "MANAGER"].includes(role)) {
-        alert("Backup allowed only for Owner / Admin / Manager.");
+      if (!["OWNER", "ADMIN"].includes(role)) {
+        alert("Backup allowed only for Owner / Admin.");
         return;
       }
 

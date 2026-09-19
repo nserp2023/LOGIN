@@ -172,7 +172,13 @@ padding:5px;
 /* PRINT */
 
 @media print{
-body{margin:0;}
+@page{margin:10mm;}
+body{
+    width:auto;
+    max-width:none;
+    margin:0;
+    box-sizing:border-box;
+}
 .page{page-break-after:always;}
 thead{display:table-header-group;}
 }

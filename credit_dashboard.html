@@ -539,6 +539,21 @@ function getCreditReturnAmount(row){
     return stored || total;
 }
 
+function getCreditBillAmount(row){
+    const salesman = String(row?.salesman || "").trim().toUpperCase();
+    const rawPreserved = row?.credit_bill_amount;
+    const preserved = Number(rawPreserved);
+    if(salesman === "VAJRA" && rawPreserved !== null && rawPreserved !== undefined && rawPreserved !== "" && Number.isFinite(preserved) && preserved >= 0) return preserved;
+    return Number(row?.invoice_amount || 0) || 0;
+}
+
+function getCreditPaidAmount(row, billAmount){
+    if(String(row?.payment_type || "").trim().toUpperCase() === "ADVANCE CREDIT"){
+        return Math.max(0, billAmount - (Number(row?.balance_amount || 0) || 0));
+    }
+    return Number(row?.paid_amount || 0) || 0;
+}
+
 function makeCustomerKey(mobile, name){
     const cleanMobile = String(mobile || "").trim();
     const cleanName = String(name || "").trim().toUpperCase();
@@ -618,7 +633,7 @@ async function loadDashboard(){
 
         let query = sb
             .from("sales_details")
-            .select("id, bill_date, sales_number, series_code, customer_name, customer_mobile, invoice_amount, paid_amount, balance_amount, payment_type")
+            .select("id, bill_date, sales_number, series_code, customer_name, customer_mobile, invoice_amount, credit_bill_amount, paid_amount, balance_amount, payment_type, salesman")
             .in("payment_type", ["CREDIT", "ADVANCE CREDIT"])
             .order("bill_date", { ascending: false });
 
@@ -635,6 +650,8 @@ async function loadDashboard(){
             const name = (r.customer_name || "").trim();
             const mobile = (r.customer_mobile || "").trim();
             const key = makeCustomerKey(mobile, name);
+            const billAmount = getCreditBillAmount(r);
+            const paidAmount = getCreditPaidAmount(r, billAmount);
 
             if (!grouped[key]){
                 grouped[key] = {
@@ -649,11 +666,9 @@ async function loadDashboard(){
             }
 
             grouped[key].bill_count += 1;
-            grouped[key].total_sales += Number(r.invoice_amount || 0);
-            grouped[key].total_paid += String(r.payment_type || "").toUpperCase() === "ADVANCE CREDIT"
-                ? Math.max(0, Number(r.invoice_amount || 0) - Number(r.balance_amount || 0))
-                : Number(r.paid_amount || 0);
-            grouped[key].total_balance += Number(r.balance_amount || 0);
+            grouped[key].total_sales += billAmount;
+            grouped[key].total_paid += paidAmount;
+            grouped[key].total_balance += Math.max(0, billAmount - paidAmount);
         });
 
         await applyCreditReturnAdjustments(grouped, { from, to });

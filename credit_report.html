@@ -627,6 +627,22 @@
       return Object.fromEntries((data || []).map(row => [String(row.id), row]));
     }
 
+    function getCreditBillAmount(row) {
+      const salesman = String(row?.salesman || "").trim().toUpperCase();
+      const rawPreserved = row?.credit_bill_amount;
+      const preserved = num(rawPreserved);
+      return salesman === "VAJRA" && rawPreserved !== null && rawPreserved !== undefined && rawPreserved !== "" && preserved >= 0
+        ? preserved
+        : num(row?.invoice_amount);
+    }
+
+    function getCreditPaidAmount(row, billAmount) {
+      if (String(row?.payment_type || "").trim().toUpperCase() === "ADVANCE CREDIT") {
+        return Math.max(0, billAmount - num(row?.balance_amount));
+      }
+      return num(row?.paid_amount);
+    }
+
     async function loadCreditReport() {
       const body = qs("report_body");
       const statusBox = qs("status_box");
@@ -654,10 +670,12 @@
             customer_mobile,
             customer_name,
             invoice_amount,
+            credit_bill_amount,
             payment_type,
             paid_amount,
             balance_amount,
-            is_checked
+            is_checked,
+            salesman
           `);
 
         if (fromDate) salesQuery = salesQuery.gte("bill_date", fromDate);
@@ -674,9 +692,9 @@
         const customerLookup = buildCustomerLookupFromSales(salesData || [], { mobile, name });
 
         let billRows = (salesData || []).map(r => {
-          const invoiceAmount = num(r.invoice_amount);
-          const balanceAmount = num(r.balance_amount);
-          const paidAmount = num(r.paid_amount);
+          const invoiceAmount = getCreditBillAmount(r);
+          const paidAmount = getCreditPaidAmount(r, invoiceAmount);
+          const balanceAmount = Math.max(0, invoiceAmount - paidAmount);
           const advancePaid = paidAmount;
           return {
             rowKind:"bill",

@@ -194,6 +194,7 @@ tr:hover{
 .action-btn svg{ width:17px; height:17px; pointer-events:none; }
 .edit-btn{ background:#2563eb; color:#fff; }
 .print-btn{ background:#059669; color:#fff; }
+.print-qty-btn{ background:#0f766e; color:#fff; }
 .accept-btn{ background:#16a34a; color:#fff; }
 .delete-btn{ background:#dc2626; color:#fff; }
 
@@ -457,6 +458,7 @@ const ACTION_ICONS = {
     edit: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`,
     accept: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>`,
     print: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6z"/></svg>`,
+    printQty: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16v7"/><path d="M6 14h12v8H6z"/><path d="M9 17h6"/></svg>`,
     delete: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 15H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>`
 };
 
@@ -594,6 +596,7 @@ async function loadReport(){
                     }
 
                     <button class="action-btn print-btn" onclick="printReturn(${r.id})" title="Print return" aria-label="Print return">${ACTION_ICONS.print}</button>
+                    <button class="action-btn print-qty-btn" onclick="printReturnItemsOnly(${r.id})" title="Print items and quantities only" aria-label="Print items and quantities only">${ACTION_ICONS.printQty}</button>
                     <button class="action-btn delete-btn ${accepted ? "disabled-btn" : ""}"
                             onclick="${accepted ? "" : `deleteReturn(${r.id})`}"
                             title="${accepted ? "Accepted returns cannot be deleted" : "Delete return"}"
@@ -781,6 +784,79 @@ async function acceptReturn(id){
 
 function printReturn(id){
     window.open(`sales_return_print.html?id=${id}`, "_blank");
+}
+
+async function printReturnItemsOnly(id){
+    const printWindow = window.open("", "_blank");
+    if(!printWindow){
+        alert("Please allow pop-ups to print return items.");
+        return;
+    }
+
+    printWindow.document.write("<p style=\"font-family:Arial,sans-serif;padding:20px\">Loading return items...</p>");
+    printWindow.document.close();
+
+    const { data: items, error } = await sb
+        .from("sales_return_item_details")
+        .select("item_code,item_name,quantity,return_qty")
+        .eq("return_id", id);
+
+    if(error){
+        printWindow.close();
+        alert("Unable to load return items: " + error.message);
+        return;
+    }
+
+    const escapeHtml = value => String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+
+    const rows = (items || []).map((item, index) => {
+        const quantity = parseFloat(item.quantity ?? item.return_qty ?? 0) || 0;
+        return `
+            <tr>
+                <td>${index + 1}</td>
+                <td>${escapeHtml(item.item_code)}</td>
+                <td>${escapeHtml(item.item_name)}</td>
+                <td>${quantity.toFixed(2)}</td>
+            </tr>
+        `;
+    }).join("");
+
+    printWindow.document.open();
+    printWindow.document.write(`
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <title>Return Items - ${escapeHtml(id)}</title>
+            <style>
+                body{font-family:Arial,sans-serif;color:#111;margin:24px}
+                h2{margin:0 0 6px;text-align:center}
+                .return-id{text-align:center;margin-bottom:18px}
+                table{width:100%;border-collapse:collapse}
+                th,td{border:1px solid #111;padding:8px;text-align:left}
+                th{background:#eee}
+                th:first-child,td:first-child{text-align:center;width:48px}
+                th:last-child,td:last-child{text-align:right;width:110px}
+                @media print{body{margin:10mm}}
+            </style>
+        </head>
+        <body>
+            <h2>Sales Return Items</h2>
+            <div class="return-id">Return ID: ${escapeHtml(id)}</div>
+            ${rows
+                ? `<table><thead><tr><th>#</th><th>Item Code</th><th>Item Name</th><th>Quantity</th></tr></thead><tbody>${rows}</tbody></table>`
+                : "<p>No items found in this sales return.</p>"}
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.onload = () => printWindow.print();
 }
 
 async function deleteReturn(id){

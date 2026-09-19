@@ -798,7 +798,7 @@ async function printReturnItemsOnly(id){
 
     const { data: items, error } = await sb
         .from("sales_return_item_details")
-        .select("item_code,item_name,quantity,return_qty")
+        .select("item_code,item_name,return_qty")
         .eq("return_id", id);
 
     if(error){
@@ -815,7 +815,7 @@ async function printReturnItemsOnly(id){
         .replace(/'/g, "&#039;");
 
     const rows = (items || []).map((item, index) => {
-        const quantity = parseFloat(item.quantity ?? item.return_qty ?? 0) || 0;
+        const quantity = parseFloat(item.return_qty || 0) || 0;
         return `
             <tr>
                 <td>${index + 1}</td>

@@ -216,6 +216,9 @@
     .mono{font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;}
     .name-cell{font-weight:700;}
     .code-cell{color:var(--text-soft);font-size:12px;}
+    .print-qty-option{justify-content:flex-end;}
+    .checkbox-control{height:44px;display:flex;align-items:center;gap:8px;white-space:nowrap;color:var(--text-soft);font-size:12px;}
+    .checkbox-control input{width:17px;height:17px;accent-color:var(--accent);}
 
     .status-pill{
       display:inline-flex;
@@ -726,6 +729,11 @@ body.compact-columns table{
         </div>
         <button class="btn secondary" id="refreshBtn">Refresh</button>
         <button class="btn primary" id="exportBtn">Export CSV</button>
+        <label class="field print-qty-option">
+          <span>Print Qty</span>
+          <span class="checkbox-control"><input type="checkbox" id="includeQty"> Include quantity</span>
+        </label>
+        <button class="btn primary" id="printItemsBtn">Print Item List</button>
       </div>
       <div class="legend">
         <span class="status-pill pill-ok">Normal</span>
@@ -801,6 +809,8 @@ body.compact-columns table{
       pageSize: document.getElementById('pageSize'),
       refreshBtn: document.getElementById('refreshBtn'),
       exportBtn: document.getElementById('exportBtn'),
+      includeQty: document.getElementById('includeQty'),
+      printItemsBtn: document.getElementById('printItemsBtn'),
       reportBody: document.getElementById('reportBody'),
       statItems: document.getElementById('statItems'),
       statQty: document.getElementById('statQty'),
@@ -1630,6 +1640,68 @@ function applyFilters(){
     // Start with fewer columns so the report is easier to read.
     document.body.classList.add('compact-columns');
 
+    function printItemList(){
+      if(!filteredRows.length){
+        alert('No matching items to print.');
+        return;
+      }
+
+      const includeQty = els.includeQty.checked;
+      const columns = [
+        '<th>Item Code</th>',
+        '<th>Item Name</th>',
+        includeQty ? '<th class="qty">Qty</th>' : '',
+        '<th class="notes">Notes / Writing</th>'
+      ].join('');
+
+      const rows = filteredRows.map(row => `
+        <tr>
+          <td class="code">${esc(row.item_code)}</td>
+          <td>${esc(row.item_name)}</td>
+          ${includeQty ? `<td class="qty">${qtyFmt(row.balance)}</td>` : ''}
+          <td class="notes"></td>
+        </tr>
+      `).join('');
+
+      const printWindow = window.open('', '_blank', 'width=1000,height=750');
+      if(!printWindow){
+        alert('Please allow pop-ups to print the item list.');
+        return;
+      }
+
+      printWindow.document.write(`<!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="UTF-8">
+          <title>Stock Item List</title>
+          <style>
+            @page{size:A4 portrait;margin:12mm;}
+            *{box-sizing:border-box;}
+            body{margin:0;color:#111;font:12px Arial,sans-serif;}
+            h1{margin:0 0 4px;font-size:18px;}
+            .meta{margin:0 0 12px;color:#555;font-size:11px;}
+            table{width:100%;border-collapse:collapse;table-layout:fixed;}
+            th,td{border:1px solid #222;padding:8px 7px;text-align:left;vertical-align:middle;}
+            th{background:#eee;font-weight:700;}
+            th:first-child,td:first-child{width:24%;}
+            th:nth-child(2),td:nth-child(2){width:${includeQty ? '34%' : '40%'};}
+            .qty{width:12%;text-align:right;}
+            .notes{width:${includeQty ? '30%' : '36%'};height:34px;}
+            .code{font-family:Consolas,monospace;}
+            tr{page-break-inside:avoid;}
+          </style>
+        </head>
+        <body>
+          <h1>Stock Item List</h1>
+          <p class="meta">${filteredRows.length} item(s) | Printed ${new Date().toLocaleDateString('en-IN')}</p>
+          <table><thead><tr>${columns}</tr></thead><tbody>${rows}</tbody></table>
+        </body>
+        </html>`);
+      printWindow.document.close();
+      printWindow.focus();
+      printWindow.addEventListener('load', () => printWindow.print());
+    }
+
     function exportCSV(){
       if(!filteredRows.length) return;
 
@@ -1671,6 +1743,7 @@ function applyFilters(){
     els.pageSize.addEventListener('change', applyFilters);
     els.refreshBtn.addEventListener('click', loadStockReport);
     els.exportBtn.addEventListener('click', exportCSV);
+    els.printItemsBtn.addEventListener('click', printItemList);
 
     loadStockReport();
   </script>

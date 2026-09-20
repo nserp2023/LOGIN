@@ -820,7 +820,7 @@ MEERA,8888888888,NEDUMANGAD,,32,WHATSAPP ONLY</div>
                 <span id="duplicateCustomerCount">0 duplicate groups</span>
               </div>
               <div class="duplicate-section-actions">
-                <span>Duplicates are matched by mobile number. Only the first 20 duplicate customers are shown.</span>
+                <span>Duplicates are matched by mobile number. GST-free duplicate groups are shown here.</span>
                 <span id="duplicateNoGstTotal">Total groups without GST: 0</span>
                 <button type="button" class="btn btn-warning" id="selectGroupsWithoutGstBtn">Select Groups Without GST</button>
                 <button type="button" class="btn btn-light" id="showGroupsWithGstBtn" aria-pressed="false">Show Groups With GST</button>
@@ -1128,16 +1128,6 @@ MEERA,8888888888,NEDUMANGAD,,32,WHATSAPP ONLY</div>
         customers = data || [];
         totalCustomers.textContent = count ?? 0;
         filteredCustomers.textContent = count ?? 0;
-        const { data: duplicateData, error: duplicateError } = await supabaseClient
-          .rpc("customer_manager_duplicate_customers", { p_limit: 20 });
-        if (duplicateError) {
-          console.warn("Duplicate lookup is unavailable:", duplicateError);
-          duplicateCustomers = [];
-          duplicateLookupUnavailable = true;
-        } else {
-          duplicateCustomers = duplicateData || [];
-          duplicateLookupUnavailable = false;
-        }
         await loadDuplicateGroupSummary();
         renderCustomers();
       } catch (error) {
@@ -1155,6 +1145,7 @@ MEERA,8888888888,NEDUMANGAD,,32,WHATSAPP ONLY</div>
 
     async function loadDuplicateGroupSummary() {
       const groups = new Map();
+      const allDuplicateCustomers = [];
       const pageSize = 1000;
       let from = 0;
 
@@ -1162,11 +1153,12 @@ MEERA,8888888888,NEDUMANGAD,,32,WHATSAPP ONLY</div>
         while (true) {
           const { data, error } = await supabaseClient
             .from("customers")
-            .select("mobile, gst_number")
+            .select("*")
             .range(from, from + pageSize - 1);
           if (error) throw error;
 
           (data || []).forEach(customer => {
+            allDuplicateCustomers.push(customer);
             const mobile = duplicateMobileKey(customer);
             if (!mobile) return;
             if (!groups.has(mobile)) groups.set(mobile, []);
@@ -1180,8 +1172,12 @@ MEERA,8888888888,NEDUMANGAD,,32,WHATSAPP ONLY</div>
         duplicateNoGstTotal = [...groups.values()]
           .filter(group => group.length > 1 && !group.some(customer => normalizeValue(customer.gst_number)))
           .length;
+        duplicateCustomers = allDuplicateCustomers;
+        duplicateLookupUnavailable = false;
       } catch (error) {
         console.warn("Duplicate group summary is unavailable:", error);
+        duplicateCustomers = [];
+        duplicateLookupUnavailable = true;
         duplicateNoGstTotal = 0;
       }
 
@@ -1261,11 +1257,10 @@ MEERA,8888888888,NEDUMANGAD,,32,WHATSAPP ONLY</div>
       return normalizeValue(customer.mobile).replace(/\D/g, "");
     }
 
-    function getDuplicateCustomerGroups(limit = 20) {
+    function getDuplicateCustomerGroups() {
       const firstCustomerByMobile = new Map();
       const duplicateGroupsByMobile = new Map();
       const duplicateGroups = [];
-      let displayedRows = 0;
 
       for (const customer of duplicateCustomers) {
         const mobile = duplicateMobileKey(customer);
@@ -1278,27 +1273,25 @@ MEERA,8888888888,NEDUMANGAD,,32,WHATSAPP ONLY</div>
         }
 
         const existingGroup = duplicateGroupsByMobile.get(mobile);
-        if (!existingGroup && displayedRows + 2 <= limit) {
+        if (!existingGroup) {
           const group = [mobile, [firstCustomer, customer]];
           duplicateGroups.push(group);
           duplicateGroupsByMobile.set(mobile, group);
-          displayedRows += 2;
+        } else {
+          existingGroup[1].push(customer);
         }
-
-        if (displayedRows >= limit) break;
       }
 
       return duplicateGroups;
     }
 
     function renderDuplicateCustomers() {
-      const duplicateLimit = 20;
       if (duplicateLookupUnavailable) {
         duplicateCustomerCount.textContent = "Duplicate lookup needs the performance SQL update";
         duplicateCustomerTableBody.innerHTML = `<tr><td colspan="6" class="empty">Run supabase_customer_manager_performance.sql once to enable fast duplicate lookup.</td></tr>`;
         return;
       }
-      const groups = getDuplicateCustomerGroups(duplicateLimit)
+      const groups = getDuplicateCustomerGroups()
         .filter(([, group]) => showDuplicateGroupsWithGst || !group.some(customer => normalizeValue(customer.gst_number)));
       const duplicateRows = groups.reduce((count, [, group]) => count + group.length, 0);
       duplicateCustomerCount.textContent = `${groups.length} duplicate group${groups.length === 1 ? "" : "s"} shown - ${duplicateRows} customer${duplicateRows === 1 ? "" : "s"}`;
@@ -1353,7 +1346,7 @@ MEERA,8888888888,NEDUMANGAD,,32,WHATSAPP ONLY</div>
     }
 
     function selectAllGroupsWithoutGst() {
-      const groups = getDuplicateCustomerGroups(20);
+      const groups = getDuplicateCustomerGroups();
       let selectedGroups = 0;
       let selectedCustomers = 0;
 

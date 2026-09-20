@@ -302,6 +302,23 @@
         }
 
         .col-idx { width: 30px; text-align: center; }
+        #bill_body .col-idx .reorder-trigger {
+            width: 26px;
+            min-height: 26px;
+            padding: 0;
+            border: 1px solid rgba(245, 158, 11, .7);
+            border-radius: 6px;
+            background: #422006;
+            color: #fbbf24;
+            font-weight: 900;
+            cursor: pointer;
+        }
+        #bill_body .col-idx .reorder-trigger:hover,
+        #bill_body .col-idx .reorder-trigger:focus-visible {
+            background: #f59e0b;
+            color: #111827;
+            outline: none;
+        }
         .col-code { width: 100px; }
         .col-name { width: auto; }
         .col-qty  { width: 60px; }
@@ -652,6 +669,60 @@
             background: #22c55e;
             color: #052e16;
         }
+
+        .manual-reorder-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 22000;
+            display: none;
+            place-items: center;
+            padding: 20px;
+            background: rgba(15, 23, 42, .68);
+            backdrop-filter: blur(5px);
+        }
+        .manual-reorder-overlay.show { display: grid; }
+        .manual-reorder-box {
+            width: min(430px, 100%);
+            padding: 22px;
+            border: 1px solid rgba(245, 158, 11, .55);
+            border-radius: 12px;
+            background: linear-gradient(145deg, #111827, #1f2937);
+            color: #f8fafc;
+            box-shadow: 0 24px 70px rgba(0, 0, 0, .45);
+        }
+        .manual-reorder-box h3 { margin: 0 0 5px; color: #fbbf24; }
+        .manual-reorder-item { margin: 0 0 16px; color: #cbd5e1; font-size: 13px; }
+        .manual-reorder-summary {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr auto 1fr;
+            gap: 8px;
+            align-items: center;
+            margin: 14px 0 18px;
+            padding: 12px;
+            border-radius: 8px;
+            background: rgba(15, 23, 42, .8);
+            text-align: center;
+        }
+        .manual-reorder-summary strong { display: block; color: #f8fafc; font-size: 18px; }
+        .manual-reorder-summary span { color: #94a3b8; font-size: 10px; text-transform: uppercase; }
+        .manual-reorder-qty-label { display: block; margin-bottom: 6px; color: #cbd5e1; font-size: 12px; font-weight: 800; }
+        .manual-reorder-qty {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid #f59e0b;
+            border-radius: 7px;
+            background: #fff;
+            color: #111827;
+            font-size: 18px;
+            font-weight: 800;
+            text-align: center;
+        }
+        .manual-reorder-qty:focus { outline: 3px solid rgba(245, 158, 11, .3); }
+        .manual-reorder-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+        .manual-reorder-actions button { padding: 9px 14px; border: 0; border-radius: 6px; font-weight: 800; cursor: pointer; }
+        .manual-reorder-cancel { background: #475569; color: #fff; }
+        .manual-reorder-save { background: #f59e0b; color: #111827; }
+        .manual-reorder-number { margin-top: 14px; color: #86efac; font-size: 12px; font-weight: 800; }
 
         .po-confirm-btn.no{
             background: rgba(255,255,255,0.14);
@@ -1585,6 +1656,27 @@
     </div>
 </div>
 
+<div id="manual_reorder_overlay" class="manual-reorder-overlay" tabindex="-1" aria-hidden="true">
+    <div class="manual-reorder-box" role="dialog" aria-modal="true" aria-labelledby="manual_reorder_title">
+        <h3 id="manual_reorder_title">ADD AUTO REORDER</h3>
+        <p id="manual_reorder_item" class="manual-reorder-item"></p>
+        <div class="manual-reorder-summary" aria-live="polite">
+            <div><span>Current qty</span><strong id="manual_reorder_current">0</strong></div>
+            <b>+</b>
+            <div><span>Order qty</span><strong id="manual_reorder_order">0</strong></div>
+            <b>=</b>
+            <div><span>Total</span><strong id="manual_reorder_total">0</strong></div>
+        </div>
+        <label class="manual-reorder-qty-label" for="manual_reorder_qty">Qty to reorder</label>
+        <input id="manual_reorder_qty" class="manual-reorder-qty" type="number" min="0.01" step="0.01" inputmode="decimal" autocomplete="off">
+        <div id="manual_reorder_number" class="manual-reorder-number" aria-live="polite"></div>
+        <div class="manual-reorder-actions">
+            <button type="button" class="manual-reorder-cancel" id="manual_reorder_cancel">Cancel</button>
+            <button type="button" class="manual-reorder-save" id="manual_reorder_save">Save reorder</button>
+        </div>
+    </div>
+</div>
+
 <script>
     // --- 1. SUPABASE CONNECTION ---
     const sb = window.sbcc; // supabase client from supabaseClient.js
@@ -1613,6 +1705,8 @@
     let normalSaleHoldTicker = null;
     let normalSaleHoldStartedAt = 0;
     let purchaseOrderPromptOpen = false;
+    let manualReorderOpen = false;
+    let manualReorderRow = null;
     let purchaseOrderPromptResolver = null;
     let purchaseOrderPromptReturnFocus = null;
 
@@ -2558,6 +2652,80 @@
         const remainingAfterSale = getRemainingStockAfterSale(row);
         if(maxQty <= 0) return 0;
         return Math.max(0, maxQty - remainingAfterSale);
+    }
+
+    function isManualReorderMode(){
+        const type = (document.getElementById('doc_type')?.value || '').trim();
+        return type === 'sales' || type === 'sales_pack';
+    }
+
+    function closeManualReorder(){
+        const overlay = document.getElementById('manual_reorder_overlay');
+        if(!overlay) return;
+        overlay.classList.remove('show');
+        overlay.setAttribute('aria-hidden', 'true');
+        manualReorderOpen = false;
+        manualReorderRow = null;
+    }
+
+    function updateManualReorderSummary(){
+        if(!manualReorderRow) return;
+        const current = getEffectiveAvailableStockForRow(manualReorderRow);
+        const order = parseFloat(document.getElementById('manual_reorder_qty')?.value || '0') || 0;
+        document.getElementById('manual_reorder_current').textContent = current.toLocaleString('en-IN');
+        document.getElementById('manual_reorder_order').textContent = order.toLocaleString('en-IN');
+        document.getElementById('manual_reorder_total').textContent = (current + order).toLocaleString('en-IN');
+    }
+
+    function openManualReorder(row){
+        if(!isManualReorderMode() || !row || !getRowRawItem(row)) return;
+        const code = (row.querySelector('.code-inp')?.value || '').trim();
+        const name = (row.querySelector('.name-inp')?.value || '').trim();
+        const overlay = document.getElementById('manual_reorder_overlay');
+        const qty = document.getElementById('manual_reorder_qty');
+        if(!overlay || !qty) return;
+
+        manualReorderRow = row;
+        manualReorderOpen = true;
+        document.getElementById('manual_reorder_item').textContent = `${name || 'Item'}${code ? ` (${code})` : ''}`;
+        document.getElementById('manual_reorder_number').textContent = 'PO number will be assigned on save';
+        qty.value = '';
+        updateManualReorderSummary();
+        overlay.classList.add('show');
+        overlay.setAttribute('aria-hidden', 'false');
+        hideAllItemDropdowns();
+        setTimeout(() => qty.focus(), 0);
+    }
+
+    async function saveManualReorder(){
+        const row = manualReorderRow;
+        const orderQty = parseFloat(document.getElementById('manual_reorder_qty')?.value || '0');
+        if(!row || !Number.isFinite(orderQty) || orderQty <= 0){
+            alert('Enter a reorder quantity greater than 0.');
+            return;
+        }
+
+        const saveButton = document.getElementById('manual_reorder_save');
+        if(saveButton) saveButton.disabled = true;
+        try{
+            const po = await createQuickPurchaseOrderForRow(row, orderQty);
+            if(po.skipped){
+                const existingNumber = po.existingPending?.order?.po_number || po.existingPending?.order?.id || 'existing PO';
+                document.getElementById('manual_reorder_number').textContent = `${existingNumber} already has this item pending`;
+                updateDraftStatus(`Reorder not duplicated: ${existingNumber} already has this item pending`);
+                setTimeout(closeManualReorder, 700);
+                return;
+            }
+            const poNumber = po.po_number || po.id;
+            document.getElementById('manual_reorder_number').textContent = `Saved as PO ${poNumber}`;
+            updateDraftStatus(`Auto reorder ${poNumber} created`);
+            setTimeout(closeManualReorder, 350);
+        }catch(err){
+            console.error('Manual reorder failed:', err);
+            alert('Auto reorder could not be saved: ' + (err.message || err));
+        }finally{
+            if(saveButton) saveButton.disabled = false;
+        }
     }
 
     function closePurchaseOrderPrompt(answer){
@@ -4471,7 +4639,7 @@ ${data.map((c, idx) => {
         row.className = 'item-row';
 
         row.innerHTML = `
-        <td class="col-idx" style="text-align:center; color:#94a3b8">${rId + 1}</td>
+        <td class="col-idx" style="text-align:center; color:#94a3b8"><button type="button" class="reorder-trigger" title="Add auto reorder for this item" aria-label="Add auto reorder for item ${rId + 1}">${rId + 1}</button></td>
         <td class="col-code">
             <div class="autocomplete-wrapper">
                 <input type="text" class="row-inp code-inp" data-rid="${rId}" data-navcol="0" placeholder="Code">
@@ -4521,6 +4689,12 @@ ${data.map((c, idx) => {
         `;
         tbody.appendChild(row);
         applyLandingColumnVisibility(row);
+
+        row.querySelector('.reorder-trigger').addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            openManualReorder(row);
+        });
 
         const qtyInput = row.querySelector('.qty-inp');
         qtyInput.addEventListener('keydown', function(e) {
@@ -7304,6 +7478,10 @@ async function handleBarcodeValue(code) {
     const poConfirmOverlay = document.getElementById('po_confirm_overlay');
     const poConfirmYesBtn = document.getElementById('po_confirm_yes_btn');
     const poConfirmNoBtn = document.getElementById('po_confirm_no_btn');
+    const manualReorderOverlay = document.getElementById('manual_reorder_overlay');
+    const manualReorderQty = document.getElementById('manual_reorder_qty');
+    const manualReorderSave = document.getElementById('manual_reorder_save');
+    const manualReorderCancel = document.getElementById('manual_reorder_cancel');
 
     if(stockWarningOkBtn){
         stockWarningOkBtn.addEventListener('click', closeStockWarning);
@@ -7333,6 +7511,22 @@ async function handleBarcodeValue(code) {
         });
     }
 
+    manualReorderQty?.addEventListener('input', updateManualReorderSummary);
+    manualReorderQty?.addEventListener('keydown', (event) => {
+        if(event.key === 'Enter'){
+            event.preventDefault();
+            saveManualReorder();
+        }else if(event.key === 'Escape'){
+            event.preventDefault();
+            closeManualReorder();
+        }
+    });
+    manualReorderSave?.addEventListener('click', saveManualReorder);
+    manualReorderCancel?.addEventListener('click', closeManualReorder);
+    manualReorderOverlay?.addEventListener('mousedown', (event) => {
+        if(event.target === manualReorderOverlay) closeManualReorder();
+    });
+
     document.addEventListener('keydown', (e) => {
         if(e.ctrlKey && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'q'){
             e.preventDefault();
@@ -7358,6 +7552,15 @@ async function handleBarcodeValue(code) {
                 e.preventDefault();
                 e.stopPropagation();
                 closePurchaseOrderPrompt(false);
+            }
+            return;
+        }
+
+        if(manualReorderOpen){
+            if(e.key === 'Escape'){
+                e.preventDefault();
+                e.stopPropagation();
+                closeManualReorder();
             }
             return;
         }

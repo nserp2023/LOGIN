@@ -425,6 +425,19 @@
       font-weight:700;
     }
 
+    .duplicate-section-actions{
+      display:flex;
+      align-items:center;
+      justify-content:flex-end;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    .duplicate-section-actions .btn{
+      margin:0;
+      white-space:nowrap;
+    }
+
     .row-check{
       width:18px;
       height:18px;
@@ -806,7 +819,10 @@ MEERA,8888888888,NEDUMANGAD,,32,WHATSAPP ONLY</div>
                 <strong>Duplicate Customers</strong>
                 <span id="duplicateCustomerCount">0 duplicate groups</span>
               </div>
-              <span>Duplicates are matched by mobile number. Only the first 20 duplicate customers are shown.</span>
+              <div class="duplicate-section-actions">
+                <span>Duplicates are matched by mobile number. Only the first 20 duplicate customers are shown.</span>
+                <button type="button" class="btn btn-warning" id="selectGroupsWithoutGstBtn">Select Groups Without GST</button>
+              </div>
             </div>
             <div class="table-wrap" style="border:0;border-radius:0;">
               <table>
@@ -974,6 +990,7 @@ MEERA,8888888888,NEDUMANGAD,,32,WHATSAPP ONLY</div>
         .forEach(input => input.addEventListener("input", scheduleCustomerLoad));
 
       selectAllVisibleCustomers.addEventListener("change", toggleSelectAllVisibleCustomers);
+      document.getElementById("selectGroupsWithoutGstBtn").addEventListener("click", selectAllGroupsWithoutGst);
       mergeSelectedBtn.addEventListener("click", mergeSelectedCustomers);
       clearSelectionBtn.addEventListener("click", clearCustomerSelection);
 
@@ -1278,6 +1295,31 @@ MEERA,8888888888,NEDUMANGAD,,32,WHATSAPP ONLY</div>
           else selectedCustomerIds.delete(id);
         });
       renderCustomers();
+    }
+
+    function selectAllGroupsWithoutGst() {
+      const groups = getDuplicateCustomerGroups(20);
+      let selectedGroups = 0;
+      let selectedCustomers = 0;
+
+      groups.forEach(([, group]) => {
+        const hasGst = group.some(customer => normalizeValue(customer.gst_number));
+        if (hasGst) return;
+
+        selectedGroups += 1;
+        group.forEach(customer => {
+          selectedCustomerIds.add(Number(customer.customer_id));
+          selectedCustomers += 1;
+        });
+      });
+
+      renderCustomers();
+      showStatus(
+        selectedGroups
+          ? `Selected ${selectedGroups} duplicate group(s) without GST (${selectedCustomers} customer(s)).`
+          : "No duplicate groups without GST found.",
+        selectedGroups ? "info" : "error"
+      );
     }
 
     function toggleSelectAllVisibleCustomers() {

@@ -452,23 +452,26 @@ th:first-child{z-index:30;background:#102039}
 body{
   padding:20px;
   font-family:Arial,sans-serif;
-  background-image:url('background.jpg');
+  background-image:url('https://www.transparenttextures.com/patterns/dark-wood.png');
   background-color:#3b2a1e;
   color:#fff;
   font-size:14px;
+  overflow:auto;
 }
 .app{
   max-width:100%;
   padding:0;
   gap:10px;
+  height:auto;
+  min-height:calc(100vh - 40px);
 }
 .topbar{
-  padding:14px 16px;
-  background:rgba(0,0,0,.62);
-  border:1px solid rgba(255,255,255,.15);
-  border-radius:8px;
-  box-shadow:0 10px 25px rgba(0,0,0,.2);
-  backdrop-filter:blur(4px);
+  padding:0 0 14px;
+  background:transparent;
+  border:0;
+  border-radius:0;
+  box-shadow:none;
+  backdrop-filter:none;
 }
 .logo{
   width:42px;
@@ -502,9 +505,9 @@ button:hover{background:#ffcc00;filter:none}
   margin-top:10px;
   padding:14px;
   gap:8px;
-  background:rgba(0,0,0,.5);
-  border:1px solid rgba(255,255,255,.15);
-  border-radius:8px;
+  background:transparent;
+  border:0;
+  border-radius:0;
   box-shadow:none;
 }
 label{font-size:12px;color:#fff;margin-bottom:4px}
@@ -525,9 +528,9 @@ input:focus,select:focus{
 .stats{margin-top:10px;gap:8px}
 .stat{
   padding:12px 14px;
-  background:rgba(0,0,0,.5);
+  background:rgba(0,0,0,.35);
   border:1px solid rgba(255,255,255,.15);
-  border-radius:8px;
+  border-radius:6px;
 }
 .stat .name{font-size:12px;color:#fff}
 .stat .val{font-size:22px;color:#ffd700}
@@ -540,9 +543,9 @@ input:focus,select:focus{
 }
 .tablehead{
   padding:10px 12px;
-  background:rgba(0,0,0,.5);
-  border:1px solid rgba(255,255,255,.15);
-  border-radius:8px 8px 0 0;
+  background:transparent;
+  border:0;
+  border-radius:0;
 }
 .tabletitle{font-size:16px;color:#fff}
 .hint{font-size:12px;color:#fff;opacity:.85}

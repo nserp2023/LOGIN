@@ -907,7 +907,7 @@ function badge(status){
 
 async function init(){
   const params = new URLSearchParams(window.location.search);
-  viewMode = ["item","order","supplier"].includes(params.get("view")) ? params.get("view") : "item";
+  viewMode = ["item","order","supplier"].includes(params.get("view")) ? params.get("view") : "supplier";
   document.getElementById("fromDate").value = params.has("to") ? "" : monthStartISO();
   document.getElementById("toDate").value = params.get("to") || todayISO();
   if(params.get("pending") === "pending") document.getElementById("pendingFilter").value = "pending";

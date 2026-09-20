@@ -612,6 +612,7 @@ td:first-child,th:first-child{background:rgba(0,0,0,.8)}
       <div style="display:flex;gap:6px">
         <button id="viewItemBtn" class="ghost" onclick="setViewMode('item')">Item Wise</button>
         <button id="viewOrderBtn" class="ghost" onclick="setViewMode('order')">Order Wise</button>
+        <button id="viewSupplierBtn" class="ghost" onclick="setViewMode('supplier')">Supplier Wise</button>
       </div>
       <button id="toggleTopBtn" class="toggleTopBtn" onclick="toggleTopSections()">⬇️ Show Top</button>
     </div>
@@ -722,6 +723,23 @@ td:first-child,th:first-child{background:rgba(0,0,0,.8)}
           <tr><td colspan="7" class="empty">Loading...</td></tr>
         </tbody>
       </table>
+      <table id="supplierTable" style="display:none;">
+        <thead>
+          <tr>
+            <th>Supplier</th>
+            <th>Mobile</th>
+            <th class="right">Pending Lines</th>
+            <th class="right">Pending Qty</th>
+            <th class="right">PO Count</th>
+            <th>GST</th>
+            <th>Address</th>
+            <th>View</th>
+          </tr>
+        </thead>
+        <tbody id="supplierTbody">
+          <tr><td colspan="8" class="empty">Loading...</td></tr>
+        </tbody>
+      </table>
     </div>
   </div>
 
@@ -784,11 +802,13 @@ const sb = window.sbcc;
 let allRows = [];
 let allOrders = [];
 let allItems = [];
-let viewMode = 'item'; // 'item' or 'order'
+let viewMode = 'item'; // 'item', 'order', or 'supplier'
 let receiveRow = null;
 let timer = null;
 let topSectionsOpen = false;
 const expandedOrderIds = new Set();
+const expandedSupplierKeys = new Set();
+let supplierGroups = [];
 
 function toggleTopSections(force){
   if(typeof force === "boolean") topSectionsOpen = force;
@@ -884,7 +904,7 @@ function badge(status){
 
 async function init(){
   const params = new URLSearchParams(window.location.search);
-  viewMode = params.get("view") === "order" ? "order" : "item";
+  viewMode = ["item","order","supplier"].includes(params.get("view")) ? params.get("view") : "item";
   document.getElementById("fromDate").value = params.has("to") ? "" : monthStartISO();
   document.getElementById("toDate").value = params.get("to") || todayISO();
   if(params.get("pending") === "pending") document.getElementById("pendingFilter").value = "pending";
@@ -897,13 +917,15 @@ async function loadReport(){
   const orderTbody = document.getElementById("orderTbody");
   if(viewMode === "order"){
     orderTbody.innerHTML = `<tr><td colspan="7" class="empty">Loading pending purchase orders...</td></tr>`;
+  }else if(viewMode === "supplier"){
+    document.getElementById("supplierTbody").innerHTML = `<tr><td colspan="8" class="empty">Loading suppliers with pending items...</td></tr>`;
   }else{
     tbody.innerHTML = `<tr><td colspan="13" class="empty">Loading item wise report...</td></tr>`;
   }
 
   if(!sb){
-    const target = viewMode === "order" ? orderTbody : tbody;
-    const colspan = viewMode === "order" ? 7 : 13;
+    const target = viewMode === "order" ? orderTbody : viewMode === "supplier" ? document.getElementById("supplierTbody") : tbody;
+    const colspan = viewMode === "order" ? 7 : viewMode === "supplier" ? 8 : 13;
     target.innerHTML = `<tr><td colspan="${colspan}" class="empty">Supabase client not found. Check supabaseClient.js</td></tr>`;
     return;
   }
@@ -928,6 +950,7 @@ async function loadReport(){
       allOrders = [];
       allItems = [];
       if(viewMode === "order") renderOrders([],[]);
+      else if(viewMode === "supplier") renderSuppliers([]);
       else renderRows([]);
       return;
     }
@@ -1009,6 +1032,9 @@ async function loadReport(){
     if(viewMode === 'item'){
       renderRows(rows);
       renderStats(rows);
+    }else if(viewMode === 'supplier'){
+      renderSuppliers(rows);
+      renderStats(rows.filter(r => r.pending_qty > 0 && r.status !== "CANCELLED"));
     }else{
       renderOrders(allOrders, allItems);
       // render stats for orders: show counts of orders and total value
@@ -1032,8 +1058,10 @@ async function loadReport(){
 
   }catch(err){
     console.error(err);
-    const message = `<tr><td colspan="${viewMode === "order" ? 7 : 13}" class="empty">Could not load report: ${safe(err.message || err)}</td></tr>`;
+    const colspan = viewMode === "order" ? 7 : viewMode === "supplier" ? 8 : 13;
+    const message = `<tr><td colspan="${colspan}" class="empty">Could not load report: ${safe(err.message || err)}</td></tr>`;
     if(viewMode === "order") orderTbody.innerHTML = message;
+    else if(viewMode === "supplier") document.getElementById("supplierTbody").innerHTML = message;
     else tbody.innerHTML = message;
     renderStats([]);
   }
@@ -1105,43 +1133,152 @@ function renderStats(rows){
 }
 
 function setViewMode(mode){
-  if(mode !== 'item' && mode !== 'order') return;
+  if(mode !== 'item' && mode !== 'order' && mode !== 'supplier') return;
   viewMode = mode;
   updateViewButtons();
 
   const itemTable = document.getElementById('tbody')?.closest('table');
   const orderTable = document.getElementById('orderTable');
+  const supplierTable = document.getElementById('supplierTable');
   const titleEl = document.querySelector('.tabletitle');
   const hintEl = document.querySelector('.tablehead .hint');
 
   if(viewMode === 'item'){
     if(itemTable) itemTable.style.display = '';
     if(orderTable) orderTable.style.display = 'none';
+    if(supplierTable) supplierTable.style.display = 'none';
     if(titleEl) titleEl.textContent = 'Item Details Report';
     if(hintEl) hintEl.textContent = 'Excel-like full screen report. First PO column is fixed; scroll right for all details.';
     // render current rows
     renderRows(allRows || []);
     renderStats(allRows || []);
-  }else{
+  }else if(viewMode === 'order'){
     if(itemTable) itemTable.style.display = 'none';
     if(orderTable) orderTable.style.display = '';
+    if(supplierTable) supplierTable.style.display = 'none';
     if(titleEl) titleEl.textContent = 'Order Details Report';
     if(hintEl) hintEl.textContent = 'Order-level view: date, supplier, mobile, status and actions.';
     renderOrders(allOrders || [], allItems || []);
+  }else{
+    if(itemTable) itemTable.style.display = 'none';
+    if(orderTable) orderTable.style.display = 'none';
+    if(supplierTable) supplierTable.style.display = '';
+    if(titleEl) titleEl.textContent = 'Supplier Pending Report';
+    if(hintEl) hintEl.textContent = 'Only suppliers with pending items are shown. Click a supplier to view its pending items.';
+    renderSuppliers(allRows || []);
   }
 }
 
 function updateViewButtons(){
   const bi = document.getElementById('viewItemBtn');
   const bo = document.getElementById('viewOrderBtn');
-  if(!bi || !bo) return;
+  const bs = document.getElementById('viewSupplierBtn');
+  if(!bi || !bo || !bs) return;
   if(viewMode === 'item'){
     bi.classList.add('viewActive'); bi.classList.remove('viewGhost');
     bo.classList.remove('viewActive'); bo.classList.add('viewGhost');
-  }else{
+    bs.classList.remove('viewActive'); bs.classList.add('viewGhost');
+  }else if(viewMode === 'order'){
     bo.classList.add('viewActive'); bo.classList.remove('viewGhost');
     bi.classList.remove('viewActive'); bi.classList.add('viewGhost');
+    bs.classList.remove('viewActive'); bs.classList.add('viewGhost');
+  }else{
+    bs.classList.add('viewActive'); bs.classList.remove('viewGhost');
+    bi.classList.remove('viewActive'); bi.classList.add('viewGhost');
+    bo.classList.remove('viewActive'); bo.classList.add('viewGhost');
   }
+}
+
+function getSupplierKey(row){
+  return `${String(row.supplier_name || '-').trim().toLowerCase()}|${String(row.supplier_mobile || '').trim()}`;
+}
+
+function renderSuppliers(rows){
+  const tbody = document.getElementById('supplierTbody');
+  if(!tbody) return;
+
+  const pendingRows = (rows || []).filter(row => Number(row.pending_qty) > 0 && row.status !== 'CANCELLED');
+  const groups = new Map();
+  pendingRows.forEach(row => {
+    const key = getSupplierKey(row);
+    if(!groups.has(key)){
+      groups.set(key, {
+        key,
+        supplier_name: row.supplier_name || '-',
+        supplier_mobile: row.supplier_mobile || '-',
+        gst_number: row.gst_number || '',
+        supplier_address: row.supplier_address || '',
+        rows: []
+      });
+    }
+    groups.get(key).rows.push(row);
+  });
+
+  supplierGroups = Array.from(groups.values()).sort((a,b) =>
+    a.supplier_name.localeCompare(b.supplier_name, undefined, { sensitivity:'base' })
+  );
+
+  if(!supplierGroups.length){
+    tbody.innerHTML = `<tr><td colspan="8" class="empty">No suppliers with pending items found</td></tr>`;
+    document.getElementById('resultInfo').textContent = '0 supplier(s) shown';
+    return;
+  }
+
+  tbody.innerHTML = supplierGroups.map((group, index) => {
+    const expanded = expandedSupplierKeys.has(group.key);
+    const pendingQty = group.rows.reduce((sum,row) => sum + Number(row.pending_qty || 0), 0);
+    const poCount = new Set(group.rows.map(row => String(row.order_id))).size;
+    const itemRows = group.rows.map(row => `
+      <tr>
+        <td class="mono"><b>${safe(row.po_no)}</b></td>
+        <td>${fmtDate(row.order_date)}</td>
+        <td class="mono">${safe(row.item_code || '-')}</td>
+        <td><b>${safe(row.item_name || '-')}</b><div class="hint">${safe(row.department || '')}</div></td>
+        <td class="right">${num(row.order_qty)}</td>
+        <td class="right">${num(row.received_qty)}</td>
+        <td class="right pendingText">${num(row.pending_qty)}</td>
+        <td class="right">
+          <div class="row-actions">
+            <button class="smallbtn iconbtn receivebtn" type="button" title="Material received" aria-label="Record material received" onclick="openReceiveModal(${row.item_id})"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/><path d="m9 16 2 2 4-4"/></svg></button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+
+    return `
+      <tr id="supplier-summary-${index}" class="order-summary-row${expanded ? ' expanded' : ''}" onclick="if(!event.target.closest('button')) toggleSupplierItems(${index})" title="Click to ${expanded ? 'hide' : 'view'} pending items">
+        <td><span class="order-chevron">▶</span><b>${safe(group.supplier_name)}</b></td>
+        <td><b>${safe(group.supplier_mobile)}</b></td>
+        <td class="right"><b>${group.rows.length}</b></td>
+        <td class="right pendingText"><b>${num(pendingQty)}</b></td>
+        <td class="right">${poCount}</td>
+        <td>${safe(group.gst_number || '-')}</td>
+        <td>${safe(group.supplier_address || '-')}</td>
+        <td class="center">${expanded ? 'Hide' : 'View'}</td>
+      </tr>
+      <tr id="supplier-details-${index}" class="order-detail-row" style="display:${expanded ? 'table-row' : 'none'}">
+        <td colspan="8">
+          <div class="order-detail-panel">
+            <div class="order-detail-heading"><span>Pending items from ${safe(group.supplier_name)}</span><span>${group.rows.length} item line(s)</span></div>
+            <table class="order-detail-table">
+              <thead><tr><th>PO No</th><th>Date</th><th>Item Code</th><th>Item Name</th><th class="right">Ordered</th><th class="right">Received</th><th class="right">Pending</th><th class="right">Action</th></tr></thead>
+              <tbody>${itemRows}</tbody>
+            </table>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  document.getElementById('resultInfo').textContent = `${supplierGroups.length} supplier(s) shown`;
+}
+
+function toggleSupplierItems(index){
+  const group = supplierGroups[index];
+  if(!group) return;
+  if(expandedSupplierKeys.has(group.key)) expandedSupplierKeys.delete(group.key);
+  else expandedSupplierKeys.add(group.key);
+  renderSuppliers(allRows || []);
 }
 
 function renderOrders(orders, items){

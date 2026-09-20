@@ -91,7 +91,7 @@ const searchParty=$('searchParty'), searchType=$('searchType'), searchDate=$('se
 let suggestionItems=[], activeSuggestionIndex=-1, isSaving=false, isApproving=false, selectedCreditBill=null, selectedCustomerAutoAllocation=null, selectedCustomerCreditRefund=null, selectedCustomerAccount=null, currentUserRole='';
 
 document.addEventListener('DOMContentLoaded', async()=>{ try{ const ok=await requirePageAccess('paymentreceipt'); if(!ok) return; }catch(e){ console.warn(e); } await initPage(); });
-async function initPage(){ const today=todayISO(); txnDate.value=today; searchDate.value=today; await loadCurrentUserRole(); updateTypeUI(); bindEvents(); await loadFromURLParams(); syncTransactionTypeFilter(); await generateNextVoucherNo(); await loadTransactions(searchParty.value.trim()); setupEnterNavigation(); }
+async function initPage(){ const today=todayISO(); txnDate.value=today; searchDate.value=today; await loadCurrentUserRole(); updateTypeUI(); bindEvents(); await loadFromURLParams(); searchType.value=''; updateResultTotalLabel(); await generateNextVoucherNo(); await loadTransactions(searchParty.value.trim()); setupEnterNavigation(); }
 
 async function loadFromURLParams(){
     const params = new URLSearchParams(window.location.search);

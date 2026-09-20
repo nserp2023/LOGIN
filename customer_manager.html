@@ -1521,7 +1521,11 @@ MEERA,8888888888,NEDUMANGAD,,32,WHATSAPP ONLY</div>
         return;
       }
 
-      const keepCustomer = customers.find(c => Number(c.customer_id) === keepId);
+      const keepCustomer = selectedCustomers.find(c => Number(c.customer_id) === keepId);
+      if (!keepCustomer) {
+        showStatus("Selected keep customer could not be found. Please select the group again and retry.", "error");
+        return;
+      }
       const deleteIds = selectedCustomers
         .map(c => Number(c.customer_id))
         .filter(id => id !== keepId);

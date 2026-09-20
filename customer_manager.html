@@ -1299,6 +1299,92 @@ MEERA,8888888888,NEDUMANGAD,,32,WHATSAPP ONLY</div>
       showStatus("Customer selection cleared.", "info");
     }
 
+    function getSelectedCustomerGroups(selectedCustomers) {
+      const groups = new Map();
+      selectedCustomers.forEach(customer => {
+        const mobile = duplicateMobileKey(customer);
+        if (!mobile) return;
+        if (!groups.has(mobile)) groups.set(mobile, []);
+        groups.get(mobile).push(customer);
+      });
+      return groups;
+    }
+
+    function mergeCustomerFields(group) {
+      const ordered = [...group].sort((a, b) => Number(a.customer_id) - Number(b.customer_id));
+      const keeper = ordered[0];
+      const fields = ["name", "mobile", "address", "gst_number", "state_code", "customer_remark"];
+      const merged = {};
+
+      fields.forEach(field => {
+        const value = ordered.find(customer => String(customer[field] || "").trim());
+        merged[field] = String(value?.[field] || "").trim();
+      });
+
+      return {
+        keeper,
+        merged,
+        deleteIds: ordered.slice(1).map(customer => Number(customer.customer_id))
+      };
+    }
+
+    async function mergeCustomerGroupsWithoutPrompt(groups) {
+      const operations = [];
+      groups.forEach(group => {
+        if (group.length < 2) return;
+        const result = mergeCustomerFields(group);
+        operations.push(result);
+      });
+
+      if (!operations.length) {
+        showStatus("No duplicate mobile groups with at least 2 selected customers were found.", "error");
+        return;
+      }
+
+      const summary = operations.map(operation => {
+        const group = operation.keeper.mobile || "NO MOBILE";
+        return `${group}: keep ID ${operation.keeper.customer_id}, delete ${operation.deleteIds.length}`;
+      }).join("\n");
+
+      if (!confirm(
+        `MERGE SELECTED MOBILE GROUPS\n\n${summary}\n\n` +
+        "Each mobile group will be merged separately. Missing name, address, GST, state code, and remarks will be filled from that same group only. Continue?"
+      )) return;
+
+      mergeSelectedBtn.disabled = true;
+      mergeSelectedBtn.textContent = "Merging...";
+
+      try {
+        let deletedCount = 0;
+        for (const operation of operations) {
+          const { error: updateError } = await supabaseClient
+            .from("customers")
+            .update(operation.merged)
+            .eq("customer_id", operation.keeper.customer_id);
+          if (updateError) throw updateError;
+
+          if (operation.deleteIds.length) {
+            const { error: deleteError } = await supabaseClient
+              .from("customers")
+              .delete()
+              .in("customer_id", operation.deleteIds);
+            if (deleteError) throw deleteError;
+            deletedCount += operation.deleteIds.length;
+          }
+        }
+
+        selectedCustomerIds.clear();
+        showStatus(`Merge completed. ${operations.length} mobile groups kept separately and ${deletedCount} duplicate customer(s) deleted.`, "success");
+        await loadCustomers();
+      } catch (error) {
+        showStatus("Merge failed: " + (error.message || "Unknown error"), "error");
+      } finally {
+        mergeSelectedBtn.disabled = false;
+        mergeSelectedBtn.textContent = "Merge Selected";
+        updateSelectedCustomerCount();
+      }
+    }
+
     async function mergeSelectedCustomers() {
       hideStatus();
 
@@ -1313,6 +1399,12 @@ MEERA,8888888888,NEDUMANGAD,,32,WHATSAPP ONLY</div>
       }
       if (selectedCustomers.length < 2) {
         showStatus("Select at least 2 customers to merge.", "error");
+        return;
+      }
+
+      const selectedGroups = getSelectedCustomerGroups(selectedCustomers);
+      if (selectedGroups.size > 1) {
+        await mergeCustomerGroupsWithoutPrompt(selectedGroups);
         return;
       }
 

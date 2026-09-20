@@ -821,7 +821,9 @@ MEERA,8888888888,NEDUMANGAD,,32,WHATSAPP ONLY</div>
               </div>
               <div class="duplicate-section-actions">
                 <span>Duplicates are matched by mobile number. Only the first 20 duplicate customers are shown.</span>
+                <span id="duplicateNoGstTotal">Total groups without GST: 0</span>
                 <button type="button" class="btn btn-warning" id="selectGroupsWithoutGstBtn">Select Groups Without GST</button>
+                <button type="button" class="btn btn-light" id="showGroupsWithGstBtn" aria-pressed="false">Show Groups With GST</button>
                 <button type="button" class="btn btn-warning" id="mergeSelectedBtn">Merge Selected</button>
               </div>
             </div>
@@ -902,6 +904,8 @@ MEERA,8888888888,NEDUMANGAD,,32,WHATSAPP ONLY</div>
     let suggestionIndex = -1;
     let workspaceView = "create";
     let customerLoadTimer = null;
+    let showDuplicateGroupsWithGst = false;
+    let duplicateNoGstTotal = 0;
     const customerPageSize = 50;
 
     const form = document.getElementById("customerForm");
@@ -991,6 +995,7 @@ MEERA,8888888888,NEDUMANGAD,,32,WHATSAPP ONLY</div>
 
       selectAllVisibleCustomers.addEventListener("change", toggleSelectAllVisibleCustomers);
       document.getElementById("selectGroupsWithoutGstBtn").addEventListener("click", selectAllGroupsWithoutGst);
+      document.getElementById("showGroupsWithGstBtn").addEventListener("click", toggleGroupsWithGst);
       mergeSelectedBtn.addEventListener("click", mergeSelectedCustomers);
       clearSelectionBtn.addEventListener("click", clearCustomerSelection);
 
@@ -1133,6 +1138,7 @@ MEERA,8888888888,NEDUMANGAD,,32,WHATSAPP ONLY</div>
           duplicateCustomers = duplicateData || [];
           duplicateLookupUnavailable = false;
         }
+        await loadDuplicateGroupSummary();
         renderCustomers();
       } catch (error) {
         showStatus("Error loading customers: " + (error.message || "Unknown error"), "error");
@@ -1145,6 +1151,42 @@ MEERA,8888888888,NEDUMANGAD,,32,WHATSAPP ONLY</div>
     function scheduleCustomerLoad() {
       clearTimeout(customerLoadTimer);
       customerLoadTimer = setTimeout(loadCustomers, 300);
+    }
+
+    async function loadDuplicateGroupSummary() {
+      const groups = new Map();
+      const pageSize = 1000;
+      let from = 0;
+
+      try {
+        while (true) {
+          const { data, error } = await supabaseClient
+            .from("customers")
+            .select("mobile, gst_number")
+            .range(from, from + pageSize - 1);
+          if (error) throw error;
+
+          (data || []).forEach(customer => {
+            const mobile = duplicateMobileKey(customer);
+            if (!mobile) return;
+            if (!groups.has(mobile)) groups.set(mobile, []);
+            groups.get(mobile).push(customer);
+          });
+
+          if (!data || data.length < pageSize) break;
+          from += pageSize;
+        }
+
+        duplicateNoGstTotal = [...groups.values()]
+          .filter(group => group.length > 1 && !group.some(customer => normalizeValue(customer.gst_number)))
+          .length;
+      } catch (error) {
+        console.warn("Duplicate group summary is unavailable:", error);
+        duplicateNoGstTotal = 0;
+      }
+
+      const totalEl = document.getElementById("duplicateNoGstTotal");
+      if (totalEl) totalEl.textContent = `Total groups without GST: ${duplicateNoGstTotal}`;
     }
 
     function getFilteredCustomers() {
@@ -1256,9 +1298,10 @@ MEERA,8888888888,NEDUMANGAD,,32,WHATSAPP ONLY</div>
         duplicateCustomerTableBody.innerHTML = `<tr><td colspan="6" class="empty">Run supabase_customer_manager_performance.sql once to enable fast duplicate lookup.</td></tr>`;
         return;
       }
-      const groups = getDuplicateCustomerGroups(duplicateLimit);
+      const groups = getDuplicateCustomerGroups(duplicateLimit)
+        .filter(([, group]) => showDuplicateGroupsWithGst || !group.some(customer => normalizeValue(customer.gst_number)));
       const duplicateRows = groups.reduce((count, [, group]) => count + group.length, 0);
-      duplicateCustomerCount.textContent = `${groups.length} duplicate group${groups.length === 1 ? "" : "s"} found - showing ${duplicateRows} of up to ${duplicateLimit} customers`;
+      duplicateCustomerCount.textContent = `${groups.length} duplicate group${groups.length === 1 ? "" : "s"} shown - ${duplicateRows} customer${duplicateRows === 1 ? "" : "s"}`;
 
       if (!groups.length) {
         duplicateCustomerTableBody.innerHTML = `
@@ -1284,6 +1327,18 @@ MEERA,8888888888,NEDUMANGAD,,32,WHATSAPP ONLY</div>
         }).join("");
         return groupRows;
       }).join("");
+    }
+
+    function toggleGroupsWithGst() {
+      showDuplicateGroupsWithGst = !showDuplicateGroupsWithGst;
+      const button = document.getElementById("showGroupsWithGstBtn");
+      if (button) {
+        button.textContent = showDuplicateGroupsWithGst ? "Hide Groups With GST" : "Show Groups With GST";
+        button.setAttribute("aria-pressed", String(showDuplicateGroupsWithGst));
+        button.classList.toggle("btn-warning", showDuplicateGroupsWithGst);
+        button.classList.toggle("btn-light", !showDuplicateGroupsWithGst);
+      }
+      renderDuplicateCustomers();
     }
 
     function selectDuplicateGroup(mobile, checked) {

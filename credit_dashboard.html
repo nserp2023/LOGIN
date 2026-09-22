@@ -782,6 +782,13 @@ async function applyCreditPaymentAdjustments(grouped, { from, to } = {}){
     }
 
     (paymentRows || []).forEach(r => {
+        const referenceType = String(r.reference_type || "").trim().toLowerCase();
+        const paymentText = String(`${r.remarks || ""} ${r.reference_type || ""}`).toLowerCase();
+        const isCreditRefund = referenceType === "customer_credit_refund" ||
+            paymentText.includes("refund of customer negative credit balance") ||
+            paymentText.includes("customer credit refund");
+        if (!isCreditRefund) return;
+
         const amount = Number(r.amount || 0) || 0;
         if (!amount) return;
 

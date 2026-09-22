@@ -736,7 +736,13 @@ async function applyCreditReturnAdjustments(grouped, { from, to } = {}){
         const sale = salesMap[r.original_sales_id] || {};
         const name = (sale.customer_name || r.customer_name || "").trim();
         const mobile = (sale.customer_mobile || r.customer_mobile || "").trim();
-        const key = makeCustomerKey(mobile, name);
+        const matchedKey = Object.keys(grouped).find(existingKey => {
+            const customer = grouped[existingKey];
+            const existingMobile = String(customer.mobile || "").replace(/\D/g, "");
+            const existingName = String(customer.name || "").trim().toLowerCase();
+            return (mobile && existingMobile && mobile === existingMobile) || (name && existingName === name.toLowerCase());
+        });
+        const key = matchedKey || makeCustomerKey(mobile, name);
         const amount = getCreditReturnAmount(r);
 
         if (!amount) return;
@@ -764,7 +770,6 @@ async function applyCreditPaymentAdjustments(grouped, { from, to } = {}){
         .select("txn_date, txn_type, party_name, amount, approval_status, reference_type, remarks")
         .eq("txn_type", "payment")
         .eq("approval_status", "approved")
-        .in("reference_type", ["sales_credit", "customer_credit_auto"])
         .order("txn_date", { ascending: false });
 
     if (from) paymentQuery = paymentQuery.gte("txn_date", from);

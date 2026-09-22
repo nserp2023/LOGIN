@@ -709,6 +709,16 @@
             .ilike("customer_mobile", `%${safeLikeValue(mobile)}%`)
             .limit(50);
           addCustomerRowsToLookup(customerLookup, returnCustomers);
+
+          const { data: customerRows } = await sb
+            .from("customers")
+            .select("name, mobile")
+            .ilike("mobile", `%${safeLikeValue(mobile)}%`)
+            .limit(50);
+          addCustomerRowsToLookup(customerLookup, (customerRows || []).map(row => ({
+            customer_name: row.name,
+            customer_mobile: row.mobile
+          })));
         }
 
         let billRows = (salesData || []).map(r => {

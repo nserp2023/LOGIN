@@ -651,7 +651,6 @@ async function loadDashboard(){
             const mobile = (r.customer_mobile || "").trim();
             const key = makeCustomerKey(mobile, name);
             const billAmount = getCreditBillAmount(r);
-            const paidAmount = getCreditPaidAmount(r, billAmount);
 
             if (!grouped[key]){
                 grouped[key] = {
@@ -667,8 +666,7 @@ async function loadDashboard(){
 
             grouped[key].bill_count += 1;
             grouped[key].total_sales += billAmount;
-            grouped[key].total_paid += paidAmount;
-            grouped[key].total_balance += Math.max(0, billAmount - paidAmount);
+            grouped[key].total_balance += billAmount;
         });
 
         await applyCreditReturnAdjustments(grouped, { from, to });
@@ -768,7 +766,6 @@ async function applyCreditPaymentAdjustments(grouped, { from, to } = {}){
     let paymentQuery = sb
         .from("cash_transactions")
         .select("txn_date, txn_type, party_name, amount, approval_status, reference_type, remarks")
-        .eq("txn_type", "payment")
         .eq("approval_status", "approved")
         .order("txn_date", { ascending: false });
 
@@ -781,21 +778,43 @@ async function applyCreditPaymentAdjustments(grouped, { from, to } = {}){
         return;
     }
 
+    const { data: customerRows } = await sb
+        .from("customers")
+        .select("name, mobile")
+        .limit(5000);
+    const customerMap = (customerRows || []).map(row => ({
+        name: String(row.name || "").trim().toLowerCase(),
+        mobile: String(row.mobile || "").replace(/\D/g, "").slice(-10)
+    }));
+
     (paymentRows || []).forEach(r => {
+        const transactionType = String(r.txn_type || "").trim().toLowerCase();
         const referenceType = String(r.reference_type || "").trim().toLowerCase();
         const paymentText = String(`${r.remarks || ""} ${r.reference_type || ""}`).toLowerCase();
         const isCreditRefund = referenceType === "customer_credit_refund" ||
             paymentText.includes("refund of customer negative credit balance") ||
             paymentText.includes("customer credit refund") ||
             paymentText.includes("refund return amount");
-        if (!isCreditRefund) return;
+        const isCreditReceipt = transactionType === "receipt" && (
+            ["sales_credit", "sales_pack_credit", "customer_credit_auto", "customer_credit_refund"].includes(referenceType) ||
+            paymentText.includes("credit collection") ||
+            paymentText.includes("auto_alloc")
+        );
+        const isSalesOrderAdvance = transactionType === "receipt" && (
+            ["sales_order", "sales_order_advance", "sales_order_advance_receipt", "sales_order_conversion_receipt", "customer_advance"].includes(referenceType) ||
+            paymentText.includes("sales order advance") ||
+            paymentText.includes("advance received") ||
+            paymentText.includes("advance paid")
+        );
+        if (!isCreditRefund && !isCreditReceipt && !isSalesOrderAdvance) return;
 
         const amount = Number(r.amount || 0) || 0;
         if (!amount) return;
 
         const party = String(r.party_name || "").trim();
         const rawDigits = party.replace(/\D/g, "");
-        const mobile = rawDigits.slice(-10);
+        const matchedCustomer = customerMap.find(customer => customer.name && customer.name === party.toLowerCase());
+        const mobile = rawDigits.slice(-10) || matchedCustomer?.mobile || "";
         const hasLetters = /[A-Za-z]/.test(party);
         const name = hasLetters ? party : "";
         const matchedKey = Object.keys(grouped).find(existingKey => {
@@ -818,8 +837,12 @@ async function applyCreditPaymentAdjustments(grouped, { from, to } = {}){
             };
         }
 
-        grouped[key].total_paid += amount;
-        grouped[key].total_balance += amount;
+        if (isCreditRefund) {
+            grouped[key].total_paid += amount;
+            grouped[key].total_balance += amount;
+        } else {
+            grouped[key].total_balance -= amount;
+        }
     });
 }
 

@@ -837,9 +837,10 @@
           const text = String(`${r.remarks || ""} ${r.voucher_no || ""}`).toLowerCase();
           const isPayment = String(r.txn_type || "").trim().toLowerCase() === "payment";
           const isRelevantPayment = isPayment && (
-            hasCustomerSearch ||
             ref === "customer_credit_refund" ||
-            text.includes("refund")
+            text.includes("refund of customer negative credit balance") ||
+            text.includes("customer credit refund") ||
+            text.includes("refund return amount")
           );
 
           const isCreditReceipt =

@@ -255,12 +255,12 @@ async function fetchCustomerAccountOptions(query){
         for(const r of cashRes.data||[]){
             const ref=normalize(r.reference_type);
             const text=loose(`${r.remarks||''} ${r.voucher_no||''} ${r.reference_type||''}`);
-            const related=['sales_credit','sales_pack_credit','customer_credit_auto','customer_credit_refund','customer_advance','sales_order','sales_order_advance','sales_order_advance_receipt','sales_order_conversion_receipt'].includes(ref)||text.includes('creditcollection')||text.includes('autoalloc')||text.includes('salesorderadvance')||text.includes('salesorderconversionreceipt')||text.includes('advancecreditreceipt')||text.includes('orderadvance')||text.includes('advancereceived')||text.includes('advancepaid');
+            const related=String(r.txn_type||'').toLowerCase()==='receipt'||['sales_credit','sales_pack_credit','customer_credit_auto','customer_credit_refund','customer_advance','sales_order','sales_order_advance','sales_order_advance_receipt','sales_order_conversion_receipt'].includes(ref)||text.includes('creditcollection')||text.includes('autoalloc')||text.includes('salesorderadvance')||text.includes('salesorderconversionreceipt')||text.includes('advancecreditreceipt')||text.includes('orderadvance')||text.includes('advancereceived')||text.includes('advancepaid');
             if(!related) continue;
             const partyDigits=String(r.party_name||'').replace(/\D/g,'');
             const transactionText=normalize(`${r.party_name||''} ${r.remarks||''}`);
             const g=Array.from(grouped.values()).find(x=>loose(x.customer_name)===loose(r.party_name)||(partyDigits&&partyDigits===String(x.customer_mobile||'').replace(/\D/g,''))||(x.customer_mobile&&transactionText.includes(String(x.customer_mobile).replace(/\D/g,''))));
-            if(g) g.account_balance-=num(r.amount);
+            if(g) g.account_balance+=String(r.txn_type||'').toLowerCase()==='payment'?num(r.amount):-num(r.amount);
         }
     }
     return Array.from(grouped.values()).map(x=>({...x,kind:'customer_credit_refund',refund_amount:Math.abs(x.account_balance)}));

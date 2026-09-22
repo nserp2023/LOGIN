@@ -874,6 +874,7 @@
         .map(r => {
           const ref = String(r.reference_type || "").toLowerCase();
           const text = String(`${r.remarks || ""} ${r.voucher_no || ""}`).toLowerCase();
+          const isPayment = String(r.txn_type || "").trim().toLowerCase() === "payment";
           const isSalesOrderAdvance =
             ref === "sales_order" ||
             ref === "sales_order_advance" ||

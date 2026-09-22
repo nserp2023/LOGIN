@@ -213,6 +213,11 @@ async function showPartySuggestions(query){ const items=[]; const clean=query.tr
         billOptions.filter(x=>!autoKeys.has(normaliseCustomerKey(x.customer_name,x.customer_mobile))).forEach(x=>items.push(x));
     }
     suggestionItems=dedupeSuggestionItems(items); renderSuggestions(suggestionItems,clean);
+    const exactMobile=clean.replace(/\D/g,'');
+    const exactAccount=suggestionItems.find(item => item.kind==='customer_credit_refund' && String(item.customer_mobile||'').replace(/\D/g,'')===exactMobile);
+    if(exactAccount && txnType.value==='payment' && !amount.value){
+        await selectSuggestion(exactAccount);
+    }
 }
 function dedupeSuggestionItems(items){ const seen=new Set(); return [...items].reverse().filter(item=>{ const group=item.kind==='credit_bill'?`credit_bill_${item.sales_id||''}`:(item.kind==='party'?'party':'customer'); const key=[group,String(item.customer_mobile||'').toLowerCase(),String(item.customer_name||item.party_name||'').toLowerCase()].join('|'); if(seen.has(key)) return false; seen.add(key); return true; }).reverse(); }
 async function fetchCustomerCreditBills(query){ const rows=await fetchOpenCreditBillsForSearch(query,14,false); return rows.map(r=>({kind:'credit_bill',sales_id:r.id,series_code:r.series_code||'',sales_number:r.sales_number||'',bill_date:r.bill_date||'',customer_mobile:r.customer_mobile||'',customer_name:r.customer_name||'',balance_amount:num(r.balance_amount),paid_amount:num(r.paid_amount),label:`${r.customer_name||''} ${r.customer_mobile||''}`.trim()})); }

@@ -684,6 +684,26 @@ async function loadLedger(){
     const { data: salesRows, error: salesErr } = await salesQuery;
     if(salesErr) throw salesErr;
 
+    let returnCustomerRows = [];
+    if(matchByMobile){
+      const { data: matchingReturns } = await sb
+        .from("sales_return_details")
+        .select("customer_name, customer_mobile")
+        .ilike("customer_mobile", `%${picked.mobile}%`)
+        .limit(50);
+      returnCustomerRows = matchingReturns || [];
+    }
+
+    const customerNames = [...new Set([
+      ...(salesRows || []),
+      ...returnCustomerRows
+    ]
+      .map(row => String(row.customer_name || "").trim())
+      .filter(Boolean))];
+    const customerNameFilters = customerNames
+      .map(name => `party_name.ilike.%${escapeOrValue(name)}%`)
+      .join(",");
+
     let receiptQuery = sb
       .from("cash_transactions")
       .select("id, txn_date, voucher_no, txn_type, party_name, amount, remarks, approval_status")
@@ -696,7 +716,11 @@ async function loadLedger(){
     if(to) receiptQuery = receiptQuery.lte("txn_date", to);
 
     if(matchByMobile){
-      receiptQuery = receiptQuery.or(`party_name.ilike.%${picked.mobile}%,remarks.ilike.%${picked.mobile}%`);
+      receiptQuery = receiptQuery.or([
+        `party_name.ilike.%${picked.mobile}%`,
+        `remarks.ilike.%${picked.mobile}%`,
+        customerNameFilters
+      ].filter(Boolean).join(","));
     }else{
       receiptQuery = receiptQuery.ilike("party_name", `%${picked.label}%`);
     }
@@ -716,13 +740,36 @@ async function loadLedger(){
     if(to) paymentQuery = paymentQuery.lte("txn_date", to);
 
     if(matchByMobile){
-      paymentQuery = paymentQuery.or(`party_name.ilike.%${picked.mobile}%,remarks.ilike.%${picked.mobile}%`);
+      paymentQuery = paymentQuery.or([
+        `party_name.ilike.%${picked.mobile}%`,
+        `remarks.ilike.%${picked.mobile}%`,
+        customerNameFilters
+      ].filter(Boolean).join(","));
     }else{
       paymentQuery = paymentQuery.ilike("party_name", `%${picked.label}%`);
     }
 
     const { data: paymentRows, error: paymentErr } = await paymentQuery;
     if(paymentErr) throw paymentErr;
+
+    let returnQuery = sb
+      .from("sales_return_details")
+      .select("id, return_date, customer_name, customer_mobile, approval_status, is_accepted, return_payment_type, settlement_mode, payment_type, credit_adjustment_amount, total_return_amount, payable, total_amount")
+      .eq("approval_status", "approved")
+      .order("return_date", { ascending:true })
+      .order("id", { ascending:true });
+
+    if(from) returnQuery = returnQuery.gte("return_date", from);
+    if(to) returnQuery = returnQuery.lte("return_date", to);
+
+    if(matchByMobile){
+      returnQuery = returnQuery.ilike("customer_mobile", `%${picked.mobile}%`);
+    }else{
+      returnQuery = returnQuery.ilike("customer_name", `%${picked.label}%`);
+    }
+
+    const { data: returnRows, error: returnErr } = await returnQuery;
+    if(returnErr) throw returnErr;
 
     let allocationMap = {};
 
@@ -794,6 +841,20 @@ async function loadLedger(){
         docNo: r.voucher_no || "",
         paymentAmount: Number(r.amount || 0),
         remarks: r.remarks || ""
+      });
+    });
+
+    (returnRows || []).forEach(r => {
+      const returnType = String(r.return_payment_type || r.settlement_mode || r.payment_type || "").toUpperCase();
+      if(!returnType.includes("CREDIT")) return;
+      const returnAmount = Number(r.credit_adjustment_amount || r.total_return_amount || r.payable || r.total_amount || 0);
+      if(!returnAmount) return;
+      entries.push({
+        entryType: "CREDIT_RETURN",
+        date: r.return_date || "",
+        docNo: `RETURN-${r.id}`,
+        returnAmount,
+        remarks: "Approved credit return"
       });
     });
 
@@ -870,10 +931,10 @@ async function loadLedger(){
             </td>
           </tr>
         `;
-      } else {
-        runningBalance -= e.paymentAmount;
+      } else if(e.entryType === "PAYMENT") {
+        runningBalance += e.paymentAmount;
         totalPaid += e.paymentAmount;
-        totalOutstanding -= e.paymentAmount;
+        totalOutstanding += e.paymentAmount;
 
         return `
           <tr class="entry-receipt">
@@ -885,6 +946,26 @@ async function loadLedger(){
             </td>
             <td class="amount">-</td>
             <td class="amount paid">${money(e.paymentAmount)}</td>
+            <td class="amount">-</td>
+            <td class="amount running">${money(runningBalance)}</td>
+            <td><span class="settled-chip">APPROVED</span></td>
+            <td>-</td>
+          </tr>
+        `;
+      } else {
+        runningBalance -= e.returnAmount;
+        totalOutstanding -= e.returnAmount;
+
+        return `
+          <tr class="entry-receipt">
+            <td class="sticky-first">${formatDate(e.date)}</td>
+            <td><span class="receipt-chip">CREDIT RETURN</span></td>
+            <td>
+              <div class="doc-main">${escapeHtml(e.docNo)}</div>
+              <div class="doc-sub">${escapeHtml(e.remarks)}</div>
+            </td>
+            <td class="amount">-</td>
+            <td class="amount paid">${money(e.returnAmount)}</td>
             <td class="amount">-</td>
             <td class="amount running">${money(runningBalance)}</td>
             <td><span class="settled-chip">APPROVED</span></td>

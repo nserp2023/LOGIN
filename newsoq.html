@@ -391,6 +391,8 @@
         }
         .col-tot  { width: 100px; }
         .col-act  { width: 30px; }
+        .add-item-header-btn { width: 22px; min-height: 22px; margin-left: 4px; padding: 0; border: 0; border-radius: 50%; background: #16a34a; color: #fff; font-size: 16px; font-weight: 900; line-height: 22px; cursor: pointer; vertical-align: middle; }
+        .add-item-header-btn:hover { background: #15803d; }
 
         .footer-section {
             position: relative;
@@ -1522,7 +1524,7 @@
                     <th class="col-disc">Disc %</th>
                     <th class="col-landing landing-col">Landing</th>
                     <th class="col-gst" title="For new quotation/sales-order items, press Ctrl+Shift+G to edit GST">GST%</th>
-                    <th class="col-tot">Total</th>
+                    <th class="col-tot">Total <button type="button" class="add-item-header-btn" onclick="addNewRow(true)" title="Add item row" aria-label="Add item row">+</button></th>
                     <th class="col-act"></th>
                 </tr>
             </thead>

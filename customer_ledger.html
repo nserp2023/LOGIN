@@ -704,6 +704,26 @@ async function loadLedger(){
     const { data: receiptRows, error: receiptErr } = await receiptQuery;
     if(receiptErr) throw receiptErr;
 
+    let paymentQuery = sb
+      .from("cash_transactions")
+      .select("id, txn_date, voucher_no, txn_type, party_name, amount, remarks, approval_status")
+      .eq("txn_type", "payment")
+      .eq("approval_status", "approved")
+      .order("txn_date", { ascending:true })
+      .order("id", { ascending:true });
+
+    if(from) paymentQuery = paymentQuery.gte("txn_date", from);
+    if(to) paymentQuery = paymentQuery.lte("txn_date", to);
+
+    if(matchByMobile){
+      paymentQuery = paymentQuery.or(`party_name.ilike.%${picked.mobile}%,remarks.ilike.%${picked.mobile}%`);
+    }else{
+      paymentQuery = paymentQuery.ilike("party_name", `%${picked.label}%`);
+    }
+
+    const { data: paymentRows, error: paymentErr } = await paymentQuery;
+    if(paymentErr) throw paymentErr;
+
     let allocationMap = {};
 
     if(receiptRows && receiptRows.length){
@@ -767,6 +787,16 @@ async function loadLedger(){
       });
     });
 
+    (paymentRows || []).forEach(r => {
+      entries.push({
+        entryType: "PAYMENT",
+        date: r.txn_date || "",
+        docNo: r.voucher_no || "",
+        paymentAmount: Number(r.amount || 0),
+        remarks: r.remarks || ""
+      });
+    });
+
     entries.sort((a,b) => {
       const ad = new Date(a.date || "1970-01-01");
       const bd = new Date(b.date || "1970-01-01");
@@ -811,7 +841,7 @@ async function loadLedger(){
             <td>${collectBtn}</td>
           </tr>
         `;
-      } else {
+      } else if(e.entryType === "RECEIPT") {
         runningBalance -= e.receiptAmount;
         totalPaid += e.receiptAmount;
 
@@ -838,6 +868,27 @@ async function loadLedger(){
             <td colspan="9">
               <div class="alloc-card">${allocHtml}</div>
             </td>
+          </tr>
+        `;
+      } else {
+        runningBalance -= e.paymentAmount;
+        totalPaid += e.paymentAmount;
+        totalOutstanding -= e.paymentAmount;
+
+        return `
+          <tr class="entry-receipt">
+            <td class="sticky-first">${formatDate(e.date)}</td>
+            <td><span class="receipt-chip">PAYMENT</span></td>
+            <td>
+              <div class="doc-main">${escapeHtml(e.docNo)}</div>
+              <div class="doc-sub">${escapeHtml(e.remarks || "Approved customer payment")}</div>
+            </td>
+            <td class="amount">-</td>
+            <td class="amount paid">${money(e.paymentAmount)}</td>
+            <td class="amount">-</td>
+            <td class="amount running">${money(runningBalance)}</td>
+            <td><span class="settled-chip">APPROVED</span></td>
+            <td>-</td>
           </tr>
         `;
       }

@@ -687,7 +687,7 @@ async function loadDashboard(){
             customers = customers.filter(c => getRisk(c.total_balance) === risk);
         }
 
-        customers = customers.filter(c => Number(c.total_balance) > 0);
+        customers = customers.filter(c => Math.abs(Number(c.total_balance) || 0) > 0);
 
         customers.sort((a,b) => b.total_balance - a.total_balance);
 
@@ -790,7 +790,13 @@ async function applyCreditPaymentAdjustments(grouped, { from, to } = {}){
         const mobile = rawDigits.slice(-10);
         const hasLetters = /[A-Za-z]/.test(party);
         const name = hasLetters ? party : "";
-        const key = makeCustomerKey(mobile, name);
+        const matchedKey = Object.keys(grouped).find(existingKey => {
+            const customer = grouped[existingKey];
+            const existingMobile = String(customer.mobile || "").replace(/\D/g, "");
+            const existingName = String(customer.name || "").trim().toLowerCase();
+            return (mobile && existingMobile && mobile === existingMobile) || (name && existingName === name.toLowerCase());
+        });
+        const key = matchedKey || makeCustomerKey(mobile, name);
 
         if (!grouped[key]){
             grouped[key] = {

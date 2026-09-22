@@ -578,6 +578,18 @@
       };
     }
 
+    function addCustomerRowsToLookup(lookup, rows){
+      (rows || []).forEach(row => {
+        const nameKey = normalNameKey(row.customer_name);
+        const mobileDigits = String(row.customer_mobile || "").replace(/\D/g, "").slice(-10);
+        if (nameKey && !lookup.names.includes(nameKey)) lookup.names.push(nameKey);
+        if (mobileDigits && !lookup.mobiles.includes(mobileDigits)) lookup.mobiles.push(mobileDigits);
+        if (nameKey && mobileDigits) lookup.customerMobileMap[nameKey] = mobileDigits;
+        if (mobileDigits && row.customer_name) lookup.customerNameMap[mobileDigits] = row.customer_name;
+      });
+      return lookup;
+    }
+
     function customerIdentityMatches(identity, lookup){
       const text = normalNameKey(`${identity.party_name || ""} ${identity.remarks || ""} ${identity.voucher_no || ""}`);
       const identityMobile = extractMobile(`${identity.party_name || ""} ${identity.remarks || ""}`) ||
@@ -690,6 +702,14 @@
         if (salesError) throw salesError;
 
         const customerLookup = buildCustomerLookupFromSales(salesData || [], { mobile, name });
+        if (mobile) {
+          const { data: returnCustomers } = await sb
+            .from("sales_return_details")
+            .select("customer_name, customer_mobile")
+            .ilike("customer_mobile", `%${safeLikeValue(mobile)}%`)
+            .limit(50);
+          addCustomerRowsToLookup(customerLookup, returnCustomers);
+        }
 
         let billRows = (salesData || []).map(r => {
           const invoiceAmount = getCreditBillAmount(r);
@@ -815,6 +835,12 @@
         .filter(r => {
           const ref = String(r.reference_type || "").toLowerCase();
           const text = String(`${r.remarks || ""} ${r.voucher_no || ""}`).toLowerCase();
+          const isPayment = String(r.txn_type || "").trim().toLowerCase() === "payment";
+          const isRelevantPayment = isPayment && (
+            hasCustomerSearch ||
+            ref === "customer_credit_refund" ||
+            text.includes("refund")
+          );
 
           const isCreditReceipt =
             ref === "sales_credit" ||
@@ -826,7 +852,8 @@
             text.includes("credit collection") ||
             text.includes("auto_alloc") ||
             text.includes("advance credit receipt") ||
-            text.includes("sales_order_conversion_receipt");
+            text.includes("sales_order_conversion_receipt") ||
+            isRelevantPayment;
 
           const isSalesOrderAdvance =
             ref === "sales_order" ||
@@ -860,8 +887,6 @@
             text.includes("advance paid") ||
             text.includes("sales_order_conversion_receipt") ||
             text.includes("advance credit receipt");
-          const isPayment = String(r.txn_type || "").trim().toLowerCase() === "payment";
-
           const linkedOrder = salesOrderCustomerMap[String(r.reference_id || "")];
           const receiptMobile = getReceiptMobile(r, lookup.customerMobileMap || {}) ||
             String(linkedOrder?.customer_mobile || "").replace(/\D/g, "").slice(-10);
@@ -1075,9 +1100,14 @@
       const advanceRows = receiptRows.filter(r => r.rowKind === "advance");
       const normalReceiptRows = receiptRows.filter(r => r.rowKind === "receipt");
       const totalAmount = billRows.reduce((s,r) => s + num(r.billAmount), 0);
-      const totalCashReceived = receiptRows.reduce((s,r) => s + num(r.cashReceived || r.receiptAmount || r.advancePaid), 0);
+      const totalCashReceived = receiptRows
+        .filter(r => r.rowKind !== "payment")
+        .reduce((s,r) => s + num(r.cashReceived || r.receiptAmount || r.advancePaid), 0);
+      const totalCustomerPayments = receiptRows
+        .filter(r => r.rowKind === "payment")
+        .reduce((s,r) => s + num(r.cashReceived), 0);
       const totalCreditAdjustment = creditReturnRows.reduce((s,r) => s + num(r.creditAdjustment), 0);
-      const totalBalance = totalAmount - totalCashReceived - totalCreditAdjustment;
+      const totalBalance = totalAmount - totalCashReceived + totalCustomerPayments - totalCreditAdjustment;
 
       if (!rows.length) {
         body.innerHTML = `<tr><td colspan="9" class="empty">No credit records found.</td></tr>`;
@@ -1101,7 +1131,8 @@
       let runningBalance = 0;
       chronologicalRows.forEach(row => {
         if (row.rowKind === "bill") runningBalance += num(row.billAmount);
-        if (row.rowKind === "advance" || row.rowKind === "receipt" || row.rowKind === "payment") runningBalance -= num(row.cashReceived || row.receiptAmount || row.advancePaid);
+        if (row.rowKind === "advance" || row.rowKind === "receipt") runningBalance -= num(row.cashReceived || row.receiptAmount || row.advancePaid);
+        if (row.rowKind === "payment") runningBalance += num(row.cashReceived);
         if (row.rowKind === "credit_return") runningBalance -= num(row.creditAdjustment);
         row.runningBalance = runningBalance;
       });

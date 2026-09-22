@@ -645,12 +645,21 @@ async function loadDashboard(){
 
         const rows = data || [];
         const grouped = {};
+        const saleIds = rows.map(row => row.id).filter(Boolean);
+        const packMap = new Map();
+        if (saleIds.length){
+            const { data: packRows, error: packError } = await sb
+                .from("sales_packing_details")
+                .select("sales_id, packing_amount")
+                .in("sales_id", saleIds);
+            if (!packError) (packRows || []).forEach(row => packMap.set(String(row.sales_id), Number(row.packing_amount || 0) || 0));
+        }
 
         rows.forEach(r => {
             const name = (r.customer_name || "").trim();
             const mobile = (r.customer_mobile || "").trim();
             const key = makeCustomerKey(mobile, name);
-            const billAmount = getCreditBillAmount(r);
+            const billAmount = packMap.get(String(r.id)) || getCreditBillAmount(r);
 
             if (!grouped[key]){
                 grouped[key] = {

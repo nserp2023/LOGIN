@@ -811,7 +811,7 @@ async function applyCreditPaymentAdjustments(grouped, { from, to } = {}){
         }
 
         grouped[key].total_paid += amount;
-        grouped[key].total_balance -= amount;
+        grouped[key].total_balance += amount;
     });
 }
 

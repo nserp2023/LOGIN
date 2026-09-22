@@ -236,6 +236,10 @@ async function fetchCustomerAccountOptions(query){
     if(!returnRes.error){ for(const r of returnRes.data||[]){ if(!isAcceptedCreditReturn(r)||normalizeReturnType(r.return_payment_type||r.settlement_mode||r.payment_type||'')!=='CREDIT') continue; const g=ensure(r.customer_name,r.customer_mobile); if(g) g.account_balance-=getCreditReturnAmount(r); } }
 
     const cashFilters=[];
+    if(mobile.length>=3){
+        cashFilters.push(`party_name.ilike.%${mobile}%`);
+        cashFilters.push(`remarks.ilike.%${mobile}%`);
+    }
     for(const customer of grouped.values()){
         const name=escapeOrValue(customer.customer_name);
         const customerMobile=String(customer.customer_mobile||'').replace(/\D/g,'');
@@ -259,7 +263,12 @@ async function fetchCustomerAccountOptions(query){
             if(!related) continue;
             const partyDigits=String(r.party_name||'').replace(/\D/g,'');
             const transactionText=normalize(`${r.party_name||''} ${r.remarks||''}`);
-            const g=Array.from(grouped.values()).find(x=>loose(x.customer_name)===loose(r.party_name)||(partyDigits&&partyDigits===String(x.customer_mobile||'').replace(/\D/g,''))||(x.customer_mobile&&transactionText.includes(String(x.customer_mobile).replace(/\D/g,''))));
+            let g=Array.from(grouped.values()).find(x=>loose(x.customer_name)===loose(r.party_name)||(partyDigits&&partyDigits===String(x.customer_mobile||'').replace(/\D/g,''))||(x.customer_mobile&&transactionText.includes(String(x.customer_mobile).replace(/\D/g,''))));
+            if(!g && String(r.txn_type||'').toLowerCase()==='payment'){
+                const inferredMobile=partyDigits.length>=10?partyDigits.slice(-10):mobile;
+                const inferredName=/[a-z]/i.test(String(r.party_name||''))?String(r.party_name).trim():'';
+                g=ensure(inferredName,inferredMobile);
+            }
             if(g) g.account_balance+=String(r.txn_type||'').toLowerCase()==='payment'?num(r.amount):-num(r.amount);
         }
     }

@@ -452,11 +452,13 @@ async function fetchCustomerAccountOptions(query){
         cashFilters.push(`party_name.ilike.%${mobile}%`);
         cashFilters.push(`remarks.ilike.%${mobile}%`);
     }
-    for(const customer of grouped.values()){
-        const name=escapeOrValue(customer.customer_name);
-        const customerMobile=String(customer.customer_mobile||'').replace(/\D/g,'');
-        if(name){ cashFilters.push(`party_name.ilike.%${name}%`); cashFilters.push(`remarks.ilike.%${name}%`); }
-        if(customerMobile){ cashFilters.push(`party_name.ilike.%${customerMobile}%`); cashFilters.push(`remarks.ilike.%${customerMobile}%`); }
+    if(mobile.length<3){
+        for(const customer of grouped.values()){
+            const name=escapeOrValue(customer.customer_name);
+            const customerMobile=String(customer.customer_mobile||'').replace(/\D/g,'');
+            if(name){ cashFilters.push(`party_name.ilike.%${name}%`); cashFilters.push(`remarks.ilike.%${name}%`); }
+            if(customerMobile){ cashFilters.push(`party_name.ilike.%${customerMobile}%`); cashFilters.push(`remarks.ilike.%${customerMobile}%`); }
+        }
     }
     let cashRes={data:[],error:null};
     if(mobile.length>=3){

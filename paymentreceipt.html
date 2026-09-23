@@ -12,6 +12,7 @@
 <!-- ULTRA VERSION: paymentreceipt_ultra_credit_approval_rpc_fallback_2026_05_01 -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabaseClient.js"></script>
+<script src="credit-balance.js"></script>
 <script src="page_permissions.js"></script>
 <script src="common-ui.js"></script>
 <style>
@@ -261,7 +262,7 @@ tbody tr:hover { background: #17304b; }
             <div class="field full"><label for="remarks">Remarks</label><textarea id="remarks" placeholder="Optional remarks"></textarea></div>
             <div class="field full"><div id="allocationPreview" class="info-box"></div></div>
         </div>
-        <div class="btn-row"><button class="btn btn-primary" id="saveBtn">Save Entry</button><button class="btn btn-secondary" id="clearBtn" type="button">Clear</button><button class="btn btn-warning" id="reloadBtn" type="button">Reload</button></div>
+            <div class="btn-row"><button class="btn btn-primary" id="saveBtn">Save Entry</button><button class="btn btn-secondary" id="clearBtn" type="button">Clear</button><button class="btn btn-warning" id="reloadBtn" type="button">Reload</button></div>
         <div id="formMessage" class="message"></div>
     </div>
 
@@ -423,7 +424,17 @@ function dedupeSuggestionItems(items){ const seen=new Set(); return [...items].r
 async function fetchCustomerCreditBills(query){ const rows=await fetchOpenCreditBillsForSearch(query,14,false); return rows.map(r=>({kind:'credit_bill',sales_id:r.id,series_code:r.series_code||'',sales_number:r.sales_number||'',bill_date:r.bill_date||'',customer_mobile:r.customer_mobile||'',customer_name:r.customer_name||'',balance_amount:num(r.balance_amount),paid_amount:num(r.paid_amount),label:`${r.customer_name||''} ${r.customer_mobile||''}`.trim()})); }
 async function fetchCustomerAutoAllocationOptions(query){ const rows=await fetchOpenCreditBillsForSearch(query,60,true); const standaloneReturns=await fetchStandaloneCreditReturnAmounts(query); const grouped=new Map(); for(const r of rows){ const key=normaliseCustomerKey(r.customer_name,r.customer_mobile); if(!key||key==='|') continue; if(!grouped.has(key)) grouped.set(key,{kind:'customer_credit_auto',customer_name:r.customer_name||'',customer_mobile:r.customer_mobile||'',total_balance:0,bills:[]}); const b=grouped.get(key); const bal=num(r.balance_amount); b.total_balance+=bal; b.bills.push({sales_id:r.id,series_code:r.series_code||'',sales_number:r.sales_number||'',bill_date:r.bill_date||'',balance_amount:bal,paid_amount:num(r.paid_amount)}); } for(const [key,amount] of standaloneReturns.entries()){ if(grouped.has(key)){ const group=grouped.get(key); group.total_balance=Math.max(0,group.total_balance-amount); } } return Array.from(grouped.values()).filter(x=>x.bills.length&&x.total_balance>0).sort((a,b)=>String(a.customer_name).localeCompare(String(b.customer_name))); }
 async function fetchCustomerAccountOptions(query){
-    const search=(query||'').trim();
+    const search=String(query||'').trim().toLowerCase(), searchDigits=search.replace(/\D/g,'');
+    const canonicalAccounts=await window.loadCanonicalCreditAccounts({search:query});
+    return Array.from(canonicalAccounts.values()).filter(account=>!search||account.name.includes(search)||account.mobile.includes(searchDigits)||account.mobile.includes(search)).map(account=>({
+        kind:'customer_credit_refund',
+        customer_name:account.name==='-'?'':account.name,
+        customer_mobile:account.mobile==='-'?'':account.mobile,
+        account_balance:window.canonicalCreditBalance(account),
+        refund_amount:Math.abs(window.canonicalCreditBalance(account)),
+        party_name:account.name==='-'?account.mobile:account.name
+    }));
+    const legacySearch=(query||'').trim();
     if(!search) return [];
     const mobile=search.replace(/\D/g,'');
     const customerQuery=sb.from('customers').select('name,mobile').limit(100);

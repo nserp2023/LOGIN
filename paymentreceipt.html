@@ -471,12 +471,12 @@ async function fetchCustomerAccountOptions(query){
         cashRes=await sb.from('cash_transactions')
             .select('txn_type,party_name,amount,remarks,reference_type,voucher_no,approval_status')
             .in('txn_type',['receipt','payment'])
-            .eq('approval_status','approved')
             .or(cashFilters.join(','))
             .limit(5000);
     }
     if(!cashRes.error){
         for(const r of cashRes.data||[]){
+            if(normalize(r.approval_status)!=='approved') continue;
             const ref=normalize(r.reference_type);
             const text=loose(`${r.remarks||''} ${r.voucher_no||''} ${r.reference_type||''}`);
             const transactionType=String(r.txn_type||'').toLowerCase();

@@ -612,6 +612,14 @@
       const hasCustomerSearch = Boolean((filters.mobile || "").trim() || (filters.name || "").trim());
       if (!hasCustomerSearch) return true;
 
+      const typedMobile = String(filters.mobile || "").replace(/\D/g, "").slice(-10);
+      if (typedMobile) {
+        const directMobile = extractMobile(`${row.party_name || ""} ${row.remarks || ""}`);
+        const linkedOrder = salesOrderCustomerMap[String(row.reference_id || "")];
+        const linkedMobile = String(linkedOrder?.customer_mobile || "").replace(/\D/g, "").slice(-10);
+        return directMobile === typedMobile || linkedMobile === typedMobile;
+      }
+
       if (customerIdentityMatches(row, lookup)) return true;
 
       // The advance is permanently tied to its sales-order header by

@@ -16,7 +16,7 @@
     const classifyCash=row=>{
         const type=normalized(row.txn_type), ref=normalized(row.reference_type);
         const text=normalized(`${row.remarks||''} ${row.reference_type||''}`);
-        const refund=type==='payment'&&(ref==='customer credit refund'||text.includes('refund of customer negative credit balance')||text.includes('customer credit refund')||text.includes('refund return amount'));
+        const refund=type==='payment'&&(ref==='customer credit refund'||ref==='customer payment'||text.includes('refund of customer negative credit balance')||text.includes('customer credit refund')||text.includes('refund return amount'));
         const receipt=type==='receipt'&&(['sales credit','sales pack credit','customer credit auto','customer credit refund'].includes(ref)||text.includes('credit collection')||text.includes('auto alloc'));
         const advance=type==='receipt'&&(['customer advance','sales order','sales order advance','sales order advance receipt','sales order conversion receipt'].includes(ref)||text.includes('sales order advance')||text.includes('advance received')||text.includes('advance paid')||text.includes('advance credit receipt'));
         return refund?'payment':receipt?'receipt':advance?'advance':'';
@@ -58,6 +58,19 @@
             account.billAmount+=amount;
             addEntry(account,'bill',row.bill_date,pack?`${pack.series_code||row.series_code||''}-${pack.packing_number||row.sales_number||''}`:`${row.series_code||''}-${row.sales_number||''}`,amount,pack?'Sales + Packing credit bill':'Credit bill');
         });
+        const searchedCustomers=[];
+        if(search){
+            const searchDigits=digitsOnly(search);
+            let customerQuery=window.sbcc.from('customers').select('name,mobile');
+            customerQuery=searchDigits.length>=3?customerQuery.ilike('mobile',`%${searchDigits}%`):customerQuery.ilike('name',`%${search}%`);
+            const customerResult=await customerQuery.limit(50);
+            if(!customerResult.error){
+                searchedCustomers.push(...(customerResult.data||[]));
+                searchedCustomers.forEach(row=>getAccount(row.name,row.mobile));
+            }
+        }
+        const searchedCustomerNames=new Set(searchedCustomers.map(row=>normalizedName(row.name)).filter(Boolean));
+        const searchedCustomerMobiles=new Set(searchedCustomers.map(row=>digitsOnly(row.mobile)).filter(Boolean));
         for(let page=0;;page++){
             const cashResult=await window.sbcc.from('cash_transactions').select('txn_date,voucher_no,txn_type,party_name,amount,remarks,reference_type,approval_status').range(page*1000,page*1000+999);
             if(cashResult.error)throw cashResult.error;
@@ -66,11 +79,15 @@
                 if(from&&date&&date<from)return;
                 if(to&&date&&date>to)return;
                 if(normalized(row.approval_status)!=='approved')return;
-                const type=classifyCash(row);
+                const party=cleanValue(row.party_name), partyDigits=digitsOnly(party);
+                const savedCustomerPayment=normalized(row.txn_type)==='payment'&&(
+                    (partyDigits&&searchedCustomerMobiles.has(partyDigits))||searchedCustomerNames.has(normalizedName(party))
+                );
+                const type=classifyCash(row)||(savedCustomerPayment?'payment':'');
                 if(!type)return;
-                const party=cleanValue(row.party_name), partyMobile=digitsOnly(party), accountName=/^[0-9+\-\s]+$/.test(party);
-                const account=partyMobile?findAccount(accounts,'',partyMobile):findAccount(accounts,party,'');
-                if(partyMobile&&!account)return;
+                const accountName=/^[0-9+\-\s]+$/.test(party);
+                const account=partyDigits?findAccount(accounts,'',partyDigits):findAccount(accounts,party,'');
+                if(partyDigits&&!account)return;
                 const target=account||getAccount(accountName?'':party,'');
                 const amount=numberValue(row.amount);
                 if(type==='payment')target.payments+=amount;
@@ -91,13 +108,6 @@
             account.returns+=amount;
             addEntry(account,'return',row.return_date,`SR-${row.id}`,amount,'Accepted credit return');
         });
-        if(search){
-            const searchDigits=digitsOnly(search);
-            let customerQuery=window.sbcc.from('customers').select('name,mobile');
-            customerQuery=searchDigits.length>=3?customerQuery.ilike('mobile',`%${searchDigits}%`):customerQuery.ilike('name',`%${search}%`);
-            const customerResult=await customerQuery.limit(50);
-            if(!customerResult.error)(customerResult.data||[]).forEach(row=>getAccount(row.name,row.mobile));
-        }
         return accounts;
     };
     window.canonicalCreditBalance=account=>account.billAmount+account.payments-account.receipts-account.advances-account.returns;

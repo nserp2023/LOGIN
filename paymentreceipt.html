@@ -549,7 +549,7 @@ function updateAutoAllocationPreview(){
     if(selectedCustomerCreditRefund || selectedCustomerAccount){
         const account=selectedCustomerCreditRefund||selectedCustomerAccount;
         const balance=num(account.account_balance), entered=num(amount.value);
-        showAllocationPreview(`<strong>Current balance:</strong> ₹${money(balance)}<br><strong>Payment:</strong> ₹${money(entered)}<br><strong>Balance after payment:</strong> ₹${money(balance-entered)}<br><span class="small">A negative balance means you have given money to the customer.</span>`);
+        showAllocationPreview(`<strong>Current balance:</strong> ₹${money(balance)}<br><strong>Payment:</strong> ₹${money(entered)}<br><strong>Balance after payment:</strong> ₹${money(balance+entered)}<br><span class="small">A negative balance means you have given money to the customer.</span>`);
         return;
     }
     if(!selectedCustomerAutoAllocation) return;

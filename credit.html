@@ -67,10 +67,10 @@ render=function(term){
   const amountOut=entry.type==='payment'||entry.type==='bill'?entry.amount:0;
    if(entry.type==='bill'||entry.type==='payment')runningBalance+=entry.amount;
    else if(entry.type==='receipt'||entry.type==='advance'||entry.type==='return')runningBalance-=entry.amount;
-  return `<tr><td>${entry.date}</td><td><span class="chip chip-${entry.type}">${entry.type.toUpperCase()}</span></td><td>${entry.doc}</td><td class="right green">${amountIn?money(amountIn):'-'}</td><td class="right red">${amountOut?money(amountOut):'-'}</td><td class="right"><strong class="${runningBalance<0?'red':runningBalance>0?'green':'blue'}">${money(runningBalance)}</strong></td><td>${entry.remark}</td></tr>`;
+  return `<tr><td>${entry.date}</td><td><span class="chip chip-${entry.type}">${entry.type.toUpperCase()}</span></td><td>${entry.doc}</td><td class="right green">${amountIn?money(amountIn):'-'}</td><td class="right red">${amountOut?money(amountOut):'-'}</td><td class="right"><strong class="${runningBalance<0?'red':runningBalance>0?'green':'blue'}">${money(runningBalance)}</strong></td></tr>`;
   }).join('');
   const detail=document.querySelector(`[data-detail="${index}"] .detail`);
-  if(detail)detail.innerHTML=`<table><thead><tr><th>Date</th><th>Type</th><th>Voucher</th><th class="right">IN</th><th class="right">OUT</th><th class="right">Balance</th><th>Remarks</th></tr></thead><tbody>${detailRows||'<tr><td colspan="7" class="empty">No entries</td></tr>'}</tbody></table>`;
+  if(detail)detail.innerHTML=`<table><thead><tr><th>Date</th><th>Type</th><th>Voucher</th><th class="right">IN</th><th class="right">OUT</th><th class="right">Balance</th></tr></thead><tbody>${detailRows||'<tr><td colspan="6" class="empty">No entries</td></tr>'}</tbody></table>`;
  });
 };
 </script>

@@ -262,6 +262,8 @@ const params=new URLSearchParams(window.location.search);
 const id=params.get("id");
 const type=params.get("type") || "sales";
 const printDepartment=params.get("department") || "";
+const captureMode=params.get("capture") === "1";
+if(captureMode) window.__billRenderStatus = "loading";
 
 
 function escapeHtml(value){
@@ -468,6 +470,10 @@ const { data: head, error: headError } = await sb
 .maybeSingle();
 
 if (headError || !head) {
+    if(captureMode){
+        window.__billRenderError = "Document not found";
+        window.__billRenderStatus = "error";
+    }
     document.body.innerHTML = "<h2>❌ Document not found</h2>";
     return;
 }
@@ -550,6 +556,10 @@ const { data: items, error: itemError } = await sb
 .eq(idField, id);
 
 if (itemError || !items) {
+    if(captureMode){
+        window.__billRenderError = "Bill items not found";
+        window.__billRenderStatus = "error";
+    }
     document.body.innerHTML = "<h2>❌ Items not found</h2>";
     console.error(itemError);
     return;
@@ -911,31 +921,38 @@ let loaded = 0;
 let printCalled = false;
 
 function printOnce(){
+    if(captureMode) return;
     if(printCalled) return;
     printCalled = true;
     window.print();
 }
 
 if(qrImgs.length === 0){
-    printOnce();
+    if(captureMode) window.__billRenderStatus = "ready";
+    else printOnce();
 }
 
 // Even if QR internet image fails, print must still open.
-setTimeout(printOnce, 2500);
+setTimeout(() => {
+    if(captureMode) window.__billRenderStatus = "ready";
+    else printOnce();
+}, 2500);
 
 qrImgs.forEach(img => {
 
     img.onload = () => {
         loaded++;
         if(loaded === qrImgs.length){
-            printOnce();
+            if(captureMode) window.__billRenderStatus = "ready";
+            else printOnce();
         }
     };
 
     img.onerror = () => {
         loaded++;
         if(loaded === qrImgs.length){
-            printOnce();
+            if(captureMode) window.__billRenderStatus = "ready";
+            else printOnce();
         }
     };
 
@@ -945,7 +962,15 @@ qrImgs.forEach(img => {
 
 }
 
-loadData();
+if(captureMode){
+    loadData().catch(error => {
+        console.error("Bill image rendering failed:", error);
+        window.__billRenderError = error.message || "Bill image rendering failed";
+        window.__billRenderStatus = "error";
+    });
+} else {
+    loadData();
+}
 
 </script>
 

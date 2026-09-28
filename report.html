@@ -1064,6 +1064,7 @@
     async function generateBillImageBlob(id){
         await ensureHtml2Canvas();
         const { type } = getCurrentTypeConfig();
+        const copyOnly = type === "sales_pack" ? "packing" : (type === "sales" ? "invoice" : "");
 
         const iframe = document.createElement('iframe');
         iframe.style.position = 'fixed';
@@ -1072,7 +1073,7 @@
         iframe.style.width = '1000px';
         iframe.style.height = '1400px';
         iframe.style.border = '0';
-        iframe.src = `print.html?id=${id}&type=${type}`;
+        iframe.src = `print.html?id=${id}&type=${type}${copyOnly ? `&copy=${copyOnly}` : ''}`;
         document.body.appendChild(iframe);
 
         try {

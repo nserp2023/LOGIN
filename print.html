@@ -75,6 +75,24 @@ border-right:1px solid #000;
 
 .page-full{ height:1050px; }
 
+html.capture-mode body{
+box-sizing:border-box;
+width:940px;
+margin:0 auto;
+padding:20px;
+background:#cbd5e1;
+}
+
+html.capture-mode .page{
+margin:0 auto 24px;
+background:#fff;
+box-shadow:0 2px 8px rgba(0,0,0,.18);
+}
+
+html.capture-mode .page:last-child{
+margin-bottom:0;
+}
+
 
 /* TABLE */
 
@@ -263,7 +281,10 @@ const id=params.get("id");
 const type=params.get("type") || "sales";
 const printDepartment=params.get("department") || "";
 const captureMode=params.get("capture") === "1";
-if(captureMode) window.__billRenderStatus = "loading";
+if(captureMode){
+    document.documentElement.classList.add("capture-mode");
+    window.__billRenderStatus = "loading";
+}
 
 
 function escapeHtml(value){

@@ -1073,13 +1073,30 @@
         iframe.style.width = '1000px';
         iframe.style.height = '1400px';
         iframe.style.border = '0';
-        iframe.src = `print.html?id=${id}&type=${type}${copyOnly ? `&copy=${copyOnly}` : ''}`;
+        const printParams = new URLSearchParams({ id, type, capture: '1' });
+        if(copyOnly) printParams.set('copy', copyOnly);
+        iframe.src = `print.html?${printParams.toString()}`;
         document.body.appendChild(iframe);
 
         try {
             await new Promise((resolve, reject) => {
-                iframe.onload = () => setTimeout(resolve, 1800);
-                setTimeout(() => reject(new Error('Print page load timeout')), 12000);
+                const timeoutId = setTimeout(() => reject(new Error('Bill image render timeout')), 20000);
+                iframe.onload = () => {
+                    const checkRenderStatus = () => {
+                        const frameWindow = iframe.contentWindow;
+                        const status = frameWindow && frameWindow.__billRenderStatus;
+                        if(status === 'ready'){
+                            clearTimeout(timeoutId);
+                            resolve();
+                        } else if(status === 'error'){
+                            clearTimeout(timeoutId);
+                            reject(new Error(frameWindow.__billRenderError || 'Could not render bill'));
+                        } else {
+                            setTimeout(checkRenderStatus, 100);
+                        }
+                    };
+                    checkRenderStatus();
+                };
             });
 
             const doc = iframe.contentDocument || iframe.contentWindow.document;

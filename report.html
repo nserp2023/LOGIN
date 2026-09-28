@@ -33,6 +33,36 @@
             margin-right:2px;
         }
 
+        .whatsapp-mode-bar{
+            display:flex;
+            align-items:center;
+            gap:10px;
+            margin:0 0 12px;
+        }
+
+        .whatsapp-mode-label{
+            font-weight:bold;
+        }
+
+        .whatsapp-mode-switch{
+            display:inline-flex;
+            padding:3px;
+            border:1px solid rgba(255,255,255,.28);
+            border-radius:8px;
+            background:rgba(0,0,0,.35);
+        }
+
+        .whatsapp-mode-switch button{
+            margin:0;
+            color:#fff;
+            background:transparent;
+        }
+
+        .whatsapp-mode-switch button[aria-pressed="true"]{
+            color:#052e1a;
+            background:#86efac;
+        }
+
         table {
             width:100%;
             border-collapse:collapse;
@@ -392,6 +422,14 @@
 
 <h2 id="report_title">Sales Report</h2>
 
+<div class="whatsapp-mode-bar">
+    <span class="whatsapp-mode-label">Send with:</span>
+    <div class="whatsapp-mode-switch" role="group" aria-label="WhatsApp sending method">
+        <button type="button" data-whatsapp-mode="web" aria-pressed="true">WhatsApp Web</button>
+        <button type="button" data-whatsapp-mode="desktop" aria-pressed="false">WhatsApp Desktop</button>
+    </div>
+</div>
+
 <div class="filter-bar">
     <label>Report Type:</label>
     <select id="report_type">
@@ -491,6 +529,36 @@
     let packingUnlocked = false;
     let mobileUnlockTimer = null;
     let html2CanvasLoader = null;
+
+    function getWhatsAppMode(){
+        try {
+            return localStorage.getItem('report_whatsapp_mode') === 'desktop' ? 'desktop' : 'web';
+        } catch(e) {
+            return 'web';
+        }
+    }
+
+    function setWhatsAppMode(mode){
+        const selectedMode = mode === 'desktop' ? 'desktop' : 'web';
+        try {
+            localStorage.setItem('report_whatsapp_mode', selectedMode);
+        } catch(e) {}
+
+        document.querySelectorAll('[data-whatsapp-mode]').forEach(button => {
+            button.setAttribute('aria-pressed', String(button.dataset.whatsappMode === selectedMode));
+        });
+    }
+
+    function getWhatsAppDesktopUrl(mobile, text){
+        const phone = getCleanIndianMobile(mobile);
+        const query = new URLSearchParams({ text: text || '' });
+        if(phone) query.set('phone', `91${phone}`);
+        return `whatsapp://send?${query.toString()}`;
+    }
+
+    function openWhatsAppDesktop(mobile, text){
+        window.location.href = getWhatsAppDesktopUrl(mobile, text);
+    }
 
     function ensureHtml2Canvas(){
         if(typeof window.html2canvas === "function"){
@@ -978,7 +1046,13 @@
             return;
         }
 
-        const text = encodeURIComponent(buildWhatsAppMessage(row));
+        const message = buildWhatsAppMessage(row);
+        if(getWhatsAppMode() === 'desktop'){
+            openWhatsAppDesktop(row.customer_mobile, message);
+            return;
+        }
+
+        const text = encodeURIComponent(message);
         const mobile = String(row.customer_mobile || '').replace(/\D/g, '');
         const url = mobile
             ? `https://wa.me/91${mobile}?text=${text}`
@@ -1080,7 +1154,7 @@
         setTimeout(() => URL.revokeObjectURL(url), 1500);
     }
 
-    function showWhatsAppGodModeHelper({ copied, downloaded, mobile, text }){
+    function showWhatsAppGodModeHelper({ copied, downloaded, mobile, text, desktop = false }){
         const old = document.getElementById('waGodModeOverlay');
         if(old) old.remove();
 
@@ -1099,23 +1173,23 @@
                     <button type="button" id="waGodClose" style="background:#ef4444;color:white;border:0;border-radius:999px;padding:8px 12px;font-weight:900;cursor:pointer;">✕</button>
                 </div>
                 <div style="padding:22px; line-height:1.55;">
-                    <div style="font-size:17px;font-weight:800;margin-bottom:12px;">WhatsApp Web opened ${mobile ? 'for +' + '91' + mobile : ''}</div>
+                    <div style="font-size:17px;font-weight:800;margin-bottom:12px;">${desktop ? 'WhatsApp Desktop opened' : 'WhatsApp Web opened'} ${mobile ? 'for +' + '91' + mobile : ''}</div>
                     ${copied ? `
                         <div style="background:rgba(34,197,94,.20); border:1px solid rgba(34,197,94,.45); padding:14px; border-radius:16px; margin-bottom:12px;">
                             ✅ Bill image copied to clipboard.<br>
-                            <b>Go to WhatsApp chat and press CTRL + V</b>, then press Enter/send.
+                            <b>Go to the WhatsApp chat and press CTRL + V</b>, then review and send.
                         </div>
                     ` : `
                         <div style="background:rgba(245,158,11,.20); border:1px solid rgba(245,158,11,.50); padding:14px; border-radius:16px; margin-bottom:12px;">
                             ⚠ Browser blocked image clipboard copy.
-                            ${downloaded ? '<br>✅ Bill image downloaded. Attach it in WhatsApp Web.' : ''}
+                            ${downloaded ? `<br>✅ Bill image downloaded. Attach it in WhatsApp ${desktop ? 'Desktop' : 'Web'}.` : ''}
                         </div>
                     `}
                     <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:16px;">
                         <button type="button" id="waCopyTextBtn" style="flex:1;min-width:150px;background:#22c55e;color:#052e1a;border:0;border-radius:14px;padding:12px;font-weight:900;cursor:pointer;">Copy Text</button>
                         <button type="button" id="waOpenAgainBtn" style="flex:1;min-width:150px;background:#facc15;color:#3b2500;border:0;border-radius:14px;padding:12px;font-weight:900;cursor:pointer;">Open Again</button>
                     </div>
-                    <div style="font-size:12px;opacity:.8;margin-top:14px;">Desktop browsers do not allow websites to auto-paste or auto-send files inside WhatsApp Web. This is the fastest allowed method.</div>
+                    <div style="font-size:12px;opacity:.8;margin-top:14px;">The browser cannot send bill images automatically. Review the chat, attach or paste the image, and send it yourself.</div>
                 </div>
             </div>
         `;
@@ -1135,11 +1209,15 @@
         };
 
         document.getElementById('waOpenAgainBtn').onclick = () => {
-            const encodedText = encodeURIComponent(text || '');
-            const waUrl = mobile
-                ? `https://web.whatsapp.com/send?phone=91${mobile}&text=${encodedText}`
-                : `https://web.whatsapp.com/?text=${encodedText}`;
-            window.open(waUrl, '_blank');
+            if(desktop){
+                openWhatsAppDesktop(mobile, text);
+            } else {
+                const encodedText = encodeURIComponent(text || '');
+                const waUrl = mobile
+                    ? `https://web.whatsapp.com/send?phone=91${mobile}&text=${encodedText}`
+                    : `https://web.whatsapp.com/?text=${encodedText}`;
+                window.open(waUrl, '_blank');
+            }
         };
     }
 
@@ -1167,9 +1245,10 @@
             const text = buildWhatsAppMessage(row);
             const encodedText = encodeURIComponent(text);
             const mobile = getCleanIndianMobile(row.customer_mobile);
+            const desktop = getWhatsAppMode() === 'desktop';
             const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-            if (isMobile && navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
+            if (!desktop && isMobile && navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
                 await navigator.share({
                     title: 'VAJRA Bill',
                     text,
@@ -1197,13 +1276,16 @@
                 downloaded = true;
             }
 
-            const waUrl = mobile
-                ? `https://web.whatsapp.com/send?phone=91${mobile}&text=${encodedText}`
-                : `https://web.whatsapp.com/?text=${encodedText}`;
+            if(desktop){
+                openWhatsAppDesktop(mobile, text);
+            } else {
+                const waUrl = mobile
+                    ? `https://web.whatsapp.com/send?phone=91${mobile}&text=${encodedText}`
+                    : `https://web.whatsapp.com/?text=${encodedText}`;
+                window.open(waUrl, '_blank');
+            }
 
-            window.open(waUrl, '_blank');
-
-            showWhatsAppGodModeHelper({ copied, downloaded, mobile, text });
+            showWhatsAppGodModeHelper({ copied, downloaded, mobile, text, desktop });
 
         } catch (err) {
             console.error(err);
@@ -2292,6 +2374,11 @@
     }
 
     document.addEventListener("DOMContentLoaded", async () => {
+        document.querySelectorAll('[data-whatsapp-mode]').forEach(button => {
+            button.addEventListener('click', () => setWhatsAppMode(button.dataset.whatsappMode));
+        });
+        setWhatsAppMode(getWhatsAppMode());
+
         const ok = await requirePageAccess("sales");
         if (!ok) return;
 

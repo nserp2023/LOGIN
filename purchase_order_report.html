@@ -1257,7 +1257,12 @@ function renderSuppliers(rows){
         <td class="right">${poCount}</td>
         <td>${safe(group.gst_number || '-')}</td>
         <td>${safe(group.supplier_address || '-')}</td>
-        <td class="center">${expanded ? 'Hide' : 'View'}</td>
+        <td class="center">
+          <div class="row-actions" style="justify-content:center;align-items:center">
+            <span>${expanded ? 'Hide' : 'View'}</span>
+            <button class="smallbtn iconbtn whatsappbtn" type="button" title="Ask supplier about pending items on WhatsApp" aria-label="Ask ${safe(group.supplier_name)} about pending items on WhatsApp" onclick="event.stopPropagation();shareSupplierPendingWhatsApp(${index})"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.5 8.5 0 0 1-12.6 7.4L3 21l2.1-5.2A8.5 8.5 0 1 1 21 11.5Z"/><path d="M8.5 8.2c.6 3 2.3 4.7 5.3 5.3"/></svg></button>
+          </div>
+        </td>
       </tr>
       <tr id="supplier-details-${index}" class="order-detail-row" style="display:${expanded ? 'table-row' : 'none'}">
         <td colspan="8">
@@ -1282,6 +1287,42 @@ function toggleSupplierItems(index){
   if(expandedSupplierKeys.has(group.key)) expandedSupplierKeys.delete(group.key);
   else expandedSupplierKeys.add(group.key);
   renderSuppliers(allRows || []);
+}
+
+function shareSupplierPendingWhatsApp(index){
+  const group = supplierGroups[index];
+  if(!group) return alert('Supplier not found.');
+
+  const mobile = getCleanIndianMobile(group.supplier_mobile);
+  if(mobile.length !== 10){
+    alert('A valid 10-digit WhatsApp number is not available for this supplier.');
+    return;
+  }
+
+  const pendingRows = group.rows.filter(row => Number(row.pending_qty) > 0 && row.status !== 'CANCELLED');
+  if(!pendingRows.length){
+    alert('No pending items found for this supplier.');
+    return;
+  }
+
+  const itemLines = pendingRows.map((row, itemIndex) =>
+    `${itemIndex + 1}. PO ${row.po_no || '-'} | Code: ${row.item_code || '-'} | ${row.item_name || '-'} | ബാക്കി അളവ്: ${num(row.pending_qty)}`
+  );
+  const message = [
+    `നമസ്കാരം ${group.supplier_name || ''},`,
+    '',
+    'ഞങ്ങൾ ഓർഡർ ചെയ്ത താഴെപ്പറയുന്ന സാധനങ്ങളിൽ ചിലത് ഇനിയും ലഭിക്കാനുണ്ട്:',
+    '',
+    ...itemLines,
+    '',
+    'ഈ സാധനങ്ങൾ ഇതുവരെ ലഭിക്കാത്തതിന്റെ കാരണം എന്താണെന്ന് അറിയിക്കാമോ? എപ്പോൾ ലഭ്യമാകുമെന്ന് ദയവായി അറിയിക്കുക.',
+    'ഈ വിഷയത്തിൽ എത്രയും പെട്ടെന്ന് മറുപടി നൽകണമെന്ന് അഭ്യർത്ഥിക്കുന്നു.',
+    '',
+    'നന്ദി.'
+  ].join('\n');
+
+  const url = `https://wa.me/91${mobile}?text=${encodeURIComponent(message)}`;
+  window.open(url, '_blank', 'noopener');
 }
 
 function renderOrders(orders, items){

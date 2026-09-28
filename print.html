@@ -885,9 +885,16 @@ if(type === "sales" || type === "sales_pack"){
         ""
     );
 
-    container.innerHTML = type === "sales"
-        ? packingHTML + removeDailyNumber(originalHTML)
-        : removeDailyNumber(packingHTML) + originalHTML;
+    const copy = params.get("copy");
+    if(copy === "invoice"){
+        container.innerHTML = removeDailyNumber(originalHTML);
+    } else if(copy === "packing"){
+        container.innerHTML = removeDailyNumber(packingHTML);
+    } else {
+        container.innerHTML = type === "sales"
+            ? packingHTML + removeDailyNumber(originalHTML)
+            : removeDailyNumber(packingHTML) + originalHTML;
+    }
 }
 
 /* QR */

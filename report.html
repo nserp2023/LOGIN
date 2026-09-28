@@ -1100,6 +1100,12 @@
             });
 
             const doc = iframe.contentDocument || iframe.contentWindow.document;
+            doc.querySelectorAll('#pages > .page').forEach(page => {
+                page.style.setProperty('height', 'auto', 'important');
+                page.style.setProperty('min-height', '0', 'important');
+                page.style.setProperty('overflow', 'visible', 'important');
+                page.style.setProperty('margin-bottom', '24px', 'important');
+            });
             const target = doc.body;
 
             const canvas = await html2canvas(target, {

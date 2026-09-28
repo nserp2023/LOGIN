@@ -1306,7 +1306,7 @@ function shareSupplierPendingWhatsApp(index){
   }
 
   const itemLines = pendingRows.map((row, itemIndex) =>
-    `${itemIndex + 1}. PO ${row.po_no || '-'} | Code: ${row.item_code || '-'} | ${row.item_name || '-'} | ബാക്കി അളവ്: ${num(row.pending_qty)}`
+    `${itemIndex + 1}. PO ${row.po_no || '-'} | Code: ${row.item_code || '-'} | ${row.item_name || '-'} | BALANCE: ${num(row.pending_qty)}`
   );
   const message = [
     `നമസ്കാരം ${group.supplier_name || ''},`,

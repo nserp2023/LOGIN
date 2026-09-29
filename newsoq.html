@@ -5864,56 +5864,66 @@ function calcTotal() {
     }
 
     async function loadSalesPackHistory(customerMobile, itemCode, itemName){
-        let q = sb
-            .from("sales_packing_item_details")
-            .select(`
-                packing_id,
-                quantity,
-                price,
-                sales_price_gst,
-                item_code,
-                item_name,
-                sales_packing_details!inner(
-                    packing_date,
-                    packing_number,
-                    series_code,
-                    customer_mobile
-                )
-            `)
-            .eq("sales_packing_details.customer_mobile", customerMobile)
-            .order("packing_id", { ascending: false })
-            .limit(10);
+        const historyRows = [];
+        const pageSize = 100;
+        let offset = 0;
 
-        if(editingType === "sales_pack" && editingId != null){
-            q = q.neq("packing_id", editingId);
+        while(historyRows.length < 10){
+            let headQuery = sb
+                .from("sales_packing_details")
+                .select("id, packing_date, packing_number, series_code")
+                .eq("customer_mobile", customerMobile)
+                .order("id", { ascending: false })
+                .range(offset, offset + pageSize - 1);
+
+            if(editingType === "sales_pack" && editingId != null){
+                headQuery = headQuery.neq("id", editingId);
+            }
+
+            const { data: packHeads, error: headErr } = await headQuery;
+            if(headErr){
+                console.error("Sales pack header load error:", headErr);
+                return historyRows;
+            }
+            if(!packHeads || !packHeads.length) break;
+
+            const headMap = Object.fromEntries(packHeads.map(header => [header.id, header]));
+            const packingIds = packHeads.map(header => header.id);
+            let itemQuery = sb
+                .from("sales_packing_item_details")
+                .select("packing_id, quantity, price, sales_price_gst, item_code, item_name")
+                .in("packing_id", packingIds)
+                .order("packing_id", { ascending: false })
+                .limit(10 - historyRows.length);
+
+            if(itemCode){
+                itemQuery = itemQuery.eq("item_code", itemCode);
+            }else if(itemName){
+                itemQuery = itemQuery.ilike("item_name", itemName);
+            }
+
+            const { data: items, error: itemErr } = await itemQuery;
+            if(itemErr){
+                console.error("Sales pack item load error:", itemErr);
+                return historyRows;
+            }
+
+            historyRows.push(...(items || []).map(item => {
+                const header = headMap[item.packing_id] || {};
+                return {
+                    packing_date: header.packing_date || "",
+                    bill_no: formatHistoryBill(header.series_code, header.packing_number),
+                    quantity: item.quantity,
+                    price: item.price,
+                    sales_price_gst: item.sales_price_gst
+                };
+            }));
+
+            offset += packHeads.length;
+            if(packHeads.length < pageSize) break;
         }
 
-        if(itemCode){
-            q = q.eq("item_code", itemCode);
-        }else if(itemName){
-            q = q.ilike("item_name", itemName);
-        }
-
-        const { data: items, error: itemErr } = await q;
-
-        if(itemErr){
-            console.error("Sales pack history load error:", itemErr);
-            return [];
-        }
-
-        return (items || []).map(x => {
-            const header = x.sales_packing_details || {};
-            return {
-                packing_date: header.packing_date || "",
-                bill_no: formatHistoryBill(
-                    header.series_code,
-                    header.packing_number
-                ),
-                quantity: x.quantity,
-                price: x.price,
-                sales_price_gst: x.sales_price_gst
-            };
-        });
+        return historyRows;
     }
 
     async function showPurchaseHistoryForRow(row){

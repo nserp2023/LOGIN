@@ -5808,59 +5808,91 @@ function calcTotal() {
     }
 
     async function loadSalesHistory(customerMobile, itemCode, itemName){
-        let q = sb
-            .from("sales_item_details")
-            .select(`
-                quantity,
-                price,
-                sales_price_gst,
-                item_code,
-                item_name,
-                sales_details!inner(
-                    id,
-                    bill_date,
-                    sales_number,
-                    series_code,
-                    customer_mobile
-                )
-            `)
-            .eq("sales_details.customer_mobile", customerMobile)
-            .order("sales_id", { ascending: false })
-            .limit(10);
-
         // The open document is not purchase history yet. A BILL has a linked
         // sales header as well as its packing header, so exclude that linked
         // sales row while the BILL is being modified.
         const currentSalesId = editingType === "sales"
             ? editingId
             : (editingType === "sales_pack" ? editingLinkedSalesId : null);
-        if(currentSalesId != null){
-            q = q.neq("sales_id", currentSalesId);
+        const historyRows = [];
+        const pageSize = 100;
+        let offset = 0;
+
+        while(historyRows.length < 10){
+            let q = sb
+                .from("sales_item_details")
+                .select(`
+                    sales_id,
+                    quantity,
+                    price,
+                    sales_price_gst,
+                    item_code,
+                    item_name,
+                    sales_details!inner(
+                        id,
+                        bill_date,
+                        sales_number,
+                        series_code,
+                        customer_mobile,
+                        salesman
+                    )
+                `)
+                .eq("sales_details.customer_mobile", customerMobile)
+                .order("sales_id", { ascending: false })
+                .range(offset, offset + pageSize - 1);
+
+            if(currentSalesId != null){
+                q = q.neq("sales_id", currentSalesId);
+            }
+            if(itemCode){
+                q = q.eq("item_code", itemCode);
+            }else if(itemName){
+                q = q.ilike("item_name", itemName);
+            }
+
+            const { data, error } = await q;
+            if(error){
+                console.error("Sales history load error:", error);
+                return historyRows;
+            }
+            if(!data || !data.length) break;
+
+            const salesIds = [...new Set(data.map(row => row.sales_id).filter(id => id != null))];
+            let linkedSalesIds = new Set();
+            if(salesIds.length){
+                const { data: linkedPacks, error: linkedPackErr } = await sb
+                    .from("sales_packing_details")
+                    .select("sales_id")
+                    .in("sales_id", salesIds);
+
+                if(linkedPackErr){
+                    console.error("Sales pack link history load error:", linkedPackErr);
+                    return historyRows;
+                }
+                linkedSalesIds = new Set((linkedPacks || []).map(pack => String(pack.sales_id)));
+            }
+
+            historyRows.push(...data
+                .filter(row => {
+                    const salesman = String(row.sales_details?.salesman || "").trim().toUpperCase();
+                    return salesman !== "VAJRA" && !linkedSalesIds.has(String(row.sales_id));
+                })
+                .map(row => ({
+                    bill_date: row.sales_details?.bill_date || "",
+                    bill_no: formatHistoryBill(
+                        row.sales_details?.series_code,
+                        row.sales_details?.sales_number
+                    ),
+                    quantity: row.quantity,
+                    price: row.price,
+                    sales_price_gst: row.sales_price_gst
+                })));
+
+            offset += data.length;
+            if(data.length < pageSize) break;
         }
 
-        if(itemCode){
-            q = q.eq("item_code", itemCode);
-        }else if(itemName){
-            q = q.ilike("item_name", itemName);
-        }
-
-        const { data, error } = await q;
-
-        if(error){
-            console.error("Sales history load error:", error);
-            return [];
-        }
-
-        return (data || []).map(x => ({
-            bill_date: x.sales_details?.bill_date || "",
-            bill_no: formatHistoryBill(
-                x.sales_details?.series_code,
-                x.sales_details?.sales_number
-            ),
-            quantity: x.quantity,
-            price: x.price,
-            sales_price_gst: x.sales_price_gst
-        }));
+        return historyRows;
     }
 
     async function loadSalesPackHistory(customerMobile, itemCode, itemName){

@@ -34,7 +34,13 @@
     window.loadCanonicalCreditAccounts=async function(options={}){
         const from=options.from||'', to=options.to||'', search=cleanValue(options.search);
         const accounts=new Map();
+        const customerMobileAliases=new Map();
         const getAccount=(name,mobile)=>{
+            const accountName=normalizedName(name), mobileDigits=digitsOnly(mobile);
+            if(accountName&&mobileDigits){
+                if(!customerMobileAliases.has(accountName))customerMobileAliases.set(accountName,new Set());
+                customerMobileAliases.get(accountName).add(mobileDigits);
+            }
             const existing=findAccount(accounts,name,mobile);
             if(existing)return existing;
             const account={key:accountKey(name,mobile),name:cleanValue(name)||'-',mobile:digitsOnly(mobile)||'-',bills:0,billAmount:0,payments:0,receipts:0,advances:0,returns:0,entries:[]};
@@ -66,7 +72,10 @@
             const customerResult=await customerQuery.limit(50);
             if(!customerResult.error){
                 searchedCustomers.push(...(customerResult.data||[]));
-                searchedCustomers.forEach(row=>getAccount(row.name,row.mobile));
+                searchedCustomers.forEach(row=>{
+                    const account=getAccount(row.name,row.mobile);
+                    if(cleanValue(row.name))account.name=cleanValue(row.name);
+                });
             }
         }
         const searchedCustomerNames=new Set(searchedCustomers.map(row=>normalizedName(row.name)).filter(Boolean));
@@ -79,15 +88,17 @@
                 if(from&&date&&date<from)return;
                 if(to&&date&&date>to)return;
                 if(normalized(row.approval_status)!=='approved')return;
-                const party=cleanValue(row.party_name), partyDigits=digitsOnly(party);
+                const party=cleanValue(row.party_name), partyDigits=digitsOnly(party), knownMobiles=customerMobileAliases.get(normalizedName(party));
+                const aliasMobile=!partyDigits&&knownMobiles&&knownMobiles.size===1?[...knownMobiles][0]:'';
+                const accountMobile=partyDigits||aliasMobile;
                 const savedCustomerPayment=normalized(row.txn_type)==='payment'&&(
-                    (partyDigits&&searchedCustomerMobiles.has(partyDigits))||searchedCustomerNames.has(normalizedName(party))
+                    (accountMobile&&searchedCustomerMobiles.has(accountMobile))||searchedCustomerNames.has(normalizedName(party))
                 );
                 const type=classifyCash(row)||(savedCustomerPayment?'payment':'');
                 if(!type)return;
                 const accountName=/^[0-9+\-\s]+$/.test(party);
-                const account=partyDigits?findAccount(accounts,'',partyDigits):findAccount(accounts,party,'');
-                if(partyDigits&&!account)return;
+                const account=accountMobile?findAccount(accounts,'',accountMobile):findAccount(accounts,party,'');
+                if(accountMobile&&!account)return;
                 const target=account||getAccount(accountName?'':party,'');
                 const amount=numberValue(row.amount);
                 if(type==='payment')target.payments+=amount;

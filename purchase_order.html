@@ -59,6 +59,10 @@
     .btn.primary{background:linear-gradient(180deg,var(--primary),var(--primary2));color:#fff}
     .btn.whatsapp{background:linear-gradient(180deg,#22c55e,#16a34a);color:#fff;border:1px solid #15803d}
     .btn.soft{background:#eef4ff;color:#1e4db7;border:1px solid #cdddff}
+    .whatsapp-mode-bar{display:flex;align-items:center;gap:10px;margin:0 0 10px;font-weight:800;color:#42526b}
+    .whatsapp-mode-switch{display:inline-flex;padding:3px;border:1px solid var(--line);border-radius:10px;background:#f3f6fb}
+    .whatsapp-mode-switch button{height:32px;padding:0 10px;box-shadow:none;background:transparent;color:#42526b}
+    .whatsapp-mode-switch button[aria-pressed="true"]{background:#86efac;color:#052e1a}
     .btn.gray{background:#fff;color:#42526b;border:1px solid var(--line)}
     .btn.danger{background:#fff1f2;color:#b91c1c;border:1px solid #f4b3b9;padding:0 12px}
     .btn:disabled{opacity:.55;cursor:not-allowed}
@@ -135,7 +139,7 @@
       *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;text-shadow:none!important;box-shadow:none!important}
       html,body{background:#fff!important;color:#000!important;padding:0!important;margin:0!important;font-family:Arial,Helvetica,sans-serif!important;font-size:11px!important;line-height:1.22!important}
       .wrap{padding:0!important;max-width:none!important;width:100%!important}
-      .topbar,.chips,.btns,.sticky,.statusline,.header-grid,.panel-head small,#poStatusBadge,.summary-strip,.entry-toggle-pill,.pending-popup-overlay{display:none!important}
+      .topbar,.chips,.btns,.sticky,.statusline,.header-grid,.panel-head small,#poStatusBadge,.summary-strip,.entry-toggle-pill,.pending-popup-overlay,.whatsapp-mode-bar{display:none!important}
       .panel{box-shadow:none!important;border:none!important;padding:0!important;margin:0!important;background:#fff!important}
       .items-panel{padding:0!important}
       .panel-head{display:none!important}
@@ -191,6 +195,13 @@
     </div>
 
     <div class="panel items-panel">
+      <div class="whatsapp-mode-bar">
+        <span>Send with:</span>
+        <div class="whatsapp-mode-switch" role="group" aria-label="WhatsApp sending method">
+          <button type="button" data-whatsapp-mode="web" aria-pressed="true">WhatsApp Web</button>
+          <button type="button" data-whatsapp-mode="desktop" aria-pressed="false">WhatsApp Desktop</button>
+        </div>
+      </div>
       <div class="panel-head items-head"><div><h2>Order Items</h2><small>Search old items using code or name. Type new items manually if not found.</small></div><div class="btns"><button class="btn gray" id="addRowTop">+ Add Row</button><button class="btn soft" id="printTop">Print</button><button class="btn whatsapp" id="shareTop" type="button">Share WhatsApp Image</button><button class="btn primary" id="saveTop">Save Purchase Order</button><button class="btn soft" id="focusModeBtn" type="button">Expand Entry</button></div></div>
       <div class="table-shell">
         <div class="grid hdr"><div>#</div><div>Item Code</div><div>Item Name / Search</div><div>Stock</div><div>Qty</div><div>Price</div><div>Amount</div><div>Remark</div><div>Pending</div><div></div></div>
@@ -280,6 +291,10 @@ function bindButtons(){
   ["printTop","printBottom"].forEach(id => byId(id).onclick = printPO);
   ["shareTop","shareBottom"].forEach(id => byId(id).onclick = sharePOToWhatsApp);
   ["saveTop","saveBottom"].forEach(id => byId(id).onclick = savePO);
+  document.querySelectorAll('[data-whatsapp-mode]').forEach(button => {
+    button.addEventListener('click', () => setWhatsAppMode(button.dataset.whatsappMode));
+  });
+  setWhatsAppMode(getWhatsAppMode());
   byId("focusModeBtn").onclick = () => setEntryMode(!document.body.classList.contains("compact-entry"), true);
   byId("entryTogglePill").onclick = () => setEntryMode(false, true);
 }
@@ -1047,6 +1062,38 @@ function getCleanIndianMobile(mobile){
   return m;
 }
 
+function getWhatsAppMode(){
+  try{return localStorage.getItem("report_whatsapp_mode") === "desktop" ? "desktop" : "web";}
+  catch(_e){return "web";}
+}
+
+function setWhatsAppMode(mode){
+  const selectedMode = mode === "desktop" ? "desktop" : "web";
+  try{localStorage.setItem("report_whatsapp_mode", selectedMode);}catch(_e){}
+  document.querySelectorAll("[data-whatsapp-mode]").forEach(button => {
+    button.setAttribute("aria-pressed", String(button.dataset.whatsappMode === selectedMode));
+  });
+}
+
+function getWhatsAppUrl(mobile, text){
+  const phone = getCleanIndianMobile(mobile);
+  if(getWhatsAppMode() === "desktop"){
+    const query = new URLSearchParams({text:text || ""});
+    if(phone) query.set("phone", `91${phone}`);
+    return `whatsapp://send?${query.toString()}`;
+  }
+  const encodedText = encodeURIComponent(text || "");
+  return phone
+    ? `https://web.whatsapp.com/send?phone=91${phone}&text=${encodedText}`
+    : `https://web.whatsapp.com/?text=${encodedText}`;
+}
+
+function openWhatsApp(mobile, text){
+  const url = getWhatsAppUrl(mobile, text);
+  if(getWhatsAppMode() === "desktop") window.location.href = url;
+  else window.open(url, "_blank");
+}
+
 function downloadBlob(blob, fileName){
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -1077,7 +1124,7 @@ function showWhatsAppShareHelper({ copied, downloaded, mobile, text }){
         <button type="button" id="poWaClose" style="background:#ef4444;color:white;border:0;border-radius:999px;padding:8px 12px;font-weight:900;cursor:pointer;">✕</button>
       </div>
       <div style="padding:22px; line-height:1.55;">
-        <div style="font-size:17px;font-weight:800;margin-bottom:12px;">Purchase Order saved and WhatsApp opened ${mobile ? 'for +91' + mobile : ''}</div>
+        <div style="font-size:17px;font-weight:800;margin-bottom:12px;">Purchase Order saved and WhatsApp ${getWhatsAppMode() === "desktop" ? "Desktop" : "Web"} opened ${mobile ? 'for +91' + mobile : ''}</div>
         ${copied ? `
           <div style="background:rgba(34,197,94,.20); border:1px solid rgba(34,197,94,.45); padding:14px; border-radius:16px; margin-bottom:12px;">
             ✅ PO image copied to clipboard.<br>
@@ -1108,11 +1155,7 @@ function showWhatsAppShareHelper({ copied, downloaded, mobile, text }){
   };
 
   document.getElementById("poWaOpenAgainBtn").onclick = () => {
-    const encodedText = encodeURIComponent(text || "");
-    const waUrl = mobile
-      ? `https://web.whatsapp.com/send?phone=91${mobile}&text=${encodedText}`
-      : `https://web.whatsapp.com/?text=${encodedText}`;
-    window.open(waUrl, "_blank");
+    openWhatsApp(mobile, text);
   };
 }
 
@@ -1172,12 +1215,7 @@ async function sharePOToWhatsApp(){
       downloaded = true;
     }
 
-    const encodedText = encodeURIComponent(text);
-    const waUrl = mobile
-      ? `https://web.whatsapp.com/send?phone=91${mobile}&text=${encodedText}`
-      : `https://web.whatsapp.com/?text=${encodedText}`;
-
-    window.open(waUrl, "_blank");
+    openWhatsApp(mobile, text);
     showWhatsAppShareHelper({ copied, downloaded, mobile, text });
     setStatus(copied ? "Purchase order saved. Image copied. WhatsApp opened." : "Purchase order saved. Image downloaded. WhatsApp opened.");
 

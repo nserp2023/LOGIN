@@ -906,6 +906,14 @@
             border:1px solid #cbd5e1;
         }
 
+        .history-content{
+            max-height:240px;
+            overflow:auto;
+            overscroll-behavior:contain;
+            pointer-events:auto;
+            -webkit-overflow-scrolling:touch;
+        }
+
         .history-table{
             width:100%;
             border-collapse:collapse;
@@ -1276,7 +1284,11 @@
         }
 
         .history-subtitle{ color:#e2e8f0; }
-        .history-table-wrap{ border-color:rgba(255,255,255,.28); }
+        .history-table-wrap{
+            max-height:none;
+            overflow:visible;
+            border-color:rgba(255,255,255,.28);
+        }
         .history-table{ background:transparent; }
         .history-table th,
         .history-table td{
@@ -1346,6 +1358,7 @@
             .footer-section{ justify-content:center; }
             .footer-actions{ width:100%; justify-content:center; }
             .history-panel{ left:8px; right:8px; bottom:74px; width:calc(100vw - 16px); max-height:35vh; }
+            .history-content{ max-height:calc(35vh - 50px); }
             .report-viewer{ padding:0; }
             .report-viewer-card{ border-radius:0; border:0; }
         }
@@ -1599,6 +1612,7 @@
         <button type="button" class="history-close" onclick="hidePurchaseHistory()">×</button>
     </div>
 
+    <div class="history-content">
     <div id="history_sales_wrap" class="history-block" style="display:none;">
         <div class="history-subtitle">OLD SALES</div>
         <div class="history-table-wrap">
@@ -1633,6 +1647,7 @@
                 <tbody id="history_pack_body"></tbody>
             </table>
         </div>
+    </div>
     </div>
 </div>
 
@@ -5849,34 +5864,6 @@ function calcTotal() {
     }
 
     async function loadSalesPackHistory(customerMobile, itemCode, itemName){
-        let headQuery = sb
-            .from("sales_packing_details")
-            .select("id, packing_date, packing_number, series_code, customer_mobile")
-            .eq("customer_mobile", customerMobile)
-            .order("id", { ascending: false })
-            .limit(20);
-
-        if(editingType === "sales_pack" && editingId != null){
-            headQuery = headQuery.neq("id", editingId);
-        }
-
-        const { data: packHeads, error: headErr } = await headQuery;
-
-        if(headErr){
-            console.error("Sales pack header load error:", headErr);
-            return [];
-        }
-
-        if(!packHeads || !packHeads.length){
-            return [];
-        }
-
-        const packingIds = packHeads.map(x => x.id);
-        const headMap = {};
-        packHeads.forEach(h => {
-            headMap[h.id] = h;
-        });
-
         let q = sb
             .from("sales_packing_item_details")
             .select(`
@@ -5885,11 +5872,21 @@ function calcTotal() {
                 price,
                 sales_price_gst,
                 item_code,
-                item_name
+                item_name,
+                sales_packing_details!inner(
+                    packing_date,
+                    packing_number,
+                    series_code,
+                    customer_mobile
+                )
             `)
-            .in("packing_id", packingIds)
+            .eq("sales_packing_details.customer_mobile", customerMobile)
             .order("packing_id", { ascending: false })
-            .limit(50);
+            .limit(10);
+
+        if(editingType === "sales_pack" && editingId != null){
+            q = q.neq("packing_id", editingId);
+        }
 
         if(itemCode){
             q = q.eq("item_code", itemCode);
@@ -5900,20 +5897,23 @@ function calcTotal() {
         const { data: items, error: itemErr } = await q;
 
         if(itemErr){
-            console.error("Sales pack item load error:", itemErr);
+            console.error("Sales pack history load error:", itemErr);
             return [];
         }
 
-        return (items || []).map(x => ({
-            packing_date: headMap[x.packing_id]?.packing_date || "",
-            bill_no: formatHistoryBill(
-                headMap[x.packing_id]?.series_code,
-                headMap[x.packing_id]?.packing_number
-            ),
-            quantity: x.quantity,
-            price: x.price,
-            sales_price_gst: x.sales_price_gst
-        }));
+        return (items || []).map(x => {
+            const header = x.sales_packing_details || {};
+            return {
+                packing_date: header.packing_date || "",
+                bill_no: formatHistoryBill(
+                    header.series_code,
+                    header.packing_number
+                ),
+                quantity: x.quantity,
+                price: x.price,
+                sales_price_gst: x.sales_price_gst
+            };
+        });
     }
 
     async function showPurchaseHistoryForRow(row){

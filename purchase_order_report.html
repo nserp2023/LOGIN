@@ -64,6 +64,10 @@ html{height:100%}
 .title{display:flex;gap:12px;align-items:center}
 h1{font-size:20px;margin:0}
 .sub{font-size:12px;color:var(--muted);margin-top:2px}
+.whatsapp-mode-bar{display:flex;align-items:center;gap:10px;margin:0 0 12px;font-weight:800}
+.whatsapp-mode-switch{display:inline-flex;padding:3px;border:1px solid rgba(255,255,255,.28);border-radius:8px;background:rgba(0,0,0,.35)}
+.whatsapp-mode-switch button{margin:0;color:#fff;background:transparent}
+.whatsapp-mode-switch button[aria-pressed="true"]{color:#052e1a;background:#86efac}
 .actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
 button{
   border:0;
@@ -606,6 +610,14 @@ td:first-child,th:first-child{background:rgba(0,0,0,.8)}
     </div>
   </div>
 
+  <div class="whatsapp-mode-bar">
+    <span>Send with:</span>
+    <div class="whatsapp-mode-switch" role="group" aria-label="WhatsApp sending method">
+      <button type="button" data-whatsapp-mode="web" aria-pressed="true">WhatsApp Web</button>
+      <button type="button" data-whatsapp-mode="desktop" aria-pressed="false">WhatsApp Desktop</button>
+    </div>
+  </div>
+
   <div class="mobileToggleBar">
     <div>
       <b>📊 Item Details Report</b>
@@ -906,6 +918,10 @@ function badge(status){
 }
 
 async function init(){
+  document.querySelectorAll('[data-whatsapp-mode]').forEach(button => {
+    button.addEventListener('click', () => setWhatsAppMode(button.dataset.whatsappMode));
+  });
+  setWhatsAppMode(getWhatsAppMode());
   const params = new URLSearchParams(window.location.search);
   viewMode = ["item","order","supplier"].includes(params.get("view")) ? params.get("view") : "supplier";
   document.getElementById("fromDate").value = params.has("to") ? "" : monthStartISO();
@@ -1646,6 +1662,38 @@ function getCleanIndianMobile(mobile){
   return m;
 }
 
+function getWhatsAppMode(){
+  try{return localStorage.getItem('report_whatsapp_mode') === 'desktop' ? 'desktop' : 'web';}
+  catch(_e){return 'web';}
+}
+
+function setWhatsAppMode(mode){
+  const selectedMode = mode === 'desktop' ? 'desktop' : 'web';
+  try{localStorage.setItem('report_whatsapp_mode', selectedMode);}catch(_e){}
+  document.querySelectorAll('[data-whatsapp-mode]').forEach(button => {
+    button.setAttribute('aria-pressed', String(button.dataset.whatsappMode === selectedMode));
+  });
+}
+
+function getWhatsAppUrl(mobile, text){
+  const phone = getCleanIndianMobile(mobile);
+  if(getWhatsAppMode() === 'desktop'){
+    const query = new URLSearchParams({text:text || ''});
+    if(phone) query.set('phone', `91${phone}`);
+    return `whatsapp://send?${query.toString()}`;
+  }
+  const encodedText = encodeURIComponent(text || '');
+  return phone
+    ? `https://web.whatsapp.com/send?phone=91${phone}&text=${encodedText}`
+    : `https://web.whatsapp.com/?text=${encodedText}`;
+}
+
+function openWhatsApp(mobile, text){
+  const url = getWhatsAppUrl(mobile, text);
+  if(getWhatsAppMode() === 'desktop') window.location.href = url;
+  else window.open(url, '_blank');
+}
+
 function buildPOWhatsAppText(order){
   const poNumber = poNo(order);
   const mobile = order.supplier_mobile || order.mobile || getMobileFromRemark(order.remark || order.remarks || "");
@@ -1806,7 +1854,7 @@ function showWhatsAppShareHelper({ copied, downloaded, mobile, text }){
         <button type="button" id="poWaClose" style="background:#ef4444;color:white;border:0;border-radius:999px;padding:8px 12px;font-weight:900;cursor:pointer;">✕</button>
       </div>
       <div style="padding:22px; line-height:1.55;">
-        <div style="font-size:17px;font-weight:800;margin-bottom:12px;">WhatsApp Web opened ${mobile ? 'for +91' + mobile : ''}</div>
+        <div style="font-size:17px;font-weight:800;margin-bottom:12px;">WhatsApp ${getWhatsAppMode() === 'desktop' ? 'Desktop' : 'Web'} opened ${mobile ? 'for +91' + mobile : ''}</div>
         ${copied ? `
           <div style="background:rgba(34,197,94,.20); border:1px solid rgba(34,197,94,.45); padding:14px; border-radius:16px; margin-bottom:12px;">
             ✅ Purchase order image copied to clipboard.<br>
@@ -1841,11 +1889,7 @@ function showWhatsAppShareHelper({ copied, downloaded, mobile, text }){
   };
 
   document.getElementById('poWaOpenAgainBtn').onclick = () => {
-    const encodedText = encodeURIComponent(text || '');
-    const waUrl = mobile
-      ? `https://web.whatsapp.com/send?phone=91${mobile}&text=${encodedText}`
-      : `https://web.whatsapp.com/?text=${encodedText}`;
-    window.open(waUrl, '_blank');
+    openWhatsApp(mobile, text);
   };
 }
 
@@ -1904,12 +1948,7 @@ async function sharePOWhatsApp(orderId){
       downloaded = true;
     }
 
-    const encodedText = encodeURIComponent(text);
-    const waUrl = mobile
-      ? `https://web.whatsapp.com/send?phone=91${mobile}&text=${encodedText}`
-      : `https://web.whatsapp.com/?text=${encodedText}`;
-
-    window.open(waUrl, '_blank');
+    openWhatsApp(mobile, text);
     showWhatsAppShareHelper({ copied, downloaded, mobile, text });
 
   }catch(err){

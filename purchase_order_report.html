@@ -940,7 +940,9 @@ async function loadReport(){
     const statusFilter = document.getElementById("statusFilter").value;
     const pendingFilter = document.getElementById("pendingFilter").value;
 
-    let q = sb.from("purchase_order_details").select("*").order("order_date",{ascending:false});
+    let q = sb.from("purchase_order_details").select("*")
+      .order("order_date",{ascending:false})
+      .order("id",{ascending:false});
     if(from) q = q.gte("order_date",from);
     if(to) q = q.lte("order_date",to);
 
@@ -1039,9 +1041,11 @@ async function loadReport(){
       renderSuppliers(rows);
       renderStats(rows.filter(r => r.pending_qty > 0 && r.status !== "CANCELLED"));
     }else{
-      renderOrders(allOrders, allItems);
+      const visibleOrderIds = new Set(rows.map(row => String(row.order_id)));
+      const visibleOrders = allOrders.filter(order => visibleOrderIds.has(String(order.id)));
+      renderOrders(visibleOrders, allItems);
       // render stats for orders: show counts of orders and total value
-      const ordersSummary = allOrders.map(o=>{
+      const ordersSummary = visibleOrders.map(o=>{
         const its = (allItems||[]).filter(i=>Number(i.purchase_order_id)===Number(o.id));
         const value = (its||[]).reduce((a,it)=>a + (Number(it.quantity||0) * Number(it.price||0)),0);
         return {order:o,items:its,value};

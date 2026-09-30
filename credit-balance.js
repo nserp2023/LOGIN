@@ -24,12 +24,13 @@
     const addEntry=(account,type,date,document,amount,remark)=>account.entries.push({type,date:date||'',doc:document||'',amount:numberValue(amount),remark:remark||''});
     const findAccount=(accounts,name,mobile)=>{
         const mobileDigits=digitsOnly(mobile), nameValue=normalizedName(name);
-        for(const account of accounts.values()){
-            if(mobileDigits&&account.mobile===mobileDigits)return account;
-            const accountName=normalizedName(account.name);
-            if(nameValue&&accountName&& (accountName===nameValue||accountName.includes(nameValue)||nameValue.includes(accountName)))return account;
+        if(mobileDigits){
+            for(const account of accounts.values())if(account.mobile===mobileDigits)return account;
+            return null;
         }
-        return null;
+        if(!nameValue)return null;
+        const matches=[...accounts.values()].filter(account=>normalizedName(account.name)===nameValue);
+        return matches.length===1?matches[0]:null;
     };
     window.loadCanonicalCreditAccounts=async function(options={}){
         const from=options.from||'', to=options.to||'', search=cleanValue(options.search);
@@ -50,11 +51,16 @@
         let salesQuery=window.sbcc.from('sales_details').select('id,bill_date,series_code,sales_number,customer_name,customer_mobile,invoice_amount,credit_bill_amount,payment_type,salesman').in('payment_type',['CREDIT','ADVANCE CREDIT']);
         if(from)salesQuery=salesQuery.gte('bill_date',from);
         if(to)salesQuery=salesQuery.lte('bill_date',to);
-        const salesResult=await salesQuery;
-        if(salesResult.error)throw salesResult.error;
-        const sales=salesResult.data||[], salesIds=sales.map(row=>row.id).filter(Boolean), packing=new Map();
-        if(salesIds.length){
-            const packingResult=await window.sbcc.from('sales_packing_details').select('sales_id,packing_amount,packing_number,series_code').in('sales_id',salesIds);
+        const sales=[];
+        for(let page=0;;page++){
+            const salesResult=await salesQuery.range(page*1000,page*1000+999);
+            if(salesResult.error)throw salesResult.error;
+            sales.push(...(salesResult.data||[]));
+            if((salesResult.data||[]).length<1000)break;
+        }
+        const salesIds=sales.map(row=>row.id).filter(Boolean), packing=new Map();
+        for(let offset=0;offset<salesIds.length;offset+=500){
+            const packingResult=await window.sbcc.from('sales_packing_details').select('sales_id,packing_amount,packing_number,series_code').in('sales_id',salesIds.slice(offset,offset+500));
             if(!packingResult.error)(packingResult.data||[]).forEach(row=>packing.set(String(row.sales_id),row));
         }
         sales.forEach(row=>{
@@ -111,9 +117,14 @@
         let returnQuery=window.sbcc.from('sales_return_details').select('id,return_date,customer_name,customer_mobile,approval_status,is_accepted,return_payment_type,settlement_mode,credit_adjustment_amount,total_return_amount');
         if(from)returnQuery=returnQuery.gte('return_date',from);
         if(to)returnQuery=returnQuery.lte('return_date',to);
-        const returnResult=await returnQuery;
-        if(returnResult.error)throw returnResult.error;
-        (returnResult.data||[]).forEach(row=>{
+        const returns=[];
+        for(let page=0;;page++){
+            const returnResult=await returnQuery.range(page*1000,page*1000+999);
+            if(returnResult.error)throw returnResult.error;
+            returns.push(...(returnResult.data||[]));
+            if((returnResult.data||[]).length<1000)break;
+        }
+        returns.forEach(row=>{
             if(!acceptedReturn(row)||returnType(row)!=='credit')return;
             const account=getAccount(row.customer_name,row.customer_mobile), amount=returnAmount(row);
             account.returns+=amount;

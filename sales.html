@@ -4391,6 +4391,7 @@
         billNo,
         billDate,
         customerName,
+        customerMobile,
         paidAmount,
         paymentType
     }) {
@@ -4433,6 +4434,7 @@
                 txn_date: billDate,
                 txn_type: "receipt",
                 party_name: customerName || "CUSTOMER",
+                customer_mobile: customerMobile || null,
                 amount: amount,
                 remarks: remarks,
                 // Auto receipts are kept approved so Dashboard can count them immediately.
@@ -7205,6 +7207,7 @@ function calcTotal() {
                         billNo: billNoForTxn,
                         billDate: head.date,
                         customerName: head.name,
+                        customerMobile: document.getElementById("cust_mobile")?.value || "",
                         paidAmount: paidNum,
                         paymentType
                     });

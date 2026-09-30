@@ -4,6 +4,7 @@
     const normalizedName=value=>cleanValue(value).toLowerCase().replace(/\s+/g,' ');
     const normalized=value=>cleanValue(value).toLowerCase().replace(/[-_\s]+/g,' ');
     const numberValue=value=>Number(value||0)||0;
+    const inPeriod=(date,from,to)=>{const value=String(date||'').slice(0,10);return (!from||!value||value>=from)&&(!to||!value||value<=to)};
     const accountKey=(name,mobile)=>`${digitsOnly(mobile)}|${normalizedName(name)}`;
     const billAmount=row=>{
         const preserved=Number(row.credit_bill_amount);
@@ -21,7 +22,16 @@
         const advance=type==='receipt'&&(['customer advance','sales order','sales order advance','sales order advance receipt','sales order conversion receipt'].includes(ref)||text.includes('sales order advance')||text.includes('advance received')||text.includes('advance paid')||text.includes('advance credit receipt'));
         return refund?'payment':receipt?'receipt':advance?'advance':'';
     };
-    const addEntry=(account,type,date,document,amount,remark)=>account.entries.push({type,date:date||'',doc:document||'',amount:numberValue(amount),remark:remark||''});
+    const addEntry=(account,type,date,document,amount,remark,from,to)=>{
+        const value=numberValue(amount),entryDate=String(date||'').slice(0,10);
+        account.entries.push({type,date:entryDate,doc:document||'',amount:value,remark:remark||''});
+        if(!inPeriod(entryDate,from,to))return;
+        if(type==='bill'){account.bills++;account.billAmount+=value}
+        else if(type==='payment')account.payments+=value;
+        else if(type==='receipt')account.receipts+=value;
+        else if(type==='advance')account.advances+=value;
+        else if(type==='return')account.returns+=value;
+    };
     const findAccount=(accounts,name,mobile)=>{
         const mobileDigits=digitsOnly(mobile), nameValue=normalizedName(name);
         if(mobileDigits){
@@ -49,7 +59,6 @@
             return account;
         };
         let salesQuery=window.sbcc.from('sales_details').select('id,bill_date,series_code,sales_number,customer_name,customer_mobile,invoice_amount,credit_bill_amount,payment_type,salesman').in('payment_type',['CREDIT','ADVANCE CREDIT']);
-        if(from)salesQuery=salesQuery.gte('bill_date',from);
         if(to)salesQuery=salesQuery.lte('bill_date',to);
         const sales=[];
         for(let page=0;;page++){
@@ -66,9 +75,7 @@
         sales.forEach(row=>{
             const account=getAccount(row.customer_name,row.customer_mobile), pack=packing.get(String(row.id));
             const amount=pack&&numberValue(pack.packing_amount)>0?numberValue(pack.packing_amount):billAmount(row);
-            account.bills++;
-            account.billAmount+=amount;
-            addEntry(account,'bill',row.bill_date,pack?`${pack.series_code||row.series_code||''}-${pack.packing_number||row.sales_number||''}`:`${row.series_code||''}-${row.sales_number||''}`,amount,pack?'Sales + Packing credit bill':'Credit bill');
+            addEntry(account,'bill',row.bill_date,pack?`${pack.series_code||row.series_code||''}-${pack.packing_number||row.sales_number||''}`:`${row.series_code||''}-${row.sales_number||''}`,amount,pack?'Sales + Packing credit bill':'Credit bill',from,to);
         });
         const searchedCustomers=[];
         if(search){
@@ -86,36 +93,56 @@
         }
         const searchedCustomerNames=new Set(searchedCustomers.map(row=>normalizedName(row.name)).filter(Boolean));
         const searchedCustomerMobiles=new Set(searchedCustomers.map(row=>digitsOnly(row.mobile)).filter(Boolean));
+        const cashRows=[];
         for(let page=0;;page++){
-            const cashResult=await window.sbcc.from('cash_transactions').select('txn_date,voucher_no,txn_type,party_name,amount,remarks,reference_type,approval_status').range(page*1000,page*1000+999);
+            const cashResult=await window.sbcc.from('cash_transactions').select('id,reference_id,customer_mobile,txn_date,voucher_no,txn_type,party_name,amount,remarks,reference_type,approval_status').range(page*1000,page*1000+999);
             if(cashResult.error)throw cashResult.error;
-            (cashResult.data||[]).forEach(row=>{
-                const date=String(row.txn_date||'').slice(0,10);
-                if(from&&date&&date<from)return;
-                if(to&&date&&date>to)return;
-                if(normalized(row.approval_status)!=='approved')return;
-                const party=cleanValue(row.party_name), partyDigits=digitsOnly(party), knownMobiles=customerMobileAliases.get(normalizedName(party));
-                const aliasMobile=!partyDigits&&knownMobiles&&knownMobiles.size===1?[...knownMobiles][0]:'';
-                const accountMobile=partyDigits||aliasMobile;
-                const savedCustomerPayment=normalized(row.txn_type)==='payment'&&(
-                    (accountMobile&&searchedCustomerMobiles.has(accountMobile))||searchedCustomerNames.has(normalizedName(party))
-                );
-                const type=classifyCash(row)||(savedCustomerPayment?'payment':'');
-                if(!type)return;
-                const accountName=/^[0-9+\-\s]+$/.test(party);
-                const account=accountMobile?findAccount(accounts,'',accountMobile):findAccount(accounts,party,'');
-                if(accountMobile&&!account)return;
-                const target=account||getAccount(accountName?'':party,'');
-                const amount=numberValue(row.amount);
-                if(type==='payment')target.payments+=amount;
-                if(type==='receipt')target.receipts+=amount;
-                if(type==='advance')target.advances+=amount;
-                addEntry(target,type,row.txn_date,row.voucher_no,amount,row.remarks);
-            });
+            cashRows.push(...(cashResult.data||[]));
             if((cashResult.data||[]).length<1000)break;
         }
+        const cashById=new Map(cashRows.map(row=>[String(row.id),row]));
+        const salesReferenceIds=[...new Set(cashRows.filter(row=>row.reference_id&&['sales_credit','sales_pack_credit','sales_order_conversion_receipt'].includes(normalized(row.reference_type).replace(/[-\s]+/g,'_'))).map(row=>row.reference_id))];
+        const orderReferenceIds=[...new Set(cashRows.filter(row=>row.reference_id&&['sales_order','sales_order_advance','sales_order_advance_receipt'].includes(normalized(row.reference_type).replace(/[-\s]+/g,'_'))).map(row=>row.reference_id))];
+        const loadContacts=async(table,ids)=>{
+            const contacts=new Map();
+            for(let offset=0;offset<ids.length;offset+=500){
+                const result=await window.sbcc.from(table).select('id,customer_name,customer_mobile').in('id',ids.slice(offset,offset+500));
+                if(result.error){console.warn(`Credit balance ${table} contact lookup failed:`,result.error);continue;}
+                (result.data||[]).forEach(row=>contacts.set(String(row.id),row));
+            }
+            return contacts;
+        };
+        const [salesContacts,orderContacts]=await Promise.all([
+            loadContacts('sales_details',salesReferenceIds),
+            loadContacts('sales_order_details',orderReferenceIds)
+        ]);
+        cashRows.forEach(row=>{
+                const date=String(row.txn_date||'').slice(0,10);
+                if(to&&date&&date>to)return;
+                if(normalized(row.approval_status)!=='approved')return;
+                const referenceType=normalized(row.reference_type).replace(/[-\s]+/g,'_');
+                const parent=cashById.get(String(row.reference_id||''));
+                if(referenceType==='customer_advance'&&parent&&normalized(parent.approval_status)==='approved'&&normalized(parent.txn_type)==='receipt'&&normalized(parent.reference_type).replace(/[-\s]+/g,'_')==='customer_credit_auto')return;
+                const linkedContact=referenceType==='sales_order_advance'||referenceType==='sales_order'||referenceType==='sales_order_advance_receipt'
+                    ? orderContacts.get(String(row.reference_id))||salesContacts.get(String(row.reference_id))
+                    : salesContacts.get(String(row.reference_id))||orderContacts.get(String(row.reference_id));
+                const party=cleanValue(row.party_name), partyDigits=digitsOnly(party), knownMobiles=customerMobileAliases.get(normalizedName(party));
+                const aliasMobile=!partyDigits&&knownMobiles&&knownMobiles.size===1?[...knownMobiles][0]:'';
+                const accountMobile=digitsOnly(row.customer_mobile)||digitsOnly(linkedContact?.customer_mobile)||digitsOnly(parent?.customer_mobile)||partyDigits||aliasMobile;
+                const knownAccount=accountMobile?findAccount(accounts,'',accountMobile):findAccount(accounts,party,'');
+                const savedCustomerPayment=normalized(row.txn_type)==='payment'&&(
+                    (accountMobile&&(searchedCustomerMobiles.has(accountMobile)||knownAccount))||searchedCustomerNames.has(normalizedName(party))||Boolean(knownAccount)
+                );
+                const manualCreditReceipt=normalized(row.txn_type)==='receipt'&&referenceType==='manual_receipt'&&Boolean(knownAccount);
+                const type=classifyCash(row)||(savedCustomerPayment?'payment':manualCreditReceipt?'receipt':'');
+                if(!type)return;
+                const accountName=/^[0-9+\-\s]+$/.test(party);
+                const accountNameValue=linkedContact?.customer_name||(accountName?'':party);
+                const target=knownAccount||getAccount(accountNameValue,accountMobile);
+                const amount=numberValue(row.amount);
+                addEntry(target,type,row.txn_date,row.voucher_no,amount,row.remarks,from,to);
+        });
         let returnQuery=window.sbcc.from('sales_return_details').select('id,return_date,customer_name,customer_mobile,approval_status,is_accepted,return_payment_type,settlement_mode,credit_adjustment_amount,total_return_amount');
-        if(from)returnQuery=returnQuery.gte('return_date',from);
         if(to)returnQuery=returnQuery.lte('return_date',to);
         const returns=[];
         for(let page=0;;page++){
@@ -127,8 +154,7 @@
         returns.forEach(row=>{
             if(!acceptedReturn(row)||returnType(row)!=='credit')return;
             const account=getAccount(row.customer_name,row.customer_mobile), amount=returnAmount(row);
-            account.returns+=amount;
-            addEntry(account,'return',row.return_date,`SR-${row.id}`,amount,'Accepted credit return');
+            addEntry(account,'return',row.return_date,`SR-${row.id}`,amount,'Accepted credit return',from,to);
         });
         return accounts;
     };

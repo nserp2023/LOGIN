@@ -166,7 +166,8 @@ async function loadDetails() {
     const { data: items, error: itemsError } = await sb
         .from('sales_item_details')
         .select('*')
-        .eq('sales_id', saleId);
+        .eq('sales_id', saleId)
+        .order('id', { ascending: true });
 
     if (itemsError) {
         alert(itemsError.message);

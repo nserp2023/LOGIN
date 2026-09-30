@@ -233,7 +233,8 @@ if(head.original_sales_id){
 const { data: items, error: itemError } = await sb
 .from("sales_return_item_details")
 .select("*")
-.eq("return_id", id);
+.eq("return_id", id)
+.order("id", { ascending:true });
 
 if(itemError || !items){
     document.body.innerHTML = "<h2>❌ Sales Return Items not found</h2>";

@@ -575,7 +575,8 @@ else {   // ✅ THIS FIX
 const { data: items, error: itemError } = await sb
 .from(itemTable)
 .select("*")
-.eq(idField, id);
+.eq(idField, id)
+.order("id", { ascending:true });
 
 if (itemError || !items) {
     if(captureMode){

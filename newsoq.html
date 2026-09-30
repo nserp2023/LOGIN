@@ -720,6 +720,19 @@
             text-align: center;
         }
         .manual-reorder-qty:focus { outline: 3px solid rgba(245, 158, 11, .3); }
+        .manual-reorder-remark {
+            width: 100%;
+            min-height: 72px;
+            margin-top: 12px;
+            padding: 9px 10px;
+            border: 1px solid #94a3b8;
+            border-radius: 7px;
+            background: #fff;
+            color: #111827;
+            font: inherit;
+            resize: vertical;
+        }
+        .manual-reorder-remark:focus { outline: 3px solid rgba(245, 158, 11, .3); border-color: #f59e0b; }
         .manual-reorder-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
         .manual-reorder-actions button { padding: 9px 14px; border: 0; border-radius: 6px; font-weight: 800; cursor: pointer; }
         .manual-reorder-cancel { background: #475569; color: #fff; }
@@ -1686,6 +1699,8 @@
         </div>
         <label class="manual-reorder-qty-label" for="manual_reorder_qty">Qty to reorder</label>
         <input id="manual_reorder_qty" class="manual-reorder-qty" type="number" min="0.01" step="0.01" inputmode="decimal" autocomplete="off">
+        <label class="manual-reorder-qty-label" for="manual_reorder_remark" style="margin-top:12px">Remark</label>
+        <textarea id="manual_reorder_remark" class="manual-reorder-remark" maxlength="500" placeholder="Add a remark for this reorder"></textarea>
         <div id="manual_reorder_number" class="manual-reorder-number" aria-live="polite"></div>
         <div class="manual-reorder-actions">
             <button type="button" class="manual-reorder-cancel" id="manual_reorder_cancel">Cancel</button>
@@ -2700,6 +2715,7 @@
         const name = (row.querySelector('.name-inp')?.value || '').trim();
         const overlay = document.getElementById('manual_reorder_overlay');
         const qty = document.getElementById('manual_reorder_qty');
+        const remark = document.getElementById('manual_reorder_remark');
         if(!overlay || !qty) return;
 
         manualReorderRow = row;
@@ -2707,6 +2723,7 @@
         document.getElementById('manual_reorder_item').textContent = `${name || 'Item'}${code ? ` (${code})` : ''}`;
         document.getElementById('manual_reorder_number').textContent = 'PO number will be assigned on save';
         qty.value = '';
+        if(remark) remark.value = '';
         updateManualReorderSummary();
         overlay.classList.add('show');
         overlay.setAttribute('aria-hidden', 'false');
@@ -2717,6 +2734,7 @@
     async function saveManualReorder(){
         const row = manualReorderRow;
         const orderQty = parseFloat(document.getElementById('manual_reorder_qty')?.value || '0');
+        const remark = document.getElementById('manual_reorder_remark')?.value.trim() || '';
         if(!row || !Number.isFinite(orderQty) || orderQty <= 0){
             alert('Enter a reorder quantity greater than 0.');
             return;
@@ -2725,7 +2743,7 @@
         const saveButton = document.getElementById('manual_reorder_save');
         if(saveButton) saveButton.disabled = true;
         try{
-            const po = await createQuickPurchaseOrderForRow(row, orderQty);
+            const po = await createQuickPurchaseOrderForRow(row, orderQty, remark);
             if(po.skipped){
                 const existingNumber = po.existingPending?.order?.po_number || po.existingPending?.order?.id || 'existing PO';
                 document.getElementById('manual_reorder_number').textContent = `${existingNumber} already has this item pending`;
@@ -2864,7 +2882,7 @@
         };
     }
 
-    async function createQuickPurchaseOrderForRow(row, orderQty){
+    async function createQuickPurchaseOrderForRow(row, orderQty, manualRemark = ""){
         const rawItem = getRowRawItem(row) || {};
         const itemCode = (row.querySelector('.code-inp')?.value || rawItem.item_code || "").trim();
         const itemName = (row.querySelector('.name-inp')?.value || rawItem.item_name || "").trim();
@@ -2914,7 +2932,7 @@
             quantity: orderQty,
             received_qty: 0,
             price,
-            remark: `AUTO REORDER: MAX ${getMaximumQtyForRow(row)} - REMAINING AFTER SALE ${getRemainingStockAfterSale(row)}`,
+            remark: [`AUTO REORDER: MAX ${getMaximumQtyForRow(row)} - REMAINING AFTER SALE ${getRemainingStockAfterSale(row)}`, manualRemark.trim()].filter(Boolean).join(' | '),
             status: "PENDING"
         };
 

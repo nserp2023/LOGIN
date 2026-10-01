@@ -402,11 +402,11 @@ function resetCreditSelection(clearAmount=false){ selectedCreditBill=null; selec
 function hideAllocationPreview(){ allocationPreview.style.display='none'; allocationPreview.innerHTML=''; }
 function showAllocationPreview(html){ allocationPreview.innerHTML=html||''; allocationPreview.style.display=html?'block':'none'; }
 async function generateNextVoucherNo(){ const prefix=txnType.value==='payment'?'PAY':'REC'; const {data,error}=await sb.from('cash_transactions').select('voucher_no').eq('txn_type',txnType.value).order('id',{ascending:false}).limit(1); if(error){ console.error(error); voucherNo.value=`${prefix}-0001`; return; } let n=1; if(data&&data.length){ const m=String(data[0].voucher_no||'').match(/(\d+)$/); if(m) n=parseInt(m[1],10)+1; } voucherNo.value=`${prefix}-${String(n).padStart(4,'0')}`; }
-async function showPartySuggestions(query){ const items=[]; const clean=query.trim();
+async function showPartySuggestions(query){ const items=[]; const clean=query.trim(),mobileSearch=clean.replace(/\D/g,'').length>=3;
     const tasks=[ sb.from('parties').select('id, party_name').ilike('party_name',`%${clean}%`).order('party_name',{ascending:true}).limit(8), sb.from('customers').select('customer_id, name, mobile, address').or(`name.ilike.%${escapeOrValue(clean)}%,mobile.ilike.%${escapeOrValue(clean)}%`).order('name',{ascending:true}).limit(8) ];
     const [partyRes,customerRes]=await Promise.allSettled(tasks);
-    if(partyRes.status==='fulfilled'&&!partyRes.value.error){ (partyRes.value.data||[]).forEach(r=>{ if(r.party_name) items.push({kind:'party',party_name:r.party_name,label:r.party_name}); }); }
-    if(customerRes.status==='fulfilled'&&!customerRes.value.error){ (customerRes.value.data||[]).forEach(r=>{ const label=`${r.name||''} ${r.mobile||''}`.trim(); if(label) items.push({kind:'customer',party_name:r.name||r.mobile||'',customer_name:r.name||'',customer_mobile:r.mobile||'',customer_address:r.address||'',account_balance:0,label}); }); }
+    if(!mobileSearch&&partyRes.status==='fulfilled'&&!partyRes.value.error){ (partyRes.value.data||[]).forEach(r=>{ if(r.party_name) items.push({kind:'party',party_name:r.party_name,label:r.party_name}); }); }
+    if(!mobileSearch&&customerRes.status==='fulfilled'&&!customerRes.value.error){ (customerRes.value.data||[]).forEach(r=>{ const label=`${r.name||''} ${r.mobile||''}`.trim(); if(label) items.push({kind:'customer',party_name:r.name||r.mobile||'',customer_name:r.name||'',customer_mobile:r.mobile||'',customer_address:r.address||'',account_balance:0,label}); }); }
     const accountOptions=await fetchCustomerAccountOptions(clean);
     if(txnType.value==='payment'){
         accountOptions.filter(x=>num(x.account_balance)<0).forEach(x=>items.push(x));
@@ -417,8 +417,10 @@ async function showPartySuggestions(query){ const items=[]; const clean=query.tr
         const autoKeys=new Set(autoOptions.map(x=>normaliseCustomerKey(x.customer_name,x.customer_mobile)));
         accountOptions.filter(x=>num(x.account_balance)>0&&!autoKeys.has(normaliseCustomerKey(x.customer_name,x.customer_mobile))).forEach(x=>items.push({...x,kind:'customer_credit_auto',total_balance:num(x.account_balance),bills:[]}));
         accountOptions.filter(x=>num(x.account_balance)<=0).forEach(x=>items.push({...x,kind:'customer_account',party_name:`${x.customer_name||x.customer_mobile||'Customer'} ${x.customer_mobile?' - '+x.customer_mobile:''} • Balance ₹${money(x.account_balance)}`}));
-        const billOptions=await fetchCustomerCreditBills(clean);
-        billOptions.filter(x=>!autoKeys.has(normaliseCustomerKey(x.customer_name,x.customer_mobile))).forEach(x=>items.push(x));
+        if(!mobileSearch){
+            const billOptions=await fetchCustomerCreditBills(clean);
+            billOptions.filter(x=>!autoKeys.has(normaliseCustomerKey(x.customer_name,x.customer_mobile))).forEach(x=>items.push(x));
+        }
     }
     suggestionItems=dedupeSuggestionItems(items); renderSuggestions(suggestionItems,clean);
 }

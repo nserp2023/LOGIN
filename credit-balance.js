@@ -47,6 +47,7 @@
         const accounts=new Map();
         const customerMobileAliases=new Map();
         const customerMobilesByName=new Map();
+        const customerMobileNumbers=new Set();
         try{
             const customerRows=[];
             for(let page=0;;page++){
@@ -58,7 +59,9 @@
             const mobilesByName=new Map();
             customerRows.forEach(row=>{
                 const name=normalizedName(row.name), mobile=digitsOnly(row.mobile);
-                if(!name||!mobile)return;
+                if(!mobile)return;
+                customerMobileNumbers.add(mobile);
+                if(!name)return;
                 if(!mobilesByName.has(name))mobilesByName.set(name,new Set());
                 mobilesByName.get(name).add(mobile);
             });
@@ -76,7 +79,7 @@
             }
             const existing=findAccount(accounts,name,mobile);
             if(existing)return existing;
-            const account={key:accountKey(name,mobile),name:cleanValue(name)||'-',mobile:digitsOnly(mobile)||'-',bills:0,billAmount:0,payments:0,receipts:0,advances:0,returns:0,entries:[]};
+            const account={key:accountKey(name,mobileDigits),name:cleanValue(name)||'-',mobile:mobileDigits||'-',bills:0,billAmount:0,payments:0,receipts:0,advances:0,returns:0,entries:[]};
             accounts.set(account.key,account);
             return account;
         };
@@ -99,22 +102,6 @@
             const amount=pack&&numberValue(pack.packing_amount)>0?numberValue(pack.packing_amount):billAmount(row);
             addEntry(account,'bill',row.bill_date,pack?`${pack.series_code||row.series_code||''}-${pack.packing_number||row.sales_number||''}`:`${row.series_code||''}-${row.sales_number||''}`,amount,pack?'Sales + Packing credit bill':'Credit bill',from,to);
         });
-        const searchedCustomers=[];
-        if(search){
-            const searchDigits=digitsOnly(search);
-            let customerQuery=window.sbcc.from('customers').select('name,mobile');
-            customerQuery=searchDigits.length>=3?customerQuery.ilike('mobile',`%${searchDigits}%`):customerQuery.ilike('name',`%${search}%`);
-            const customerResult=await customerQuery.limit(50);
-            if(!customerResult.error){
-                searchedCustomers.push(...(customerResult.data||[]));
-                searchedCustomers.forEach(row=>{
-                    const account=getAccount(row.name,row.mobile);
-                    if(cleanValue(row.name))account.name=cleanValue(row.name);
-                });
-            }
-        }
-        const searchedCustomerNames=new Set(searchedCustomers.map(row=>normalizedName(row.name)).filter(Boolean));
-        const searchedCustomerMobiles=new Set(searchedCustomers.map(row=>digitsOnly(row.mobile)).filter(Boolean));
         const cashRows=[];
         for(let page=0;;page++){
             const cashResult=await window.sbcc.from('cash_transactions').select('id,reference_id,customer_mobile,txn_date,voucher_no,txn_type,party_name,amount,remarks,reference_type,approval_status').range(page*1000,page*1000+999);
@@ -149,13 +136,12 @@
                     ? orderContacts.get(String(row.reference_id))||salesContacts.get(String(row.reference_id))
                     : salesContacts.get(String(row.reference_id))||orderContacts.get(String(row.reference_id));
                 const party=cleanValue(row.party_name), partyDigits=digitsOnly(party), knownMobiles=customerMobileAliases.get(normalizedName(party));
-                const aliasMobile=!partyDigits&&knownMobiles&&knownMobiles.size===1?[...knownMobiles][0]:'';
+                const aliasMobile=!partyDigits&&(knownMobiles&&knownMobiles.size===1?[...knownMobiles][0]:customerMobilesByName.get(normalizedName(party))||'');
                 const accountMobile=digitsOnly(row.customer_mobile)||digitsOnly(linkedContact?.customer_mobile)||digitsOnly(parent?.customer_mobile)||partyDigits||aliasMobile;
                 const knownAccount=accountMobile?findAccount(accounts,'',accountMobile):findAccount(accounts,party,'');
-                const savedCustomerPayment=normalized(row.txn_type)==='payment'&&(
-                    (accountMobile&&(searchedCustomerMobiles.has(accountMobile)||knownAccount))||searchedCustomerNames.has(normalizedName(party))||Boolean(knownAccount)
-                );
-                const manualCreditReceipt=normalized(row.txn_type)==='receipt'&&referenceType==='manual_receipt'&&Boolean(knownAccount);
+                const knownCustomer=Boolean(accountMobile&&customerMobileNumbers.has(accountMobile));
+                const savedCustomerPayment=normalized(row.txn_type)==='payment'&&(knownCustomer||Boolean(knownAccount));
+                const manualCreditReceipt=normalized(row.txn_type)==='receipt'&&referenceType==='manual_receipt'&&(knownCustomer||Boolean(knownAccount));
                 const type=classifyCash(row)||(savedCustomerPayment?'payment':manualCreditReceipt?'receipt':'');
                 if(!type)return;
                 const accountName=/^[0-9+\-\s]+$/.test(party);
@@ -178,6 +164,16 @@
             const account=getAccount(row.customer_name,row.customer_mobile), amount=returnAmount(row);
             addEntry(account,'return',row.return_date,`SR-${row.id}`,amount,'Accepted credit return',from,to);
         });
+        if(search){
+            const searchDigits=digitsOnly(search);
+            let customerQuery=window.sbcc.from('customers').select('name,mobile');
+            customerQuery=searchDigits.length>=3?customerQuery.ilike('mobile',`%${searchDigits}%`):customerQuery.ilike('name',`%${search}%`);
+            const customerResult=await customerQuery.limit(50);
+            if(!customerResult.error)(customerResult.data||[]).forEach(row=>{
+                const account=getAccount(row.name,row.mobile);
+                if(cleanValue(row.name))account.name=cleanValue(row.name);
+            });
+        }
         return accounts;
     };
     window.canonicalCreditBalance=account=>account.billAmount+account.payments-account.receipts-account.advances-account.returns;

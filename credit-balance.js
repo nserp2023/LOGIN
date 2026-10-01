@@ -47,6 +47,7 @@
         const accounts=new Map();
         const customerMobileAliases=new Map();
         const customerMobilesByName=new Map();
+        const customerNamesByMobile=new Map();
         const customerMobileNumbers=new Set();
         try{
             const customerRows=[];
@@ -57,29 +58,45 @@
                 if((result.data||[]).length<1000)break;
             }
             const mobilesByName=new Map();
+            const namesByMobile=new Map();
             customerRows.forEach(row=>{
-                const name=normalizedName(row.name), mobile=digitsOnly(row.mobile);
+                const customerName=cleanValue(row.name), name=normalizedName(customerName), mobile=digitsOnly(row.mobile);
                 if(!mobile)return;
                 customerMobileNumbers.add(mobile);
                 if(!name)return;
                 if(!mobilesByName.has(name))mobilesByName.set(name,new Set());
                 mobilesByName.get(name).add(mobile);
+                if(!namesByMobile.has(mobile))namesByMobile.set(mobile,new Map());
+                namesByMobile.get(mobile).set(name,customerName);
             });
             mobilesByName.forEach((mobiles,name)=>{
                 if(mobiles.size===1)customerMobilesByName.set(name,[...mobiles][0]);
+            });
+            namesByMobile.forEach((names,mobile)=>{
+                if(names.size===1)customerNamesByMobile.set(mobile,[...names.values()][0]);
             });
         }catch(error){
             console.warn('Credit balance customer mobile lookup failed:',error);
         }
         const getAccount=(name,mobile)=>{
-            const accountName=normalizedName(name), mobileDigits=digitsOnly(mobile)||customerMobilesByName.get(accountName)||'';
+            const providedName=cleanValue(name), nameDigits=digitsOnly(providedName);
+            const nameIsMobile=/^[+0-9() .-]+$/.test(providedName)&&nameDigits.length===10;
+            const originalName=nameIsMobile?'':providedName;
+            const accountName=normalizedName(originalName);
+            const mobileDigits=digitsOnly(mobile)||(nameIsMobile?nameDigits:'')||customerMobilesByName.get(accountName)||'';
+            const resolvedName=originalName||customerNamesByMobile.get(mobileDigits)||'';
             if(accountName&&mobileDigits){
                 if(!customerMobileAliases.has(accountName))customerMobileAliases.set(accountName,new Set());
                 customerMobileAliases.get(accountName).add(mobileDigits);
             }
-            const existing=findAccount(accounts,name,mobileDigits);
-            if(existing)return existing;
-            const account={key:accountKey(name,mobileDigits),name:cleanValue(name)||'-',mobile:mobileDigits||'-',bills:0,billAmount:0,payments:0,receipts:0,advances:0,returns:0,entries:[]};
+            const existing=findAccount(accounts,resolvedName,mobileDigits);
+            if(existing){
+                const existingName=cleanValue(existing.name), existingNameDigits=digitsOnly(existingName);
+                const existingNameIsMobile=/^[+0-9() .-]+$/.test(existingName)&&existingNameDigits.length===10;
+                if((!existingName||existingName==='-'||existingNameIsMobile)&&resolvedName)existing.name=resolvedName;
+                return existing;
+            }
+            const account={key:accountKey(resolvedName,mobileDigits),name:resolvedName||'-',mobile:mobileDigits||'-',bills:0,billAmount:0,payments:0,receipts:0,advances:0,returns:0,entries:[]};
             accounts.set(account.key,account);
             return account;
         };

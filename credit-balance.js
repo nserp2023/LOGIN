@@ -191,6 +191,12 @@
                 if(cleanValue(row.name))account.name=cleanValue(row.name);
             });
         }
+        accounts.forEach(account=>{
+            const savedName=customerNamesByMobile.get(digitsOnly(account.mobile));
+            const currentName=cleanValue(account.name), currentNameDigits=digitsOnly(currentName);
+            const nameIsMobile=/^[+0-9() .-]+$/.test(currentName)&&currentNameDigits.length===10;
+            if(savedName&&(!currentName||currentName==='-'||nameIsMobile))account.name=savedName;
+        });
         return accounts;
     };
     window.canonicalCreditBalance=account=>account.billAmount+account.payments-account.receipts-account.advances-account.returns;

@@ -46,8 +46,30 @@
         const from=options.from||'', to=options.to||'', search=cleanValue(options.search);
         const accounts=new Map();
         const customerMobileAliases=new Map();
+        const customerMobilesByName=new Map();
+        try{
+            const customerRows=[];
+            for(let page=0;;page++){
+                const result=await window.sbcc.from('customers').select('name,mobile').range(page*1000,page*1000+999);
+                if(result.error)throw result.error;
+                customerRows.push(...(result.data||[]));
+                if((result.data||[]).length<1000)break;
+            }
+            const mobilesByName=new Map();
+            customerRows.forEach(row=>{
+                const name=normalizedName(row.name), mobile=digitsOnly(row.mobile);
+                if(!name||!mobile)return;
+                if(!mobilesByName.has(name))mobilesByName.set(name,new Set());
+                mobilesByName.get(name).add(mobile);
+            });
+            mobilesByName.forEach((mobiles,name)=>{
+                if(mobiles.size===1)customerMobilesByName.set(name,[...mobiles][0]);
+            });
+        }catch(error){
+            console.warn('Credit balance customer mobile lookup failed:',error);
+        }
         const getAccount=(name,mobile)=>{
-            const accountName=normalizedName(name), mobileDigits=digitsOnly(mobile);
+            const accountName=normalizedName(name), mobileDigits=digitsOnly(mobile)||customerMobilesByName.get(accountName)||'';
             if(accountName&&mobileDigits){
                 if(!customerMobileAliases.has(accountName))customerMobileAliases.set(accountName,new Set());
                 customerMobileAliases.get(accountName).add(mobileDigits);

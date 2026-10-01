@@ -527,6 +527,7 @@
     let currentRows = [];
     let reportRequestId = 0;
     let packingUnlocked = false;
+    let isVajraAccount = String(localStorage.getItem("username") || "").trim().toUpperCase() === "VAJRA";
     let mobileUnlockTimer = null;
     let html2CanvasLoader = null;
 
@@ -671,8 +672,8 @@
     function getCurrentTypeConfig() {
         let type = document.getElementById("report_type").value;
 
-        if(type === "sales_pack" && !packingUnlocked){
-            alert("Access Denied");
+        if(type === "sales_pack" && (isVajraAccount || !packingUnlocked)){
+            if(!isVajraAccount) alert("Access Denied");
             type = "sales";
             document.getElementById("report_type").value = "sales";
         }
@@ -2336,7 +2337,7 @@
     }
 
     function unlockSalesPackingReport(){
-        if(packingUnlocked) return;
+        if(isVajraAccount || packingUnlocked) return;
 
         packingUnlocked = true;
 
@@ -2366,13 +2367,17 @@
         document.addEventListener("keydown", (e) => {
             if(e.shiftKey && e.key.toLowerCase() === "p"){
                 e.preventDefault();
+                if(isVajraAccount){
+                    e.stopPropagation();
+                    return;
+                }
                 unlockSalesPackingReport();
             }
         });
 
         // Mobile secret unlock: long press report title for 1.5 seconds
         const unlockArea = document.getElementById("report_title");
-        if(!unlockArea) return;
+        if(!unlockArea || isVajraAccount) return;
 
         unlockArea.addEventListener("touchstart", () => {
             mobileUnlockTimer = setTimeout(() => {
@@ -2407,6 +2412,7 @@
         if (!ok) return;
 
         const loggedInProfile = await getLoggedInProfile();
+        isVajraAccount = String(loggedInProfile?.full_name || loggedInProfile?.email || "").trim().toUpperCase() === "VAJRA";
         const loggedInRole = String(loggedInProfile?.role || "").toUpperCase();
         canViewSalesProfit = loggedInRole === "OWNER" || loggedInRole === "ADMIN";
 

@@ -360,9 +360,7 @@ async function loadFromURLParams(){
                 partyName.value = selected.customer_mobile || selected.customer_name || partyValue;
                 searchParty.value = partyName.value;
 
-                if (!parsedAmount || parsedAmount <= 0){
-                    amount.value = money(selected.total_balance);
-                }
+                amount.value = money(parsedAmount > 0 ? Math.min(parsedAmount, num(selected.total_balance)) : selected.total_balance);
 
                 if (!remarks.value){
                     remarks.value = 'Auto credit collection from customer';
@@ -372,6 +370,10 @@ async function loadFromURLParams(){
                 creditChip.textContent = 'Auto Credit Collection';
                 updateTypeUI();
                 updateAutoAllocationPreview();
+            } else if (mobileDigits){
+                const accounts = await fetchCustomerAccountOptions(partyValue);
+                const account = accounts.find(x => String(x.customer_mobile || '').replace(/\D/g,'').slice(-10) === mobileDigits);
+                if (account && num(account.account_balance) <= 0) amount.value = '';
             }
         }catch(err){
             console.warn('URL credit auto allocation load failed:', err);
@@ -440,7 +442,7 @@ function dedupeSuggestionItems(items){
     return Array.from(selected.values());
 }
 async function fetchCustomerCreditBills(query){ const rows=await fetchOpenCreditBillsForSearch(query,14,false); return rows.map(r=>({kind:'credit_bill',sales_id:r.id,series_code:r.series_code||'',sales_number:r.sales_number||'',bill_date:r.bill_date||'',customer_mobile:r.customer_mobile||'',customer_name:r.customer_name||'',balance_amount:num(r.balance_amount),paid_amount:num(r.paid_amount),label:`${r.customer_name||''} ${r.customer_mobile||''}`.trim()})); }
-async function fetchCustomerAutoAllocationOptions(query){ const rows=await fetchOpenCreditBillsForSearch(query,60,true); const standaloneReturns=await fetchStandaloneCreditReturnAmounts(query); const grouped=new Map(); for(const r of rows){ const key=normaliseCustomerKey(r.customer_name,r.customer_mobile); if(!key||key==='|') continue; if(!grouped.has(key)) grouped.set(key,{kind:'customer_credit_auto',customer_name:r.customer_name||'',customer_mobile:r.customer_mobile||'',total_balance:0,bills:[]}); const b=grouped.get(key); const bal=num(r.balance_amount); b.total_balance+=bal; b.bills.push({sales_id:r.id,series_code:r.series_code||'',sales_number:r.sales_number||'',bill_date:r.bill_date||'',balance_amount:bal,paid_amount:num(r.paid_amount)}); } for(const [key,amount] of standaloneReturns.entries()){ if(grouped.has(key)){ const group=grouped.get(key); group.total_balance=Math.max(0,group.total_balance-amount); } } return Array.from(grouped.values()).filter(x=>x.bills.length&&x.total_balance>0).sort((a,b)=>String(a.customer_name).localeCompare(String(b.customer_name))); }
+async function fetchCustomerAutoAllocationOptions(query){ const rows=await fetchOpenCreditBillsForSearch(query,60,true); const standaloneReturns=await fetchStandaloneCreditReturnAmounts(query); const grouped=new Map(); for(const r of rows){ const key=normaliseCustomerKey(r.customer_name,r.customer_mobile); if(!key||key==='|') continue; if(!grouped.has(key)) grouped.set(key,{kind:'customer_credit_auto',customer_name:r.customer_name||'',customer_mobile:r.customer_mobile||'',total_balance:0,bills:[]}); const b=grouped.get(key); const bal=num(r.balance_amount); b.total_balance+=bal; b.bills.push({sales_id:r.id,series_code:r.series_code||'',sales_number:r.sales_number||'',bill_date:r.bill_date||'',balance_amount:bal,paid_amount:num(r.paid_amount)}); } for(const [key,amount] of standaloneReturns.entries()){ if(grouped.has(key)){ const group=grouped.get(key); group.total_balance=Math.max(0,group.total_balance-amount); } } const canonicalAccounts=await fetchCustomerAccountOptions(query); const accountMap=new Map(canonicalAccounts.map(account=>[normaliseCustomerKey(account.customer_name,account.customer_mobile),account])); return Array.from(grouped.values()).filter(group=>{ const account=accountMap.get(normaliseCustomerKey(group.customer_name,group.customer_mobile)); if(!account)return group.bills.length&&group.total_balance>0; const balance=num(account.account_balance); if(balance<=0)return false; group.customer_name=account.customer_name||group.customer_name; group.customer_mobile=account.customer_mobile||group.customer_mobile; group.total_balance=balance; return group.bills.length; }).sort((a,b)=>String(a.customer_name).localeCompare(String(b.customer_name))); }
 async function fetchCustomerAccountOptions(query){
     const search=String(query||'').trim().toLowerCase(), searchDigits=search.replace(/\D/g,'');
     const canonicalAccounts=await window.loadCanonicalCreditAccounts({search:query});

@@ -77,7 +77,7 @@
                 if(!customerMobileAliases.has(accountName))customerMobileAliases.set(accountName,new Set());
                 customerMobileAliases.get(accountName).add(mobileDigits);
             }
-            const existing=findAccount(accounts,name,mobile);
+            const existing=findAccount(accounts,name,mobileDigits);
             if(existing)return existing;
             const account={key:accountKey(name,mobileDigits),name:cleanValue(name)||'-',mobile:mobileDigits||'-',bills:0,billAmount:0,payments:0,receipts:0,advances:0,returns:0,entries:[]};
             accounts.set(account.key,account);

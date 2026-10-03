@@ -328,6 +328,31 @@
         .col-landing { width: 90px; }
         .col-gst  { width: 50px; }
 
+        #bill_body .col-landing { position: relative; }
+        .landing-cost-hint {
+            display: none;
+            position: absolute;
+            left: 50%;
+            bottom: calc(100% + 4px);
+            transform: translateX(-50%);
+            z-index: 25;
+            width: max-content;
+            max-width: 220px;
+            padding: 6px 8px;
+            border: 1px solid #475569;
+            border-radius: 4px;
+            background: #0f172a;
+            color: #fff;
+            font-size: 11px;
+            font-weight: 600;
+            white-space: normal;
+            pointer-events: none;
+        }
+        #bill_body .col-landing:hover .landing-cost-hint,
+        #bill_body .col-landing.landing-cost-open .landing-cost-hint {
+            display: block;
+        }
+
         .landing-col-hidden {
             display: none !important;
         }
@@ -3752,7 +3777,7 @@ async function loadStockData() {
         let error = null;
 
         for (let attempt = 1; attempt <= 3; attempt++) {
-const stockSelect = 'item_code,item_name,barcode,price1,price2,price3,landing,balance,gst_percent,hsn_code,department,minimum_qty,maximum_qty';
+const stockSelect = 'item_code,item_name,barcode,price1,price2,price3,landing,purchase_price,purchase_price_gst,balance,gst_percent,hsn_code,department,minimum_qty,maximum_qty';
 
             const res = await sb
                 .from('stock_balance_view')
@@ -4715,6 +4740,7 @@ ${data.map((c, idx) => {
         </td>
         <td class="col-landing landing-col">
             <input type="text" class="landing-inp" data-rid="${rId}" readonly tabindex="-1" style="color:#facc15;font-weight:bold;">
+            <span class="landing-cost-hint" role="tooltip"></span>
         </td>
         <td class="col-gst">
             <input type="number" class="row-inp gst-inp" data-rid="${rId}" min="0" max="100" step="0.01" readonly tabindex="-1" title="For new quotation/sales-order items, press Ctrl+Shift+G to edit GST" style="color:#64748b">
@@ -4793,7 +4819,21 @@ ${data.map((c, idx) => {
         const priceGstInp = row.querySelector('.price-gst-inp');
         const discInp = row.querySelector('.disc-inp');
         const landingInp = row.querySelector('.landing-inp');
+        const landingCell = row.querySelector('.col-landing');
         const gstInp = row.querySelector('.gst-inp');
+
+        if (landingCell && canSeeLandingColumn) {
+            let landingHintTimer = null;
+            landingCell.addEventListener('pointerenter', () => updateLandingCostHint(row));
+            landingCell.addEventListener('click', () => {
+                updateLandingCostHint(row);
+                landingCell.classList.add('landing-cost-open');
+                clearTimeout(landingHintTimer);
+                landingHintTimer = setTimeout(() => {
+                    landingCell.classList.remove('landing-cost-open');
+                }, 2500);
+            });
+        }
 
         [codeInp, nameInp, qtyInp, typeInp, priceInp, priceGstInp, discInp].forEach(el => {
             el.addEventListener("focus", () => triggerPurchaseHistory(row));
@@ -5059,8 +5099,8 @@ ${data.map((c, idx) => {
         triggerPurchaseHistory(row);
 
         const freshSelect = canSeeLandingColumn
-            ? 'balance, price1, price2, price3, landing, minimum_qty, maximum_qty'
-            : 'balance, price1, price2, price3, minimum_qty, maximum_qty';
+            ? 'balance, price1, price2, price3, landing, purchase_price, purchase_price_gst, minimum_qty, maximum_qty'
+            : 'balance, price1, price2, price3, purchase_price, purchase_price_gst, minimum_qty, maximum_qty';
 
         const { data: freshStock, error } = await sb
             .from('stock_balance_view')
@@ -5083,6 +5123,8 @@ ${data.map((c, idx) => {
             if (landingInp) {
                 landingInp.value = parseFloat((freshStock && 'landing' in freshStock ? freshStock.landing : item.landing) || 0).toFixed(2);
             }
+
+            updateLandingCostHint(row);
         }
 
         applyItemRestriction(row);
@@ -5199,6 +5241,28 @@ ${data.map((c, idx) => {
         return "1";
     }
 
+    function getPurchasePriceGst(item){
+        const purchasePriceGst = Number(item?.purchase_price_gst);
+        if(item?.purchase_price_gst !== null && item?.purchase_price_gst !== "" && Number.isFinite(purchasePriceGst)){
+            return purchasePriceGst;
+        }
+
+        const purchasePrice = parseFloat(item?.purchase_price || 0) || 0;
+        const gst = parseFloat(item?.gst_percent || 0) || 0;
+        return purchasePrice * (1 + gst / 100);
+    }
+
+    function updateLandingCostHint(row){
+        if(!canSeeLandingColumn || !row) return;
+
+        const hint = row.querySelector('.landing-cost-hint');
+        const raw = row.querySelector('.raw-data')?.value;
+        if(!hint || !raw) return;
+
+        const item = JSON.parse(raw);
+        hint.textContent = `Purchase + GST: ₹${getPurchasePriceGst(item).toFixed(2)}`;
+    }
+
     function updatePriceFromType(id) {
     const row = document.getElementById(`row_${id}`);
     const type = row.querySelector('.type-inp').value;
@@ -5220,7 +5284,10 @@ ${data.map((c, idx) => {
         calcForward(id);
     }
     else if (type == "L") {
-        row.querySelector('.price-gst-inp').value = item.landing || 0;
+        const selectedPrice = canSeeLandingColumn
+            ? (parseFloat(item.landing || 0) || 0)
+            : getPurchasePriceGst(item);
+        row.querySelector('.price-gst-inp').value = selectedPrice.toFixed(2);
         calcReverse(id);
     }
 }

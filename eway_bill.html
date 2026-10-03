@@ -204,6 +204,10 @@ function converterDate(value){
 
 function roundedMoney(value){ return Number(Number(value || 0).toFixed(2)); }
 
+function normalizeHsnCode(value){
+    return String(value || '').replace(/\s+/g, '').replace(/\.0+$/, '');
+}
+
 function getItemList(){
     const sameState = num(document.getElementById('fromStateCode').value) === num(document.getElementById('toStateCode').value);
     return billItems.map((item, index) => {
@@ -212,7 +216,7 @@ function getItemList(){
             itemNo: index + 1,
             productName: clean(item.item_name),
             productDesc: clean(item.item_name),
-            hsnCode: clean(item.hsn_code || item.hsn),
+            hsnCode: normalizeHsnCode(item.hsn_code || item.hsn),
             quantity: num(item.quantity || item.qty),
             qtyUnit: 'NOS',
             taxableAmount: roundedMoney(itemTaxable(item)),
@@ -293,7 +297,11 @@ function validatePayload(payload){
     if(!bill.toPlace) return 'Customer place missing.';
     if(!/^\d{6}$/.test(String(bill.toPincode || ''))) return 'Enter a valid 6-digit customer PIN code.';
     if(!bill.itemList.length) return 'No items found.';
-    if(bill.itemList.some(item => !/^\d{4}(?:\d{2})?(?:\d{2})?$/.test(item.hsnCode || ''))) return 'Enter a 4-, 6-, or 8-digit HSN code for every item.';
+    const invalidHsnItems = bill.itemList.filter(item => !/^\d{4}(?:\d{2})?(?:\d{2})?$/.test(item.hsnCode || ''));
+    if(invalidHsnItems.length){
+        const details = invalidHsnItems.map(item => `${item.productName || `Item ${item.itemNo}`}: ${item.hsnCode || '(blank)'}`).join(', ');
+        return `HSN must be 4, 6, or 8 digits. Check: ${details}`;
+    }
     if(bill.transMode === '1' && !bill.vehicleNo && !bill.transporterId) return 'For Road, enter Vehicle Number or Transporter ID.';
     return '';
 }

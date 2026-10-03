@@ -586,9 +586,22 @@
             opacity: 0.78;
         }
 
-        .autocomplete-table th:first-child,
-        .autocomplete-table td:first-child{
+        .autocomplete-table:not(.has-balance-pending) th:first-child,
+        .autocomplete-table:not(.has-balance-pending) td:first-child{
             width: 350px;
+        }
+
+        .autocomplete-table .customer-balance-pending{
+            width: 132px;
+            min-width: 132px;
+            max-width: 132px;
+            white-space: nowrap;
+            text-align: right;
+        }
+
+        .autocomplete-table.has-balance-pending th:nth-child(2),
+        .autocomplete-table.has-balance-pending td:nth-child(2){
+            width: 140px;
         }
 
 
@@ -4379,9 +4392,9 @@ const stockSelect = 'item_code,item_name,barcode,price1,price2,price3,landing,pu
         if(data && data.length > 0) {
                 const showBalanceColumn = data.some(customer => Number(customer.balance_pending) > 0);
             list.innerHTML = `
-<table class="autocomplete-table">
+<table class="autocomplete-table${showBalanceColumn ? ' has-balance-pending' : ''}">
 <tr>
-    ${showBalanceColumn ? '<th>Balance Pending</th>' : ''}
+${showBalanceColumn ? '<th class="customer-balance-pending">Balance Pending</th>' : ''}
 <th>Mobile</th>
 <th>Net Purchased</th>
 <th>Name</th>
@@ -4396,7 +4409,7 @@ ${data.map((c, idx) => {
     const rowTitle = hasRemark ? `CUSTOMER REMARK: ${c.customer_remark}` : (hasGst ? 'GST CUSTOMER' : '');
     return `
 <tr class="autocomplete-row ${rowClass}" data-idx="${idx}" title="${escapeHtml(rowTitle)}">
-${showBalanceColumn ? `<td>${Number(c.balance_pending) > 0 ? customerNetPurchaseFormatter.format(Number(c.balance_pending)) : ''}</td>` : ''}
+${showBalanceColumn ? `<td class="customer-balance-pending">${Number(c.balance_pending) > 0 ? customerNetPurchaseFormatter.format(Number(c.balance_pending)) : ''}</td>` : ''}
 <td>${escapeHtml(c.mobile || '')}</td>
 <td><span class="customer-net-purchase ${Number(c.net_purchase_amount || 0) < 0 ? 'negative' : ''}">${customerNetPurchaseFormatter.format(Number(c.net_purchase_amount) || 0)}</span></td>
 <td>${escapeHtml(c.name || '')}</td>

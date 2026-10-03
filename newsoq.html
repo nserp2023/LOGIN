@@ -509,8 +509,8 @@
         }
 
         @keyframes customer-balance-screen-blink {
-            0%, 16%, 33%, 50%, 100% { opacity: 0; }
-            8%, 25%, 42% { opacity: 0.65; }
+            0%, 100% { opacity: 0; }
+            50% { opacity: 0.65; }
         }
 
         body.customer-balance-blink::after {
@@ -521,7 +521,7 @@
             background: rgba(239, 68, 68, 0.45);
             opacity: 0;
             pointer-events: none;
-            animation: customer-balance-screen-blink 1.2s linear 1;
+            animation: customer-balance-screen-blink 1s linear 5;
         }
 
         /* ===== ULTRA CLEAN ITEM DROPDOWN ===== */

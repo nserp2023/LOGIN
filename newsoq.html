@@ -14,6 +14,7 @@
     <title>VAJRA LIGHTS - Billing Software</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabaseClient.js"></script>
+    <script src="credit-balance.js"></script>
     <script src="page_permissions.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="common-ui.js"></script>
@@ -505,6 +506,22 @@
         .autocomplete-table td{
             padding:6px;
             border:1px solid black;
+        }
+
+        @keyframes customer-balance-screen-blink {
+            0%, 16%, 33%, 50%, 100% { opacity: 0; }
+            8%, 25%, 42% { opacity: 0.65; }
+        }
+
+        body.customer-balance-blink::after {
+            content: "";
+            position: fixed;
+            inset: 0;
+            z-index: 10000;
+            background: rgba(239, 68, 68, 0.45);
+            opacity: 0;
+            pointer-events: none;
+            animation: customer-balance-screen-blink 1.2s linear 1;
         }
 
         /* ===== ULTRA CLEAN ITEM DROPDOWN ===== */
@@ -4161,6 +4178,8 @@ const stockSelect = 'item_code,item_name,barcode,price1,price2,price3,landing,pu
     let customerSearchRequestId = 0;
     let selectedCustomerFromDropdown = false;
     const customerNetPurchaseCache = new Map();
+    const customerCreditBalanceCache = new Map();
+    let customerCreditBalancesPromise = null;
     const customerNetPurchaseFormatter = new Intl.NumberFormat('en-IN', {
         style: 'currency',
         currency: 'INR',
@@ -4211,6 +4230,32 @@ const stockSelect = 'item_code,item_name,barcode,price1,price2,price3,landing,pu
 
     function customerMobileKey(value){
         return String(value || '').replace(/\D/g, '');
+    }
+
+    function customerCreditMobileKey(value){
+        return String(value || '').replace(/\D/g, '').slice(-10);
+    }
+
+    async function loadCustomerCreditBalances(){
+        if(!customerCreditBalancesPromise){
+            customerCreditBalancesPromise = (async () => {
+                try{
+                    const accounts = await window.loadCanonicalCreditAccounts();
+                    accounts.forEach(account => {
+                        const mobile = customerCreditMobileKey(account.mobile);
+                        const balance = Number(window.canonicalCreditBalance(account)) || 0;
+                        if(mobile && balance > 0){
+                            customerCreditBalanceCache.set(mobile, balance);
+                        }
+                    });
+                }catch(error){
+                    customerCreditBalancesPromise = null;
+                    console.warn('Customer credit balance load error:', error);
+                }
+                return customerCreditBalanceCache;
+            })();
+        }
+        return customerCreditBalancesPromise;
     }
 
     function customerAmount(value){
@@ -4332,9 +4377,11 @@ const stockSelect = 'item_code,item_name,barcode,price1,price2,price3,landing,pu
         list.innerHTML = '';
 
         if(data && data.length > 0) {
+                const showBalanceColumn = data.some(customer => Number(customer.balance_pending) > 0);
             list.innerHTML = `
 <table class="autocomplete-table">
 <tr>
+    ${showBalanceColumn ? '<th>Balance Pending</th>' : ''}
 <th>Mobile</th>
 <th>Net Purchased</th>
 <th>Name</th>
@@ -4349,6 +4396,7 @@ ${data.map((c, idx) => {
     const rowTitle = hasRemark ? `CUSTOMER REMARK: ${c.customer_remark}` : (hasGst ? 'GST CUSTOMER' : '');
     return `
 <tr class="autocomplete-row ${rowClass}" data-idx="${idx}" title="${escapeHtml(rowTitle)}">
+${showBalanceColumn ? `<td>${Number(c.balance_pending) > 0 ? customerNetPurchaseFormatter.format(Number(c.balance_pending)) : ''}</td>` : ''}
 <td>${escapeHtml(c.mobile || '')}</td>
 <td><span class="customer-net-purchase ${Number(c.net_purchase_amount || 0) < 0 ? 'negative' : ''}">${customerNetPurchaseFormatter.format(Number(c.net_purchase_amount) || 0)}</span></td>
 <td>${escapeHtml(c.name || '')}</td>
@@ -4505,7 +4553,13 @@ ${data.map((c, idx) => {
                 if(requestId !== customerSearchRequestId) return;
                 const customers = await addCustomerNetPurchaseAmounts(data || []);
                 if(requestId !== customerSearchRequestId) return;
-                renderCustomerSuggestions(input, list, customers, onSelect);
+                const creditBalances = await loadCustomerCreditBalances();
+                if(requestId !== customerSearchRequestId) return;
+                const customersWithBalances = customers.map(customer => ({
+                    ...customer,
+                    balance_pending: creditBalances.get(customerCreditMobileKey(customer.mobile)) || 0
+                }));
+                renderCustomerSuggestions(input, list, customersWithBalances, onSelect);
             }, 250);
         });
 
@@ -4686,6 +4740,15 @@ ${data.map((c, idx) => {
         updateGstCustomerHighlight();
         hideCustomerSuggestions();
         lastHistoryKey = "";
+        if(Number(c.balance_pending) > 0){
+            const body = document.body;
+            body.classList.remove('customer-balance-blink');
+            void body.offsetWidth;
+            body.classList.add('customer-balance-blink');
+            body.addEventListener('animationend', () => {
+                body.classList.remove('customer-balance-blink');
+            }, { once: true });
+        }
         document.getElementById('cust_address').focus();
     }
 

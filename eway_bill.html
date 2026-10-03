@@ -367,8 +367,7 @@ function downloadJson(){
     const payload = generateJson();
     const issue = validatePayload(payload);
     if(issue){ alert(issue); return; }
-    const docNo = clean(payload.billLists?.[0]?.docNo) || 'eway_bill';
-    downloadText('eway_' + docNo.replace(/\W+/g,'_') + '.json', JSON.stringify(payload, null, 2));
+    downloadText('E-WayBill_JSON.json', JSON.stringify(payload, null, 2));
 }
 
 function buildPrint(){

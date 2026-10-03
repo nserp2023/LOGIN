@@ -35,13 +35,6 @@ app.use(express.static(process.cwd()));
 const EWAY_USERNAME = process.env.EWAY_USERNAME || process.env.EWAY_BILL_USERNAME || "";
 const EWAY_JSON_DIRECTORY = path.join(process.cwd(), "eway-json");
 
-function ewayFilePart(value) {
-    return String(value || "eway_bill")
-        .replace(/[^a-z0-9_-]+/gi, "_")
-        .replace(/^_+|_+$/g, "")
-        .slice(0, 80) || "eway_bill";
-}
-
 app.get("/eway-login-check", (_req, res) => {
     res.json({
         success: true,
@@ -57,8 +50,7 @@ app.post("/generate-eway-json", (req, res) => {
 
     try {
         fs.mkdirSync(EWAY_JSON_DIRECTORY, { recursive: true });
-        const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-        const fileName = `eway_${ewayFilePart(payload.docNo)}_${timestamp}.json`;
+        const fileName = "E-WayBill_JSON.json";
         fs.writeFileSync(path.join(EWAY_JSON_DIRECTORY, fileName), JSON.stringify(payload, null, 2), "utf8");
         res.json({ success: true, fileName, jsonData: payload });
     } catch (error) {

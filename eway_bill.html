@@ -75,6 +75,19 @@
     </div>
 
     <div class="card noPrint">
+        <h3>Consignor / Seller Details</h3>
+        <div class="grid">
+            <div class="two"><label>Seller GSTIN / Login GSTIN</label><input id="fromGstin" maxlength="15" placeholder="15-character GSTIN"></div>
+            <div class="two"><label>Legal Name</label><input id="fromTrdName" value="VAJRA LIGHTS AND ELECTRICALS"></div>
+            <div class="two"><label>Address Line 1</label><input id="fromAddr1"></div>
+            <div class="two"><label>Address Line 2</label><input id="fromAddr2"></div>
+            <div><label>Place</label><input id="fromPlace"></div>
+            <div><label>PIN Code</label><input id="fromPincode" inputmode="numeric" maxlength="6"></div>
+            <div><label>State Code</label><input id="fromStateCode" inputmode="numeric" value="32"></div>
+        </div>
+    </div>
+
+    <div class="card noPrint">
         <h3>Transport Details</h3>
         <div class="grid">
             <div><label>Transport Mode</label><select id="transMode"><option value="1">Road</option><option value="2">Rail</option><option value="3">Air</option><option value="4">Ship</option></select></div>
@@ -97,7 +110,6 @@
         <h3>Generated JSON</h3>
         <textarea id="jsonBox" style="min-height:240px;font-family:Consolas,monospace;text-transform:none" readonly></textarea>
     </div>
-
     <div id="printArea" class="printArea"></div>
 </div>
 
@@ -107,18 +119,15 @@ let billRow = null;
 let billItems = [];
 
 function qs(name){ return new URLSearchParams(location.search).get(name); }
-function num(v){ return Number(v || 0); }
-function money(v){ return Number(v || 0).toFixed(2); }
-function clean(v){ return String(v || '').trim(); }
-function escapeHTML(v){ return String(v || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
+function num(value){ return Number(value || 0); }
+function money(value){ return Number(value || 0).toFixed(2); }
+function clean(value){ return String(value || '').trim(); }
+function escapeHTML(value){ return String(value || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
 const DEPLOYED_BACKEND_URL = 'https://nserp-vajra-voice-api.onrender.com';
 function apiBase(){ return clean(document.getElementById('backendUrl').value).replace(/\/$/, ''); }
 
 function setDefaultBackendUrl(){
-    // GitHub Pages cannot reach a server on the visitor's own localhost.
-    if(location.hostname.endsWith('github.io')){
-        document.getElementById('backendUrl').value = DEPLOYED_BACKEND_URL;
-    }
+    if(location.hostname.endsWith('github.io')) document.getElementById('backendUrl').value = DEPLOYED_BACKEND_URL;
 }
 
 function getConfig(){
@@ -158,126 +167,134 @@ async function loadData(){
 function guessPlacePinFromAddress(address){
     const pin = String(address).match(/\b\d{6}\b/);
     if(pin) document.getElementById('toPincode').value = pin[0];
-    const parts = String(address).split(',').map(x => x.trim()).filter(Boolean);
+    const parts = String(address).split(',').map(value => value.trim()).filter(Boolean);
     if(parts.length) document.getElementById('toPlace').value = parts[Math.max(0, parts.length - 2)] || parts[0];
 }
 
-function itemTaxable(i){
-    const qty = num(i.quantity || i.qty);
-    const price = num(i.price);
-    const disc = num(i.discount_percent);
-    const net = price - (price * disc / 100);
-    return net * qty;
+function itemTaxable(item){
+    const qty = num(item.quantity || item.qty);
+    const price = num(item.price);
+    const discount = num(item.discount_percent);
+    return (price - price * discount / 100) * qty;
 }
 
-function itemTotal(i){
-    const qty = num(i.quantity || i.qty);
-    if(num(i.sales_price_gst)) return num(i.sales_price_gst) * qty;
-    const taxable = itemTaxable(i);
-    return taxable + taxable * num(i.gst_percent) / 100;
+function itemTotal(item){
+    const qty = num(item.quantity || item.qty);
+    if(num(item.sales_price_gst)) return num(item.sales_price_gst) * qty;
+    const taxable = itemTaxable(item);
+    return taxable + taxable * num(item.gst_percent) / 100;
 }
 
 function renderItems(){
     const body = document.getElementById('itemBody');
     if(!billItems.length){ body.innerHTML = '<tr><td colspan="7">No item rows found.</td></tr>'; return; }
     let total = 0;
-    body.innerHTML = billItems.map((i, idx) => {
-        const taxable = itemTaxable(i), rowTotal = itemTotal(i); total += rowTotal;
-        return `<tr><td>${idx+1}</td><td>${escapeHTML(i.item_name || '')}<br><small>${escapeHTML(i.item_code || '')}</small></td><td>${escapeHTML(i.hsn_code || i.hsn || '')}</td><td>${num(i.quantity || i.qty)}</td><td>₹${money(taxable)}</td><td>${money(i.gst_percent)}</td><td>₹${money(rowTotal)}</td></tr>`;
+    body.innerHTML = billItems.map((item, index) => {
+        const taxable = itemTaxable(item), rowTotal = itemTotal(item);
+        total += rowTotal;
+        return `<tr><td>${index+1}</td><td>${escapeHTML(item.item_name || '')}<br><small>${escapeHTML(item.item_code || '')}</small></td><td>${escapeHTML(item.hsn_code || item.hsn || '')}</td><td>${num(item.quantity || item.qty)}</td><td>₹${money(taxable)}</td><td>${money(item.gst_percent)}</td><td>₹${money(rowTotal)}</td></tr>`;
     }).join('');
     document.getElementById('grandTotal').innerText = 'Items Total: ₹' + money(total);
 }
 
+function converterDate(value){
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(clean(value));
+    return match ? `${match[3]}/${match[2]}/${match[1]}` : clean(value);
+}
+
+function roundedMoney(value){ return Number(Number(value || 0).toFixed(2)); }
+
 function getItemList(){
-    return billItems.map(i => {
-        const qty = num(i.quantity || i.qty);
-        const gst = num(i.gst_percent);
-        const taxable = itemTaxable(i);
+    const sameState = num(document.getElementById('fromStateCode').value) === num(document.getElementById('toStateCode').value);
+    return billItems.map((item, index) => {
+        const gst = num(item.gst_percent);
         return {
-            item_name: clean(i.item_name),
-            productName: clean(i.item_name),
-            productDesc: clean(i.item_name),
-            hsn_code: clean(i.hsn_code || i.hsn),
-            hsnCode: clean(i.hsn_code || i.hsn),
-            quantity: qty,
+            itemNo: index + 1,
+            productName: clean(item.item_name),
+            productDesc: clean(item.item_name),
+            hsnCode: clean(item.hsn_code || item.hsn),
+            quantity: num(item.quantity || item.qty),
             qtyUnit: 'NOS',
-            unit: 'NOS',
-            taxable: Number(taxable.toFixed(2)),
-            taxableAmount: Number(taxable.toFixed(2)),
-            gst_percent: gst,
-            sgst_rate: Number((gst / 2).toFixed(2)),
-            cgst_rate: Number((gst / 2).toFixed(2)),
-            igst_rate: 0,
-            cess_rate: 0,
+            taxableAmount: roundedMoney(itemTaxable(item)),
+            sgstRate: sameState ? roundedMoney(gst / 2) : 0,
+            cgstRate: sameState ? roundedMoney(gst / 2) : 0,
+            igstRate: sameState ? 0 : gst,
+            cessRate: 0,
             cessNonAdvol: 0
         };
     });
 }
 
 function buildPayload(){
-    const taxable = billItems.reduce((s,i) => s + itemTaxable(i), 0);
-    const cgst = billItems.reduce((s,i) => s + (itemTaxable(i) * num(i.gst_percent) / 100 / 2), 0);
-    const sgst = cgst;
-    const total = num(document.getElementById('totalValue').value) || (taxable + cgst + sgst);
-    return {
+    const fromStateCode = num(document.getElementById('fromStateCode').value) || 32;
+    const toStateCode = num(document.getElementById('toStateCode').value) || 32;
+    const sameState = fromStateCode === toStateCode;
+    const taxable = billItems.reduce((sum, item) => sum + itemTaxable(item), 0);
+    const gstTotal = billItems.reduce((sum, item) => sum + itemTaxable(item) * num(item.gst_percent) / 100, 0);
+    const sellerGstin = clean(document.getElementById('fromGstin').value).toUpperCase();
+    const items = getItemList();
+    const bill = {
+        genMode: 'Excel',
+        userGstin: sellerGstin,
         supplyType: document.getElementById('supplyType').value,
         subSupplyType: document.getElementById('subSupplyType').value,
         subSupplyDesc: '',
         docType: document.getElementById('docType').value,
         docNo: clean(document.getElementById('docNo').value),
-        invoiceNumber: clean(document.getElementById('docNo').value),
-        docDate: clean(document.getElementById('docDate').value),
-        invoiceDate: clean(document.getElementById('docDate').value),
-        transactionType: Number(document.getElementById('transactionType').value),
-        fromName: 'VAJRA LIGHTS AND ELECTRICALS',
+        docDate: converterDate(document.getElementById('docDate').value),
+        transType: Number(document.getElementById('transactionType').value),
+        fromGstin: sellerGstin,
+        fromTrdName: clean(document.getElementById('fromTrdName').value),
+        fromAddr1: clean(document.getElementById('fromAddr1').value),
+        fromAddr2: clean(document.getElementById('fromAddr2').value),
+        fromPlace: clean(document.getElementById('fromPlace').value),
+        fromPincode: Number(document.getElementById('fromPincode').value || 0),
+        fromStateCode,
+        actualFromStateCode: fromStateCode,
         toGstin: clean(document.getElementById('toGstin').value) || 'URP',
-        customerGST: clean(document.getElementById('toGstin').value) || 'URP',
         toTrdName: clean(document.getElementById('toTrdName').value),
-        customerName: clean(document.getElementById('toTrdName').value),
         toAddr1: clean(document.getElementById('toAddr1').value),
-        customerAddress: clean(document.getElementById('toAddr1').value),
+        toAddr2: '',
         toPlace: clean(document.getElementById('toPlace').value),
-        customerPlace: clean(document.getElementById('toPlace').value),
         toPincode: Number(document.getElementById('toPincode').value || 0),
-        customerPincode: Number(document.getElementById('toPincode').value || 0),
-        toStateCode: Number(document.getElementById('toStateCode').value || 32),
-        customerStateCode: Number(document.getElementById('toStateCode').value || 32),
-        actualToStateCode: Number(document.getElementById('toStateCode').value || 32),
-        totalValue: Number(taxable.toFixed(2)),
-        taxableAmount: Number(taxable.toFixed(2)),
-        cgstValue: Number(cgst.toFixed(2)),
-        cgstAmount: Number(cgst.toFixed(2)),
-        sgstValue: Number(sgst.toFixed(2)),
-        sgstAmount: Number(sgst.toFixed(2)),
-        igstValue: 0, igstAmount: 0, cessValue: 0, cessAmount: 0, cessNonAdvolValue: 0, otherValue: 0,
-        totInvValue: Number(total.toFixed(2)),
-        totalInvoiceAmount: Number(total.toFixed(2)),
+        toStateCode,
+        actualToStateCode: toStateCode,
+        totalValue: roundedMoney(taxable),
+        cgstValue: roundedMoney(sameState ? gstTotal / 2 : 0),
+        sgstValue: roundedMoney(sameState ? gstTotal / 2 : 0),
+        igstValue: roundedMoney(sameState ? 0 : gstTotal),
+        cessValue: 0,
+        cessNonAdvolValue: 0,
+        otherValue: 0,
+        totInvValue: roundedMoney(num(document.getElementById('totalValue').value) || taxable + gstTotal),
         transMode: document.getElementById('transMode').value,
-        transportMode: document.getElementById('transMode').value,
-        transDistance: String(document.getElementById('distance').value || '0'),
-        distance: Number(document.getElementById('distance').value || 0),
+        transDistance: Math.max(0, num(document.getElementById('distance').value)),
         transporterName: clean(document.getElementById('transporterName').value),
         transporterId: clean(document.getElementById('transporterId').value),
         transDocNo: clean(document.getElementById('transDocNo').value),
-        transportDocNo: clean(document.getElementById('transDocNo').value),
-        transDocDate: clean(document.getElementById('transDocDate').value),
+        transDocDate: converterDate(document.getElementById('transDocDate').value),
         vehicleNo: clean(document.getElementById('vehicleNo').value),
-        vehicleNumber: clean(document.getElementById('vehicleNo').value),
         vehicleType: document.getElementById('vehicleType').value,
-        items: getItemList(),
-        itemList: getItemList()
+        mainHsnCode: items[0]?.hsnCode || '',
+        itemList: items
     };
+    return { version: '1.0.0621', billLists: [bill] };
 }
 
-function validatePayload(p){
-    if(!p.docNo) return 'Invoice number missing.';
-    if(!p.docDate) return 'Invoice date missing.';
-    if(!p.toTrdName) return 'Customer name missing.';
-    if(!p.toAddr1) return 'Customer address missing.';
-    if(!p.toPlace) return 'Customer place missing.';
-    if(!p.toPincode) return 'Customer pincode missing.';
-    if(!p.itemList.length) return 'No items found.';
-    if(p.transMode === '1' && !p.vehicleNo && !p.transporterId) return 'For Road, enter Vehicle Number or Transporter ID.';
+function validatePayload(payload){
+    const bill = payload.billLists?.[0];
+    if(!bill) return 'No bill details found.';
+    if(!/^[0-9A-Z]{15}$/.test(bill.userGstin || '')) return 'Enter a valid 15-character seller GSTIN / login GSTIN.';
+    if(!bill.docNo) return 'Invoice number missing.';
+    if(!bill.docDate) return 'Invoice date missing.';
+    if(!/^\d{6}$/.test(String(bill.fromPincode || ''))) return 'Enter a valid 6-digit seller PIN code.';
+    if(!bill.toTrdName) return 'Customer name missing.';
+    if(!bill.toAddr1) return 'Customer address missing.';
+    if(!bill.toPlace) return 'Customer place missing.';
+    if(!/^\d{6}$/.test(String(bill.toPincode || ''))) return 'Enter a valid 6-digit customer PIN code.';
+    if(!bill.itemList.length) return 'No items found.';
+    if(bill.itemList.some(item => !/^\d{4}(?:\d{4})?$/.test(item.hsnCode || ''))) return 'Enter a 4- or 8-digit HSN code for every item.';
+    if(bill.transMode === '1' && !bill.vehicleNo && !bill.transporterId) return 'For Road, enter Vehicle Number or Transporter ID.';
     return '';
 }
 
@@ -292,77 +309,76 @@ async function checkBackend(){
     const box = document.getElementById('backendStatus');
     box.innerHTML = 'Checking...';
     try{
-        const res = await fetch(apiBase() + '/eway-login-check');
-        const data = await res.json();
-        if(data.success) box.innerHTML = '<span class="ok">✅ Connected: ' + escapeHTML(data.username || '') + '</span>';
-        else box.innerHTML = '<span class="bad">❌ ' + escapeHTML(data.message || 'Backend error') + '</span>';
-    }catch(e){
-        box.innerHTML = '<span class="bad">❌ Backend not reachable. Start server.js first.</span>';
+        const response = await fetch(apiBase() + '/eway-login-check');
+        const data = await response.json();
+        if(data.success) box.innerHTML = '<span class="ok">Connected: ' + escapeHTML(data.username || '') + '</span>';
+        else box.innerHTML = '<span class="bad">' + escapeHTML(data.message || 'Backend error') + '</span>';
+    }catch(error){
+        box.innerHTML = '<span class="bad">Backend not reachable. Start server.js first.</span>';
     }
 }
 
 async function sendToBackend(){
     const payload = generateJson();
     const issue = validatePayload(payload);
-    if(issue && !confirm(issue + '\n\nContinue anyway?')) return;
-    const btns = document.querySelectorAll('button');
-    btns.forEach(b => b.disabled = true);
+    if(issue){ alert(issue); return; }
+    const buttons = document.querySelectorAll('button');
+    buttons.forEach(button => button.disabled = true);
     try{
-        const res = await fetch(apiBase() + '/generate-eway-json', {
-            method:'POST',
-            headers:{'Content-Type':'application/json'},
-            body: JSON.stringify(payload)
+        const response = await fetch(apiBase() + '/generate-eway-json', {
+            method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)
         });
-        const data = await res.json();
-        if(!res.ok || !data.success) throw new Error(data.message || 'Server failed');
+        const data = await response.json();
+        if(!response.ok || !data.success) throw new Error(data.message || 'Server failed');
         document.getElementById('jsonBox').value = JSON.stringify(data.jsonData || payload, null, 2);
-        alert('✅ E-Way JSON generated on server. File: ' + (data.fileName || 'created'));
-    }catch(e){
-        alert('Server JSON generation failed: ' + e.message + '\n\nCheck server.js is running and CORS is enabled.');
+        alert('E-Way JSON generated on server. File: ' + (data.fileName || 'created'));
+    }catch(error){
+        alert('Server JSON generation failed: ' + error.message + '\n\nCheck server.js is running and CORS is enabled.');
     }finally{
-        btns.forEach(b => b.disabled = false);
+        buttons.forEach(button => button.disabled = false);
     }
 }
 
 async function copyJson(){
-    generateJson();
-    try{ await navigator.clipboard.writeText(document.getElementById('jsonBox').value); alert('✅ E-Way Bill JSON copied.'); }
-    catch(e){ alert('Copy failed. Please select and copy manually.'); }
+    const payload = generateJson();
+    const issue = validatePayload(payload);
+    if(issue){ alert(issue); return; }
+    try{ await navigator.clipboard.writeText(document.getElementById('jsonBox').value); alert('E-Way Bill JSON copied.'); }
+    catch(error){ alert('Copy failed. Please select and copy manually.'); }
 }
 
 function downloadText(filename, text){
     const blob = new Blob([text], {type:'application/json'});
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+    const anchor = document.createElement('a');
+    anchor.href = url; anchor.download = filename; document.body.appendChild(anchor); anchor.click(); anchor.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function downloadJson(){
     const payload = generateJson();
-    const docNo = clean(document.getElementById('docNo').value) || 'eway_bill';
+    const issue = validatePayload(payload);
+    if(issue){ alert(issue); return; }
+    const docNo = clean(payload.billLists?.[0]?.docNo) || 'eway_bill';
     downloadText('eway_' + docNo.replace(/\W+/g,'_') + '.json', JSON.stringify(payload, null, 2));
 }
 
 function buildPrint(){
-    const p = buildPayload();
-    const rows = billItems.map((i, idx) => `<tr><td>${idx+1}</td><td>${escapeHTML(i.item_name || '')}</td><td>${escapeHTML(i.hsn_code || '')}</td><td>${num(i.quantity || i.qty)}</td><td>${money(itemTaxable(i))}</td><td>${money(i.gst_percent)}</td><td>${money(itemTotal(i))}</td></tr>`).join('');
-    document.getElementById('printArea').innerHTML = `<h2 style="text-align:center;margin:0 0 6px">E-Way Bill Details</h2><h3 style="text-align:center;margin:0 0 16px">VAJRA LIGHTS AND ELECTRICALS</h3><table><tr><th>Invoice No</th><td>${escapeHTML(p.docNo)}</td><th>Date</th><td>${escapeHTML(p.docDate)}</td></tr><tr><th>Customer</th><td>${escapeHTML(p.toTrdName)}</td><th>GSTIN</th><td>${escapeHTML(p.toGstin)}</td></tr><tr><th>Address</th><td colspan="3">${escapeHTML(p.toAddr1)}</td></tr><tr><th>Place</th><td>${escapeHTML(p.toPlace)}</td><th>PIN / State</th><td>${p.toPincode} / ${p.toStateCode}</td></tr><tr><th>Transport</th><td>${escapeHTML(p.transporterName)}</td><th>Vehicle</th><td>${escapeHTML(p.vehicleNo)}</td></tr><tr><th>Distance</th><td>${escapeHTML(p.transDistance)} KM</td><th>Total</th><td>₹${money(p.totInvValue)}</td></tr></table><h3>Item Details</h3><table><thead><tr><th>Sl</th><th>Item</th><th>HSN</th><th>Qty</th><th>Taxable</th><th>GST%</th><th>Total</th></tr></thead><tbody>${rows}</tbody></table><p style="font-size:12px;margin-top:14px">Prepared from billing software. Verify all details on official e-Way Bill portal before final generation.</p>`;
+    const bill = buildPayload().billLists[0];
+    const rows = billItems.map((item, index) => `<tr><td>${index+1}</td><td>${escapeHTML(item.item_name || '')}</td><td>${escapeHTML(item.hsn_code || item.hsn || '')}</td><td>${num(item.quantity || item.qty)}</td><td>${money(itemTaxable(item))}</td><td>${money(item.gst_percent)}</td><td>${money(itemTotal(item))}</td></tr>`).join('');
+    document.getElementById('printArea').innerHTML = `<h2 style="text-align:center;margin:0 0 6px">E-Way Bill Details</h2><h3 style="text-align:center;margin:0 0 16px">${escapeHTML(bill.fromTrdName)}</h3><table><tr><th>Invoice No</th><td>${escapeHTML(bill.docNo)}</td><th>Date</th><td>${escapeHTML(bill.docDate)}</td></tr><tr><th>Customer</th><td>${escapeHTML(bill.toTrdName)}</td><th>GSTIN</th><td>${escapeHTML(bill.toGstin)}</td></tr><tr><th>Address</th><td colspan="3">${escapeHTML(bill.toAddr1)}</td></tr><tr><th>Place</th><td>${escapeHTML(bill.toPlace)}</td><th>PIN / State</th><td>${bill.toPincode} / ${bill.toStateCode}</td></tr><tr><th>Transport</th><td>${escapeHTML(bill.transporterName)}</td><th>Vehicle</th><td>${escapeHTML(bill.vehicleNo)}</td></tr><tr><th>Distance</th><td>${bill.transDistance} KM</td><th>Total</th><td>₹${money(bill.totInvValue)}</td></tr></table><h3>Item Details</h3><table><thead><tr><th>Sl</th><th>Item</th><th>HSN</th><th>Qty</th><th>Taxable</th><th>GST%</th><th>Total</th></tr></thead><tbody>${rows}</tbody></table><p style="font-size:12px;margin-top:14px">Prepared from billing software. Verify all details on official e-Way Bill portal before final generation.</p>`;
 }
 
-['backendUrl','docType','supplyType','subSupplyType','transactionType','docNo','docDate','toGstin','toTrdName','toAddr1','toPlace','toStateCode','toPincode','distance','transMode','vehicleType','vehicleNo','transporterId','transporterName','transDocNo','transDocDate'].forEach(id => {
-    document.addEventListener('input', e => { if(e.target && e.target.id === id) generateJson(); });
-    document.addEventListener('change', e => { if(e.target && e.target.id === id) generateJson(); });
+['backendUrl','docType','supplyType','subSupplyType','transactionType','docNo','docDate','toGstin','toTrdName','toAddr1','toPlace','toStateCode','toPincode','distance','transMode','vehicleType','vehicleNo','transporterId','transporterName','transDocNo','transDocDate','fromGstin','fromTrdName','fromAddr1','fromAddr2','fromPlace','fromPincode','fromStateCode'].forEach(id => {
+    document.addEventListener('input', event => { if(event.target && event.target.id === id) generateJson(); });
+    document.addEventListener('change', event => { if(event.target && event.target.id === id) generateJson(); });
 });
 
 window.downloadJson = downloadJson;
 window.copyJson = copyJson;
 window.sendToBackend = sendToBackend;
 window.checkBackend = checkBackend;
-document.addEventListener('DOMContentLoaded', () => {
-    setDefaultBackendUrl();
-    loadData();
-});
+document.addEventListener('DOMContentLoaded', () => { setDefaultBackendUrl(); loadData(); });
 </script>
 </body>
 </html>

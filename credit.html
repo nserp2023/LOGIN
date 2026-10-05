@@ -22,6 +22,8 @@
 .detail-actions .detail-action{display:inline-flex;align-items:center;justify-content:center;min-width:38px;min-height:38px;padding:0 9px;border:1px solid var(--line);border-radius:8px;cursor:pointer;font-weight:800}
 .detail-actions .print-detail{width:38px;padding:0;font-size:0}
 .detail-actions .print-detail svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.credit-reminder-toggle{display:inline-flex;align-items:center;gap:4px;color:var(--muted);font-size:11px;font-weight:700;cursor:pointer}
+.credit-reminder-toggle input{width:16px;height:16px;margin:0;accent-color:var(--green);cursor:pointer}
 .detail-actions .whatsapp-detail{background:#14532d;color:#dcfce7}
 .detail-actions .whatsapp-detail:disabled{opacity:.45;cursor:not-allowed}
 @media print{
@@ -53,7 +55,7 @@
     <div class="stat"><small>Accounts</small><strong id="sAccounts" class="blue">0</strong></div><div class="stat"><small>Balance</small><strong id="sBalance" class="red">0.00</strong></div>
   </div>
   <div class="panel"><div class="status" id="status">Loading credit accounts...</div></div>
-  <div class="panel table-wrap"><table><thead><tr><th>Customer</th><th>Mobile</th><th class="right">Bills</th><th class="right">Bill Amount</th><th class="right">Payment</th><th class="right">Credit Receipt</th><th class="right">Advance</th><th class="right">Return</th><th class="right">Balance as of To</th><th>Detail</th></tr></thead><tbody id="accounts"><tr><td colspan="10" class="empty">Loading...</td></tr></tbody></table></div>
+  <div class="panel table-wrap"><table><thead><tr><th>Customer</th><th>Mobile</th><th class="right">Bills</th><th class="right">Bill Amount</th><th class="right">Payment</th><th class="right">Credit Receipt</th><th class="right">Advance</th><th class="right">Return</th><th class="right">Balance as of To</th><th>Actions</th></tr></thead><tbody id="accounts"><tr><td colspan="10" class="empty">Loading...</td></tr></tbody></table></div>
 </div>
 <div id="printArea"></div>
 <script>
@@ -93,10 +95,45 @@ render=function(term){
  const html=renderedAccounts.map((a,index)=>{const currentBalance=balance(a);totals.bills+=a.bills;totals.billAmount+=a.billAmount;totals.payments+=a.payments;totals.receipts+=a.receipts;totals.deductions+=a.advances+a.returns;totals.balance+=currentBalance;const entries=[...a.entries].sort((x,y)=>x.date.localeCompare(y.date));let opening=0;entries.forEach(entry=>{if(activeFrom&&entry.date&&entry.date<activeFrom)opening+=entryChange(entry)});let running=opening;const detailRows=[`<tr><td>${htmlEscape(activeFrom||'')}</td><td>Opening Balance</td><td></td><td class="right">-</td><td class="right">-</td><td class="right">${money(running)}</td></tr>`];entries.filter(entry=>(!activeFrom||!entry.date||entry.date>=activeFrom)&&(!activeTo||!entry.date||entry.date<=activeTo)).forEach(entry=>{running+=entryChange(entry);const reduction=entry.type==='receipt'||entry.type==='advance'||entry.type==='return';detailRows.push(`<tr><td>${htmlEscape(entry.date)}</td><td>${htmlEscape(entry.type.toUpperCase())}</td><td>${htmlEscape(entry.doc)}</td><td class="right">${reduction?money(entry.amount):'-'}</td><td class="right">${reduction?'-':money(entry.amount)}</td><td class="right">${money(running)}</td></tr>`)});return `<tr class="account-row" data-index="${index}"><td>${htmlEscape(a.name)}</td><td>${htmlEscape(a.mobile)}</td><td class="right">${a.bills}</td><td class="right">${money(a.billAmount)}</td><td class="right">${money(a.payments)}</td><td class="right">${money(a.receipts)}</td><td class="right">${money(a.advances)}</td><td class="right">${money(a.returns)}</td><td class="right"><strong class="${currentBalance<0?'red':currentBalance>0?'green':'blue'}">${money(currentBalance)}</strong></td><td><button class="btn alt print-detail" data-print-index="${index}" title="Print customer detail">Print detail</button></td></tr><tr class="detail-row" data-detail="${index}" hidden><td colspan="10"><div class="detail"><table><thead><tr><th>Date</th><th>Type</th><th>Voucher</th><th class="right">Credit / Reduction</th><th class="right">Debit / Increase</th><th class="right">Balance</th></tr></thead><tbody>${detailRows.join('')}</tbody></table></div></td></tr>`}).join('');
  $('accounts').innerHTML=html||'<tr><td colspan="10" class="empty">No matching credit account</td></tr>';$('sAccounts').textContent=renderedAccounts.length;$('sBalance').textContent=money(totals.balance);
 };
-function sendWhatsAppReminder(index){const customer=renderedAccounts[index];if(!customer)return;const mobile=digits(customer.mobile),pending=balance(customer);if(mobile.length!==10){alert('A valid 10-digit customer mobile number is required for WhatsApp.');return}if(pending<=0){alert('This customer has no pending balance to pay.');return}const message=`നമസ്കാരം ${customer.name},\n\nതാങ്കളുടെ നിലവിലെ BALANCE തുക ₹${money(pending)} ആണ്. ദയവായി ഈ തുക അടച്ച് തീർപ്പാക്കണമെന്ന് അഭ്യർത്ഥിക്കുന്നു.\n\nനന്ദി,\nVAJRA LIGHTS`;window.open(`https://wa.me/91${mobile}?text=${encodeURIComponent(message)}`,'_blank','noopener,noreferrer')}
+let canManageCreditReminders=false;
+const creditReminderKey=customer=>`credit-whatsapp-reminder:${digits(customer.mobile)}`;
+function isCreditReminderEnabled(customer){return localStorage.getItem(creditReminderKey(customer))!=='false'}
+async function initializeCreditReminderAccess(){try{const profile=await getLoggedInProfile();canManageCreditReminders=['OWNER','ADMIN'].includes(String(profile?.role||'').trim().toUpperCase())}catch(error){console.warn('Credit reminder permission check failed',error);canManageCreditReminders=false}render(clean($('search').value).toLowerCase())}
+function sendWhatsAppReminder(index){const customer=renderedAccounts[index];if(!customer||!isCreditReminderEnabled(customer))return;const mobile=digits(customer.mobile),pending=balance(customer);if(mobile.length!==10){alert('A valid 10-digit customer mobile number is required for WhatsApp.');return}if(pending<=0){alert('This customer has no pending balance to pay.');return}const message=`നമസ്കാരം ${customer.name},\n\nതാങ്കളുടെ നിലവിലെ BALANCE തുക ₹${money(pending)} ആണ്. ദയവായി ഈ തുക അടച്ച് തീർപ്പാക്കണമെന്ന് അഭ്യർത്ഥിക്കുന്നു.\n\nനന്ദി,\nVAJRA LIGHTS`;window.open(`https://wa.me/91${mobile}?text=${encodeURIComponent(message)}`,'_blank','noopener,noreferrer')}
 const renderCreditAccounts=render;
-render=function(term){renderCreditAccounts(term);document.querySelectorAll('.account-row').forEach(row=>{const printButton=row.querySelector('.print-detail');if(!printButton)return;printButton.classList.add('detail-action');printButton.setAttribute('aria-label','Print customer detail');printButton.title='Print customer detail';printButton.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8V3h10v5M7 17H5a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M7 14h10v7H7zM18 11h.01"/></svg>';const actions=document.createElement('div');actions.className='detail-actions';printButton.parentNode.replaceChild(actions,printButton);actions.appendChild(printButton);const whatsappButton=document.createElement('button');whatsappButton.type='button';whatsappButton.className='detail-action whatsapp-detail';whatsappButton.dataset.whatsappIndex=row.dataset.index;whatsappButton.textContent='WhatsApp';whatsappButton.title='Open Malayalam balance reminder in WhatsApp';whatsappButton.setAttribute('aria-label','Open Malayalam balance reminder in WhatsApp');const customer=renderedAccounts[Number(row.dataset.index)];whatsappButton.disabled=!customer||digits(customer.mobile).length!==10||balance(customer)<=0;actions.appendChild(whatsappButton)})};
-document.addEventListener('DOMContentLoaded',()=>{$('printBalancesBtn').onclick=printBalances;$('accounts').addEventListener('click',event=>{const whatsappButton=event.target.closest('.whatsapp-detail');if(whatsappButton){event.stopPropagation();sendWhatsAppReminder(Number(whatsappButton.dataset.whatsappIndex));return}const button=event.target.closest('.print-detail');if(button){event.stopPropagation();printCustomerDetail(Number(button.dataset.printIndex));return}const row=event.target.closest('.account-row');if(row){const detail=document.querySelector(`[data-detail="${row.dataset.index}"]`);if(detail)detail.hidden=!detail.hidden}})});
+render=function(term){
+ renderCreditAccounts(term);
+ document.querySelectorAll('.account-row').forEach(row=>{
+  const printButton=row.querySelector('.print-detail');if(!printButton)return;
+  printButton.classList.add('detail-action');printButton.setAttribute('aria-label','Print customer detail');printButton.title='Print customer detail';printButton.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8V3h10v5M7 17H5a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M7 14h10v7H7zM18 11h.01"/></svg>';
+  const actions=document.createElement('div');actions.className='detail-actions';printButton.parentNode.replaceChild(actions,printButton);actions.appendChild(printButton);
+  const customer=renderedAccounts[Number(row.dataset.index)],hasBalance=!!customer&&balance(customer)>0;
+  if(canManageCreditReminders&&hasBalance){
+   const label=document.createElement('label');label.className='credit-reminder-toggle';label.title='Allow WhatsApp balance reminders for this customer';
+   const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.className='credit-reminder-checkbox';checkbox.dataset.reminderIndex=row.dataset.index;checkbox.checked=isCreditReminderEnabled(customer);checkbox.setAttribute('aria-label',`Allow WhatsApp reminders for ${customer.name}`);
+   const text=document.createElement('span');text.textContent='Reminders';label.append(checkbox,text);actions.appendChild(label);
+  }
+  const whatsappButton=document.createElement('button');whatsappButton.type='button';whatsappButton.className='detail-action whatsapp-detail';whatsappButton.dataset.whatsappIndex=row.dataset.index;whatsappButton.textContent='WhatsApp';whatsappButton.title='Open Malayalam balance reminder in WhatsApp';whatsappButton.setAttribute('aria-label','Open Malayalam balance reminder in WhatsApp');whatsappButton.disabled=!customer||digits(customer.mobile).length!==10||!hasBalance||!isCreditReminderEnabled(customer);actions.appendChild(whatsappButton);
+ });
+};
+document.addEventListener('DOMContentLoaded',()=>{
+ $('printBalancesBtn').onclick=printBalances;
+ initializeCreditReminderAccess();
+ $('accounts').addEventListener('change',event=>{
+  const checkbox=event.target.closest('.credit-reminder-checkbox');if(!checkbox)return;
+  const customer=renderedAccounts[Number(checkbox.dataset.reminderIndex)];if(!customer)return;
+  if(!canManageCreditReminders){checkbox.checked=isCreditReminderEnabled(customer);return}
+  localStorage.setItem(creditReminderKey(customer),String(checkbox.checked));
+  const whatsappButton=checkbox.closest('.account-row').querySelector('.whatsapp-detail');
+  if(whatsappButton)whatsappButton.disabled=!checkbox.checked||digits(customer.mobile).length!==10||balance(customer)<=0;
+ });
+ $('accounts').addEventListener('click',event=>{
+  if(event.target.closest('.credit-reminder-toggle')){event.stopPropagation();return}
+  const whatsappButton=event.target.closest('.whatsapp-detail');if(whatsappButton){event.stopPropagation();if(!whatsappButton.disabled)sendWhatsAppReminder(Number(whatsappButton.dataset.whatsappIndex));return}
+  const button=event.target.closest('.print-detail');if(button){event.stopPropagation();printCustomerDetail(Number(button.dataset.printIndex));return}
+  const row=event.target.closest('.account-row');if(row){const detail=document.querySelector(`[data-detail="${row.dataset.index}"]`);if(detail)detail.hidden=!detail.hidden}
+ });
+});
 </script>
 </body>
 </html>

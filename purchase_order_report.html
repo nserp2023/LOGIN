@@ -1409,7 +1409,7 @@ function renderOrders(orders, items){
         <td>${badge(String(o.status||'').toUpperCase() || (r.pending>0? 'OPEN':'CLOSED'))}</td>
         <td>
           <div class="supplier-response-editor">
-            <textarea id="supplier-response-${o.id}" aria-label="Supplier response for PO ${safe(poNo(o))}" placeholder="Type supplier response..." oninput="scheduleSupplierResponseSave(${o.id},this)" onblur="saveSupplierResponseNow(${o.id},this)">${safe(o.supplier_response || '')}</textarea>
+            <textarea id="supplier-response-${o.id}" aria-label="Supplier response for PO ${safe(poNo(o))}" placeholder="Type supplier response..." oninput="this.value=this.value.toUpperCase();scheduleSupplierResponseSave(${o.id},this)" onblur="saveSupplierResponseNow(${o.id},this)">${safe(String(o.supplier_response || '').toUpperCase())}</textarea>
           </div>
           <div class="supplier-response-status hint" id="supplier-response-status-${o.id}" role="status" aria-live="polite"></div>
         </td>

@@ -206,6 +206,11 @@ tr:hover td{background:rgba(56,189,248,.045)}
 .pendingText{color:#fbbf24;font-weight:950}
 .okText{color:#86efac;font-weight:950}
 .row-actions{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap}
+.supplier-response-editor{display:flex;min-width:280px;gap:6px;align-items:stretch}
+.supplier-response-editor textarea{width:100%;min-height:58px;padding:8px;border:1px solid rgba(148,163,184,.28);border-radius:9px;background:#071426;color:#eef6ff;font:inherit;font-size:12px;resize:vertical}
+.supplier-response-editor textarea::placeholder{color:#8194ad}
+.supplier-response-save{flex:0 0 auto;padding:7px 10px;border-radius:9px;background:#2563eb;color:#fff;font-size:12px}
+.supplier-response-status{min-height:16px;margin-top:4px;font-size:11px}
 .smallbtn{padding:7px 9px;font-size:12px;border-radius:10px}
 .iconbtn{
   width:36px;
@@ -731,11 +736,12 @@ td:first-child,th:first-child{background:rgba(0,0,0,.8)}
             <th>Mobile</th>
             <th class="right">Order Value</th>
             <th>Status</th>
+            <th>Supplier Response</th>
             <th class="right">Action</th>
           </tr>
         </thead>
         <tbody id="orderTbody">
-          <tr><td colspan="7" class="empty">Loading...</td></tr>
+          <tr><td colspan="8" class="empty">Loading...</td></tr>
         </tbody>
       </table>
       <table id="supplierTable" style="display:none;">
@@ -935,7 +941,7 @@ async function loadReport(){
   const tbody = document.getElementById("tbody");
   const orderTbody = document.getElementById("orderTbody");
   if(viewMode === "order"){
-    orderTbody.innerHTML = `<tr><td colspan="7" class="empty">Loading pending purchase orders...</td></tr>`;
+    orderTbody.innerHTML = `<tr><td colspan="8" class="empty">Loading pending purchase orders...</td></tr>`;
   }else if(viewMode === "supplier"){
     document.getElementById("supplierTbody").innerHTML = `<tr><td colspan="8" class="empty">Loading suppliers with pending items...</td></tr>`;
   }else{
@@ -944,7 +950,7 @@ async function loadReport(){
 
   if(!sb){
     const target = viewMode === "order" ? orderTbody : viewMode === "supplier" ? document.getElementById("supplierTbody") : tbody;
-    const colspan = viewMode === "order" ? 7 : viewMode === "supplier" ? 8 : 13;
+    const colspan = viewMode === "order" ? 8 : viewMode === "supplier" ? 8 : 13;
     target.innerHTML = `<tr><td colspan="${colspan}" class="empty">Supabase client not found. Check supabaseClient.js</td></tr>`;
     return;
   }
@@ -1081,7 +1087,7 @@ async function loadReport(){
 
   }catch(err){
     console.error(err);
-    const colspan = viewMode === "order" ? 7 : viewMode === "supplier" ? 8 : 13;
+    const colspan = viewMode === "order" ? 8 : viewMode === "supplier" ? 8 : 13;
     const message = `<tr><td colspan="${colspan}" class="empty">Could not load report: ${safe(err.message || err)}</td></tr>`;
     if(viewMode === "order") orderTbody.innerHTML = message;
     else if(viewMode === "supplier") document.getElementById("supplierTbody").innerHTML = message;
@@ -1350,7 +1356,7 @@ function renderOrders(orders, items){
   if(!tbody) return;
 
   if(!orders || !orders.length){
-    tbody.innerHTML = `<tr><td colspan="7" class="empty">No orders found</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" class="empty">No orders found</td></tr>`;
     return;
   }
 
@@ -1368,7 +1374,7 @@ function renderOrders(orders, items){
   }).filter(r => r.pending > 0 && !r.cancelled);
 
   if(!rows.length){
-    tbody.innerHTML = `<tr><td colspan="7" class="empty">No orders with pending items found</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" class="empty">No orders with pending items found</td></tr>`;
     document.getElementById('resultInfo').textContent = `0 order(s) shown`;
     return;
   }
@@ -1395,13 +1401,20 @@ function renderOrders(orders, items){
         </tr>`;
     }).join("");
     return `
-      <tr id="order-summary-${o.id}" class="order-summary-row${expanded ? " expanded" : ""}" title="Click to ${expanded ? "hide" : "view"} ordered items" onclick="if(!event.target.closest('button')) toggleOrderItems(${o.id})">
+      <tr id="order-summary-${o.id}" class="order-summary-row${expanded ? " expanded" : ""}" title="Click to ${expanded ? "hide" : "view"} ordered items" onclick="if(!event.target.closest('button,textarea')) toggleOrderItems(${o.id})">
         <td class="mono"><span class="order-chevron">▶</span><b>${safe(poNo(o))}</b></td>
         <td>${fmtDate(o.order_date || o.purchase_order_date || o.created_at)}</td>
         <td><b>${safe(o.supplier_name || '-')}</b></td>
         <td><b>${safe(o.supplier_mobile || o.mobile || getMobileFromRemark(o.remark || o.remarks || ''))}</b></td>
         <td class="right"><b>${money(r.value)}</b></td>
         <td>${badge(String(o.status||'').toUpperCase() || (r.pending>0? 'OPEN':'CLOSED'))}</td>
+        <td>
+          <div class="supplier-response-editor">
+            <textarea id="supplier-response-${o.id}" aria-label="Supplier response for PO ${safe(poNo(o))}" placeholder="Type supplier response...">${safe(o.supplier_response || '')}</textarea>
+            <button class="supplier-response-save" type="button" onclick="event.stopPropagation();saveSupplierResponse(${o.id},this)">Save</button>
+          </div>
+          <div class="supplier-response-status hint" id="supplier-response-status-${o.id}" role="status" aria-live="polite"></div>
+        </td>
         <td class="right">
           <div class="row-actions">
             <button class="smallbtn iconbtn whatsappbtn" type="button" title="Share on WhatsApp" aria-label="Share purchase order on WhatsApp" onclick="sharePOWhatsApp(${o.id})" ${cancelled ? 'disabled' : ''}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.5 8.5 0 0 1-12.6 7.4L3 21l2.1-5.2A8.5 8.5 0 1 1 21 11.5Z"/><path d="M8.5 8.2c.6 3 2.3 4.7 5.3 5.3"/></svg></button>
@@ -1412,7 +1425,7 @@ function renderOrders(orders, items){
         </td>
       </tr>
       <tr id="order-details-${o.id}" class="order-detail-row" style="display:${expanded ? "table-row" : "none"}">
-        <td colspan="7">
+        <td colspan="8">
           <div class="order-detail-panel">
             <div class="order-detail-heading"><span>Items ordered in PO ${safe(poNo(o))}</span><span>${r.items.length} item(s)</span></div>
             <table class="order-detail-table">
@@ -1442,6 +1455,34 @@ function toggleOrderItems(orderId){
   summaryRow?.setAttribute("title",`Click to ${opening ? "hide" : "view"} ordered items`);
   if(opening) expandedOrderIds.add(id);
   else expandedOrderIds.delete(id);
+}
+
+async function saveSupplierResponse(orderId,button){
+  const order = allOrders.find(o=>Number(o.id)===Number(orderId));
+  const textarea = document.getElementById(`supplier-response-${orderId}`);
+  const status = document.getElementById(`supplier-response-status-${orderId}`);
+  if(!order || !textarea || !status) return;
+
+  const response = textarea.value.trim();
+  button.disabled = true;
+  button.textContent = 'Saving...';
+  status.textContent = '';
+  try{
+    const {error} = await sb.from('purchase_order_details')
+      .update({supplier_response:response || null})
+      .eq('id',orderId);
+    if(error) throw error;
+    order.supplier_response = response;
+    status.textContent = 'Saved';
+    status.style.color = '#86efac';
+  }catch(error){
+    console.error('Unable to save supplier response',error);
+    status.textContent = `Save failed: ${error.message || error}`;
+    status.style.color = '#fda4af';
+  }finally{
+    button.disabled = false;
+    button.textContent = 'Save';
+  }
 }
 
 function openOrderReceiveModal(orderId){

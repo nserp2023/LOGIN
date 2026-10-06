@@ -3793,6 +3793,62 @@
         document.getElementById('bill_number').value = data || 1;
     }
 
+let stockLoadIndicator;
+
+function getStockLoadIndicator() {
+    if (stockLoadIndicator) return stockLoadIndicator;
+
+    const style = document.createElement('style');
+    style.textContent = `
+        .stock-load-indicator{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;pointer-events:none}
+        .stock-load-indicator[hidden]{display:none!important}
+        .stock-load-ring{position:relative;width:180px;height:180px;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:50%;background:conic-gradient(#16a34a var(--stock-load-progress,0%),#dbeafe 0);box-shadow:0 8px 28px rgba(0,0,0,.3);font-family:'Segoe UI',sans-serif;color:#0f172a}
+        .stock-load-ring::before{content:"";position:absolute;inset:12px;border-radius:50%;background:#fff}
+        .stock-load-percent,.stock-load-count{position:relative;z-index:1}
+        .stock-load-percent{font-size:30px;font-weight:900;line-height:1.1}
+        .stock-load-count{margin-top:7px;font-size:13px;font-weight:700;color:#475569}
+        .stock-load-indicator.stock-load-indeterminate .stock-load-ring{background:#dbeafe}
+        .stock-load-indicator.stock-load-indeterminate .stock-load-ring::after{content:"";position:absolute;inset:0;border:5px solid transparent;border-top-color:#16a34a;border-radius:50%;animation:stock-load-spin .8s linear infinite}
+        .stock-load-indicator.stock-load-error .stock-load-ring{background:conic-gradient(#dc2626 100%,#fee2e2 0);color:#b91c1c}
+        @keyframes stock-load-spin{to{transform:rotate(360deg)}}
+        @media(max-width:600px){.stock-load-ring{width:150px;height:150px}.stock-load-ring::before{inset:10px}.stock-load-percent{font-size:26px}.stock-load-count{font-size:12px}}
+    `;
+    document.head.appendChild(style);
+
+    stockLoadIndicator = document.createElement('div');
+    stockLoadIndicator.className = 'stock-load-indicator';
+    stockLoadIndicator.hidden = true;
+    stockLoadIndicator.setAttribute('role', 'status');
+    stockLoadIndicator.setAttribute('aria-live', 'polite');
+    stockLoadIndicator.innerHTML = '<div class="stock-load-ring"><span class="stock-load-percent">...</span><small class="stock-load-count">Starting...</small></div>';
+    document.body.appendChild(stockLoadIndicator);
+    return stockLoadIndicator;
+}
+
+function updateStockLoadIndicator(loaded, total, { complete = false, error = false } = {}) {
+    const indicator = getStockLoadIndicator();
+    const knownTotal = Number.isFinite(total);
+    const percentage = complete ? 100 : knownTotal ? (total === 0 ? 100 : Math.min(99, Math.floor(loaded / total * 100))) : null;
+
+    indicator.hidden = false;
+    indicator.classList.toggle('stock-load-indeterminate', percentage === null && !error);
+    indicator.classList.toggle('stock-load-error', error);
+    const ring = indicator.querySelector('.stock-load-ring');
+    ring.style.setProperty('--stock-load-progress', `${percentage ?? 25}%`);
+    indicator.querySelector('.stock-load-percent').textContent = error ? '!' : percentage === null ? '...' : `${percentage}%`;
+    indicator.querySelector('.stock-load-count').textContent = total === null
+        ? `${loaded.toLocaleString()} items loaded`
+        : `${loaded.toLocaleString()} / ${total.toLocaleString()} items`;
+    indicator.title = error
+        ? `Stock loading failed after ${loaded.toLocaleString()} items`
+        : percentage === null
+            ? `${loaded.toLocaleString()} stock items loaded; total unavailable`
+            : `${loaded.toLocaleString()} of ${total.toLocaleString()} stock items loaded`;
+    indicator.setAttribute('aria-label', indicator.title);
+
+    if (complete) setTimeout(() => { indicator.hidden = true; }, 1200);
+}
+
 async function loadStockData() {
     stockLoaded = false;
     stockData = [];
@@ -3801,6 +3857,22 @@ async function loadStockData() {
     let from = 0;
     const pageSize = 1000;
     let fetchMore = true;
+    let totalCount = null;
+
+    updateStockLoadIndicator(0, totalCount);
+    try {
+        const countResult = await sb
+            .from('stock_balance_view')
+            .select('item_code', { count: 'exact', head: true });
+        if (countResult.error) {
+            console.warn('Unable to count stock items for progress display', countResult.error);
+        } else if (Number.isFinite(countResult.count)) {
+            totalCount = countResult.count;
+        }
+    } catch (countError) {
+        console.warn('Unable to count stock items for progress display', countError);
+    }
+    updateStockLoadIndicator(0, totalCount);
 
     while (fetchMore) {
         let data = null;
@@ -3826,13 +3898,15 @@ const stockSelect = 'item_code,item_name,barcode,price1,price2,price3,landing,pu
 
         if (error) {
             console.error("Error loading stock:", error);
+            updateStockLoadIndicator(allItems.length, totalCount, { error: true });
             alert(`Stock loading failed near row ${from + 1}. Please reload once.`);
             return;
         }
 
         if (data && data.length > 0) {
             allItems = allItems.concat(data);
-            from += pageSize;
+            from += data.length;
+            updateStockLoadIndicator(allItems.length, totalCount);
 
             if (data.length < pageSize) {
                 fetchMore = false;
@@ -3856,6 +3930,7 @@ const stockSelect = 'item_code,item_name,barcode,price1,price2,price3,landing,pu
 
     stockData = Array.from(uniqueMap.values());
     stockLoaded = true;
+    updateStockLoadIndicator(allItems.length, totalCount, { complete: true });
 
     console.log("Total Stock Items Loaded:", stockData.length);
 }

@@ -17,7 +17,7 @@
 </style>
 <style>
 #printArea{display:none}
- .summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .summary{grid-template-columns:repeat(4,minmax(0,1fr))}
 .detail-actions{display:flex;align-items:center;gap:6px}
 .detail-actions .detail-action{display:inline-flex;align-items:center;justify-content:center;min-width:38px;min-height:38px;padding:0 9px;border:1px solid var(--line);border-radius:8px;cursor:pointer;font-weight:800}
 .detail-actions .print-detail{width:38px;padding:0;font-size:0}
@@ -26,6 +26,7 @@
 .credit-reminder-toggle input{width:16px;height:16px;margin:0;accent-color:var(--green);cursor:pointer}
 .detail-actions .whatsapp-detail{background:#14532d;color:#dcfce7}
 .detail-actions .whatsapp-detail:disabled{opacity:.45;cursor:not-allowed}
+@media(max-width:760px){.summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media print{
   @page{size:auto;margin:14mm}
   body{padding:0!important;background:#fff!important;color:#111!important;font:12px Arial,sans-serif!important}
@@ -52,7 +53,8 @@
     <button class="btn" id="loadBtn">Load Accounts</button>
   </div>
   <div class="panel summary">
-    <div class="stat"><small>Accounts</small><strong id="sAccounts" class="blue">0</strong></div><div class="stat"><small>Balance</small><strong id="sBalance" class="red">0.00</strong></div>
+    <div class="stat"><small>Accounts</small><strong id="sAccounts" class="blue">0</strong></div><div class="stat"><small>Credit</small><strong id="sOwed" class="red">0.00</strong></div><div class="stat"><small>Advance</small><strong id="sHeld" class="green">0.00</strong></div><div class="stat"><small>Balance</small><strong id="sBalance" class="red">0.00</strong></div>
+    <div hidden><span id="sBills"></span><span id="sBillAmount"></span><span id="sPayments"></span><span id="sReceipts"></span><span id="sDeductions"></span></div>
   </div>
   <div class="panel"><div class="status" id="status">Loading credit accounts...</div></div>
   <div class="panel table-wrap"><table><thead><tr><th>Customer</th><th>Mobile</th><th class="right">Bills</th><th class="right">Bill Amount</th><th class="right">Payment</th><th class="right">Credit Receipt</th><th class="right">Advance</th><th class="right">Return</th><th class="right">Balance as of To</th><th>Actions</th></tr></thead><tbody id="accounts"><tr><td colspan="10" class="empty">Loading...</td></tr></tbody></table></div>
@@ -103,6 +105,8 @@ function sendWhatsAppReminder(index){const customer=renderedAccounts[index];if(!
 const renderCreditAccounts=render;
 render=function(term){
  renderCreditAccounts(term);
+ const creditTotals=renderedAccounts.reduce((totals,customer)=>{const customerBalance=balance(customer);totals.owed+=Math.max(customerBalance,0);totals.held+=Math.max(-customerBalance,0);return totals},{owed:0,held:0});
+ $('sOwed').textContent=money(creditTotals.owed);$('sHeld').textContent=money(creditTotals.held);
  document.querySelectorAll('.account-row').forEach(row=>{
   const printButton=row.querySelector('.print-detail');if(!printButton)return;
   printButton.classList.add('detail-action');printButton.setAttribute('aria-label','Print customer detail');printButton.title='Print customer detail';printButton.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8V3h10v5M7 17H5a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M7 14h10v7H7zM18 11h.01"/></svg>';

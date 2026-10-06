@@ -22,9 +22,9 @@
         const advance=type==='receipt'&&(['customer advance','sales order','sales order advance','sales order advance receipt','sales order conversion receipt'].includes(ref)||text.includes('sales order advance')||text.includes('advance received')||text.includes('advance paid')||text.includes('advance credit receipt'));
         return refund?'payment':receipt?'receipt':advance?'advance':'';
     };
-    const addEntry=(account,type,date,document,amount,remark,from,to)=>{
+    const addEntry=(account,type,date,document,amount,remark,from,to,metadata={})=>{
         const value=numberValue(amount),entryDate=String(date||'').slice(0,10);
-        account.entries.push({type,date:entryDate,doc:document||'',amount:value,remark:remark||''});
+        account.entries.push({type,date:entryDate,doc:document||'',amount:value,remark:remark||'',...metadata});
         if(!inPeriod(entryDate,from,to))return;
         if(type==='bill'){account.bills++;account.billAmount+=value}
         else if(type==='payment')account.payments+=value;
@@ -111,13 +111,13 @@
         }
         const salesIds=sales.map(row=>row.id).filter(Boolean), packing=new Map();
         for(let offset=0;offset<salesIds.length;offset+=500){
-            const packingResult=await window.sbcc.from('sales_packing_details').select('sales_id,packing_amount,packing_number,series_code').in('sales_id',salesIds.slice(offset,offset+500));
+            const packingResult=await window.sbcc.from('sales_packing_details').select('id,sales_id,packing_amount,packing_number,series_code').in('sales_id',salesIds.slice(offset,offset+500));
             if(!packingResult.error)(packingResult.data||[]).forEach(row=>packing.set(String(row.sales_id),row));
         }
         sales.forEach(row=>{
             const account=getAccount(row.customer_name,row.customer_mobile), pack=packing.get(String(row.id));
             const amount=pack&&numberValue(pack.packing_amount)>0?numberValue(pack.packing_amount):billAmount(row);
-            addEntry(account,'bill',row.bill_date,pack?`${pack.series_code||row.series_code||''}-${pack.packing_number||row.sales_number||''}`:`${row.series_code||''}-${row.sales_number||''}`,amount,pack?'Sales + Packing credit bill':'Credit bill',from,to);
+            addEntry(account,'bill',row.bill_date,pack?`${pack.series_code||row.series_code||''}-${pack.packing_number||row.sales_number||''}`:`${row.series_code||''}-${row.sales_number||''}`,amount,pack?'Sales + Packing credit bill':'Credit bill',from,to,{salesId:row.id,packingId:pack?.id||null});
         });
         const cashRows=[];
         for(let page=0;;page++){

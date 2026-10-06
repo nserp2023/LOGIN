@@ -206,10 +206,9 @@ tr:hover td{background:rgba(56,189,248,.045)}
 .pendingText{color:#fbbf24;font-weight:950}
 .okText{color:#86efac;font-weight:950}
 .row-actions{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap}
-.supplier-response-editor{display:flex;min-width:280px;gap:6px;align-items:stretch}
-.supplier-response-editor textarea{width:100%;min-height:58px;padding:8px;border:1px solid rgba(148,163,184,.28);border-radius:9px;background:#071426;color:#eef6ff;font:inherit;font-size:12px;resize:vertical}
+.supplier-response-editor{min-width:280px}
+.supplier-response-editor textarea{display:block;width:100%;min-height:58px;padding:8px;border:1px solid rgba(148,163,184,.28);border-radius:9px;background:#071426;color:#eef6ff;font:inherit;font-size:12px;resize:vertical}
 .supplier-response-editor textarea::placeholder{color:#8194ad}
-.supplier-response-save{flex:0 0 auto;padding:7px 10px;border-radius:9px;background:#2563eb;color:#fff;font-size:12px}
 .supplier-response-status{min-height:16px;margin-top:4px;font-size:11px}
 .smallbtn{padding:7px 9px;font-size:12px;border-radius:10px}
 .iconbtn{
@@ -1410,8 +1409,7 @@ function renderOrders(orders, items){
         <td>${badge(String(o.status||'').toUpperCase() || (r.pending>0? 'OPEN':'CLOSED'))}</td>
         <td>
           <div class="supplier-response-editor">
-            <textarea id="supplier-response-${o.id}" aria-label="Supplier response for PO ${safe(poNo(o))}" placeholder="Type supplier response...">${safe(o.supplier_response || '')}</textarea>
-            <button class="supplier-response-save" type="button" onclick="event.stopPropagation();saveSupplierResponse(${o.id},this)">Save</button>
+            <textarea id="supplier-response-${o.id}" aria-label="Supplier response for PO ${safe(poNo(o))}" placeholder="Type supplier response..." oninput="scheduleSupplierResponseSave(${o.id},this)" onblur="saveSupplierResponseNow(${o.id},this)">${safe(o.supplier_response || '')}</textarea>
           </div>
           <div class="supplier-response-status hint" id="supplier-response-status-${o.id}" role="status" aria-live="polite"></div>
         </td>
@@ -1457,32 +1455,67 @@ function toggleOrderItems(orderId){
   else expandedOrderIds.delete(id);
 }
 
-async function saveSupplierResponse(orderId,button){
+const supplierResponseSaveTimers = new Map();
+const supplierResponseVersions = new Map();
+const supplierResponseSavesInFlight = new Set();
+
+function scheduleSupplierResponseSave(orderId,textarea){
+  const id = Number(orderId);
+  const version = (supplierResponseVersions.get(id) || 0) + 1;
+  supplierResponseVersions.set(id,version);
+  clearTimeout(supplierResponseSaveTimers.get(id));
+  const status = document.getElementById(`supplier-response-status-${id}`);
+  if(status){
+    status.textContent = 'Unsaved changes';
+    status.style.color = '#fbbf24';
+  }
+  supplierResponseSaveTimers.set(id,setTimeout(()=>{
+    supplierResponseSaveTimers.delete(id);
+    saveSupplierResponse(id,textarea,version);
+  },700));
+}
+
+function saveSupplierResponseNow(orderId,textarea){
+  const id = Number(orderId);
+  clearTimeout(supplierResponseSaveTimers.get(id));
+  supplierResponseSaveTimers.delete(id);
+  const version = supplierResponseVersions.get(id);
+  if(version) saveSupplierResponse(id,textarea,version);
+}
+
+async function saveSupplierResponse(orderId,textarea,version){
+  if(version !== supplierResponseVersions.get(orderId) || supplierResponseSavesInFlight.has(orderId)) return;
   const order = allOrders.find(o=>Number(o.id)===Number(orderId));
-  const textarea = document.getElementById(`supplier-response-${orderId}`);
   const status = document.getElementById(`supplier-response-status-${orderId}`);
   if(!order || !textarea || !status) return;
 
-  const response = textarea.value.trim();
-  button.disabled = true;
-  button.textContent = 'Saving...';
-  status.textContent = '';
+  const response = textarea.value;
+  supplierResponseSavesInFlight.add(orderId);
+  status.textContent = 'Saving...';
+  status.style.color = '#93c5fd';
+  let saveError = null;
   try{
     const {error} = await sb.from('purchase_order_details')
-      .update({supplier_response:response || null})
+      .update({supplier_response:response.trim() ? response : null})
       .eq('id',orderId);
     if(error) throw error;
-    order.supplier_response = response;
-    status.textContent = 'Saved';
-    status.style.color = '#86efac';
+    order.supplier_response = response.trim() ? response : null;
   }catch(error){
     console.error('Unable to save supplier response',error);
-    status.textContent = `Save failed: ${error.message || error}`;
-    status.style.color = '#fda4af';
-  }finally{
-    button.disabled = false;
-    button.textContent = 'Save';
+    saveError = error;
   }
+  supplierResponseSavesInFlight.delete(orderId);
+
+  const latestVersion = supplierResponseVersions.get(orderId);
+  if(latestVersion !== version){
+    clearTimeout(supplierResponseSaveTimers.get(orderId));
+    supplierResponseSaveTimers.delete(orderId);
+    saveSupplierResponse(orderId,textarea,latestVersion);
+    return;
+  }
+
+  status.textContent = saveError ? `Save failed: ${saveError.message || saveError}` : 'Saved';
+  status.style.color = saveError ? '#fda4af' : '#86efac';
 }
 
 function openOrderReceiveModal(orderId){

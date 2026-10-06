@@ -22,7 +22,7 @@
 .detail-actions .detail-action{display:inline-flex;align-items:center;justify-content:center;min-width:38px;min-height:38px;padding:0 9px;border:1px solid var(--line);border-radius:8px;cursor:pointer;font-weight:800}
 .detail-actions .print-detail{width:38px;padding:0;font-size:0}
 .detail-actions .print-detail svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.credit-reminder-toggle{display:inline-flex;align-items:center;gap:4px;color:var(--muted);font-size:11px;font-weight:700;cursor:pointer}
+.credit-reminder-toggle{display:inline-flex;align-items:center;margin-right:8px;color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;vertical-align:middle}
 .credit-reminder-toggle input{width:16px;height:16px;margin:0;accent-color:var(--green);cursor:pointer}
 .detail-actions .whatsapp-detail{background:#14532d;color:#dcfce7}
 .detail-actions .whatsapp-detail:disabled{opacity:.45;cursor:not-allowed}
@@ -110,8 +110,8 @@ render=function(term){
   const customer=renderedAccounts[Number(row.dataset.index)],hasBalance=!!customer&&balance(customer)>0;
   if(canManageCreditReminders){
    const label=document.createElement('label');label.className='credit-reminder-toggle';label.title='Allow WhatsApp balance reminders for this customer';
-   const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.className='credit-reminder-checkbox';checkbox.dataset.reminderIndex=row.dataset.index;checkbox.checked=isCreditReminderEnabled(customer);checkbox.setAttribute('aria-label',`Allow WhatsApp reminders for ${customer.name}`);
-   const text=document.createElement('span');text.textContent='Reminders';label.append(checkbox,text);actions.appendChild(label);
+    const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.className='credit-reminder-checkbox';checkbox.dataset.reminderIndex=row.dataset.index;checkbox.checked=isCreditReminderEnabled(customer);checkbox.setAttribute('aria-label',`Allow WhatsApp reminders for ${customer.name}`);label.appendChild(checkbox);
+    row.cells[0].prepend(label);
   }
   const whatsappButton=document.createElement('button');whatsappButton.type='button';whatsappButton.className='detail-action whatsapp-detail';whatsappButton.dataset.whatsappIndex=row.dataset.index;whatsappButton.textContent='WhatsApp';whatsappButton.title='Open Malayalam balance reminder in WhatsApp';whatsappButton.setAttribute('aria-label','Open Malayalam balance reminder in WhatsApp');whatsappButton.disabled=!customer||digits(customer.mobile).length!==10||!hasBalance||!isCreditReminderEnabled(customer);actions.appendChild(whatsappButton);
  });

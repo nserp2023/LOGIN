@@ -24,7 +24,8 @@
 .detail-actions .print-detail svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .credit-reminder-toggle{display:inline-flex;align-items:center;margin-right:8px;color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;vertical-align:middle}
 .credit-reminder-toggle input{width:16px;height:16px;margin:0;accent-color:var(--green);cursor:pointer}
-.credit-bill-print{margin-left:6px;padding:3px 7px;min-height:24px;border:1px solid var(--line);border-radius:6px;background:#243752;color:#dbeafe;font-size:10px;font-weight:800;cursor:pointer}
+.credit-bill-print{display:inline-flex;align-items:center;justify-content:center;width:26px;height:24px;margin-left:6px;padding:3px;border:1px solid var(--line);border-radius:6px;background:#243752;color:#dbeafe;cursor:pointer;vertical-align:middle}
+.credit-bill-print svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .detail-actions .whatsapp-detail{background:#14532d;color:#dcfce7}
 .detail-actions .whatsapp-detail:disabled{opacity:.45;cursor:not-allowed}
 @media(max-width:760px){.summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
@@ -111,11 +112,13 @@ render=function(term){
   renderedAccounts.forEach((customer,accountIndex)=>{
    const detailRow=document.querySelector(`[data-detail="${accountIndex}"]`);if(!detailRow)return;
    const detailRows=detailRow.querySelectorAll('tbody tr');
+  const billRows=[...detailRows].filter(row=>String(row.cells[1]?.textContent||'').trim().toUpperCase()==='BILL');
    const entries=[...customer.entries].sort((a,b)=>a.date.localeCompare(b.date)).filter(entry=>(!activeFrom||!entry.date||entry.date>=activeFrom)&&(!activeTo||!entry.date||entry.date<=activeTo));
-   entries.forEach((entry,entryIndex)=>{
+  let billIndex=0;
+  entries.forEach(entry=>{
     if(entry.type!=='bill')return;
-    const voucherCell=detailRows[entryIndex+1]?.cells[2];if(!voucherCell||voucherCell.querySelector('.credit-bill-print'))return;
-    const button=document.createElement('button');button.type='button';button.className='credit-bill-print';button.textContent='Print';button.title=entry.packingId?'Print packing slip':'Print GST invoice';button.setAttribute('aria-label',button.title);
+   const voucherCell=billRows[billIndex++]?.cells[2];if(!voucherCell||voucherCell.querySelector('.credit-bill-print'))return;
+   const button=document.createElement('button');button.type='button';button.className='credit-bill-print';button.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8V3h10v5M7 17H5a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M7 14h10v7H7zM18 11h.01"/></svg>';button.title=entry.packingId?'Print packing slip':'Print GST invoice';button.setAttribute('aria-label',button.title);
     button.dataset.salesId=entry.salesId||'';button.dataset.packingId=entry.packingId||'';button.addEventListener('click',event=>{event.stopPropagation();printCreditBill(button)});voucherCell.append(' ',button);
    });
   });

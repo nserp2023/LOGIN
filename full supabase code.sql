@@ -2370,8 +2370,12 @@ CREATE TABLE IF NOT EXISTS "public"."purchase_order_details" (
     "is_cancelled" boolean DEFAULT false NOT NULL,
     "cancelled_at" timestamp with time zone,
     "created_by" "text",
-    "supplier_mobile" "text"
+    "supplier_mobile" "text",
+    "supplier_response" "text"
 );
+
+ALTER TABLE public.purchase_order_details
+ADD COLUMN IF NOT EXISTS supplier_response text;
 
 
 ALTER TABLE "public"."purchase_order_details" OWNER TO "postgres";

@@ -223,6 +223,14 @@ tbody tr:hover { background: #17304b; }
 .info-box { background: #102b3d; border-color: #315b77; color: #dbeafe; }
 .message { background: #102b3d; border-color: #315b77; }
 .toolbar .btn-primary, .search-box .btn-primary { background: #2563eb; }
+@media screen {
+    .table-wrap tbody tr td { background-color: #101f35 !important; color: #e2eaf5 !important; }
+    .table-wrap tbody tr:nth-child(even) td { background-color: #0b1728 !important; }
+    .table-wrap tbody tr:hover td { background-color: #17304b !important; }
+    .table-wrap .approval-meta { color: #9db0ca !important; }
+    .table-wrap .type-note { color: #facc15 !important; }
+    .table-wrap .linked-bill { color: #93c5fd !important; }
+}
 @media print {
     body { background: #fff; color: #111; }
     .card, .stat, .topbar { background: #fff; box-shadow: none; }

@@ -3843,14 +3843,15 @@ function getStockLoadIndicator() {
     style.textContent = `
         .stock-load-indicator{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;pointer-events:none}
         .stock-load-indicator[hidden]{display:none!important}
-        .stock-load-ring{position:relative;width:180px;height:180px;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:50%;background:conic-gradient(#16a34a var(--stock-load-progress,0%),#dbeafe 0);box-shadow:0 8px 28px rgba(0,0,0,.3);font-family:'Segoe UI',sans-serif;color:#0f172a}
-        .stock-load-ring::before{content:"";position:absolute;inset:12px;border-radius:50%;background:#fff}
+        .stock-load-ring{position:relative;width:180px;height:180px;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:50%;background:conic-gradient(#38bdf8 var(--stock-load-progress,0%),rgba(186,230,253,.85) 0);box-shadow:0 8px 28px rgba(14,116,144,.28),0 0 38px rgba(56,189,248,.18);font-family:'Segoe UI',sans-serif;color:#0f172a}
+        .stock-load-ring::before{content:"";position:absolute;inset:12px;border:1px solid rgba(255,255,255,.88);border-radius:50%;background:linear-gradient(145deg,rgba(240,249,255,.94),rgba(186,230,253,.82));box-shadow:inset 0 2px 12px rgba(255,255,255,.8),inset 0 -8px 18px rgba(56,189,248,.18);backdrop-filter:blur(8px)}
         .stock-load-percent,.stock-load-count{position:relative;z-index:1}
         .stock-load-percent{font-size:30px;font-weight:900;line-height:1.1}
         .stock-load-count{margin-top:7px;font-size:13px;font-weight:700;color:#475569}
-        .stock-load-indicator.stock-load-indeterminate .stock-load-ring{background:#dbeafe}
-        .stock-load-indicator.stock-load-indeterminate .stock-load-ring::after{content:"";position:absolute;inset:0;border:5px solid transparent;border-top-color:#16a34a;border-radius:50%;animation:stock-load-spin .8s linear infinite}
+        .stock-load-indicator.stock-load-indeterminate .stock-load-ring{background:rgba(186,230,253,.85)}
+        .stock-load-indicator.stock-load-indeterminate .stock-load-ring::after{content:"";position:absolute;inset:0;border:5px solid transparent;border-top-color:#38bdf8;border-radius:50%;animation:stock-load-spin .8s linear infinite}
         .stock-load-indicator.stock-load-error .stock-load-ring{background:conic-gradient(#dc2626 100%,#fee2e2 0);color:#b91c1c}
+        .stock-load-indicator.stock-load-error .stock-load-ring::before{background:linear-gradient(145deg,rgba(254,242,242,.96),rgba(254,202,202,.84));box-shadow:inset 0 2px 12px rgba(255,255,255,.85),inset 0 -8px 18px rgba(220,38,38,.12)}
         @keyframes stock-load-spin{to{transform:rotate(360deg)}}
         @media(max-width:600px){.stock-load-ring{width:150px;height:150px}.stock-load-ring::before{inset:10px}.stock-load-percent{font-size:26px}.stock-load-count{font-size:12px}}
     `;

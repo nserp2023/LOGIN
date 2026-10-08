@@ -118,10 +118,15 @@
 
     function getApiEndpoint() {
       const configured = window.AI_CATALOG_API_URL || localStorage.getItem("AI_CATALOG_API_URL");
-      if (configured) return configured.replace(/\/api\/ai-catalog-page\/?$/, "/api/ai-bulk-image-edit");
+      if (configured) {
+        const apiOrigin = configured.replace(/\/api\/(?:ai-catalog-page|ai-bulk-image-edit)\/?$/, "").replace(/\/$/, "");
+        return `${apiOrigin}/api/ai-bulk-image-edit`;
+      }
       if (["http:", "https:"].includes(location.protocol)) {
         const local = ["localhost", "127.0.0.1", "::1"].includes(location.hostname);
-        const origin = local && location.port && location.port !== "3000" ? `${location.protocol}//localhost:3000` : location.origin;
+        const origin = local
+          ? (location.port && location.port !== "3000" ? `${location.protocol}//localhost:3000` : location.origin)
+          : "https://nserp-vajra-voice-api.onrender.com";
         return `${origin}/api/ai-bulk-image-edit`;
       }
       return "http://localhost:3000/api/ai-bulk-image-edit";

@@ -81,6 +81,44 @@
     letter-spacing: 0.5px;
 }
 
+        #customer_mobile_group label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .customer-loading-progress {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            color: #a7f3d0;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: none;
+            letter-spacing: 0;
+        }
+
+        .customer-loading-progress[hidden] {
+            display: none;
+        }
+
+        .customer-loading-track {
+            width: 54px;
+            height: 5px;
+            overflow: hidden;
+            border-radius: 3px;
+            background: #334155;
+        }
+
+        .customer-loading-fill {
+            display: block;
+            width: 0;
+            height: 100%;
+            border-radius: inherit;
+            background: #34d399;
+            transition: width 0.18s ease;
+        }
+
         .form-control {
             padding: 6px 10px;
             border: 1px solid #cbd5e1;
@@ -1481,8 +1519,11 @@
     <div id="display_balance_amount">₹0.00</div>
 </div>
         
-        <div class="form-group" style="position: relative;">
-            <label>Mobile</label>
+        <div class="form-group" id="customer_mobile_group" style="position: relative;">
+            <label>Mobile <span id="customer_loading_progress" class="customer-loading-progress" hidden role="progressbar" aria-label="Customer loading" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-live="polite">
+                <span class="customer-loading-track"><span class="customer-loading-fill"></span></span>
+                <span class="customer-loading-percent">0%</span>
+            </span></label>
             <input type="text" id="cust_mobile" class="form-control w-md nav-input" placeholder="Mobile / Name" tabindex="3" autocomplete="off">
             <div id="mobile_suggestions" class="autocomplete-list"></div>
         </div>
@@ -4262,6 +4303,7 @@ const stockSelect = 'item_code,item_name,barcode,price1,price2,price3,landing,pu
     const nameList = document.getElementById('name_suggestions');
     const agentInput = document.getElementById('agent_mobile');
     const agentList = document.getElementById('agent_suggestions');
+    const customerLoadingProgress = document.getElementById('customer_loading_progress');
     let custTimer;
     let customerSearchRequestId = 0;
     let selectedCustomerFromDropdown = false;
@@ -4274,6 +4316,23 @@ const stockSelect = 'item_code,item_name,barcode,price1,price2,price3,landing,pu
         minimumFractionDigits: 0,
         maximumFractionDigits: 0
     });
+
+    function updateCustomerLoadingProgress(percent){
+        if(!customerLoadingProgress) return;
+        const progress = Math.max(0, Math.min(100, percent));
+        customerLoadingProgress.hidden = false;
+        customerLoadingProgress.setAttribute('aria-valuenow', String(progress));
+        customerLoadingProgress.querySelector('.customer-loading-fill').style.width = `${progress}%`;
+        customerLoadingProgress.querySelector('.customer-loading-percent').textContent = `${progress}%`;
+    }
+
+    function clearCustomerLoadingProgress(){
+        if(!customerLoadingProgress) return;
+        customerLoadingProgress.hidden = true;
+        customerLoadingProgress.setAttribute('aria-valuenow', '0');
+        customerLoadingProgress.querySelector('.customer-loading-fill').style.width = '0%';
+        customerLoadingProgress.querySelector('.customer-loading-percent').textContent = '0%';
+    }
 
     function cleanCustomerSearch(value){
         return String(value || "")
@@ -4602,11 +4661,15 @@ ${showBalanceColumn ? `<td class="customer-balance-pending">${Number(c.balance_p
             const val = cleanCustomerSearch(e.target.value);
 
             if(e.target.id === 'cust_mobile'){
+                if(val.length >= 2) updateCustomerLoadingProgress(5);
+                else clearCustomerLoadingProgress();
                 clearSelectedCustomerFlag();
                 // Mobile changed means old selected customer's GST/status should not stay marked.
                 document.getElementById('cust_gst').value = '';
                 setSelectedCustomerRemark('');
                 updateGstCustomerHighlight();
+            }else{
+                clearCustomerLoadingProgress();
             }
 
             if(e.target.id === 'cust_name'){
@@ -4618,6 +4681,7 @@ ${showBalanceColumn ? `<td class="customer-balance-pending">${Number(c.balance_p
             }
 
             if(val.length < 2 || !shouldShowNameCustomerSuggestions(e.target)) {
+                if(e.target.id === 'cust_mobile') clearCustomerLoadingProgress();
                 list.style.display = 'none';
                 list.removeAttribute("data-open");
                 list.innerHTML = "";
@@ -4628,26 +4692,45 @@ ${showBalanceColumn ? `<td class="customer-balance-pending">${Number(c.balance_p
             lastHistoryKey = "";
 
             custTimer = setTimeout(async () => {
-                const mode = getCustomerSearchMode(e.target);
-                const { data, error } = await buildCustomerSearchQuery(val, mode);
+                try{
+                    if(e.target.id === 'cust_mobile') updateCustomerLoadingProgress(10);
+                    const mode = getCustomerSearchMode(e.target);
+                    const { data, error } = await buildCustomerSearchQuery(val, mode);
 
-                if(error){
+                    if(requestId !== customerSearchRequestId) return;
+                    if(error){
+                        console.error("Customer search error:", error);
+                        list.style.display = 'none';
+                        list.removeAttribute("data-open");
+                        if(e.target.id === 'cust_mobile') clearCustomerLoadingProgress();
+                        return;
+                    }
+
+                    if(e.target.id === 'cust_mobile') updateCustomerLoadingProgress(35);
+                    const customers = await addCustomerNetPurchaseAmounts(data || []);
+                    if(requestId !== customerSearchRequestId) return;
+                    if(e.target.id === 'cust_mobile') updateCustomerLoadingProgress(70);
+                    const creditBalances = await loadCustomerCreditBalances();
+                    if(requestId !== customerSearchRequestId) return;
+                    if(e.target.id === 'cust_mobile') updateCustomerLoadingProgress(90);
+                    const customersWithBalances = customers.map(customer => ({
+                        ...customer,
+                        balance_pending: creditBalances.get(customerCreditMobileKey(customer.mobile)) || 0
+                    }));
+                    renderCustomerSuggestions(input, list, customersWithBalances, onSelect);
+                    if(e.target.id === 'cust_mobile'){
+                        updateCustomerLoadingProgress(100);
+                        window.setTimeout(() => {
+                            if(requestId === customerSearchRequestId) clearCustomerLoadingProgress();
+                        }, 650);
+                    }
+                }catch(error){
+                    if(requestId !== customerSearchRequestId) return;
                     console.error("Customer search error:", error);
                     list.style.display = 'none';
                     list.removeAttribute("data-open");
-                    return;
+                    if(e.target.id === 'cust_mobile') clearCustomerLoadingProgress();
                 }
-
-                if(requestId !== customerSearchRequestId) return;
-                const customers = await addCustomerNetPurchaseAmounts(data || []);
-                if(requestId !== customerSearchRequestId) return;
-                const creditBalances = await loadCustomerCreditBalances();
-                if(requestId !== customerSearchRequestId) return;
-                const customersWithBalances = customers.map(customer => ({
-                    ...customer,
-                    balance_pending: creditBalances.get(customerCreditMobileKey(customer.mobile)) || 0
-                }));
-                renderCustomerSuggestions(input, list, customersWithBalances, onSelect);
             }, 250);
         });
 

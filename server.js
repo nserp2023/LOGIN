@@ -1201,4 +1201,59 @@ Requirements:
     }
 });
 
+app.post("/api/ai-bulk-image-edit", async (req, res) => {
+    const user = await requirePrimarySupabaseUser(req, res);
+    if (!user) return;
+
+    try {
+        const { itemCode, prompt, imageBase64, mimeType } = req.body || {};
+        if (!GEMINI_API_KEY) {
+            return res.status(500).json({ error: "GEMINI_API_KEY is missing in .env" });
+        }
+        if (!itemCode || !imageBase64 || !["image/jpeg", "image/png", "image/webp"].includes(mimeType)) {
+            return res.status(400).json({ error: "A valid item code and JPEG, PNG, or WebP image are required" });
+        }
+        if (String(imageBase64).length > 35_000_000) {
+            return res.status(413).json({ error: "Image is too large after compression" });
+        }
+
+        const editPrompt = [
+            `Edit the supplied product photo for stock item ${String(itemCode).slice(0, 100)}.`,
+            String(prompt || "Improve the lighting and background for a clean product catalogue photo.").slice(0, 2000),
+            "Keep the product itself faithful to the supplied photo. Do not add readable text, logos, watermarks, extra products, or accessories. Return only the edited image."
+        ].join("\n\n");
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_IMAGE_GENERATION_MODEL)}:generateContent`;
+        const geminiRes = await axios.post(endpoint, {
+            contents: [{ parts: [
+                { text: editPrompt },
+                { inlineData: { mimeType, data: String(imageBase64) } }
+            ] }],
+            generationConfig: {
+                responseModalities: ["TEXT", "IMAGE"],
+                imageConfig: { aspectRatio: "1:1" }
+            }
+        }, {
+            headers: { "Content-Type": "application/json", "x-goog-api-key": GEMINI_API_KEY },
+            timeout: 300000,
+            maxBodyLength: Infinity
+        });
+
+        const parts = geminiRes.data?.candidates?.[0]?.content?.parts || [];
+        const imagePart = parts.find(part => part.inlineData?.data && String(part.inlineData?.mimeType || "").startsWith("image/"));
+        if (!imagePart) throw new Error("Gemini returned no edited image");
+        res.json({
+            imageBase64: imagePart.inlineData.data,
+            mimeType: imagePart.inlineData.mimeType || "image/png",
+            model: GEMINI_IMAGE_GENERATION_MODEL
+        });
+    } catch (err) {
+        const status = err.response?.status;
+        const message = err.response?.data?.error?.message || err.message || "Image editing failed";
+        console.error("Bulk product image edit error:", err.response?.data || err.message);
+        res.status(status === 429 || status === 503 ? status : 500).json({
+            error: status ? `Gemini ${status}: ${message}` : message
+        });
+    }
+});
+
 app.listen(PORT, () => console.log("Server running on port " + PORT));

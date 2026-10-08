@@ -219,8 +219,18 @@
         headers: await getAuthHeaders(),
         body: JSON.stringify({ itemCode: entry.code, prompt: document.getElementById("editPrompt").value, imageBase64, mimeType: "image/jpeg" })
       });
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(result.error || "Gemini image edit failed");
+      const responseText = await response.text();
+      let result = {};
+      try {
+        result = responseText ? JSON.parse(responseText) : {};
+      } catch (_) {
+        result = {};
+      }
+      if (!response.ok) {
+        const detail = result.error || responseText.slice(0, 300).trim();
+        throw new Error(detail || `Image edit request failed (${response.status} ${response.statusText})`);
+      }
+      if (!result.imageBase64) throw new Error("Image edit service returned no image data");
       const mimeType = result.mimeType || "image/png";
       const bytes = Uint8Array.from(atob(result.imageBase64), char => char.charCodeAt(0));
       entry.resultFile = new File([bytes], `${entry.code}.${mimeType.split("/")[1] || "png"}`, { type: mimeType });

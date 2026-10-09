@@ -20,6 +20,7 @@
         input,select,textarea{width:100%;padding:10px;border-radius:10px;border:1px solid #475569;background:#0f172a;color:white;font-size:14px;text-transform:uppercase}
         textarea{text-transform:none;min-height:70px;resize:vertical}
         .full{grid-column:1/-1}.two{grid-column:span 2}
+        .distance-control{display:flex;gap:6px}.distance-control input{min-width:0}.distance-control button{margin:0;white-space:nowrap}
         button{border:0;border-radius:12px;padding:10px 13px;font-weight:900;cursor:pointer;background:#facc15;color:#261900;margin:2px}
         button.secondary{background:#38bdf8;color:#062532}.danger{background:#ef4444;color:white}.good{background:#22c55e;color:#052e1a}.purple{background:#c084fc;color:#2e1065}
         button:disabled{opacity:.55;cursor:not-allowed}
@@ -70,7 +71,7 @@
             <div><label>Place</label><input id="toPlace"></div>
             <div><label>State Code</label><input id="toStateCode" value="32"></div>
             <div><label>PIN Code</label><input id="toPincode"></div>
-            <div><label>Distance KM</label><input id="distance" type="number" min="0" value="0"></div>
+            <div><label>Distance KM</label><div class="distance-control"><input id="distance" type="number" min="0" value="0"><button class="secondary" type="button" id="calculateDistanceButton" onclick="calculateDistance()">Auto</button></div><div id="distanceStatus" class="note" aria-live="polite">Road estimate between PIN-code areas; verify before use.</div></div>
         </div>
     </div>
 
@@ -125,6 +126,35 @@ function clean(value){ return String(value || '').trim(); }
 function escapeHTML(value){ return String(value || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
 const DEPLOYED_BACKEND_URL = 'https://nserp-vajra-voice-api.onrender.com';
 function apiBase(){ return clean(document.getElementById('backendUrl').value).replace(/\/$/, ''); }
+
+async function calculateDistance(){
+    const button = document.getElementById('calculateDistanceButton');
+    const status = document.getElementById('distanceStatus');
+    const fromPincode = clean(document.getElementById('fromPincode').value);
+    const toPincode = clean(document.getElementById('toPincode').value);
+    if(!/^\d{6}$/.test(fromPincode) || !/^\d{6}$/.test(toPincode)){
+        status.textContent = 'Enter valid seller and customer 6-digit PIN codes first.';
+        return;
+    }
+
+    button.disabled = true;
+    status.textContent = 'Calculating road distance...';
+    try{
+        const response = await fetch(apiBase() + '/eway-distance', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({ fromPincode, toPincode })
+        });
+        const data = await response.json();
+        if(!response.ok || !data.success) throw new Error(data.message || 'Distance lookup failed.');
+        document.getElementById('distance').value = data.distanceKm;
+        status.textContent = 'Estimated road distance: ' + data.distanceKm + ' km. Verify before generating the bill.';
+        generateJson();
+    }catch(error){
+        status.textContent = error.message + ' You can enter the distance manually.';
+    }finally{
+        button.disabled = false;
+    }
+}
 
 function setDefaultBackendUrl(){
     if(location.hostname.endsWith('github.io')) document.getElementById('backendUrl').value = DEPLOYED_BACKEND_URL;

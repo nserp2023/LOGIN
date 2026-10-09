@@ -34,12 +34,63 @@ app.use(express.static(process.cwd()));
 // portal/API is intentionally a separate step.
 const EWAY_USERNAME = process.env.EWAY_USERNAME || process.env.EWAY_BILL_USERNAME || "";
 const EWAY_JSON_DIRECTORY = path.join(process.cwd(), "eway-json");
+const EWAY_PIN_LOCATION_CACHE = new Map();
+let nominatimQueue = Promise.resolve();
+let lastNominatimRequestAt = 0;
 
 app.get("/eway-login-check", (_req, res) => {
     res.json({
         success: true,
         username: EWAY_USERNAME || "Local server ready"
     });
+});
+
+app.post("/eway-distance", async (req, res) => {
+    const fromPincode = String(req.body?.fromPincode || "");
+    const toPincode = String(req.body?.toPincode || "");
+    if (!/^\d{6}$/.test(fromPincode) || !/^\d{6}$/.test(toPincode)) {
+        return res.status(400).json({ success: false, message: "Enter valid 6-digit origin and destination PIN codes." });
+    }
+
+    try {
+        const locatePincode = pincode => {
+            const cachedLocation = EWAY_PIN_LOCATION_CACHE.get(pincode);
+            if (cachedLocation) return Promise.resolve(cachedLocation);
+            const request = nominatimQueue.then(async () => {
+                const delay = Math.max(0, 1000 - (Date.now() - lastNominatimRequestAt));
+                if (delay) await new Promise(resolve => setTimeout(resolve, delay));
+                lastNominatimRequestAt = Date.now();
+                const response = await axios.get("https://nominatim.openstreetmap.org/search", {
+                    params: { postalcode: pincode, country: "India", format: "jsonv2", limit: 1 },
+                    headers: { "User-Agent": "VajraLightsEwayBill/1.0" },
+                    timeout: 12000
+                });
+                const location = response.data?.[0];
+                if (!location) throw new Error(`Could not locate PIN code ${pincode}.`);
+                const coordinates = { latitude: Number(location.lat), longitude: Number(location.lon) };
+                if (!Number.isFinite(coordinates.latitude) || !Number.isFinite(coordinates.longitude)) {
+                    throw new Error(`Could not read map coordinates for PIN code ${pincode}.`);
+                }
+                EWAY_PIN_LOCATION_CACHE.set(pincode, coordinates);
+                return coordinates;
+            });
+            nominatimQueue = request.catch(() => {});
+            return request;
+        };
+
+        const [from, to] = await Promise.all([locatePincode(fromPincode), locatePincode(toPincode)]);
+        const routeResponse = await axios.get(
+            `https://router.project-osrm.org/route/v1/driving/${from.longitude},${from.latitude};${to.longitude},${to.latitude}`,
+            { params: { overview: "false", alternatives: "false", steps: "false" }, timeout: 15000 }
+        );
+        const route = routeResponse.data?.routes?.[0];
+        if (!route || !Number.isFinite(route.distance)) throw new Error("No driving route was found between these PIN codes.");
+
+        res.json({ success: true, distanceKm: Math.round(route.distance / 1000) });
+    } catch (error) {
+        console.error("E-Way distance lookup error:", error.message);
+        res.status(502).json({ success: false, message: error.message || "Could not calculate route distance." });
+    }
 });
 
 app.post("/generate-eway-json", (req, res) => {

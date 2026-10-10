@@ -735,16 +735,49 @@
         norm(r.status) !== 'cancelled'
       );
 
-      const creditSales = activeRows.filter(isCreditSale);
-      const advanceCreditSales = activeRows.filter(isAdvanceCreditSale);
-      const cashSales = activeRows.filter(r => !isCreditSale(r) && !isAdvanceCreditSale(r));
+      const salesIds = activeRows.map(row => row.id).filter(Boolean);
+      let linkedPackRows = [];
+      if(salesIds.length){
+        try{
+          const { data: packingRows, error: packingError } = await sb
+            .from('sales_packing_details')
+            .select('*')
+            .in('sales_id', salesIds);
+          if(packingError) throw packingError;
+          linkedPackRows = Array.isArray(packingRows) ? packingRows : [];
+        }catch(err){
+          console.warn('Could not load linked packing bills for summary:', err.message || err);
+        }
+      }
+
+      const packingBySalesId = new Map();
+      linkedPackRows.forEach(row => {
+        const status = norm(row.status || row.packing_status || row.bill_status);
+        const cancelled = String(row.is_cancelled ?? row.cancelled ?? row.is_canceled ?? '').trim().toLowerCase();
+        if(status === 'cancelled' || status === 'canceled' || ['true', '1', 'yes'].includes(cancelled)) return;
+        const salesId = String(row.sales_id || '');
+        if(salesId && !packingBySalesId.has(salesId)) packingBySalesId.set(salesId, row);
+      });
+
+      const salesRows = activeRows.map(row => {
+        const linkedPack = packingBySalesId.get(String(row.id || ''));
+        const packingAmount = num(linkedPack?.packing_amount);
+        return {
+          ...row,
+          summary_amount: packingAmount > 0 ? packingAmount : num(row.invoice_amount)
+        };
+      });
+
+      const creditSales = salesRows.filter(isCreditSale);
+      const advanceCreditSales = salesRows.filter(isAdvanceCreditSale);
+      const cashSales = salesRows.filter(r => !isCreditSale(r) && !isAdvanceCreditSale(r));
 
       return {
         creditSales,
         advanceCreditSales,
-        cashSalesTotal: cashSales.reduce((a, b) => a + num(b.invoice_amount), 0),
-        creditSalesTotal: creditSales.reduce((a, b) => a + num(b.invoice_amount), 0),
-        advanceCreditSalesTotal: advanceCreditSales.reduce((a, b) => a + num(b.invoice_amount), 0)
+        cashSalesTotal: cashSales.reduce((a, b) => a + num(b.summary_amount), 0),
+        creditSalesTotal: creditSales.reduce((a, b) => a + num(b.summary_amount), 0),
+        advanceCreditSalesTotal: advanceCreditSales.reduce((a, b) => a + num(b.summary_amount), 0)
       };
     }
 
@@ -975,14 +1008,14 @@
           billNo(r),
           r.customer_name || '',
           r.customer_mobile || '',
-          fmtCurrency(r.invoice_amount || 0)
+          fmtCurrency(r.summary_amount || 0)
         ]);
 
         const advanceCreditRows = sales.advanceCreditSales.map(r => [
           billNo(r),
           r.customer_name || '',
           r.customer_mobile || '',
-          fmtCurrency(r.invoice_amount || 0)
+          fmtCurrency(r.summary_amount || 0)
         ]);
 
         const creditReturnRows = (sr.creditRows || []).map(r => [

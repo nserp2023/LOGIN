@@ -593,6 +593,10 @@ td:first-child,th:first-child{background:rgba(0,0,0,.8)}
 .empty{color:#fff}
 
 </style>
+
+
+
+<script src="page-loading.js"></script>
 </head>
 
 <body>
@@ -2080,7 +2084,7 @@ document.addEventListener("keydown",e=>{
   if(e.key==="Escape") closeReceiveModal();
 });
 
-init();
+pageLoading.run("Loading purchase order report...", init);
 </script>
 </body>
 </html>

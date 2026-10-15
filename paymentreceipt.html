@@ -237,6 +237,10 @@ tbody tr:hover { background: #17304b; }
     .brand h1, .card h2, th { color: #111; }
 }
 </style>
+
+
+
+<script src="page-loading.js"></script>
 </head>
 <body>
 <div class="container">
@@ -304,7 +308,7 @@ const saveBtn=$('saveBtn'), clearBtn=$('clearBtn'), reloadBtn=$('reloadBtn'), pa
 const searchParty=$('searchParty'), searchType=$('searchType'), searchDate=$('searchDate'), searchStatus=$('searchStatus'), searchLimit=$('searchLimit'), searchBtn=$('searchBtn'), resultsBody=$('resultsBody');
 let suggestionItems=[], activeSuggestionIndex=-1, isSaving=false, isApproving=false, selectedCreditBill=null, selectedCustomerAutoAllocation=null, selectedCustomerCreditRefund=null, selectedCustomerAccount=null, currentUserRole='';
 
-document.addEventListener('DOMContentLoaded', async()=>{ try{ const ok=await requirePageAccess('paymentreceipt'); if(!ok) return; }catch(e){ console.warn(e); } await initPage(); });
+document.addEventListener('DOMContentLoaded', async()=>{ await pageLoading.run("Loading payment and receipt data...", async()=>{ try{ const ok=await requirePageAccess('paymentreceipt'); if(!ok) return; }catch(e){ console.warn(e); } await initPage(); }); });
 async function initPage(){ const today=todayISO(); txnDate.value=today; searchDate.value=today; await loadCurrentUserRole(); updateTypeUI(); bindEvents(); await loadFromURLParams(); searchType.value=''; updateResultTotalLabel(); await generateNextVoucherNo(); await loadTransactions(searchParty.value.trim()); setupEnterNavigation(); }
 
 async function loadFromURLParams(){

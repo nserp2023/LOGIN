@@ -508,6 +508,8 @@
       body{ padding-bottom:180px; }
     }
   </style>
+
+<script src="page-loading.js"></script>
 </head>
 <body>
   <div class="wrap">
@@ -721,6 +723,7 @@
     let navLock = false;
 
     document.addEventListener("DOMContentLoaded", async () => {
+      await pageLoading.run("Loading purchase return...", async () => {
       const ok = await requirePageAccess("purchase");
       if (!ok) return;
       await initPage();
@@ -735,6 +738,7 @@
       }
 
       syncStickySaveState();
+      });
     });
 
     document.addEventListener("input", function(e){
@@ -1988,6 +1992,8 @@
   .no-print button{ padding:9px 14px; border:0; border-radius:8px; background:#111; color:#fff; font-weight:800; cursor:pointer; }
   @media print{ .no-print{display:none!important;} .audit-border{border:2px solid #000;} }
 </style>
+
+
 </head>
 <body>
   <div class="no-print"><button onclick="window.print()">Print</button><button onclick="window.close()">Close</button></div>

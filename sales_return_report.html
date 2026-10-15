@@ -427,10 +427,10 @@ tr:hover{
   if (!ok) return;
   });
 
-window.onload = async () => {
+document.addEventListener("DOMContentLoaded", async () => {
     setDefaultDates();
     await loadReport();
-};
+});
 
 let reportLoadIndicator;
 let reportLoadCount = 0;

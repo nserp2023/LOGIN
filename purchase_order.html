@@ -164,6 +164,10 @@
     }
     .brand-print,.print-header{display:none}
   </style>
+
+
+
+<script src="page-loading.js"></script>
 </head>
 <body>
   <div class="wrap">
@@ -245,6 +249,7 @@ let loadedPOId = null;
 let currentMode = "new";
 
 document.addEventListener("DOMContentLoaded", async () => {
+  await pageLoading.run("Loading purchase order...", async () => {
   if(typeof requirePageAccess === "function"){
     const ok = await requirePageAccess("purchase");
     if(!ok) return;
@@ -276,6 +281,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   await loadNextPONumber();
   addRow();
+  });
 });
 
 document.addEventListener("input", e => {

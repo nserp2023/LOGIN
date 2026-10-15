@@ -229,6 +229,10 @@ button:hover {
     th, td { font-size:12px; padding:8px; }
 }
 </style>
+
+
+
+<script src="page-loading.js"></script>
 </head>
 <body>
 
@@ -279,6 +283,7 @@ button:hover {
 const sb = window.sbcc;
 
 document.addEventListener("DOMContentLoaded", async () => {
+    await pageLoading.run("Loading purchase report...", async () => {
     const ok = await requirePageAccess("purchase");
     if (!ok) return;
 
@@ -287,7 +292,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("to_date").value = today;
 
     await loadSeries();
-    loadPurchase();
+    await loadPurchase();
 
     document.getElementById("from_date").addEventListener("change", loadPurchase);
     document.getElementById("to_date").addEventListener("change", loadPurchase);
@@ -296,6 +301,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("supplier_filter").addEventListener("input", function(event) {
         event.target.value = event.target.value.toUpperCase();
         debouncedSupplierSearch();
+    });
     });
 });
 

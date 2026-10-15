@@ -211,6 +211,10 @@ th{
   table{min-width:760px}
 }
 </style>
+
+
+
+<script src="page-loading.js"></script>
 </head>
 
 <body>
@@ -360,6 +364,7 @@ let activeSuggest = null;
 const globalList = document.getElementById("globalSuggestList");
 
 document.addEventListener("DOMContentLoaded", async () => {
+  await pageLoading.run("Loading stock conversion...", async () => {
   if(typeof requirePageAccess === "function"){
     const ok = await requirePageAccess("stock_conversion");
     if(!ok) return;
@@ -382,6 +387,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   window.addEventListener("resize", positionSuggest);
   document.addEventListener("scroll", positionSuggest, true);
+  });
 });
 
 function makeConversionNo(){

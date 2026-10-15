@@ -187,6 +187,10 @@ tr:hover {
     }
 }
 </style>
+
+
+
+<script src="page-loading.js"></script>
 </head>
 <body>
 
@@ -255,7 +259,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("invoice_filter").addEventListener("input", debounce(loadPurchaseReturnReport, 400));
     document.getElementById("pr_filter").addEventListener("input", debounce(loadPurchaseReturnReport, 400));
 
-    loadPurchaseReturnReport();
+    await pageLoading.run('Loading purchase return report...', loadPurchaseReturnReport);
 });
 
 function goToNewPR(){

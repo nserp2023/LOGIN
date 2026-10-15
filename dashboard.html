@@ -1367,6 +1367,10 @@
   }
 }
   </style>
+
+
+
+<script src="page-loading.js"></script>
 </head>
 <body class="dashboard-page">
   <button id="crmOverdueReminder" class="crm-overdue-reminder" type="button"
@@ -1634,6 +1638,7 @@
     const sb = window.sbcc;
 
     document.addEventListener("DOMContentLoaded", async () => {
+      await pageLoading.run("Loading dashboard...", async () => {
       if (!sb) {
         alert("Supabase client not loaded. Check supabaseClient.js");
         return;
@@ -1660,6 +1665,7 @@
         console.error(err);
         alert("Dashboard failed to load.");
       }
+      });
     });
 
     function pendingPOCutoffISO() {

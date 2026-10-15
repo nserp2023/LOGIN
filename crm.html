@@ -697,6 +697,10 @@
       .old-detail-grid{grid-template-columns:1fr}
     }
   </style>
+
+
+
+<script src="page-loading.js"></script>
 </head>
 <body>
   <div class="page">
@@ -895,7 +899,7 @@
       enableUppercase();
       bindEvents();
       bindEnterJump();
-      await loadCustomers();
+      await pageLoading.run("Loading CRM customers...", loadCustomers);
     });
 
     function bindEvents() {

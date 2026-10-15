@@ -727,7 +727,7 @@ async function insertSalesReturnHead(payload) {
         .single();
 }
 
-window.onload = async () => {
+document.addEventListener("DOMContentLoaded", async () => {
     updateStockLoadIndicator(0, null);
     await loadSeries();
     await loadStockMaster();
@@ -743,7 +743,7 @@ window.onload = async () => {
     document.getElementById("settlement_mode").addEventListener("change", updateSettlementUI);
 
     handleModeChange();
-};
+});
 
 async function loadSeries() {
     const { data, error } = await sb

@@ -593,6 +593,10 @@
       }
     }
   </style>
+
+
+
+<script src="page-loading.js"></script>
 </head>
 <body>
   <div class="wrap">
@@ -2679,6 +2683,7 @@ if (baseLanding > 0) {
       if(!editId){
         alert("REORDER QUANTITY REMINDER\n\nDo you know the reorder quantities for the items you are going to enter?");
       }
+      await pageLoading.run("Loading purchase data...", async () => {
       setupColumnControls();
       await initInvoice();
       await Promise.all([loadStockData(), loadHSNData()]);
@@ -2704,6 +2709,7 @@ if (baseLanding > 0) {
         if(!byId("saveBtnSticky").disabled) saveAll();
       });
       syncStickySaveState();
+      });
     })();
   </script>
 </body>

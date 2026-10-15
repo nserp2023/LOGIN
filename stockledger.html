@@ -678,6 +678,8 @@ body.compact-columns table{
 }
 
   </style>
+
+<script src="page-loading.js"></script>
 </head>
 <body>
   <div class="wrap">
@@ -1690,7 +1692,7 @@ function applyFilters(){
             .code{font-family:Consolas,monospace;}
             tr{page-break-inside:avoid;}
           </style>
-        </head>
+</head>
         <body>
           <h1>Stock Item List</h1>
           <p class="meta">${filteredRows.length} item(s) | Printed ${new Date().toLocaleDateString('en-IN')}</p>
@@ -1745,7 +1747,7 @@ function applyFilters(){
     els.exportBtn.addEventListener('click', exportCSV);
     els.printItemsBtn.addEventListener('click', printItemList);
 
-    loadStockReport();
+    pageLoading.run("Loading stock ledger...", loadStockReport);
   </script>
 </body>
 </html>

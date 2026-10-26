@@ -801,6 +801,12 @@ function getPOValue(o, keys, fallback=""){
   return fallback;
 }
 
+function getEditableItemRemark(remark){
+  return String(remark || "").replace(
+    /^AUTO REORDER: MAX .*? - REMAINING AFTER (?:SALE|QUOTATION) .*?\s+\|\s*/i,
+    ""
+  );
+}
 
 function getMobileFromRemark(remark){
   const m = String(remark || "").match(/MOBILE\s*:\s*([^|\n\r]+)/i);
@@ -864,7 +870,7 @@ async function loadPOForViewOrPrint(key, autoPrint=false){
         item_name: it.item_name || "",
         quantity: it.quantity ?? it.qty ?? 1,
         price: it.price ?? it.purchase_price_gst ?? it.purchase_price ?? "",
-        remark: it.remark || it.remarks || "",
+        remark: getEditableItemRemark(it.remark || it.remarks || ""),
         received_qty: it.received_qty || 0,
         balance: stock ? stock.balance : null,
         is_new_item: it.is_new_item || false

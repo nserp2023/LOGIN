@@ -1656,7 +1656,7 @@
         setupCashClosingButtons();
         setupWorkboard(profile);
         loadCRMOverdueReminder();
-        loadPendingPOLoginPopup(profile);
+        loadPendingPOLoginPopup();
 
         await loadTodayDashboardSummary();
         await loadLatestCashClosing();
@@ -1675,17 +1675,11 @@
       return [cutoff.getFullYear(), String(cutoff.getMonth() + 1).padStart(2, "0"), String(cutoff.getDate()).padStart(2, "0")].join("-");
     }
 
-    async function loadPendingPOLoginPopup(profile) {
-      const role = String(profile?.role || "").toUpperCase();
-      if (["OWNER", "ADMIN"].includes(role)) return;
+    async function loadPendingPOLoginPopup() {
       if (sessionStorage.getItem("show_pending_po_login_popup") !== "true") return;
       sessionStorage.removeItem("show_pending_po_login_popup");
 
       try {
-        const { data: setting, error: settingError } = await sb.from("user_page_access")
-          .select("allowed").eq("user_id", profile.id).eq("page_key", "purchase_order_popup").maybeSingle();
-        if (settingError || !setting?.allowed) return;
-
         const cutoff = pendingPOCutoffISO();
         const { data: orders, error: orderError } = await sb.from("purchase_order_details")
           .select("*").lte("order_date", cutoff);

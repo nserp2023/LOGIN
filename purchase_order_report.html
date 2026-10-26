@@ -666,12 +666,12 @@ td:first-child,th:first-child{background:rgba(0,0,0,.8)}
       </select>
     </div>
     <div>
-      <label>Pending</label>
+      <label>Item Filter</label>
       <select id="pendingFilter" onchange="loadReport()">
-        <option value="">Pending Items (Default)</option>
+        <option value="pending" selected>Pending Only (Default)</option>
         <option value="all">All Items</option>
-        <option value="pending">Pending Only</option>
         <option value="received">Fully Received</option>
+        <option value="cancelled">Cancelled Only</option>
       </select>
     </div>
     <div style="display:flex;align-items:end">
@@ -716,6 +716,7 @@ td:first-child,th:first-child{background:rgba(0,0,0,.8)}
             <th>Mobile</th>
             <th>Item Code</th>
             <th>Item Name</th>
+            <th>Remark</th>
             <th class="right">Order Qty</th>
             <th class="right">Received</th>
             <th class="right">Pending</th>
@@ -726,7 +727,7 @@ td:first-child,th:first-child{background:rgba(0,0,0,.8)}
           </tr>
         </thead>
         <tbody id="tbody">
-          <tr><td colspan="13" class="empty">Loading...</td></tr>
+          <tr><td colspan="14" class="empty">Loading...</td></tr>
         </tbody>
       </table>
       <!-- Order-wise table (hidden by default) -->
@@ -851,6 +852,12 @@ function safe(v){
     "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
   }[s]));
 }
+function getReportItemRemark(remark){
+  return String(remark || "").replace(
+    /^AUTO REORDER: MAX .*? - REMAINING AFTER (?:SALE|QUOTATION) .*?\s+\|\s*/i,
+    ""
+  );
+}
 function num(n){
   return Number(n||0).toLocaleString("en-IN",{maximumFractionDigits:2});
 }
@@ -915,7 +922,7 @@ function getOrderCancelled(o){
   return !!(o?.is_cancelled || o?.cancelled || String(o?.status || "").toUpperCase() === "CANCELLED");
 }
 function getRowStatus(r){
-  if(String(r.order_status||"").toUpperCase()==="CANCELLED" || r.is_cancelled) return "CANCELLED";
+  if(String(r.order_status||"").toUpperCase()==="CANCELLED" || r.is_cancelled || String(r.raw_item?.status || "").toUpperCase()==="CANCELLED") return "CANCELLED";
   if(Number(r.pending_qty)<=0) return "CLOSED";
   if(Number(r.received_qty)>0) return "PARTIAL";
   return "OPEN";
@@ -948,12 +955,12 @@ async function loadReport(){
   }else if(viewMode === "supplier"){
     document.getElementById("supplierTbody").innerHTML = `<tr><td colspan="8" class="empty">Loading suppliers with pending items...</td></tr>`;
   }else{
-    tbody.innerHTML = `<tr><td colspan="13" class="empty">Loading item wise report...</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="14" class="empty">Loading item wise report...</td></tr>`;
   }
 
   if(!sb){
     const target = viewMode === "order" ? orderTbody : viewMode === "supplier" ? document.getElementById("supplierTbody") : tbody;
-    const colspan = viewMode === "order" ? 8 : viewMode === "supplier" ? 8 : 13;
+    const colspan = viewMode === "order" ? 8 : viewMode === "supplier" ? 8 : 14;
     target.innerHTML = `<tr><td colspan="${colspan}" class="empty">Supabase client not found. Check supabaseClient.js</td></tr>`;
     return;
   }
@@ -1007,6 +1014,7 @@ async function loadReport(){
         supplier_address:o.supplier_address || o.address || "",
         item_code:it.item_code || "",
         item_name:it.item_name || "",
+        remark:getReportItemRemark(it.remark || it.remarks || ""),
         department:it.department || "",
         order_qty:qty,
         received_qty:received,
@@ -1026,7 +1034,7 @@ async function loadReport(){
       rows = rows.filter(r=>{
         const hay = [
           r.po_no,r.supplier_name,r.supplier_mobile,r.gst_number,r.supplier_address,
-          r.item_code,r.item_name,r.department,r.status
+          r.item_code,r.item_name,r.remark,r.department,r.status
         ].join(" ").toLowerCase();
         return hay.includes(search);
       });
@@ -1038,7 +1046,11 @@ async function loadReport(){
 
     // Default report view: hide fully received items.
     // Pending is calculated from quantity - received_qty, so no pending_qty column is needed in Supabase.
-    if(pendingFilter === "all"){
+    if(pendingFilter === "cancelled"){
+      rows = rows.filter(r=>r.status==="CANCELLED");
+    }else if(statusFilter === "CANCELLED"){
+      // Selecting Cancelled overrides the default pending-only item filter.
+    }else if(pendingFilter === "all"){
       // Show all item lines, including fully received items.
     }else if(pendingFilter === "received"){
       rows = rows.filter(r=>r.pending_qty<=0 && r.status!=="CANCELLED");
@@ -1104,7 +1116,7 @@ function renderRows(rows){
   document.getElementById("resultInfo").textContent = `${rows.length} item line(s) shown`;
 
   if(!rows.length){
-    tbody.innerHTML = `<tr><td colspan="13" class="empty">No item details found</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="14" class="empty">No item details found</td></tr>`;
     renderStats([]);
     return;
   }
@@ -1119,6 +1131,7 @@ function renderRows(rows){
         <td><b>${safe(r.supplier_mobile || "-")}</b></td>
         <td class="mono">${safe(r.item_code)}</td>
         <td><b>${safe(r.item_name)}</b><div class="hint">${safe(r.department)}</div></td>
+        <td>${safe(r.remark)}</td>
         <td class="right">${num(r.order_qty)}</td>
         <td class="right">${num(r.received_qty)}</td>
         <td class="right ${r.pending_qty>0?'pendingText':'okText'}">${num(r.pending_qty)}</td>
@@ -1190,7 +1203,8 @@ function setViewMode(mode){
     if(supplierTable) supplierTable.style.display = 'none';
     if(titleEl) titleEl.textContent = 'Order Details Report';
     if(hintEl) hintEl.textContent = 'Order-level view: date, supplier, mobile, status and actions.';
-    renderOrders(allOrders || [], allItems || []);
+    const visibleOrderIds = new Set((allRows || []).map(row => String(row.order_id)));
+    renderOrders((allOrders || []).filter(order => visibleOrderIds.has(String(order.id))), allItems || []);
   }else{
     if(itemTable) itemTable.style.display = 'none';
     if(orderTable) orderTable.style.display = 'none';
@@ -1266,6 +1280,7 @@ function renderSuppliers(rows){
         <td>${fmtDate(row.order_date)}</td>
         <td class="mono">${safe(row.item_code || '-')}</td>
         <td><b>${safe(row.item_name || '-')}</b><div class="hint">${safe(row.department || '')}</div></td>
+        <td>${safe(row.remark || '')}</td>
         <td class="right">${num(row.order_qty)}</td>
         <td class="right">${num(row.received_qty)}</td>
         <td class="right pendingText">${num(row.pending_qty)}</td>
@@ -1298,7 +1313,7 @@ function renderSuppliers(rows){
           <div class="order-detail-panel">
             <div class="order-detail-heading"><span>Pending items from ${safe(group.supplier_name)}</span><span>${group.rows.length} item line(s)</span></div>
             <table class="order-detail-table">
-              <thead><tr><th>PO No</th><th>Date</th><th>Item Code</th><th>Item Name</th><th class="right">Ordered</th><th class="right">Received</th><th class="right">Pending</th><th class="right">Action</th></tr></thead>
+              <thead><tr><th>PO No</th><th>Date</th><th>Item Code</th><th>Item Name</th><th>Remark</th><th class="right">Ordered</th><th class="right">Received</th><th class="right">Pending</th><th class="right">Action</th></tr></thead>
               <tbody>${itemRows}</tbody>
             </table>
           </div>
@@ -1374,10 +1389,10 @@ function renderOrders(orders, items){
     const pending = (its||[]).reduce((a,it)=>a + Math.max(Number(it.quantity || it.qty || 0)-Number(it.received_qty||0),0),0);
     const cancelled = getOrderCancelled(o) || String(o.status||'').toUpperCase() === 'CANCELLED';
     return {order:o,items:its,value,qty,received,pending,cancelled};
-  }).filter(r => r.pending > 0 && !r.cancelled);
+  });
 
   if(!rows.length){
-    tbody.innerHTML = `<tr><td colspan="8" class="empty">No orders with pending items found</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" class="empty">No matching orders found</td></tr>`;
     document.getElementById('resultInfo').textContent = `0 order(s) shown`;
     return;
   }
@@ -1391,14 +1406,24 @@ function renderOrders(orders, items){
       const received = Number(it.received_qty || 0);
       const pending = Math.max(qty-received,0);
       const price = Number(it.price || it.purchase_price_gst || it.purchase_price || 0);
+      const itemCancelled = String(it.status || '').toUpperCase() === 'CANCELLED';
+      const itemStatus = cancelled || itemCancelled
+        ? 'CANCELLED'
+        : pending <= 0
+          ? 'CLOSED'
+          : received > 0
+            ? 'PARTIAL'
+            : 'OPEN';
       return `
         <tr>
           <td class="center">${index+1}</td>
           <td class="mono">${safe(it.item_code || "-")}</td>
           <td><b>${safe(it.item_name || "-")}</b><div class="hint">${safe(it.department || "")}</div></td>
+          <td>${safe(it.remark || it.remarks || "")}</td>
           <td class="right">${num(qty)}</td>
           <td class="right">${num(received)}</td>
           <td class="right ${pending>0 ? "pendingText" : "okText"}">${num(pending)}</td>
+          <td>${badge(itemStatus)}</td>
           <td class="right">${money(price)}</td>
           <td class="right"><b>${money(qty*price)}</b></td>
         </tr>`;
@@ -1410,7 +1435,7 @@ function renderOrders(orders, items){
         <td><b>${safe(o.supplier_name || '-')}</b></td>
         <td><b>${safe(o.supplier_mobile || o.mobile || getMobileFromRemark(o.remark || o.remarks || ''))}</b></td>
         <td class="right"><b>${money(r.value)}</b></td>
-        <td>${badge(String(o.status||'').toUpperCase() || (r.pending>0? 'OPEN':'CLOSED'))}</td>
+        <td>${badge(r.cancelled ? "CANCELLED" : String(o.status||'').toUpperCase() || (r.pending>0? 'OPEN':'CLOSED'))}</td>
         <td>
           <div class="supplier-response-editor">
             <textarea id="supplier-response-${o.id}" aria-label="Supplier response for PO ${safe(poNo(o))}" placeholder="Type supplier response..." oninput="this.value=this.value.toUpperCase();scheduleSupplierResponseSave(${o.id},this)" onblur="saveSupplierResponseNow(${o.id},this)">${safe(String(o.supplier_response || '').toUpperCase())}</textarea>
@@ -1431,10 +1456,10 @@ function renderOrders(orders, items){
           <div class="order-detail-panel">
             <div class="order-detail-heading"><span>Items ordered in PO ${safe(poNo(o))}</span><span>${r.items.length} item(s)</span></div>
             <table class="order-detail-table">
-              <thead><tr><th>#</th><th>Item Code</th><th>Item Name</th><th class="right">Ordered</th><th class="right">Received</th><th class="right">Pending</th><th class="right">Price</th><th class="right">Amount</th></tr></thead>
+              <thead><tr><th>#</th><th>Item Code</th><th>Item Name</th><th>Remark</th><th class="right">Ordered</th><th class="right">Received</th><th class="right">Pending</th><th>Status</th><th class="right">Price</th><th class="right">Amount</th></tr></thead>
               <tbody>
-                ${itemRows || `<tr><td colspan="8" class="empty">No item details found for this purchase order.</td></tr>`}
-                <tr class="detail-total"><td colspan="7" class="right">Purchase Order Total</td><td class="right">${money(r.value)}</td></tr>
+                ${itemRows || `<tr><td colspan="10" class="empty">No item details found for this purchase order.</td></tr>`}
+                <tr class="detail-total"><td colspan="9" class="right">Purchase Order Total</td><td class="right">${money(r.value)}</td></tr>
               </tbody>
             </table>
           </div>
@@ -1842,7 +1867,7 @@ function makePOExactPrintCardFromData(order, items){
       item_code: code,
       item_name: it.item_name || '',
       qty: two(qty),
-      remark: it.remark || it.remarks || ''
+      remark: getReportItemRemark(it.remark || it.remarks || '')
     };
   });
 
@@ -2048,7 +2073,7 @@ function exportCSV(){
   const header = [
     "PO No","Date","Supplier","Mobile","GST",
     "Item Code","Item Name","Order Qty","Received Qty",
-    "Pending Qty","Price","Amount","Status"
+    "Pending Qty","Price","Amount","Remark","Status"
   ];
 
   const rows = allRows.map(r=>[
@@ -2064,6 +2089,7 @@ function exportCSV(){
     r.pending_qty,
     r.price,
     r.amount,
+    r.remark,
     r.status
   ]);
 

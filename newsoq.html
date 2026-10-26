@@ -2795,7 +2795,7 @@
 
     function isManualReorderMode(){
         const type = (document.getElementById('doc_type')?.value || '').trim();
-        return type === 'sales' || type === 'sales_pack';
+        return type === 'sales' || type === 'sales_pack' || type === 'quotation';
     }
 
     function closeManualReorder(){
@@ -3007,7 +3007,12 @@
         const today = new Date().toISOString().split("T")[0];
         const {data: authData} = await sb.auth.getUser();
         const createdBy = authData?.user?.email || "";
-        const docType = document.getElementById("doc_type")?.value === "sales_pack" ? "BILL" : "SALES";
+        const selectedDocType = document.getElementById("doc_type")?.value || "";
+        const docType = selectedDocType === "sales_pack"
+            ? "BILL"
+            : selectedDocType === "quotation"
+                ? "QUOTATION"
+                : "SALES";
         const saleNo = `${document.getElementById("bill_series")?.value || ""}-${document.getElementById("bill_number")?.value || ""}`.replace(/^-|-$/g, "");
         const remark = `AUTO PO FROM ${docType}${saleNo ? " " + saleNo : ""} - MINIMUM STOCK REORDER`;
 
@@ -3039,7 +3044,7 @@
             quantity: orderQty,
             received_qty: 0,
             price,
-            remark: [`AUTO REORDER: MAX ${getMaximumQtyForRow(row)} - REMAINING AFTER SALE ${getRemainingStockAfterSale(row)}`, manualRemark.trim()].filter(Boolean).join(' | '),
+            remark: [`AUTO REORDER: MAX ${getMaximumQtyForRow(row)} - REMAINING AFTER ${docType === "QUOTATION" ? "QUOTATION" : "SALE"} ${getRemainingStockAfterSale(row)}`, manualRemark.trim()].filter(Boolean).join(' | '),
             status: "PENDING"
         };
 

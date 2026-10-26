@@ -3044,7 +3044,7 @@
             quantity: orderQty,
             received_qty: 0,
             price,
-            remark: [`AUTO REORDER: MAX ${getMaximumQtyForRow(row)} - REMAINING AFTER ${docType === "QUOTATION" ? "QUOTATION" : "SALE"} ${getRemainingStockAfterSale(row)}`, manualRemark.trim()].filter(Boolean).join(' | '),
+            remark: manualRemark.trim() || `AUTO REORDER: MAX ${getMaximumQtyForRow(row)} - REMAINING AFTER ${docType === "QUOTATION" ? "QUOTATION" : "SALE"} ${getRemainingStockAfterSale(row)}`,
             status: "PENDING"
         };
 

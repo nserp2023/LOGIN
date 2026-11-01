@@ -1580,7 +1580,8 @@
       const { hsn, code, barcode, name, department, qty, price, disc, total, gstp, totalG, purch, purchG, landing, p1p, p1, p1g, p2p, p2, p2g, p3p, p3, p3g } = getRowFields(row);
 
       code.value    = item.item_code || "";
-      barcode.value = item.barcode || item.item_code || "";
+      barcode.value = item.barcode || "";
+      barcode.dataset.userOverride = "0";
       name.value    = item.item_name || "";
       hsn.value     = item.hsn_code || "";
       department.value = String(item.department || "").toUpperCase();
@@ -1675,6 +1676,7 @@ if (baseLanding > 0) {
 
       code.value = prefill.item_code ?? "";
       barcode.value = prefill.barcode ?? "";
+      barcode.dataset.userOverride = prefill.barcode ? "1" : "0";
       name.value = prefill.item_name ?? "";
       hsn.value  = prefill.hsn_code ?? "";
       ensureDepartmentOption(department, prefill.department);
@@ -1709,9 +1711,27 @@ if (baseLanding > 0) {
         });
       }, 60);
 
+      barcode.addEventListener("input", () => {
+        barcode.dataset.userOverride = "1";
+      });
+
       code.addEventListener("input", (e) => {
         const q = e.target.value.trim();
-        if(q.length < 1){ hideDropdown(); return; }
+        if(q.length < 1){
+          if(barcode.dataset.userOverride !== "1") barcode.value = "";
+          hideDropdown();
+          return;
+        }
+
+        if(barcode.dataset.userOverride !== "1") barcode.value = q.toUpperCase();
+
+        const exactItem = stockData.find(i => normalizeSearchText(i.item_code || "") === normalizeSearchText(q));
+        if(exactItem){
+          fillRowFromStock(wrap, exactItem);
+          hideDropdown();
+          return;
+        }
+
         const matches = searchStock(q, "item_code", department.value);
         if(!matches.length) return hideDropdown();
         showDropdown(e.target, matches, (pick) => fillRowFromStock(wrap, pick));
@@ -2012,7 +2032,7 @@ if (baseLanding > 0) {
         return {
           hsn_code: val("hsn"),
           item_code: val("code"),
-          barcode: val("barcode") || val("code"),
+          barcode: val("barcode"),
           item_name: val("name"),
           department: String(val("department") || "").toUpperCase(),
           quantity: num(val("qty")),

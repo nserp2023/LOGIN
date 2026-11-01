@@ -844,7 +844,7 @@ MEERA,8888888888,NEDUMANGAD,,32,WHATSAPP ONLY</div>
                   </tr>
                 </thead>
                 <tbody id="duplicateCustomerTableBody">
-                  <tr><td colspan="6" class="empty">Checking duplicate customers...</td></tr>
+                  <tr><td colspan="6" class="empty">Search customers to check duplicate groups</td></tr>
                 </tbody>
               </table>
             </div>
@@ -878,7 +878,7 @@ MEERA,8888888888,NEDUMANGAD,,32,WHATSAPP ONLY</div>
               </thead>
               <tbody id="customerTableBody">
                 <tr>
-                  <td colspan="9" class="empty">Loading customers...</td>
+                  <td colspan="9" class="empty">Enter a search value to find customers</td>
                 </tr>
               </tbody>
             </table>
@@ -958,10 +958,14 @@ MEERA,8888888888,NEDUMANGAD,,32,WHATSAPP ONLY</div>
     const bulkUploadPanel = document.getElementById("bulkUploadPanel");
 
     document.addEventListener("DOMContentLoaded", async () => {
-      await pageLoading.run("Loading customers...", async () => {
+      await pageLoading.run("Opening customer manager...", async () => {
       bindEvents();
       enableUppercaseEverywhere();
-      await loadCustomers();
+      customers = [];
+      filteredCustomers.textContent = "0";
+      customerTableBody.innerHTML = `
+        <tr><td colspan="9" class="empty">Enter a search value to find customers</td></tr>
+      `;
 
       const params = new URLSearchParams(window.location.search);
       const customerIdFromUrl = params.get("id");
@@ -1116,8 +1120,20 @@ MEERA,8888888888,NEDUMANGAD,,32,WHATSAPP ONLY</div>
     }
 
     async function loadCustomers() {
+      const hasSearch = [searchInput, gstSearchInput, stateSearchInput, addressSearchInput, remarkSearchInput]
+        .some(input => normalizeValue(input.value).length > 0);
+
+      if (!hasSearch) {
+        customers = [];
+        filteredCustomers.textContent = "0";
+        customerTableBody.innerHTML = `
+          <tr><td colspan="9" class="empty">Enter a search value to find customers</td></tr>
+        `;
+        return;
+      }
+
       customerTableBody.innerHTML = `
-        <tr><td colspan="9" class="empty">Loading customers...</td></tr>
+        <tr><td colspan="9" class="empty">Searching customers...</td></tr>
       `;
 
       try {
@@ -1146,6 +1162,18 @@ MEERA,8888888888,NEDUMANGAD,,32,WHATSAPP ONLY</div>
 
     function scheduleCustomerLoad() {
       clearTimeout(customerLoadTimer);
+      const hasSearch = [searchInput, gstSearchInput, stateSearchInput, addressSearchInput, remarkSearchInput]
+        .some(input => normalizeValue(input.value).length > 0);
+
+      if (!hasSearch) {
+        customers = [];
+        filteredCustomers.textContent = "0";
+        customerTableBody.innerHTML = `
+          <tr><td colspan="9" class="empty">Enter a search value to find customers</td></tr>
+        `;
+        return;
+      }
+
       customerLoadTimer = setTimeout(loadCustomers, 300);
     }
 

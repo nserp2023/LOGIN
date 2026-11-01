@@ -844,7 +844,7 @@ MEERA,8888888888,NEDUMANGAD,,32,WHATSAPP ONLY</div>
                   </tr>
                 </thead>
                 <tbody id="duplicateCustomerTableBody">
-                  <tr><td colspan="6" class="empty">Search customers to check duplicate groups</td></tr>
+                  <tr><td colspan="6" class="empty">Checking duplicate customers...</td></tr>
                 </tbody>
               </table>
             </div>
@@ -966,6 +966,8 @@ MEERA,8888888888,NEDUMANGAD,,32,WHATSAPP ONLY</div>
       customerTableBody.innerHTML = `
         <tr><td colspan="9" class="empty">Enter a search value to find customers</td></tr>
       `;
+      await loadDuplicateGroupSummary();
+      renderDuplicateCustomers();
 
       const params = new URLSearchParams(window.location.search);
       const customerIdFromUrl = params.get("id");

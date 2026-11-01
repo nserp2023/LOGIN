@@ -347,7 +347,16 @@ tr:hover td{background:rgba(56,189,248,.045)}
   overflow:auto;
   overscroll-behavior:contain;
   -webkit-overflow-scrolling:touch;
+  scrollbar-width:auto;
+  scrollbar-gutter:auto;
+  cursor:default;
 }
+.tablebox::-webkit-scrollbar{width:14px;height:14px}
+.tablebox::-webkit-scrollbar-track{background:#071426}
+.tablebox::-webkit-scrollbar-thumb{background:#64748b;border-radius:8px;border:3px solid #071426}
+.mobileList::-webkit-scrollbar{width:14px;height:14px}
+.mobileList::-webkit-scrollbar-track{background:#071426}
+.mobileList::-webkit-scrollbar-thumb{background:#64748b;border-radius:8px;border:3px solid #071426}
 tbody tr:nth-child(even) td{background:rgba(255,255,255,.018)}
 td:first-child, th:first-child{
   position:sticky;
@@ -374,6 +383,18 @@ th:first-child{z-index:30;background:#102039}
 }
 .miniStat span{display:block;font-size:10px;color:var(--muted);font-weight:900;text-transform:uppercase}
 .miniStat b{display:block;margin-top:2px;font-size:15px}
+.mobileActions{display:none;flex-shrink:0}
+.mobileList{display:none;flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch;padding-bottom:8px}
+.mobileCard{border:1px solid var(--line);border-radius:14px;background:rgba(16,31,53,.96);padding:10px;margin-bottom:8px}
+.mobileCardHeader{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;margin-bottom:8px}
+.mobileCardTitle{min-width:0;font-weight:950;line-height:1.25}
+.mobileCardMeta{font-size:11px;color:var(--muted);margin-top:3px}
+.mobileCardGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.mobileMetric{border:1px solid rgba(148,163,184,.14);border-radius:9px;background:rgba(255,255,255,.035);padding:7px}
+.mobileMetric span{display:block;font-size:9px;color:var(--muted);font-weight:900;text-transform:uppercase}
+.mobileMetric b{display:block;margin-top:2px;font-size:13px}
+.mobileCardActions{display:flex;gap:6px;margin-top:8px;justify-content:flex-end;flex-wrap:wrap}
+.mobileCardActions .iconbtn{width:38px;height:38px}
 
 @media(max-width:900px){
   .topbar{position:relative;top:0;flex-direction:column;align-items:flex-start}
@@ -402,6 +423,8 @@ th:first-child{z-index:30;background:#102039}
   .stat .val{font-size:17px;margin-top:2px}
   .compactStats{display:flex}
   .tablewrap{border-radius:14px}
+  .tablewrap{display:none}
+  .mobileList{display:block!important}
   .tablehead{padding:8px 10px;align-items:flex-start}
   .tabletitle{font-size:14px}
   .hint{font-size:10px}
@@ -415,6 +438,8 @@ th:first-child{z-index:30;background:#102039}
   .modal{align-items:flex-end;padding:0}
   .modalbox{width:100%;border-radius:20px 20px 0 0}
   .receiveGrid{grid-template-columns:1fr 1fr}
+  .mobileActions{display:flex!important;gap:6px;margin-left:auto}
+  .mobileActions button{min-width:38px;height:38px;padding:0;display:inline-grid;place-items:center;font-size:16px}
 }
 @media(max-width:600px){
   .stats{grid-template-columns:1fr 1fr}
@@ -697,6 +722,15 @@ td:first-child,th:first-child{background:rgba(0,0,0,.8)}
     <div class="miniStat"><span>Value</span><b id="miniValue">₹0</b></div>
   </div>
 
+  <div class="mobileActions" aria-label="Mobile report actions">
+    <button class="ghost" type="button" title="Dashboard" onclick="location.href='dashboard.html'">⌂</button>
+    <button class="primary" type="button" title="New purchase order" onclick="location.href='purchase_order.html'">＋</button>
+    <button class="green" type="button" title="Export CSV" onclick="exportCSV()">⇩</button>
+    <button class="orange" type="button" title="Refresh" onclick="loadReport()">↻</button>
+  </div>
+
+  <div id="mobileList" class="mobileList"></div>
+
   <div class="tablewrap">
     <div class="tablehead">
       <div>
@@ -835,6 +869,23 @@ const expandedOrderIds = new Set();
 const expandedSupplierKeys = new Set();
 let supplierGroups = [];
 
+function enableContainerWheelScrolling(){
+  document.querySelectorAll('.tablebox, .mobileList').forEach(container => {
+    if(container.dataset.wheelScrollBound === '1') return;
+    container.dataset.wheelScrollBound = '1';
+    container.addEventListener('wheel', event => {
+      if(Math.abs(event.deltaX) > Math.abs(event.deltaY)) return;
+      const delta = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? container.clientHeight : 1);
+      const canScrollDown = container.scrollTop + container.clientHeight < container.scrollHeight - 2;
+      const canScrollUp = container.scrollTop > 0;
+      if((delta > 0 && canScrollDown) || (delta < 0 && canScrollUp)){
+        event.preventDefault();
+        container.scrollTop += delta;
+      }
+    }, {passive:false});
+  });
+}
+
 function toggleTopSections(force){
   if(typeof force === "boolean") topSectionsOpen = force;
   else topSectionsOpen = !topSectionsOpen;
@@ -938,6 +989,9 @@ async function init(){
     button.addEventListener('click', () => setWhatsAppMode(button.dataset.whatsappMode));
   });
   setWhatsAppMode(getWhatsAppMode());
+  enableContainerWheelScrolling();
+  const observer = new MutationObserver(() => enableContainerWheelScrolling());
+  observer.observe(document.body, {childList:true, subtree:true});
   const params = new URLSearchParams(window.location.search);
   viewMode = ["item","order","supplier"].includes(params.get("view")) ? params.get("view") : "supplier";
   document.getElementById("fromDate").value = params.has("to") ? "" : monthStartISO();
@@ -1112,6 +1166,7 @@ async function loadReport(){
 }
 
 function renderRows(rows){
+  renderMobileList('item');
   const tbody = document.getElementById("tbody");
   document.getElementById("resultInfo").textContent = `${rows.length} item line(s) shown`;
 
@@ -1175,6 +1230,45 @@ function renderStats(rows){
     const el = document.getElementById(id);
     if(el) el.textContent = val;
   });
+}
+
+function renderMobileList(mode){
+  const list = document.getElementById('mobileList');
+  if(!list) return;
+  if(mode === 'item'){
+    const rows = allRows || [];
+    list.innerHTML = rows.length ? rows.map(r => `
+      <article class="mobileCard">
+        <div class="mobileCardHeader">
+          <div><div class="mobileCardTitle">${safe(r.item_name || r.item_code || '-')}</div><div class="mobileCardMeta">${safe(r.po_no)} · ${fmtDate(r.order_date)}</div></div>
+          ${badge(r.status)}
+        </div>
+        <div class="mobileCardMeta"><b>${safe(r.supplier_name || '-')}</b> · ${safe(r.supplier_mobile || '-')}</div>
+        <div class="mobileCardGrid" style="margin-top:8px">
+          <div class="mobileMetric"><span>Ordered</span><b>${num(r.order_qty)}</b></div>
+          <div class="mobileMetric"><span>Received</span><b>${num(r.received_qty)}</b></div>
+          <div class="mobileMetric"><span>Pending</span><b class="${r.pending_qty > 0 ? 'pendingText' : 'okText'}">${num(r.pending_qty)}</b></div>
+        </div>
+        <div class="mobileCardActions">
+          <button class="smallbtn iconbtn whatsappbtn" type="button" title="Share" onclick="sharePOWhatsApp(${r.order_id})" ${r.status === 'CANCELLED' ? 'disabled' : ''}>W</button>
+          <button class="smallbtn iconbtn editbtn" type="button" title="Edit" onclick="editPO(${r.order_id})" ${r.status === 'CANCELLED' ? 'disabled' : ''}>E</button>
+          <button class="smallbtn iconbtn receivebtn" type="button" title="Receive" onclick="openReceiveModal(${r.item_id})" ${r.status === 'CANCELLED' || r.pending_qty <= 0 ? 'disabled' : ''}>R</button>
+        </div>
+      </article>
+    `).join('') : '<div class="mobileCard"><div class="mobileCardTitle">No item details found</div></div>';
+  }else if(mode === 'order'){
+    const visibleIds = new Set((allRows || []).map(r => String(r.order_id)));
+    const orders = (allOrders || []).filter(o => visibleIds.has(String(o.id)));
+    list.innerHTML = orders.length ? orders.map(o => {
+      const its = (allItems || []).filter(i => Number(i.purchase_order_id) === Number(o.id));
+      const pending = its.reduce((sum,i) => sum + Math.max(Number(i.quantity||i.qty||0)-Number(i.received_qty||0),0),0);
+      const value = its.reduce((sum,i) => sum + Number(i.quantity||i.qty||0)*Number(i.price||i.purchase_price_gst||i.purchase_price||0),0);
+      return `<article class="mobileCard"><div class="mobileCardHeader"><div><div class="mobileCardTitle">${safe(poNo(o))}</div><div class="mobileCardMeta">${fmtDate(o.order_date || o.purchase_order_date || o.created_at)}</div></div>${badge(getOrderCancelled(o) ? 'CANCELLED' : String(o.status||''))}</div><div class="mobileCardMeta"><b>${safe(o.supplier_name || '-')}</b> · ${safe(o.supplier_mobile || o.mobile || '')}</div><div class="mobileCardGrid" style="margin-top:8px"><div class="mobileMetric"><span>Items</span><b>${its.length}</b></div><div class="mobileMetric"><span>Pending</span><b class="pendingText">${num(pending)}</b></div><div class="mobileMetric"><span>Value</span><b>${money(value)}</b></div></div><div class="mobileCardActions"><button class="smallbtn green" type="button" onclick="openOrderReceiveModal(${o.id})">RECEIVE</button><button class="smallbtn primary" type="button" onclick="editPO(${o.id})">EDIT</button><button class="smallbtn orange" type="button" onclick="sharePOWhatsApp(${o.id})">SHARE</button></div></article>`;
+    }).join('') : '<div class="mobileCard"><div class="mobileCardTitle">No orders found</div></div>';
+  }else{
+    const groups = (typeof supplierGroups !== 'undefined' ? supplierGroups : []);
+    list.innerHTML = groups.length ? groups.map((group, index) => `<article class="mobileCard"><div class="mobileCardHeader"><div><div class="mobileCardTitle">${safe(group.supplier_name)}</div><div class="mobileCardMeta">${safe(group.supplier_mobile)}</div></div></div><div class="mobileCardGrid"><div class="mobileMetric"><span>Lines</span><b>${group.rows.length}</b></div><div class="mobileMetric"><span>Pending</span><b class="pendingText">${num(group.rows.reduce((sum,r)=>sum+Number(r.pending_qty||0),0))}</b></div><div class="mobileMetric"><span>Orders</span><b>${new Set(group.rows.map(r=>String(r.order_id))).size}</b></div></div><div class="mobileCardActions"><button class="smallbtn green" type="button" onclick="shareSupplierPendingWhatsApp(${index})">WHATSAPP</button></div></article>`).join('') : '<div class="mobileCard"><div class="mobileCardTitle">No suppliers with pending items found</div></div>';
+  }
 }
 
 function setViewMode(mode){
@@ -1270,6 +1364,7 @@ function renderSuppliers(rows){
     return;
   }
 
+  renderMobileList('supplier');
   tbody.innerHTML = supplierGroups.map((group, index) => {
     const expanded = expandedSupplierKeys.has(group.key);
     const pendingQty = group.rows.reduce((sum,row) => sum + Number(row.pending_qty || 0), 0);
@@ -1370,6 +1465,7 @@ function shareSupplierPendingWhatsApp(index){
 }
 
 function renderOrders(orders, items){
+  renderMobileList('order');
   const tbody = document.getElementById('orderTbody');
   if(!tbody) return;
 

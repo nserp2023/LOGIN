@@ -58,7 +58,10 @@
     .field label{font-size:11px;color:#fff;font-weight:800;margin-bottom:4px;text-transform:uppercase;letter-spacing:0}
     .field input,.grid input{width:100%;min-height:32px;border:1px solid var(--line);border-radius:4px;background:#fff;color:var(--text);padding:6px 8px;outline:none;transition:.15s;font:inherit}
     .field input:focus,.grid input:focus{border-color:#2563eb;box-shadow:0 0 0 2px rgba(37,99,235,.18)}
-    .readonly{background:#f3f6fb!important;color:#42526b!important;font-weight:800}
+    .field input{color:#111111;font-weight:900;font-size:14px}
+    .field label{color:#ffffff;text-shadow:0 1px 1px #000;font-size:12px}
+    .readonly{background:#eef2f7!important;color:#111111!important;font-weight:950}
+    .statusline{font-weight:900;color:#ffffff}
     .status-badge{display:inline-flex;align-items:center;justify-content:center;height:42px;border-radius:12px;padding:0 14px;font-weight:900;border:1px solid #f3d49c;background:#fff8eb;color:var(--warn)}
     .btns{display:flex;gap:10px;flex-wrap:wrap}
     .btn{height:42px;padding:0 16px;border:none;border-radius:12px;cursor:pointer;font-weight:900;letter-spacing:.2px;box-shadow:0 8px 18px rgba(37,99,235,.08)}
@@ -90,8 +93,14 @@
     .amount-cell{color:#123762;font-weight:900;background:#eef6ff}
     .stock-cell{color:#0f766e;font-weight:900;background:#ecfdf5}
     .new-item{border-color:#f97316!important;background:#fff7ed!important}
-    #items .grid input{min-height:38px;border:0;border-radius:0;padding:8px 6px;background:transparent}
-    #items .grid input:focus{outline:none;box-shadow:inset 0 0 0 2px #2563eb;background:#eff6ff}
+    #items .grid input{min-height:38px;border:0;border-radius:0;padding:8px 6px;background:transparent;color:#111111;font-weight:900;font-size:14px}
+    #items .grid input:focus{outline:none;box-shadow:inset 0 0 0 2px #2563eb;background:#eff6ff;color:#000000}
+    #items .item-name,#items .item-code,#items .qty,#items .price,#items .remark{caret-color:#2563eb}
+    #items .cell-muted,#items .pending-box{color:#111827;font-weight:950}
+    .grid.hdr>div{color:#111827!important;font-weight:950!important}
+    .summary-card span{color:#334155;font-weight:950}
+    .summary-card strong{color:#111827;font-weight:950}
+    .pending-box .old{color:#9a3412}.pending-box .new{color:#1d4ed8}.pending-box .total{color:#166534}
     #items .grid:focus-within{background:#eff6ff!important;box-shadow:inset 4px 0 0 #facc15}
     .type-new{color:#c2410c;background:#fff7ed;border-color:#fed7aa}
     .type-stock{color:#047857;background:#ecfdf5;border-color:#bbf7d0}

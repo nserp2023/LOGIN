@@ -1273,12 +1273,37 @@ app.post("/api/ai-bulk-image-edit", async (req, res) => {
             String(prompt || "Improve the lighting and background for a clean product catalogue photo.").slice(0, 2000),
             "Keep the product itself faithful to the supplied photo. Do not add readable text, logos, watermarks, extra products, or accessories. Return only the edited image."
         ].join("\n\n");
-        const imageGenerationModels = [...new Set([
+        let discoveredImageModels = [];
+        try {
+            const modelsRes = await axios.get("https://generativelanguage.googleapis.com/v1beta/models", {
+                headers: { "x-goog-api-key": GEMINI_API_KEY },
+                params: { pageSize: 1000 },
+                timeout: 30000
+            });
+            discoveredImageModels = (modelsRes.data?.models || [])
+                .filter(model =>
+                    (model.supportedGenerationMethods || []).includes("generateContent")
+                    && /(image|banana)/i.test(`${model.name} ${model.displayName || ""}`)
+                )
+                .map(model => String(model.name).replace(/^models\//, ""));
+        } catch (error) {
+            console.warn("Could not list Gemini image models:", error.response?.data?.error?.message || error.message);
+        }
+
+        const configuredModels = [
+            process.env.GEMINI_IMAGE_GENERATION_MODEL || "",
             GEMINI_IMAGE_GENERATION_MODEL,
             process.env.GEMINI_IMAGE_GENERATION_FALLBACK_MODEL || "",
+            "gemini-3-flash-image",
+            "gemini-3.1-flash-image",
+            "gemini-3-pro-image-preview",
             "gemini-2.5-flash-image",
             "gemini-2.5-flash-image-preview"
-        ].filter(Boolean))];
+        ].filter(Boolean);
+        const imageGenerationModels = [...new Set([
+            ...discoveredImageModels,
+            ...configuredModels
+        ])].filter(model => !/gemini.*(?:embed|tts|text|vision)/i.test(model));
 
         let geminiRes;
         let modelUsed;

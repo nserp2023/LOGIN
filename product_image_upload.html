@@ -968,8 +968,17 @@ async function editProductImageWithAi(file) {
     })
   });
 
-  const result = await response.json().catch(() => ({}));
-  if(!response.ok) throw new Error(result.error || "Gemini image editing failed");
+  const responseText = await response.text();
+  let result = {};
+  try {
+    result = responseText ? JSON.parse(responseText) : {};
+  } catch (_) {
+    result = {};
+  }
+  if(!response.ok) {
+    const detail = result.error || responseText.slice(0, 300).trim();
+    throw new Error(detail || `Gemini image editing failed (${response.status} ${response.statusText})`);
+  }
   if(!result.imageBase64) throw new Error("Gemini returned no edited image");
 
   const binary = atob(result.imageBase64);
@@ -1411,9 +1420,11 @@ function getAiCatalogEndpoint() {
 
   if (window.location.protocol === "http:" || window.location.protocol === "https:") {
     const isLocalHost = ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
-    const apiOrigin = isLocalHost && window.location.port && window.location.port !== "3000"
-      ? `${window.location.protocol}//localhost:3000`
-      : window.location.origin;
+    const apiOrigin = isLocalHost
+      ? (window.location.port && window.location.port !== "3000"
+        ? `${window.location.protocol}//localhost:3000`
+        : window.location.origin)
+      : "https://vajra-billing.onrender.com";
     return `${apiOrigin}/api/ai-catalog-page`;
   }
 

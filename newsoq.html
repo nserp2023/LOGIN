@@ -838,6 +838,30 @@
         .manual-reorder-cancel { background: #475569; color: #fff; }
         .manual-reorder-save { background: #f59e0b; color: #111827; }
         .manual-reorder-number { margin-top: 14px; color: #86efac; font-size: 12px; font-weight: 800; }
+        .conversion-review-overlay {
+            position: fixed; inset: 0; z-index: 23000; display: none;
+            align-items: center; justify-content: center; padding: 20px;
+            background: rgba(15, 23, 42, .72); backdrop-filter: blur(5px);
+        }
+        .conversion-review-overlay.show { display: flex; }
+        .conversion-review-box {
+            width: min(900px, 100%); max-height: calc(100vh - 40px); overflow: hidden;
+            border: 1px solid #64748b; border-radius: 10px; background: #fff; color: #0f172a;
+            box-shadow: 0 24px 70px rgba(0, 0, 0, .48);
+        }
+        .conversion-review-box h3 { margin: 0; padding: 16px 18px; background: #0f172a; color: #fff; }
+        .conversion-review-content { max-height: calc(100vh - 210px); overflow: auto; padding: 12px 18px 16px; }
+        .conversion-review-table { width: 100%; border-collapse: collapse; }
+        .conversion-review-table th, .conversion-review-table td { border-bottom: 1px solid #e2e8f0; padding: 8px; text-align: left; }
+        .conversion-review-table th { position: sticky; top: 0; background: #f8fafc; font-size: 12px; }
+        .conversion-review-table input[type="number"] { width: 90px; padding: 7px; border: 1px solid #94a3b8; border-radius: 5px; }
+        .conversion-review-table input[type="checkbox"] { width: 18px; height: 18px; }
+        .conversion-review-remark-label { display: block; margin-top: 12px; font-size: 12px; font-weight: 800; }
+        .conversion-review-remark { width: 100%; min-height: 64px; margin-top: 6px; padding: 9px; border: 1px solid #94a3b8; border-radius: 6px; resize: vertical; }
+        .conversion-review-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 18px; border-top: 1px solid #e2e8f0; }
+        .conversion-review-actions button { min-width: 120px; padding: 9px 14px; border: 0; border-radius: 6px; font-weight: 800; cursor: pointer; }
+        .conversion-review-cancel { background: #475569; color: #fff; }
+        .conversion-review-confirm { background: #2563eb; color: #fff; }
 
         .po-confirm-btn.no{
             background: rgba(255,255,255,0.14);
@@ -1774,6 +1798,24 @@
         <p id="stock_warning_message">Selected quantity is more than available stock.</p>
         <div class="stock-warning-actions">
             <button type="button" class="stock-warning-btn" id="stock_warning_ok_btn">OK</button>
+        </div>
+    </div>
+</div>
+
+<div id="conversion_review_overlay" class="conversion-review-overlay" tabindex="-1" aria-hidden="true">
+    <div class="conversion-review-box" role="dialog" aria-modal="true" aria-labelledby="conversion_review_title">
+        <h3 id="conversion_review_title">REVIEW CONVERTED BILL ITEMS</h3>
+        <div class="conversion-review-content">
+            <table class="conversion-review-table">
+                <thead><tr><th>Item</th><th>Bill Qty</th><th>Make PO</th><th>PO Qty</th></tr></thead>
+                <tbody id="conversion_review_body"></tbody>
+            </table>
+            <label class="conversion-review-remark-label" for="conversion_review_remark">Remarks</label>
+            <textarea id="conversion_review_remark" class="conversion-review-remark" maxlength="500" placeholder="Remarks for purchase orders"></textarea>
+        </div>
+        <div class="conversion-review-actions">
+            <button type="button" class="conversion-review-cancel" id="conversion_review_cancel">Cancel</button>
+            <button type="button" class="conversion-review-confirm" id="conversion_review_confirm">SAVE BILL</button>
         </div>
     </div>
 </div>
@@ -2942,6 +2984,123 @@
         // loading/draft restoration can set the mode programmatically.
         if(docType === "sales_pack") return "VAJRA";
         return String(document.getElementById("salesman")?.value || "").trim().toUpperCase();
+    }
+
+    function openConversionReviewPopup(){
+        const overlay = document.getElementById("conversion_review_overlay");
+        const body = document.getElementById("conversion_review_body");
+        const remark = document.getElementById("conversion_review_remark");
+        if(!overlay || !body) return Promise.resolve(false);
+
+        const rows = Array.from(document.querySelectorAll("#bill_body tr.item-row")).filter(row => {
+            const code = row.querySelector(".code-inp")?.value?.trim();
+            const name = row.querySelector(".name-inp")?.value?.trim();
+            if(!code && !name) return false;
+            const minQty = getMinimumQtyForRow(row);
+            const maxQty = getMaximumQtyForRow(row);
+            if(minQty <= 0 || maxQty <= 0) return false;
+            const remaining = getRemainingStockAfterSale(row);
+            const suggestedQty = getSuggestedOrderQtyForRow(row);
+            return remaining < minQty && suggestedQty > 0;
+        });
+        if(!rows.length) return Promise.resolve(true);
+
+        body.innerHTML = rows.map((row, index) => {
+            const code = row.querySelector(".code-inp")?.value?.trim() || "";
+            const name = row.querySelector(".name-inp")?.value?.trim() || "";
+            const billQty = Math.max(0, parseFloat(row.querySelector(".qty-inp")?.value || 0) || 0);
+            const suggestedQty = Math.max(0, parseFloat(getSuggestedOrderQtyForRow(row) || 0) || 0);
+            const poQty = suggestedQty > 0 ? suggestedQty : billQty;
+            return `<tr data-review-row="${index}">
+                <td><strong>${escapeHtml(name || code)}</strong><br><small>${escapeHtml(code)}</small></td>
+                <td><input class="conversion-bill-qty" type="number" min="0" step="0.01" value="${billQty}"></td>
+                <td><input class="conversion-po-check" type="checkbox" checked></td>
+                <td><input class="conversion-po-qty" type="number" min="0.01" step="0.01" value="${poQty}"></td>
+            </tr>`;
+        }).join("");
+        remark.value = "";
+        overlay.classList.add("show");
+        overlay.setAttribute("aria-hidden", "false");
+
+        body.querySelectorAll(".conversion-po-check").forEach(check => {
+            check.addEventListener("change", () => {
+                const poQty = check.closest("tr")?.querySelector(".conversion-po-qty");
+                if(poQty) poQty.disabled = !check.checked;
+            });
+        });
+
+        return new Promise(resolve => {
+            const close = accepted => {
+                overlay.classList.remove("show");
+                overlay.setAttribute("aria-hidden", "true");
+                document.getElementById("conversion_review_confirm")?.removeEventListener("click", confirm);
+                document.getElementById("conversion_review_cancel")?.removeEventListener("click", cancel);
+                resolve(accepted);
+            };
+            const cancel = () => close(false);
+            const confirm = () => {
+                const remarkText = String(remark.value || "").trim();
+                let valid = true;
+                const reviewRows = body.querySelectorAll("tr[data-review-row]");
+                reviewRows.forEach((reviewRow, index) => {
+                    const sourceRow = rows[index];
+                    const billQtyInput = reviewRow.querySelector(".conversion-bill-qty");
+                    const poCheck = reviewRow.querySelector(".conversion-po-check");
+                    const poQtyInput = reviewRow.querySelector(".conversion-po-qty");
+                    const billQty = parseFloat(billQtyInput?.value || 0) || 0;
+                    const poQty = parseFloat(poQtyInput?.value || 0) || 0;
+                    if(billQty < 0 || (poCheck?.checked && poQty <= 0)) valid = false;
+                    if(!valid) return;
+                    const qtyInput = sourceRow.querySelector(".qty-inp");
+                    if(qtyInput) qtyInput.value = billQty;
+                    const rid = qtyInput?.dataset.rid;
+                    if(rid && typeof calcForward === "function") calcForward(rid);
+                    const minQty = getMinimumQtyForRow(sourceRow);
+                    const maxQty = getMaximumQtyForRow(sourceRow);
+                    const remaining = getRemainingStockAfterSale(sourceRow);
+                    const suggestedQty = getSuggestedOrderQtyForRow(sourceRow);
+                    const needsPurchaseOrder = minQty > 0 && maxQty > 0 && remaining < minQty && suggestedQty > 0;
+                    sourceRow.dataset.conversionMakePo = needsPurchaseOrder && poCheck?.checked ? "1" : "0";
+                    sourceRow.dataset.conversionPoQty = needsPurchaseOrder && poCheck?.checked ? String(poQty) : "0";
+                    sourceRow.dataset.conversionPoRemark = remarkText;
+                });
+                if(!valid){
+                    alert("Bill quantity cannot be negative and PO quantity must be greater than zero when Make PO is selected.");
+                    return;
+                }
+                close(true);
+            };
+            document.getElementById("conversion_review_confirm")?.addEventListener("click", confirm);
+            document.getElementById("conversion_review_cancel")?.addEventListener("click", cancel);
+            document.querySelector(".conversion-bill-qty")?.focus();
+        });
+    }
+
+    async function createSelectedConversionPurchaseOrders(){
+        const rows = Array.from(document.querySelectorAll("#bill_body tr.item-row"))
+            .filter(row => row.dataset.conversionMakePo === "1")
+            .filter(row => {
+                const minQty = getMinimumQtyForRow(row);
+                const maxQty = getMaximumQtyForRow(row);
+                return minQty > 0 && maxQty > 0 && getRemainingStockAfterSale(row) < minQty;
+            });
+        const created = [];
+        for(const row of rows){
+            const poQty = parseFloat(row.dataset.conversionPoQty || 0) || 0;
+            const remark = String(row.dataset.conversionPoRemark || "").trim();
+            if(poQty <= 0) continue;
+            try{
+                const po = await createQuickPurchaseOrderForRow(row, poQty, remark);
+                if(po && !po.skipped) created.push(po);
+            }catch(error){
+                console.error("Conversion purchase order failed:", error);
+            } finally{
+                delete row.dataset.conversionMakePo;
+                delete row.dataset.conversionPoQty;
+                delete row.dataset.conversionPoRemark;
+            }
+        }
+        return created;
     }
 
     async function findPendingPurchaseOrderForRow(row){
@@ -6520,6 +6679,10 @@ function calcTotal() {
         const btn = document.getElementById('btn_save');
         if (btn.disabled) return;
 
+        const isConvertedBillSave = ["sales", "sales_pack"].includes(docType)
+            && (!!window.loadedQuotationId || !!window.loadedSalesOrderId || isSalesOrderConversionMode);
+        if (isConvertedBillSave && !await openConversionReviewPopup()) return;
+
         saveBillDraftNow(true);
 
         btn.disabled = true;
@@ -6947,6 +7110,11 @@ function calcTotal() {
 
             const { error: iErr } = await sb.from(itemTable).insert(itemsToSave);
             if (iErr) throw iErr;
+
+            const conversionPurchaseOrders = await createSelectedConversionPurchaseOrders();
+            if(conversionPurchaseOrders.length){
+                updateDraftStatus(`${conversionPurchaseOrders.length} purchase order(s) created from converted bill`);
+            }
 
             // Consume a temporary grant only after all edited bill items have
             // saved successfully. Permanent editors have no grant id.

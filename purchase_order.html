@@ -32,26 +32,32 @@
     *{box-sizing:border-box}
     html,body{margin:0;min-height:100%}
     body{
-      background:linear-gradient(180deg,#f7faff 0%,#eef4fb 100%);
+      height:100vh;
+      overflow:hidden;
+      background-image:url('background.jpg');
+      background-size:cover;
+      background-attachment:fixed;
       color:var(--text);
       font:14px/1.4 "Segoe UI",system-ui,-apple-system,sans-serif;
-      padding-bottom:170px;
+      padding:10px;
     }
-    .wrap{max-width:1600px;margin:0 auto;padding:16px 14px 96px}
-    .topbar{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+    .wrap{width:100%;height:calc(100vh - 20px);max-width:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+    .topbar{display:none}
     .brand h1{margin:0;font-size:26px;letter-spacing:.2px}
     .brand small{color:var(--muted);font-size:13px}
     .chips{display:flex;gap:10px;flex-wrap:wrap}
     .chip{background:#fff;border:1px solid var(--line);border-radius:999px;padding:8px 12px;color:#3b4d69;box-shadow:var(--shadow);font-size:12px;font-weight:800}
-    .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px;margin-bottom:12px}
-    .panel-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
-    .panel-head h2{margin:0;font-size:17px}
+    .panel{background:var(--card);border:1px solid var(--line);border-radius:6px;box-shadow:0 8px 24px rgba(15,23,42,.12);padding:8px;margin-bottom:0}
+    .panel-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:8px}
+    .panel-head h2{margin:0;font-size:15px}
     .panel-head small{color:var(--muted);display:block;margin-top:3px}
-    .header-grid{display:grid;grid-template-columns:120px 140px 160px 220px 160px 260px 1fr;gap:10px;align-items:end;overflow-x:auto;padding-bottom:3px}
+    .header-panel{background:#030303;border:1px solid #030303;color:#fff;padding:10px}
+    .header-panel .panel-head{display:none}
+    .header-grid{display:grid;grid-template-columns:120px 140px 160px 220px 160px 260px minmax(180px,1fr);gap:8px;align-items:end;overflow-x:auto;padding-bottom:0}
     .field{display:flex;flex-direction:column;position:relative;min-width:120px}
-    .field label{font-size:12px;color:var(--muted);font-weight:800;margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}
-    .field input,.grid input{width:100%;min-height:var(--row-h);border:1px solid var(--line);border-radius:var(--radius-sm);background:#fff;color:var(--text);padding:10px 12px;outline:none;transition:.15s;font:inherit}
-    .field input:focus,.grid input:focus{border-color:#7aa8ff;box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+    .field label{font-size:11px;color:#fff;font-weight:800;margin-bottom:4px;text-transform:uppercase;letter-spacing:0}
+    .field input,.grid input{width:100%;min-height:32px;border:1px solid var(--line);border-radius:4px;background:#fff;color:var(--text);padding:6px 8px;outline:none;transition:.15s;font:inherit}
+    .field input:focus,.grid input:focus{border-color:#2563eb;box-shadow:0 0 0 2px rgba(37,99,235,.18)}
     .readonly{background:#f3f6fb!important;color:#42526b!important;font-weight:800}
     .status-badge{display:inline-flex;align-items:center;justify-content:center;height:42px;border-radius:12px;padding:0 14px;font-weight:900;border:1px solid #f3d49c;background:#fff8eb;color:var(--warn)}
     .btns{display:flex;gap:10px;flex-wrap:wrap}
@@ -66,32 +72,39 @@
     .btn.gray{background:#fff;color:#42526b;border:1px solid var(--line)}
     .btn.danger{background:#fff1f2;color:#b91c1c;border:1px solid #f4b3b9;padding:0 12px}
     .btn:disabled{opacity:.55;cursor:not-allowed}
-    .summary-strip{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:10px;margin-bottom:12px}
-    .summary-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 12px;box-shadow:var(--shadow)}
+    .summary-strip{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:8px;margin-bottom:0}
+    .summary-card{background:#fff;border:1px solid var(--line);border-radius:6px;padding:7px 10px;box-shadow:none}
     .summary-card span{display:block;font-size:11px;text-transform:uppercase;color:var(--muted);font-weight:900;letter-spacing:.05em}
     .summary-card strong{display:block;margin-top:2px;font-size:19px;color:#17213a}
-    .table-shell{overflow:auto;border:1px solid var(--line2);border-radius:14px;background:var(--card2);padding:10px 10px 120px;max-height:calc(100vh - 330px);scroll-behavior:smooth}
-    .grid{display:grid;grid-template-columns:58px 140px minmax(340px,1.8fr) 92px 95px 110px 115px minmax(185px,1fr) 130px 54px;gap:8px;align-items:center;min-width:1360px}
-    .grid.hdr{position:sticky;top:0;z-index:3;background:linear-gradient(180deg,#f9fbff 0%,#f5f9ff 100%);border-bottom:1px solid var(--line);padding:0 0 10px;margin-bottom:10px}
-    .grid.hdr>div{font-size:12px;color:#52637e;font-weight:900;text-transform:uppercase;padding:0 4px}
-    #items .grid{background:#fff;border:1px solid var(--line);border-radius:12px;padding:8px;margin-bottom:8px;scroll-margin-bottom:190px;scroll-margin-top:90px}
-    #items .grid:nth-child(even){background:#fbfdff}
-    .cell-muted{text-align:center;font-weight:800;color:#5b6e8a;background:#f3f7fc;border:1px solid var(--line);min-height:42px;display:flex;align-items:center;justify-content:center;border-radius:10px;padding:0 8px}
+    .items-panel{flex:1;min-height:0;display:flex;flex-direction:column;padding:8px}
+    .items-head{margin-bottom:7px}
+    .table-shell{flex:1;min-height:0;overflow:auto;border:0;border-radius:0;background:#fff;padding:0;scroll-behavior:smooth}
+    .grid{display:grid;grid-template-columns:36px 115px minmax(300px,1.8fr) 76px 78px 92px 100px minmax(150px,1fr) 116px 44px;gap:0;align-items:center;min-width:1120px}
+    .grid.hdr{position:sticky;top:0;z-index:3;background:#f0e6e2;border:1px solid #cbd5e1;border-bottom:0;margin:0;padding:0}
+    .grid.hdr>div{font-size:11px;color:#694747;font-weight:800;text-transform:uppercase;padding:8px;border-right:1px solid #cbd5e1}
+    #items .grid{background:#fff;border:1px solid #cbd5e1;border-radius:0;padding:0;margin:0;border-bottom:0;scroll-margin-bottom:190px;scroll-margin-top:90px;min-height:40px}
+    #items .grid:nth-child(even){background:#f8fafc}
+    #items .grid:last-child{border-bottom:1px solid #cbd5e1}
+    #items .grid>div{border-right:1px solid #e2e8f0;min-height:40px}
+    .cell-muted{text-align:center;font-weight:800;color:#5b6e8a;background:#f8fafc;border:0;min-height:40px;display:flex;align-items:center;justify-content:center;border-radius:0;padding:0 6px}
     .amount-cell{color:#123762;font-weight:900;background:#eef6ff}
     .stock-cell{color:#0f766e;font-weight:900;background:#ecfdf5}
     .new-item{border-color:#f97316!important;background:#fff7ed!important}
+    #items .grid input{min-height:38px;border:0;border-radius:0;padding:8px 6px;background:transparent}
+    #items .grid input:focus{outline:none;box-shadow:inset 0 0 0 2px #2563eb;background:#eff6ff}
+    #items .grid:focus-within{background:#eff6ff!important;box-shadow:inset 4px 0 0 #facc15}
     .type-new{color:#c2410c;background:#fff7ed;border-color:#fed7aa}
     .type-stock{color:#047857;background:#ecfdf5;border-color:#bbf7d0}
-    .pending-box{font-size:11px;line-height:1.25;text-align:left;background:#f8fbff;border:1px solid var(--line);border-radius:10px;padding:5px 7px;min-height:42px;display:flex;flex-direction:column;justify-content:center}
-    .pending-box .old{color:#b45309;font-weight:900}.pending-box .new{color:#2563eb;font-weight:900}.pending-box .total{color:#16a34a;font-weight:900;font-size:12px}
-    .pending-box.warn{background:#fff7ed;border-color:#fb923c}.pending-box.danger{background:#fff1f2;border-color:#ef4444}
-    .statusline{margin-top:10px;min-height:42px;border:1px solid var(--line);border-radius:12px;background:#f8fbff;padding:10px 12px;color:#4d617d;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;display:flex;align-items:center;white-space:pre-wrap}
+    .pending-box{font-size:10px;line-height:1.15;text-align:left;background:#f8fbff;border:0;border-radius:0;padding:4px 6px;min-height:40px;display:flex;flex-direction:column;justify-content:center}
+    .pending-box .old{color:#b45309;font-weight:900}.pending-box .new{color:#2563eb;font-weight:900}.pending-box .total{color:#16a34a;font-weight:900;font-size:11px}
+    .pending-box.warn{background:#fff7ed;box-shadow:inset 0 0 0 1px #fb923c}.pending-box.danger{background:#fff1f2;box-shadow:inset 0 0 0 1px #ef4444}
+    .statusline{margin-top:8px;min-height:32px;border:1px solid var(--line);border-radius:4px;background:#0f172a;padding:7px 10px;color:#cbd5e1;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;display:flex;align-items:center;white-space:pre-wrap}
     .dropdown{position:fixed;z-index:9999;min-width:760px;max-width:min(1000px,calc(100vw - 22px));max-height:310px;overflow:auto;background:#fff;border:1px solid #cfdcf0;border-radius:12px;box-shadow:0 18px 38px rgba(20,33,61,.22)}
     .opt{display:grid;grid-template-columns:135px 1fr 110px 110px 115px;gap:10px;padding:10px 12px;border-bottom:1px solid #eef2f7;cursor:pointer;align-items:center}
     .opt.supplier-opt{grid-template-columns:160px 1fr 160px 1.2fr}
     .opt:hover,.opt.active{background:#eaf2ff}.muted{color:#70829d;font-size:12px}.opt strong{color:#16233e}
-    .sticky{position:fixed;left:0;right:0;bottom:0;background:rgba(255,255,255,.95);backdrop-filter:blur(8px);border-top:1px solid var(--line);box-shadow:0 -10px 28px rgba(24,39,75,.08);padding:10px 14px;z-index:100}
-    .sticky-inner{max-width:1600px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}.sticky-note{color:var(--muted);font-size:12px;font-weight:800}
+    .sticky{position:fixed;left:10px;right:10px;bottom:10px;width:auto;background:rgba(15,23,42,.96);backdrop-filter:blur(8px);border:1px solid rgba(148,163,184,.35);box-shadow:0 12px 28px rgba(15,23,42,.28);border-radius:6px;padding:7px 8px;z-index:100}
+    .sticky-inner{max-width:none;margin:0;display:flex;justify-content:flex-end;align-items:center;gap:10px}.sticky-note{color:#cbd5e1;font-size:12px;font-weight:800;margin-right:auto}
 
     .items-panel{transition:.22s ease}
     .items-head{transition:.22s ease}
@@ -133,7 +146,7 @@
     .po-share-table .right{text-align:right;font-variant-numeric:tabular-nums}
     .po-share-footer{display:flex;justify-content:space-between;gap:12px;margin-top:10px;border:1px solid #111;padding:8px;font-size:13px;font-weight:800;color:#000}
 
-    @media(max-width:900px){body{padding-bottom:210px}.wrap{padding:10px 8px 24px}.header-grid{grid-template-columns:repeat(2,minmax(220px,1fr))}.summary-strip{grid-template-columns:repeat(2,minmax(150px,1fr))}.btn{width:100%}.btns{width:100%}.sticky-inner{flex-direction:column;align-items:stretch}.dropdown{min-width:calc(100vw - 20px);left:10px!important}.opt{grid-template-columns:110px 1fr}.opt .hide-mobile{display:none}}
+    @media(max-width:900px){body{padding:6px;overflow:hidden}.wrap{height:calc(100vh - 12px);gap:6px}.header-grid{grid-template-columns:repeat(2,minmax(220px,1fr));max-height:130px;overflow:auto}.summary-strip{grid-template-columns:repeat(2,minmax(150px,1fr))}.items-panel{padding:6px}.items-head{margin-bottom:6px}.items-head small{display:none}.btns{gap:6px}.btn{height:38px;width:auto;padding:0 10px}.sticky{left:6px;right:6px;bottom:6px}.sticky-inner{flex-wrap:wrap;justify-content:flex-end}.sticky-note{display:none}.dropdown{min-width:calc(100vw - 20px);left:10px!important}.opt{grid-template-columns:110px 1fr}.opt .hide-mobile{display:none}}
     @media print{
       @page{size:A4;margin:10mm}
       *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;text-shadow:none!important;box-shadow:none!important}
@@ -152,6 +165,7 @@
       .grid.hdr{position:static!important;top:auto!important;margin:0!important;padding:0!important;border:1px solid #000!important;background:#eaeaea!important;break-inside:avoid!important}
       .grid.hdr>div{font-size:10px!important;font-weight:900!important;color:#000!important;text-transform:uppercase!important;border-right:1px solid #000!important;padding:5px 4px!important;background:#eaeaea!important;display:flex!important;align-items:center!important}
       .grid.hdr>div:nth-child(9),.grid.hdr>div:nth-child(10){display:none!important}
+      #items .grid.po-print-exclude{display:none!important}
       #items .grid{break-inside:avoid!important;border-left:1px solid #000!important;border-right:1px solid #000!important;border-bottom:1px solid #000!important;border-top:none!important;border-radius:0!important;margin:0!important;padding:0!important;background:#fff!important;min-height:25px!important}
       #items .grid:nth-child(even){background:#fff!important}
       #items .grid>div{border-right:1px solid #000!important;padding:0!important;min-height:25px!important;display:flex!important;align-items:center!important;color:#000!important;background:#fff!important}
@@ -1001,28 +1015,95 @@ function buildPrintHeader(){
   `;
 }
 
-function printPO(){
-  buildPrintHeader();
-  window.print();
-}
+let activePOPrintSnapshot = null;
 
-function getShareRows(){
+function getPrintablePurchaseOrderRows(){
   const rows = [];
-  document.querySelectorAll("#items .item-row").forEach((row, i) => {
+  document.querySelectorAll("#items .item-row").forEach(row => {
     const item_code = clean(row.querySelector(".item-code")?.value);
     const item_name = clean(row.querySelector(".item-name")?.value);
     if(!item_code && !item_name) return;
+
+    const originalQty = num(row.querySelector(".qty")?.value);
+    const receivedQty = getReceived(row);
+    const balanceQty = Math.max(0, originalQty - receivedQty);
+    if(balanceQty <= 0) return;
+
+    const priceValue = row.querySelector(".price")?.value ?? "";
     rows.push({
+      row,
       sl: rows.length + 1,
       item_code,
       item_name,
-      qty: fmt2(num(row.querySelector(".qty")?.value)),
-      price: row.querySelector(".price")?.value === "" ? "" : fmt2(num(row.querySelector(".price")?.value)),
-      amount: fmt2(num(row.querySelector(".amount")?.textContent)),
+      qty: fmt2(balanceQty),
+      numericQty: balanceQty,
+      price: priceValue === "" ? "" : fmt2(num(priceValue)),
+      numericPrice: priceValue === "" ? 0 : num(priceValue),
+      amount: fmt2(balanceQty * (priceValue === "" ? 0 : num(priceValue))),
       remark: clean(row.querySelector(".remark")?.value)
     });
   });
   return rows;
+}
+
+function restorePOPrintRows(){
+  if(!activePOPrintSnapshot) return;
+  activePOPrintSnapshot.forEach(snapshot => {
+    snapshot.row.classList.remove("po-print-exclude");
+    snapshot.row.style.display = "";
+    const qtyInput = snapshot.row.querySelector(".qty");
+    if(qtyInput) qtyInput.value = snapshot.qty;
+    calcRow(snapshot.row);
+  });
+  activePOPrintSnapshot = null;
+  calcAll();
+}
+
+function preparePOPrintRows(){
+  restorePOPrintRows();
+  activePOPrintSnapshot = [];
+  getPrintablePurchaseOrderRows().forEach(printRow => {
+    const row = printRow.row;
+    const qtyInput = row.querySelector(".qty");
+    activePOPrintSnapshot.push({row, qty: num(qtyInput?.value)});
+  });
+
+  const printableRows = getPrintablePurchaseOrderRows();
+  const printableRowSet = new Set(printableRows.map(item => item.row));
+  document.querySelectorAll("#items .item-row").forEach(row => {
+    if(printableRowSet.has(row)){
+      const printRow = printableRows.find(item => item.row === row);
+      const qtyInput = row.querySelector(".qty");
+      if(qtyInput && printRow) qtyInput.value = printRow.numericQty;
+      calcRow(row);
+    }else{
+      activePOPrintSnapshot.push({row, qty: num(row.querySelector(".qty")?.value)});
+      row.classList.add("po-print-exclude");
+      row.style.display = "none";
+    }
+  });
+  calcAll();
+}
+
+function printPO(){
+  buildPrintHeader();
+  preparePOPrintRows();
+  window.print();
+  setTimeout(restorePOPrintRows, 1500);
+}
+
+window.addEventListener("afterprint", restorePOPrintRows);
+
+function getShareRows(){
+  return getPrintablePurchaseOrderRows().map(row => ({
+    sl: row.sl,
+    item_code: row.item_code,
+    item_name: row.item_name,
+    qty: row.qty,
+    price: row.price,
+    amount: row.amount,
+    remark: row.remark
+  }));
 }
 
 function makeShareCard(){

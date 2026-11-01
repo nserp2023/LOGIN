@@ -119,7 +119,7 @@ const GEMINI_TTS_MODEL = process.env.GEMINI_TTS_MODEL || "gemini-3.1-flash-tts-p
 const GEMINI_TTS_VOICE = process.env.GEMINI_TTS_VOICE || "Aoede";
 const GEMINI_IMAGE_MODEL = process.env.GEMINI_IMAGE_MODEL || "gemini-2.5-flash";
 const GEMINI_CATALOG_FALLBACK_MODEL = process.env.GEMINI_CATALOG_FALLBACK_MODEL || "gemini-3.1-flash-lite";
-const GEMINI_IMAGE_GENERATION_MODEL = process.env.GEMINI_IMAGE_GENERATION_MODEL || "gemini-3.1-flash-image";
+const GEMINI_IMAGE_GENERATION_MODEL = process.env.GEMINI_IMAGE_GENERATION_MODEL || "gemini-2.5-flash-image";
 const GEMINI_CATALOG_VERIFY_MODEL = process.env.GEMINI_CATALOG_VERIFY_MODEL || GEMINI_IMAGE_MODEL;
 const PRIMARY_SUPABASE_URL = process.env.PRIMARY_SUPABASE_URL || "https://kzxwjujjvnehhthazicc.supabase.co";
 const PRIMARY_SUPABASE_PUBLISHABLE_KEY = process.env.PRIMARY_SUPABASE_PUBLISHABLE_KEY || "sb_publishable_Iu3sQGl9gq_VsVYxR3j_7g_SLvgqp_9";
@@ -1273,21 +1273,47 @@ app.post("/api/ai-bulk-image-edit", async (req, res) => {
             String(prompt || "Improve the lighting and background for a clean product catalogue photo.").slice(0, 2000),
             "Keep the product itself faithful to the supplied photo. Do not add readable text, logos, watermarks, extra products, or accessories. Return only the edited image."
         ].join("\n\n");
-        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_IMAGE_GENERATION_MODEL)}:generateContent`;
-        const geminiRes = await axios.post(endpoint, {
-            contents: [{ parts: [
-                { text: editPrompt },
-                { inlineData: { mimeType, data: String(imageBase64) } }
-            ] }],
-            generationConfig: {
-                responseModalities: ["TEXT", "IMAGE"],
-                imageConfig: { aspectRatio: "1:1" }
+        const imageGenerationModels = [...new Set([
+            GEMINI_IMAGE_GENERATION_MODEL,
+            process.env.GEMINI_IMAGE_GENERATION_FALLBACK_MODEL || "",
+            "gemini-2.5-flash-image",
+            "gemini-2.5-flash-image-preview"
+        ].filter(Boolean))];
+
+        let geminiRes;
+        let modelUsed;
+        let lastError;
+        for (const model of imageGenerationModels) {
+            const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+            try {
+                geminiRes = await axios.post(endpoint, {
+                    contents: [{ parts: [
+                        { text: editPrompt },
+                        { inlineData: { mimeType, data: String(imageBase64) } }
+                    ] }],
+                    generationConfig: {
+                        responseModalities: ["TEXT", "IMAGE"],
+                        imageConfig: { aspectRatio: "1:1" }
+                    }
+                }, {
+                    headers: { "Content-Type": "application/json", "x-goog-api-key": GEMINI_API_KEY },
+                    timeout: 300000,
+                    maxBodyLength: Infinity
+                });
+                modelUsed = model;
+                break;
+            } catch (error) {
+                lastError = error;
+                const status = error.response?.status;
+                const fallbackModel = imageGenerationModels[imageGenerationModels.indexOf(model) + 1];
+                if ((status === 429 || status === 404 || status === 400) && fallbackModel) {
+                    console.warn(`Gemini image edit failed on ${model}; trying ${fallbackModel}.`);
+                    continue;
+                }
+                throw error;
             }
-        }, {
-            headers: { "Content-Type": "application/json", "x-goog-api-key": GEMINI_API_KEY },
-            timeout: 300000,
-            maxBodyLength: Infinity
-        });
+        }
+        if (!geminiRes) throw lastError || new Error("Gemini image editing models returned no response");
 
         const parts = geminiRes.data?.candidates?.[0]?.content?.parts || [];
         const imagePart = parts.find(part => part.inlineData?.data && String(part.inlineData?.mimeType || "").startsWith("image/"));
@@ -1295,7 +1321,7 @@ app.post("/api/ai-bulk-image-edit", async (req, res) => {
         res.json({
             imageBase64: imagePart.inlineData.data,
             mimeType: imagePart.inlineData.mimeType || "image/png",
-            model: GEMINI_IMAGE_GENERATION_MODEL
+            model: modelUsed
         });
     } catch (err) {
         const status = err.response?.status;

@@ -28,4 +28,24 @@ load().catch(error=>{
     status.style.display='block';
     status.textContent='Could not load current stock. You can still retry by searching for an item.';
 });
+</script><script>
+card = ((renderCard) => item => {
+    const template = document.createElement('template');
+    template.innerHTML = renderCard(item);
+    template.content.querySelectorAll('tbody tr').forEach(row => {
+        const label = row.querySelector('th')?.textContent.trim();
+        if (['Barcode', 'Department', 'GST'].includes(label)) {
+            row.remove();
+            return;
+        }
+
+        const priceMatch = label?.match(/^Price ([123])$/);
+        if (!priceMatch) return;
+
+        const price = Number(item[`price${priceMatch[1]}`]) || 0;
+        const gstRate = Number(item.gst_percent) || 0;
+        row.querySelector('td').textContent = `${money(price)} (${money(price * (1 + gstRate / 100))} incl. GST)`;
+    });
+    return template.innerHTML;
+})(card);
 </script></body></html>

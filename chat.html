@@ -11,7 +11,12 @@ card = ((renderCard) => item => {
     const template = document.createElement('template');
     template.innerHTML = renderCard(item);
     const rows = template.content.querySelector('tbody');
-    if(rows) rows.insertRow(4).innerHTML = `<th>Landing</th><td>${money(item.landing)} (${money(Number(item.landing||0)*(1+(Number(item.gst_percent)||0)/100))} incl. GST)</td>`;
+    if(rows){
+        const landingInclusive = Number(item.landing) || 0;
+        const gstRate = Number(item.gst_percent) || 0;
+        const landingBeforeGst = gstRate > 0 ? landingInclusive / (1 + gstRate / 100) : landingInclusive;
+        rows.insertRow(4).innerHTML = `<th>Landing</th><td>${money(landingBeforeGst)} (${money(landingInclusive)} incl. GST)</td>`;
+    }
     return template.innerHTML;
 })(card);
 </script><script>

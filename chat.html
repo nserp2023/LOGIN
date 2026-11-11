@@ -14,4 +14,18 @@ card = ((renderCard) => item => {
     if(rows) rows.insertRow(4).innerHTML = `<th>Landing</th><td>${money(item.landing)}</td>`;
     return template.innerHTML;
 })(card);
+</script><script>
+const loadInventory=load;
+let inventoryLoadPromise=null;
+load=function(){
+    if(inventory)return Promise.resolve(inventory);
+    if(inventoryLoadPromise)return inventoryLoadPromise;
+    inventoryLoadPromise=loadInventory().finally(()=>{inventoryLoadPromise=null});
+    return inventoryLoadPromise;
+};
+load().catch(error=>{
+    console.error('Initial stock load failed:',error);
+    status.style.display='block';
+    status.textContent='Could not load current stock. You can still retry by searching for an item.';
+});
 </script></body></html>

@@ -1357,6 +1357,9 @@
         .icon-btn-reset{ background:#475569; }
         .icon-btn-save{ background:#059669; }
         .icon-btn-save:disabled{ background:#64748b; opacity:.7; cursor:not-allowed; transform:none; }
+        .icon-btn-whatsapp{ background:#16a34a; }
+        .icon-btn-whatsapp:disabled{ background:#64748b; opacity:.7; cursor:wait; transform:none; }
+        .icon-btn[hidden]{ display:none !important; }
 
         .icon-btn::after{
             content:attr(data-tooltip);
@@ -1719,6 +1722,9 @@
             <button type="button" class="btn icon-btn icon-btn-reset" data-tooltip="Reset / new bill" aria-label="Reset and start a new bill" title="Reset / new bill" onclick="resetCurrentBill()">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
             </button>
+            <button type="button" id="btn_share_whatsapp" class="btn icon-btn icon-btn-whatsapp" data-tooltip="Save and share GST invoice on WhatsApp" aria-label="Save and share GST invoice on WhatsApp" title="Save and share GST invoice on WhatsApp" onclick="saveAndPrint('whatsapp')" hidden>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.2 11.6a8.2 8.2 0 0 1-12.1 7.2L3 20l1.2-4.9a8.2 8.2 0 1 1 16-3.5Z"/><path d="M8.2 7.8c.2-.4.4-.4.7-.4h.5c.2 0 .4.1.5.4l.7 1.6c.1.2.1.4 0 .5l-.5.6c-.2.2-.2.4-.1.6.4.7 1 1.3 1.7 1.7.2.1.4.1.6-.1l.6-.5c.2-.2.3-.2.5-.1l1.6.7c.3.1.4.3.4.5 0 .3-.2.8-.5 1.1-.4.4-1 .6-1.6.5-1-.2-2.2-.8-3.3-1.8-1-.9-1.7-2.1-1.9-3.1-.1-.8.2-1.4.6-1.8Z"/></svg>
+            </button>
             <button type="button" id="btn_save" class="btn icon-btn icon-btn-save" data-tooltip="Print & save" aria-label="Print and save" title="Print & save" onclick="saveAndPrint()" tabindex="100">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/><path d="M18 12h.01"/></svg>
             </button>
@@ -2022,6 +2028,146 @@
         btn.dataset.tooltip = label;
         btn.title = label;
         btn.setAttribute("aria-label", label);
+    }
+
+    function updateWhatsAppButtonVisibility(){
+        const button = document.getElementById("btn_share_whatsapp");
+        if(button) button.hidden = document.getElementById("doc_type")?.value !== "sales";
+    }
+
+    function getWhatsAppMobileNumber(mobile){
+        let digits = String(mobile || "").replace(/\D/g, "");
+        if(digits.length > 10 && digits.startsWith("91")) digits = digits.slice(2);
+        if(digits.length > 10) digits = digits.slice(-10);
+        return digits.length === 10 ? `91${digits}` : "";
+    }
+
+    let html2CanvasLoader = null;
+    function ensureHtml2Canvas(){
+        if(typeof window.html2canvas === "function") return Promise.resolve(window.html2canvas);
+        if(html2CanvasLoader) return html2CanvasLoader;
+
+        html2CanvasLoader = new Promise((resolve, reject) => {
+            const script = document.createElement("script");
+            script.src = "https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js";
+            script.async = true;
+            script.onload = () => resolve(window.html2canvas);
+            script.onerror = () => {
+                html2CanvasLoader = null;
+                reject(new Error("Could not load the invoice image tool."));
+            };
+            document.head.appendChild(script);
+        });
+        return html2CanvasLoader;
+    }
+
+    async function generateSalesInvoiceImage(saleId){
+        const html2canvas = await ensureHtml2Canvas();
+        const iframe = document.createElement("iframe");
+        iframe.style.position = "fixed";
+        iframe.style.left = "-99999px";
+        iframe.style.top = "0";
+        iframe.style.width = "1000px";
+        iframe.style.height = "1400px";
+        iframe.style.border = "0";
+
+        const params = new URLSearchParams({
+            id: saleId,
+            type: "sales",
+            capture: "1",
+            copy: "invoice"
+        });
+        iframe.src = `print.html?${params.toString()}`;
+        document.body.appendChild(iframe);
+
+        try{
+            await new Promise((resolve, reject) => {
+                const timeoutId = setTimeout(() => reject(new Error("Invoice image rendering timed out.")), 20000);
+                iframe.onload = () => {
+                    const checkRenderStatus = () => {
+                        const frameWindow = iframe.contentWindow;
+                        if(frameWindow?.__billRenderStatus === "ready"){
+                            clearTimeout(timeoutId);
+                            resolve();
+                        }else if(frameWindow?.__billRenderStatus === "error"){
+                            clearTimeout(timeoutId);
+                            reject(new Error(frameWindow.__billRenderError || "Could not render the GST invoice."));
+                        }else{
+                            setTimeout(checkRenderStatus, 100);
+                        }
+                    };
+                    checkRenderStatus();
+                };
+            });
+
+            const doc = iframe.contentDocument || iframe.contentWindow.document;
+            doc.querySelectorAll("#pages > .page").forEach(page => {
+                page.style.setProperty("height", "auto", "important");
+                page.style.setProperty("min-height", "0", "important");
+                page.style.setProperty("overflow", "visible", "important");
+                page.style.setProperty("margin-bottom", "24px", "important");
+            });
+
+            const canvas = await html2canvas(doc.body, {
+                scale: 2,
+                backgroundColor: "#ffffff",
+                useCORS: true
+            });
+            const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/png", 1));
+            if(!blob) throw new Error("Could not create the GST invoice image.");
+            return blob;
+        }finally{
+            iframe.remove();
+        }
+    }
+
+    function downloadWhatsAppInvoiceImage(blob, fileName){
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1500);
+    }
+
+    async function shareSalesInvoiceOnWhatsApp(saleId, head, billNumber){
+        const blob = await generateSalesInvoiceImage(saleId);
+        const safeBillNumber = String(billNumber || saleId).replace(/[^\w-]/g, "_");
+        const fileName = `gst_invoice_${safeBillNumber}.png`;
+        let copied = false;
+
+        try{
+            if(navigator.clipboard && window.ClipboardItem){
+                await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+                copied = true;
+            }
+        }catch(error){
+            console.warn("GST invoice clipboard copy failed:", error);
+        }
+
+        if(!copied) downloadWhatsAppInvoiceImage(blob, fileName);
+
+        const mobile = getWhatsAppMobileNumber(head.mob);
+        const invoiceNumber = `${head.series || ""}${head.series ? "-" : ""}${billNumber || saleId}`;
+        const message = [
+            "*VAJRA LIGHTS & ELECTRICALS*",
+            "GST INVOICE",
+            `Invoice No: ${invoiceNumber}`,
+            `Date: ${head.date || ""}`,
+            `Customer: ${head.name || ""}`,
+            `Amount: ₹ ${Number(head.total || 0).toFixed(0)}`,
+            "",
+            "THANK YOU FOR YOUR BUSINESS!"
+        ].join("\n");
+        const query = new URLSearchParams({ text: message });
+        query.set("phone", mobile);
+        window.location.href = `whatsapp://send?${query.toString()}`;
+
+        alert(copied
+            ? "GST invoice image copied. In the WhatsApp Desktop chat, press Ctrl+V and send."
+            : "GST invoice image downloaded. Attach it in the WhatsApp Desktop chat and send.");
     }
 
     document.addEventListener("keydown", event => {
@@ -2603,12 +2749,14 @@
 
         document.getElementById('cust_mobile').focus();    
 
+        updateWhatsAppButtonVisibility();
         document.getElementById("doc_type").addEventListener("change",()=>{
 
             hidePurchaseHistory();
             lastHistoryKey = "";
 
             const type=document.getElementById("doc_type").value;
+            updateWhatsAppButtonVisibility();
             const sm=document.getElementById("salesman");
 
             if(!window.loadedSalesOrderId){
@@ -6669,7 +6817,7 @@ function calcTotal() {
         };
     }
 
-    async function saveAndPrint() {
+    async function saveAndPrint(action = "print") {
         const totalAmount = parseFloat(
             (document.getElementById('display_grand_total').innerText || '₹0').replace('₹', '')
         ) || 0;
@@ -6677,7 +6825,16 @@ function calcTotal() {
         const docType = document.getElementById("doc_type").value;
         const salesmanForSave = getSalesmanForSave(docType);
         const btn = document.getElementById('btn_save');
-        if (btn.disabled) return;
+        const whatsappBtn = document.getElementById("btn_share_whatsapp");
+        if (btn.disabled || (action === "whatsapp" && whatsappBtn?.disabled)) return;
+        if(action === "whatsapp" && docType !== "sales"){
+            alert("WhatsApp invoice sharing is available only in SALES mode.");
+            return;
+        }
+        if(action === "whatsapp" && !getWhatsAppMobileNumber(document.getElementById("cust_mobile")?.value)){
+            alert("Enter a valid 10-digit customer mobile number before sharing the GST invoice.");
+            return;
+        }
 
         const isConvertedBillSave = ["sales", "sales_pack"].includes(docType)
             && (!!window.loadedQuotationId || !!window.loadedSalesOrderId || isSalesOrderConversionMode);
@@ -6686,6 +6843,7 @@ function calcTotal() {
         saveBillDraftNow(true);
 
         btn.disabled = true;
+        if(action === "whatsapp" && whatsappBtn) whatsappBtn.disabled = true;
         setSaveButtonLabel("Saving...");
 
         try {
@@ -7144,14 +7302,15 @@ function calcTotal() {
 
             alert(`Bill #${nextBillNo} Saved Successfully!`);
 
-            const printDepartment = encodeURIComponent(document.getElementById("department_filter")?.value || "");
-            const printDepartmentQuery = printDepartment ? `&department=${printDepartment}` : "";
+            if(action !== "whatsapp"){
+                const printDepartment = encodeURIComponent(document.getElementById("department_filter")?.value || "");
+                const printDepartmentQuery = printDepartment ? `&department=${printDepartment}` : "";
 
-            if (docType === "sales_pack") {
-                window.open(`print.html?type=sales_pack&id=${packingId}${printDepartmentQuery}`, "_blank");
-            }
-            else {
-                window.open(`print.html?type=${docType}&id=${saleId}${printDepartmentQuery}`, "_blank");
+                if (docType === "sales_pack") {
+                    window.open(`print.html?type=sales_pack&id=${packingId}${printDepartmentQuery}`, "_blank");
+                }else{
+                    window.open(`print.html?type=${docType}&id=${saleId}${printDepartmentQuery}`, "_blank");
+                }
             }
 
             // A quotation is converted when it becomes Sales, Bill, or a Sales Order.
@@ -7196,16 +7355,30 @@ function calcTotal() {
                 salesOrderAdvancePaid = 0;
             }
 
+            if(action === "whatsapp"){
+                try{
+                    await shareSalesInvoiceOnWhatsApp(saleId, head, nextBillNo);
+                }catch(shareError){
+                    console.error("Sales invoice WhatsApp share failed:", shareError);
+                    alert(`Bill #${nextBillNo} was saved, but WhatsApp sharing failed: ${shareError.message || shareError}`);
+                }
+            }
+
             const freshUrl = new URL(window.location.pathname, window.location.origin);
             freshUrl.searchParams.set("fresh", `${Date.now()}`);
             if(BILL_WORKSPACE_ID) freshUrl.searchParams.set("workspace", BILL_WORKSPACE_ID);
-            window.location.replace(freshUrl.href);
+            if(action === "whatsapp"){
+                setTimeout(() => window.location.replace(freshUrl.href), 1500);
+            }else{
+                window.location.replace(freshUrl.href);
+            }
 
         } catch (e) {
             console.error(e);
             alert("Error: " + (e.message || e));
         } finally {
             btn.disabled = false;
+            if(whatsappBtn) whatsappBtn.disabled = false;
             setSaveButtonLabel(
                 docType === "quotation" ? "Save & print quotation" :
                 docType === "sales_order" ? "Save & print sales order" :

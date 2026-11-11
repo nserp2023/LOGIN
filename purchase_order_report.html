@@ -646,8 +646,8 @@ td:first-child,th:first-child{background:rgba(0,0,0,.8)}
   <div class="whatsapp-mode-bar">
     <span>Send with:</span>
     <div class="whatsapp-mode-switch" role="group" aria-label="WhatsApp sending method">
-      <button type="button" data-whatsapp-mode="web" aria-pressed="true">WhatsApp Web</button>
-      <button type="button" data-whatsapp-mode="desktop" aria-pressed="false">WhatsApp Desktop</button>
+      <button type="button" data-whatsapp-mode="web" aria-pressed="false">WhatsApp Web</button>
+      <button type="button" data-whatsapp-mode="desktop" aria-pressed="true">WhatsApp Desktop</button>
     </div>
   </div>
 
@@ -988,7 +988,7 @@ async function init(){
   document.querySelectorAll('[data-whatsapp-mode]').forEach(button => {
     button.addEventListener('click', () => setWhatsAppMode(button.dataset.whatsappMode));
   });
-  setWhatsAppMode(getWhatsAppMode());
+  setWhatsAppMode('desktop');
   enableContainerWheelScrolling();
   const observer = new MutationObserver(() => enableContainerWheelScrolling());
   observer.observe(document.body, {childList:true, subtree:true});
@@ -1862,8 +1862,8 @@ function getCleanIndianMobile(mobile){
 }
 
 function getWhatsAppMode(){
-  try{return localStorage.getItem('report_whatsapp_mode') === 'desktop' ? 'desktop' : 'web';}
-  catch(_e){return 'web';}
+  try{return localStorage.getItem('report_whatsapp_mode') === 'web' ? 'web' : 'desktop';}
+  catch(_e){return 'desktop';}
 }
 
 function setWhatsAppMode(mode){

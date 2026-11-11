@@ -69,6 +69,43 @@
       backdrop-filter:blur(8px);
     }
 
+    .whatsapp-mode-bar{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      margin:12px 0;
+      padding:10px 14px;
+      border:1px solid #cbd5e1;
+      border-radius:12px;
+      background:rgba(255,255,255,.96);
+      color:#334155;
+      font-weight:800;
+    }
+
+    .whatsapp-mode-switch{
+      display:inline-flex;
+      padding:3px;
+      border:1px solid #cbd5e1;
+      border-radius:9px;
+      background:#f1f5f9;
+    }
+
+    .whatsapp-mode-switch button{
+      min-height:34px;
+      padding:0 10px;
+      border:0;
+      border-radius:6px;
+      background:transparent;
+      color:#334155;
+      font-weight:800;
+      cursor:pointer;
+    }
+
+    .whatsapp-mode-switch button[aria-pressed="true"]{
+      background:#86efac;
+      color:#052e1a;
+    }
+
     .topbar-left{
       display:flex;
       align-items:center;
@@ -720,6 +757,7 @@
         <button class="btn btn-primary" id="newCustomerBtn">＋ New Complaint</button>
       </div>
     </div>
+    <div class="whatsapp-mode-bar"><span>Send with:</span><div class="whatsapp-mode-switch" role="group" aria-label="WhatsApp sending method"><button type="button" data-whatsapp-mode="web" aria-pressed="false">WhatsApp Web</button><button type="button" data-whatsapp-mode="desktop" aria-pressed="true">WhatsApp Desktop</button></div></div>
 
     <div class="stats">
       <div class="stat">
@@ -895,7 +933,29 @@
     const formSubtitle = document.getElementById("formSubtitle");
     const modeBadge = document.getElementById("modeBadge");
 
+    function getWhatsAppMode() {
+      try {
+        return localStorage.getItem("report_whatsapp_mode") === "web" ? "web" : "desktop";
+      } catch (_error) {
+        return "desktop";
+      }
+    }
+
+    function setWhatsAppMode(mode) {
+      const selectedMode = mode === "web" ? "web" : "desktop";
+      try {
+        localStorage.setItem("report_whatsapp_mode", selectedMode);
+      } catch (_error) {}
+      document.querySelectorAll("[data-whatsapp-mode]").forEach(button => {
+        button.setAttribute("aria-pressed", String(button.dataset.whatsappMode === selectedMode));
+      });
+    }
+
     document.addEventListener("DOMContentLoaded", async () => {
+      document.querySelectorAll("[data-whatsapp-mode]").forEach(button => {
+        button.addEventListener("click", () => setWhatsAppMode(button.dataset.whatsappMode));
+      });
+      setWhatsAppMode("desktop");
       enableUppercase();
       bindEvents();
       bindEnterJump();
@@ -1782,13 +1842,16 @@ ${formatWhatsAppLine("🧾 Customer Note:", visibleNotes)}
       const phone = getWhatsappNumber(row);
       const encoded = encodeURIComponent(message);
 
-      let url = "";
-      if (phone && phone.length >= 10) {
-        url = `https://wa.me/${phone}?text=${encoded}`;
-      } else {
-        url = `https://wa.me/?text=${encoded}`;
+      if (getWhatsAppMode() === "desktop") {
+        const query = new URLSearchParams({ text: message });
+        if (phone) query.set("phone", phone);
+        window.location.href = `whatsapp://send?${query.toString()}`;
+        return;
       }
 
+      const url = phone && phone.length >= 10
+        ? `https://wa.me/${phone}?text=${encoded}`
+        : `https://wa.me/?text=${encoded}`;
       window.open(url, "crm_whatsapp_share");
     }
 

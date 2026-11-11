@@ -425,8 +425,8 @@
 <div class="whatsapp-mode-bar">
     <span class="whatsapp-mode-label">Send with:</span>
     <div class="whatsapp-mode-switch" role="group" aria-label="WhatsApp sending method">
-        <button type="button" data-whatsapp-mode="web" aria-pressed="true">WhatsApp Web</button>
-        <button type="button" data-whatsapp-mode="desktop" aria-pressed="false">WhatsApp Desktop</button>
+        <button type="button" data-whatsapp-mode="web" aria-pressed="false">WhatsApp Web</button>
+        <button type="button" data-whatsapp-mode="desktop" aria-pressed="true">WhatsApp Desktop</button>
     </div>
 </div>
 
@@ -533,9 +533,9 @@
 
     function getWhatsAppMode(){
         try {
-            return localStorage.getItem('report_whatsapp_mode') === 'desktop' ? 'desktop' : 'web';
+            return localStorage.getItem('report_whatsapp_mode') === 'web' ? 'web' : 'desktop';
         } catch(e) {
-            return 'web';
+            return 'desktop';
         }
     }
 
@@ -2406,7 +2406,7 @@
         document.querySelectorAll('[data-whatsapp-mode]').forEach(button => {
             button.addEventListener('click', () => setWhatsAppMode(button.dataset.whatsappMode));
         });
-        setWhatsAppMode(getWhatsAppMode());
+        setWhatsAppMode('desktop');
 
         const ok = await requirePageAccess("sales");
         if (!ok) return;

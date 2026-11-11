@@ -225,8 +225,8 @@
       <div class="whatsapp-mode-bar">
         <span>Send with:</span>
         <div class="whatsapp-mode-switch" role="group" aria-label="WhatsApp sending method">
-          <button type="button" data-whatsapp-mode="web" aria-pressed="true">WhatsApp Web</button>
-          <button type="button" data-whatsapp-mode="desktop" aria-pressed="false">WhatsApp Desktop</button>
+          <button type="button" data-whatsapp-mode="web" aria-pressed="false">WhatsApp Web</button>
+          <button type="button" data-whatsapp-mode="desktop" aria-pressed="true">WhatsApp Desktop</button>
         </div>
       </div>
       <div class="panel-head items-head"><div><h2>Order Items</h2><small>Search old items using code or name. Type new items manually if not found.</small></div><div class="btns"><button class="btn gray" id="addRowTop">+ Add Row</button><button class="btn soft" id="printTop">Print</button><button class="btn whatsapp" id="shareTop" type="button">Share WhatsApp Image</button><button class="btn primary" id="saveTop">Save Purchase Order</button><button class="btn soft" id="focusModeBtn" type="button">Expand Entry</button></div></div>
@@ -323,7 +323,7 @@ function bindButtons(){
   document.querySelectorAll('[data-whatsapp-mode]').forEach(button => {
     button.addEventListener('click', () => setWhatsAppMode(button.dataset.whatsappMode));
   });
-  setWhatsAppMode(getWhatsAppMode());
+  setWhatsAppMode("desktop");
   byId("focusModeBtn").onclick = () => setEntryMode(!document.body.classList.contains("compact-entry"), true);
   byId("entryTogglePill").onclick = () => setEntryMode(false, true);
 }
@@ -1165,8 +1165,8 @@ function getCleanIndianMobile(mobile){
 }
 
 function getWhatsAppMode(){
-  try{return localStorage.getItem("report_whatsapp_mode") === "desktop" ? "desktop" : "web";}
-  catch(_e){return "web";}
+  try{return localStorage.getItem("report_whatsapp_mode") === "web" ? "web" : "desktop";}
+  catch(_e){return "desktop";}
 }
 
 function setWhatsAppMode(mode){

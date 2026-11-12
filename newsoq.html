@@ -3509,12 +3509,16 @@
         return Number.isFinite(n) ? n : 0;
     }
 
-    function canUseBelowLandingUnlock() {
+    function canManageRestrictedBillingOptions() {
         return currentUserRole === "OWNER" || currentUserRole === "ADMIN";
     }
 
+    function canUseBelowLandingUnlock() {
+        return canManageRestrictedBillingOptions();
+    }
+
     function canUseOverStockSaleUnlock() {
-        return currentUserRole === "OWNER" || currentUserRole === "ADMIN";
+        return canManageRestrictedBillingOptions();
     }
 
     function lockOverStockSaleMode(statusText = "Over-stock mode OFF") {
@@ -6002,7 +6006,7 @@ function calcTotal() {
     const profitBox = document.getElementById('profit_box');
 
     function toggleProfitBox(){
-        if(!profitBox) return;
+        if(!profitBox || !canManageRestrictedBillingOptions()) return;
 
         if(profitBox.style.display === 'none'){
             calcProfit();
@@ -6013,11 +6017,13 @@ function calcTotal() {
     }
 
     if (trigger) {
-        trigger.addEventListener('dblclick', toggleProfitBox);
+        trigger.addEventListener('dblclick', () => {
+            if(canManageRestrictedBillingOptions()) toggleProfitBox();
+        });
     }
 
     function setupOverStockSaleSecretUnlock(){
-        if(!profitBox || profitBox.dataset.overStockUnlockBound === '1') return;
+        if(!canManageRestrictedBillingOptions() || !profitBox || profitBox.dataset.overStockUnlockBound === '1') return;
 
         profitBox.dataset.overStockUnlockBound = '1';
         profitBox.title = 'Triple-click to activate admin over-stock sale mode';
@@ -6045,6 +6051,7 @@ function calcTotal() {
     }
 
     function setupMobileProfitGestures(){
+        if(!canManageRestrictedBillingOptions()) return;
         const gestureArea = document.getElementById('grand_total_box');
         if(!gestureArea || gestureArea.dataset.mobileProfitBound === '1') return;
 
@@ -6107,6 +6114,7 @@ function calcTotal() {
     }
 
     function setupBelowLandingSecretUnlock() {
+        if (!canManageRestrictedBillingOptions()) return;
         const secretArea = document.getElementById("profit_trigger");
         if (!secretArea || secretArea.dataset.belowLandingUnlockBound === "1") return;
 
